@@ -1,4 +1,7 @@
-"""SimGameWorld Pydantic models."""
+"""SimGameWorld Pydantic 模型导出 / Pydantic model exports.
+
+所有数据模型统一从这里 import / Import all data models from here.
+"""
 
 from .character import (
     Actor,
