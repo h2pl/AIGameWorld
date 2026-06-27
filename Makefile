@@ -5,7 +5,7 @@ setup:  ## First-time setup
 	@echo "Frontend: cd frontend && npm install"
 	@echo "Copy .env.example to .env and fill in API keys"
 
-dev:  ## Start both (run in separate terminals)
+dev:  ## Start both backend and frontend (run in separate terminals)
 	@echo "Terminal 1: make backend-dev"
 	@echo "Terminal 2: make frontend-dev"
 
