@@ -7,14 +7,26 @@ from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
 
+class ProviderConfig(BaseModel):
+    type: str  # "deepseek" | "anthropic"
+    base_url: str | None = None
+
+
+class ProvidersConfig(BaseModel):
+    primary: ProviderConfig
+    fallback: ProviderConfig | None = None
+
+
 class LLMModelConfig(BaseModel):
     model: str
+    fallback_model: str | None = None
     temperature: float
     timeout: int
     retries: int
 
 
 class LLMConfig(BaseModel):
+    providers: ProvidersConfig
     dm_create: LLMModelConfig
     dm_narrate: LLMModelConfig
     pc_decision: LLMModelConfig
@@ -40,15 +52,25 @@ class AutoRunConfig(BaseModel):
     default_interval: int = 2000
 
 
+class LangfuseConfig(BaseModel):
+    enabled: bool = False
+    tracing_environment: str = "development"
+
+
+class ObservabilityConfig(BaseModel):
+    langfuse: LangfuseConfig = LangfuseConfig()
+
+
 class Config(BaseSettings):
     server: ServerConfig = ServerConfig()
     world: WorldConfig = WorldConfig()
     llm: LLMConfig
     database: DatabaseConfig = DatabaseConfig()
     auto_run: AutoRunConfig = AutoRunConfig()
+    observability: ObservabilityConfig = ObservabilityConfig()
 
     @classmethod
-    def from_yaml(cls, path: str = "config.yaml") -> "Config":
+    def from_yaml(cls, path: str = "config.yaml") -> Config:
         config_path = Path(path)
         if not config_path.exists():
             raise FileNotFoundError(f"Config file not found: {path}")

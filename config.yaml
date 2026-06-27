@@ -6,28 +6,39 @@ world:
   default_pack: "forgotten_realms"
 
 llm:
+  providers:
+    primary:
+      type: "deepseek"
+      base_url: "https://api.deepseek.com/v1"
+    fallback:
+      type: "anthropic"
   dm_create:
     model: "deepseek-reasoner"
+    fallback_model: "claude-sonnet-4-20250514"
     temperature: 0.9
     timeout: 15
     retries: 1
   dm_narrate:
     model: "deepseek-chat"
+    fallback_model: "claude-sonnet-4-20250514"
     temperature: 0.8
     timeout: 10
     retries: 1
   pc_decision:
     model: "deepseek-chat"
+    fallback_model: "claude-sonnet-4-20250514"
     temperature: 0.7
     timeout: 10
     retries: 1
   actor_decision:
     model: "deepseek-chat"
+    fallback_model: "claude-haiku-4-20250514"
     temperature: 0.7
     timeout: 8
     retries: 1
   reflection:
     model: "deepseek-reasoner"
+    fallback_model: "claude-sonnet-4-20250514"
     temperature: 0.5
     timeout: 15
     retries: 1
@@ -38,3 +49,10 @@ database:
 
 auto_run:
   default_interval: 2000
+
+observability:
+  langfuse:
+    enabled: true
+    # 环境变量配置：LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_BASE_URL
+    # 自托管：base_url 指向 docker-compose 部署的 Langfuse Server
+    tracing_environment: "development"
