@@ -1,29 +1,35 @@
-"""StorySummarizer 子图 / Story Summarizer Subgraph.
-Phase 7: 每 N 步压缩 Event Log → 剧情梗概 / Every N ticks, compress event log into summary.
-Mock: 返回未触发. 后续 M4 接入 / Mock: not triggered. M4 integration.
+"""StorySummarizer 子图 / Story Summarizer Subgraph — compiled StateGraph.
+
+Phase 7: 每 N 步压缩 Event Log → 剧情梗概 / Compress events into summary.
 """
 
 from typing import TypedDict, Any
 
+from langgraph.graph import StateGraph, END
+
 
 class SummarizerSubState(TypedDict):
     """摘要器子图状态 / Summarizer subgraph state."""
-    events: list[dict[str, Any]]  # 原始事件 / Raw events
-    summary_interval: int  # 压缩间隔（每 N tick）/ Compression interval (every N ticks)
-    tick: int  # 当前 tick / Current tick
-    summary: str  # 摘要文本 / Summary text
-    compressed: bool  # 是否触发了压缩 / Whether compression triggered
+    events: list[dict[str, Any]]
+    tick: int
+    summary: str
 
 
-def summarize_events(state: dict[str, Any]) -> SummarizerSubState:
-    """压缩事件为摘要 / Compress events into summary.
+def summarize_node(state: SummarizerSubState) -> dict:
+    """压缩事件 / Compress events.
     
-    Mock: 不触发压缩.
+    Mock: 空摘要 / Empty summary.
     """
-    return SummarizerSubState(
-        events=state.get("events", []),
-        summary_interval=state.get("summary_interval", 10),
-        tick=state.get("tick", 0),
-        summary="",
-        compressed=False,  # 未触发 / Not triggered yet
-    )
+    return {"summary": ""}
+
+
+def build_summarizer_subgraph() -> StateGraph:
+    """构建 Summarizer 子图 / Build Summarizer subgraph."""
+    graph = StateGraph(SummarizerSubState)
+    graph.add_node("summarize", summarize_node)
+    graph.set_entry_point("summarize")
+    graph.add_edge("summarize", END)
+    return graph
+
+
+summarizer_subgraph = build_summarizer_subgraph().compile()

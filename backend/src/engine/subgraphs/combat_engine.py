@@ -1,31 +1,36 @@
-"""CombatEngine 子图 / Combat Engine Subgraph.
-Phase 4: 回合制战斗（独立 tick 子循环）/ Turn-based combat (independent tick sub-loop).
-Mock: 返回空结果. 后续 M6 接入 / Mock: empty result. M6 integration.
+"""CombatEngine 子图 / Combat Engine Subgraph — compiled StateGraph.
+
+Phase 4: 回合制战斗 / Turn-based combat.
 """
 
 from typing import TypedDict, Any
 
+from langgraph.graph import StateGraph, END
+
 
 class CombatSubState(TypedDict):
     """CombatEngine 子图状态 / CombatEngine subgraph state."""
-    participants: list[str]  # 参战者 ID 列表 / Participant IDs
-    initiative_order: list[tuple[str, int]]  # 先攻顺序 / Initiative order
-    round: int  # 当前轮次 / Current round
-    actions: list[dict[str, Any]]  # 战斗动作 / Combat actions
-    combat_log: list[str]  # 战斗日志 / Combat log
-    result: dict[str, Any]  # 战斗结果 / Combat result
+    participants: list[str]
+    round: int
+    result: dict[str, Any] | None
 
 
-def resolve_combat(state: dict[str, Any]) -> CombatSubState:
-    """解析战斗 / Resolve combat.
+def resolve_combat_node(state: CombatSubState) -> dict:
+    """战斗裁决 / Combat resolution.
     
-    Mock: 空战斗结果.
+    Mock: 空结果 / Empty result.
+    后续 M6 接入 DndRules / M6: DndRules integration.
     """
-    return CombatSubState(
-        participants=state.get("participants", []),
-        initiative_order=state.get("initiative_order", []),
-        round=state.get("round", 1),
-        actions=[],
-        combat_log=[],
-        result={"victory": None, "casualties": [], "loot": []},
-    )
+    return {"result": None}
+
+
+def build_combat_subgraph() -> StateGraph:
+    """构建 Combat 子图 / Build Combat subgraph."""
+    graph = StateGraph(CombatSubState)
+    graph.add_node("resolve", resolve_combat_node)
+    graph.set_entry_point("resolve")
+    graph.add_edge("resolve", END)
+    return graph
+
+
+combat_subgraph = build_combat_subgraph().compile()

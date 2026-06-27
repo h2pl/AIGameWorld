@@ -1,29 +1,36 @@
-"""DialogueEngine 子图 / Dialogue Engine Subgraph.
+"""DialogueEngine 子图 / Dialogue Engine Subgraph — compiled StateGraph.
+
 Phase 4: D20 对话检定 / D20 dialogue check.
-Mock: 返回空结果. 后续 M6 接入 / Mock: empty result. M6 integration.
 """
 
 from typing import TypedDict, Any
 
+from langgraph.graph import StateGraph, END
+
 
 class DialogueSubState(TypedDict):
     """DialogueEngine 子图状态 / DialogueEngine subgraph state."""
-    speaker: str  # 说话者 / Speaker ID
-    target: str  # 目标 / Target ID
-    intent: str  # 意图：persuade/deceive/intimidate / Intent
-    content: str  # 对话内容 / Dialogue content
-    check_result: dict[str, Any]  # 检定结果 / Check result
+    speaker: str
+    target: str
+    intent: str
+    check_result: dict[str, Any]
 
 
-def resolve_dialogue(state: dict[str, Any]) -> DialogueSubState:
-    """解析对话检定 / Resolve dialogue check.
+def resolve_dialogue_node(state: DialogueSubState) -> dict:
+    """对话检定 / Dialogue check.
     
-    Mock: 空检定结果.
+    Mock: 空检定 / Empty check.
     """
-    return DialogueSubState(
-        speaker=state.get("speaker", ""),
-        target=state.get("target", ""),
-        intent=state.get("intent", "persuade"),
-        content=state.get("content", ""),
-        check_result={},  # 空检定 / No check result yet
-    )
+    return {"check_result": {}}
+
+
+def build_dialogue_subgraph() -> StateGraph:
+    """构建 Dialogue 子图 / Build Dialogue subgraph."""
+    graph = StateGraph(DialogueSubState)
+    graph.add_node("resolve", resolve_dialogue_node)
+    graph.set_entry_point("resolve")
+    graph.add_edge("resolve", END)
+    return graph
+
+
+dialogue_subgraph = build_dialogue_subgraph().compile()

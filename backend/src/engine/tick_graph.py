@@ -1,12 +1,28 @@
-"""TickGraph 主图：7 Phase StateGraph / Main graph: 7-phase StateGraph.
+"""TickGraph 主图：7 Phase StateGraph 编排 / Main graph: 7-phase StateGraph orchestration.
 
 基于 design/03-orchestration-layer.md §5 / Based on orchestration layer design.
+每个 Phase 节点通过 Wrapper invoke 对应子图的 compile() / Each phase invokes subgraph compile via wrapper.
 """
 
 from typing import TypedDict, Annotated, Any
 from operator import add
 
 from langgraph.graph import StateGraph, END
+
+from .subgraphs.dm_subgraph import dm_subgraph, DMSubState
+from .subgraphs.world_engine import world_engine_subgraph, WorldEngineSubState
+from .subgraphs.character_agent import pc_subgraph, actor_subgraph
+from .subgraphs.combat_engine import combat_subgraph
+from .subgraphs.dialogue_engine import dialogue_subgraph
+from .subgraphs.exploration_engine import exploration_subgraph
+from .subgraphs.quest_engine import quest_subgraph
+from .subgraphs.reflection import reflection_subgraph
+from .subgraphs.story_summarizer import summarizer_subgraph
+from .wrappers import (
+    wrap_dm_create_input, unwrap_dm_create_output,
+    wrap_world_engine_input, unwrap_world_engine_output,
+    wrap_dm_narrate_input, unwrap_dm_narrate_output,
+)
 
 
 # ============================================================
@@ -15,13 +31,12 @@ from langgraph.graph import StateGraph, END
 class OverallState(TypedDict):
     """7 Phase 主图状态 / 7-phase main graph state."""
 
-    # 控制 / Control
     tick: int  # 当前 tick 号 / Current tick number
 
     # Phase 1: DM 创造情境 / DM creates context
-    dm_instructions: list[dict[str, Any]]  # DMInstruction[]
-    plot_brief: str  # 剧情梗概 / Plot brief
-    scene_direction: dict[str, Any]  # featured_pcs + featured_actors
+    dm_instructions: list[dict[str, Any]]
+    plot_brief: str
+    scene_direction: dict[str, Any]
 
     # Phase 2: WorldEngine / World engine execution
     world_events: Annotated[list[dict[str, Any]], add]
@@ -31,101 +46,124 @@ class OverallState(TypedDict):
 
     # Phase 4: Engine 裁决 / Engine resolution
     engine_results: Annotated[list[dict[str, Any]], add]
-    combat_result: dict[str, Any] | None  # 战斗结果 / Combat result
+    combat_result: dict[str, Any] | None
 
     # Phase 5: 状态合并 / State merge
-    state_diff: dict[str, Any]  # 增量变更 / Incremental diff
-    cast_changes: list[dict[str, Any]]  # 主角团变动 / Cast changes
+    state_diff: dict[str, Any]
+    cast_changes: list[dict[str, Any]]
 
     # Phase 6: DM 叙事 / DM narration
-    narrative: str  # 最终叙事文本 / Final narrative
+    narrative: str
 
     # Phase 7: 反思 + 摘要 / Reflection + summary
-    reflected_characters: list[str]  # 已反思角色 / Reflected character IDs
-    summary_compressed: bool  # 是否触发了摘要 / Whether summary triggered
+    reflected_characters: list[str]
+    summary_compressed: bool
 
     # 控制 / Control
-    errors: Annotated[list[str], add]  # 错误累积 / Error accumulator
-    needs_reflection: bool  # 是否触发反思 / Whether reflection triggered
+    errors: Annotated[list[str], add]
+    needs_reflection: bool
 
 
 # ============================================================
-# Phase 函数声明 / Phase function declarations
-# 当前为 mock 实现 / Currently mock implementations
+# Phase 节点：invoke 子图 / Phase nodes: invoke subgraphs
 # ============================================================
 
 def phase1_dm_create(state: OverallState) -> dict:
+    """Phase 1: invoke DM Subgraph / invoke DM subgraph.
+    
+    DM 子图读出 WorldState + StoryArc → plot_brief + SceneDirection.
     """
-    Phase 1: DM 创造情境 / DM creates context.
-    输入 WorldState → DM Subgraph → 输出 plot_brief + SceneDirection.
-    Mock: 返回预设的 plot_brief 和空指令.
-    """
-    return {
-        "dm_instructions": [],
-        "plot_brief": f"[Tick {state['tick']}] DM creates a new scene.",
-        "scene_direction": {"featured_pcs": [], "featured_actors": []},
-    }
+    dm_input = wrap_dm_create_input(state)
+    result = dm_subgraph.invoke(dm_input)
+    return unwrap_dm_create_output(result)
 
 
 def phase2_world_engine(state: OverallState) -> dict:
-    """
-    Phase 2: 世界引擎执行 DM 指令 / World engine executes DM instructions.
-    Mock: 空事件列表.
-    """
-    return {"world_events": []}
+    """Phase 2: invoke WorldEngine Subgraph / invoke WorldEngine subgraph."""
+    we_input = wrap_world_engine_input(state)
+    result = world_engine_subgraph.invoke(we_input)
+    return unwrap_world_engine_output(result)
 
 
 def phase3_character_decide(state: OverallState) -> dict:
+    """Phase 3: invoke PC/Actor Subgraphs / invoke character subgraphs.
+    
+    后续 M5 改为 Send fan-out 并行 / Future M5: Send fan-out.
+    当前串行调用所有 PC + Actor / Currently invokes all PCs + Actors sequentially.
     """
-    Phase 3: 角色决策（Send fan-out 并行）/ Character decisions (parallel fan-out).
-    Mock: 空行动列表. 后续 M5 接入 PC/Actor Agent.
-    """
-    return {"character_actions": []}
+    actions = []
+    featured_pcs = state.get("scene_direction", {}).get("featured_pcs", [])
+    featured_actors = state.get("scene_direction", {}).get("featured_actors", [])
+
+    # 并行调用 PC / Invoke each PC subgraph
+    for pc_id in featured_pcs:
+        pc_input = {"pc_id": pc_id, "plot_brief": state.get("plot_brief", "")}
+        result = pc_subgraph.invoke(pc_input)
+        if result.get("action_out"):
+            actions.append(result["action_out"])
+
+    # 并行调用 Actor / Invoke each Actor subgraph
+    for actor_id in featured_actors:
+        actor_input = {"actor_id": actor_id, "plot_brief": state.get("plot_brief", "")}
+        result = actor_subgraph.invoke(actor_input)
+        if result.get("action_out"):
+            actions.append(result["action_out"])
+
+    return {"character_actions": actions}
 
 
 def phase4_engines(state: OverallState) -> dict:
+    """Phase 4: 条件路由 invoke 对应 Engine / Conditional route to engine subgraph.
+    
+    当前全部 invoke（mock 返回空）/ All engines invoked (mock returns empty).
+    后续 M6 按 Action type 条件路由 / Future M6: conditional routing by Action type.
     """
-    Phase 4: 引擎条件路由（战斗/对话/探索/任务）/ Engine conditional routing.
-    Mock: 空结果.
-    """
+    results = []
+    
+    # Combat / 战斗引擎
+    combat_result = combat_subgraph.invoke({"participants": [], "round": 1})
+    results.append({"engine": "combat", "result": combat_result.get("result")})
+    
+    # Dialogue / 对话引擎
+    dialogue_result = dialogue_subgraph.invoke({"speaker": "", "target": "", "intent": ""})
+    results.append({"engine": "dialogue", "result": dialogue_result.get("check_result")})
+    
+    # Exploration / 探索引擎
+    explore_result = exploration_subgraph.invoke({"character_id": "", "action_type": ""})
+    results.append({"engine": "exploration", "result": explore_result.get("check_result")})
+    
+    # Quest / 任务引擎
+    quest_result = quest_subgraph.invoke({"quests": [], "event_log": []})
+    results.append({"engine": "quest", "completed": quest_result.get("completed_quests", [])})
+
     return {
-        "engine_results": [],
-        "combat_result": None,
+        "engine_results": results,
+        "combat_result": combat_result.get("result"),
     }
 
 
 def phase5_state_update(state: OverallState) -> dict:
+    """Phase 5: 合并所有结果 / Merge all results.
+    
+    后续接入 WorldStateStore 写入 / Future: write via WorldStateStore.
     """
-    Phase 5: 合并所有 Phase 结果 → 写入 WorldState / Merge results → write WorldState.
-    Mock: 空 diff.
-    """
-    return {
-        "state_diff": {},
-        "cast_changes": [],
-    }
+    return {"state_diff": {}, "cast_changes": []}
 
 
 def phase6_dm_narrate(state: OverallState) -> dict:
-    """
-    Phase 6: DM 基于实际结果渲染叙事 / DM narrates based on actual results.
-    Mock: 简单拼接.
-    """
-    narrative = f"[Tick {state['tick']}] {state.get('plot_brief', '')}"
-    return {
-        "narrative": narrative,
-        "needs_reflection": state["tick"] % 5 == 0,  # 每 5 tick 触发反思 / Reflect every 5 ticks
-    }
+    """Phase 6: invoke DM Subgraph (narration) / invoke DM subgraph for narration."""
+    dm_input = wrap_dm_narrate_input(state)
+    result = dm_subgraph.invoke(dm_input)
+    update = unwrap_dm_narrate_output(result)
+    update["needs_reflection"] = state["tick"] % 5 == 0
+    return update
 
 
 def phase7_reflection(state: OverallState) -> dict:
-    """
-    Phase 7: 反思 + 摘要 / Reflection + summary.
-    Mock: 标记完成.
-    """
-    return {
-        "reflected_characters": [],
-        "summary_compressed": False,
-    }
+    """Phase 7: invoke Reflection + Summarizer / invoke reflection + summarizer."""
+    reflection_subgraph.invoke({"character_id": "", "memories": []})
+    summarizer_subgraph.invoke({"events": [], "tick": state["tick"]})
+    return {"reflected_characters": [], "summary_compressed": False}
 
 
 # ============================================================
@@ -136,7 +174,6 @@ def build_tick_graph() -> StateGraph:
     """构建 7 Phase TickGraph / Build the 7-phase TickGraph."""
     graph = StateGraph(OverallState)
 
-    # 注册 7 个节点 / Register 7 nodes
     graph.add_node("phase1_dm_create", phase1_dm_create)
     graph.add_node("phase2_world_engine", phase2_world_engine)
     graph.add_node("phase3_character_decide", phase3_character_decide)
@@ -145,7 +182,6 @@ def build_tick_graph() -> StateGraph:
     graph.add_node("phase6_dm_narrate", phase6_dm_narrate)
     graph.add_node("phase7_reflection", phase7_reflection)
 
-    # 线性边 / Linear edges
     graph.set_entry_point("phase1_dm_create")
     graph.add_edge("phase1_dm_create", "phase2_world_engine")
     graph.add_edge("phase2_world_engine", "phase3_character_decide")
@@ -153,7 +189,6 @@ def build_tick_graph() -> StateGraph:
     graph.add_edge("phase4_engines", "phase5_state_update")
     graph.add_edge("phase5_state_update", "phase6_dm_narrate")
 
-    # 条件边: Phase6 → Phase7 或 END / Conditional: Phase6 → Phase7 or END
     graph.add_conditional_edges(
         "phase6_dm_narrate",
         lambda s: "phase7_reflection" if s.get("needs_reflection") else END,
