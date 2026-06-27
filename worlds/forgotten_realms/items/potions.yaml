@@ -1,0 +1,8 @@
+items:
+  - id: "health_potion"
+    name: "Health Potion"
+    item_type: "potion"
+    rarity: "common"
+    weight: 0.5
+    value: 50
+    data: {effect: "heal", potency: "2d4+2", duration: "instant", useable_in_combat: true}

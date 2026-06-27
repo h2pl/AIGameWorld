@@ -1,0 +1,22 @@
+items:
+  - id: "chain_mail"
+    name: "Chain Mail"
+    item_type: "armor"
+    rarity: "common"
+    weight: 25.0
+    value: 75
+    data: {ac: 16, dex_bonus_max: 0, strength_required: 13, stealth_disadvantage: true}
+  - id: "leather_armor"
+    name: "Leather Armor"
+    item_type: "armor"
+    rarity: "common"
+    weight: 10.0
+    value: 10
+    data: {ac: 11, dex_bonus_max: 99}
+  - id: "shield"
+    name: "Shield"
+    item_type: "shield"
+    rarity: "common"
+    weight: 3.0
+    value: 10
+    data: {ac_bonus: 2}

@@ -1,0 +1,9 @@
+objects:
+  - id: "door_cellar"
+    name: "Cellar Door"
+    object_type: "door"
+    interactable: true
+    interact_data:
+      locked: true
+      key_id: "rusty_key"
+      leads_to: "cellar_scene"

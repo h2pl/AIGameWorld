@@ -1,0 +1,34 @@
+- id: "rogue"
+  name: "Rogue"
+  role: "rogue"
+  race: "human"
+  attributes:
+    str: 10
+    dex: 18
+    con: 12
+    int: 14
+    wis: 10
+    cha: 14
+  combat:
+    hp: 24
+    max_hp: 24
+    ac: 14
+    initiative: 4
+    attack_bonus: 6
+    damage_bonus: 4
+  character_arc:
+    growth_line: "From selfish thief to reluctant hero"
+    inner_conflict: "Freedom vs belonging"
+    destiny: "Find something worth fighting for"
+  values:
+    - "Survival first"
+    - "Loyalty is earned, not given"
+  long_term_goal: "Clear a debt to a dangerous crime lord"
+  personality: "Cunning, resourceful, suspicious of authority"
+  equipment:
+    weapon: "shortsword"
+    armor: "leather_armor"
+  inventory:
+    - {item: "health_potion", qty: 1}
+    - {item: "gold", qty: 15}
+  allowed_actions: ["move", "talk", "attack", "interact", "wait"]

@@ -1,0 +1,11 @@
+objects:
+  - id: "chest_wooden"
+    name: "Wooden Chest"
+    object_type: "container"
+    interactable: true
+    interact_data:
+      locked: false
+      lock_dc: 0
+      items:
+        - {item_id: "gold", qty: 20}
+        - {item_id: "health_potion", qty: 1}

@@ -1,0 +1,32 @@
+- id: "blacksmith"
+  name: "Blacksmith"
+  role: "blacksmith"
+  race: "dwarf"
+  attributes:
+    str: 16
+    dex: 10
+    con: 16
+    int: 10
+    wis: 12
+    cha: 8
+  combat:
+    hp: 30
+    max_hp: 30
+    ac: 15
+    attack_bonus: 5
+    damage_bonus: 3
+  personality: "Hardworking, quiet, wary of strangers"
+  functions: ["merchant", "dialogue"]
+  function_data:
+    merchant:
+      gold: 500
+      buyback_ratio: 0.5
+    dialogue:
+      dialogue_tree: "blacksmith_dialogue.yaml"
+  equipment:
+    weapon: "war_hammer"
+    armor: "leather_armor"
+  inventory:
+    - {item: "longsword", qty: 1}
+    - {item: "shield", qty: 1}
+  allowed_actions: ["move", "talk", "trade", "attack", "wait"]
