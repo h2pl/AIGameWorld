@@ -1,5 +1,5 @@
 # SimGameWorld backend Dockerfile
-FROM python:3.11-slim AS builder
+FROM python:3.14-slim AS builder
 WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY pyproject.toml .
@@ -7,7 +7,7 @@ RUN uv sync --no-dev --no-install-project
 COPY . .
 RUN uv sync --no-dev
 
-FROM python:3.11-slim
+FROM python:3.14-slim
 WORKDIR /app
 RUN useradd -r appuser
 COPY --from=builder /app /app
