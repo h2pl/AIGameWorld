@@ -1,0 +1,20 @@
+#!/bin/bash
+# SimGameWorld Pre-commit Hook / 提交前自动检查
+# 安装: cp .githooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# 或: git config core.hooksPath .githooks
+set -e
+
+echo "=== Pre-commit: 注释检查 / Comment Check ==="
+python .githooks/check-comments.py || { echo "FAIL: 注释不足 / Insufficient comments"; exit 1; }
+
+echo "=== Pre-commit: Ruff Lint ==="
+cd backend && uv run ruff check . || { echo "FAIL: Python Lint"; exit 1; }
+
+echo "=== Pre-commit: Ruff Format ==="
+uv run ruff format --check . || { echo "FAIL: Python Format"; exit 1; }
+
+echo "=== Pre-commit: Frontend Lint ==="
+cd "$(git rev-parse --show-toplevel)/frontend" && npx prettier --check src/ || { echo "FAIL: Frontend Format"; exit 1; }
+
+echo ""
+echo "OK: 所有检查通过 / All checks passed"
