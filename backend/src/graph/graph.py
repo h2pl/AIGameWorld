@@ -11,14 +11,14 @@ from langgraph.graph import StateGraph, END
 from .state import OverallState
 
 from .subgraphs.dm_subgraph import dm_subgraph, DMSubState
-from .subgraphs.world import world_subgraph, WorldEngineSubState
-from .subgraphs.character_agent import pc_subgraph, actor_subgraph
-from .subgraphs.combat import combat_subgraph
-from .subgraphs.dialogue import dialogue_subgraph
-from .subgraphs.exploration import exploration_subgraph
-from .subgraphs.quest import quest_subgraph
-from .subgraphs.reflection import reflection_subgraph
-from .subgraphs.summarizer import summarizer_subgraph
+from .subgraphs.world_subgraph import world_subgraph, WorldEngineSubState
+from .subgraphs.character_subgraph import pc_subgraph, actor_subgraph
+from .subgraphs.combat_subgraph import combat_subgraph
+from .subgraphs.dialogue_subgraph import dialogue_subgraph
+from .subgraphs.exploration_subgraph import exploration_subgraph
+from .subgraphs.quest_subgraph import quest_subgraph
+from .subgraphs.reflection_subgraph import reflection_subgraph
+from .subgraphs.summarizer_subgraph import summarizer_subgraph
 from ..adapters.wrappers import (
     wrap_dm_create_input, unwrap_dm_create_output,
     wrap_world_engine_input, unwrap_world_engine_output,
