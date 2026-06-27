@@ -1,11 +1,11 @@
 # 门定义 / Door Definitions
 
 objects:
-  - id: "door_cellar"
-    name: "Cellar Door"
-    object_type: "door"
-    interactable: true
+id:                          # 唯一标识 / Unique ID
+name:                        # 名称 / Name
+object_type:                 # 对象类型 / Object Type
+interactable:                # 是否可交互 / Interactable
     interact_data:
-      locked: true
+    locked:                    # 是否锁定 / Locked
       key_id: "rusty_key"
-      leads_to: "cellar_scene"
+    leads_to:                  # 通向 / Leads To

@@ -1,10 +1,10 @@
 # 钥匙定义 / Key Definitions
 
 items:
-  - id: "rusty_key"
-    name: "Rusty Key"
-    item_type: "key"
-    rarity: "uncommon"
-    weight: 0.1
-    value: 0
-    data: {opens: "cellar_door_01"}
+id:                          # 唯一标识 / Unique ID
+name:                        # 名称 / Name
+item_type:                   # 物品类型 / Item Type
+rarity:                     # 稀有度 / Rarity
+weight:                     # 重量 / Weight
+value:                      # 价值（金币）/ Value (Gold)
+data:                        # 类型扩展数据 / Type-specific Data

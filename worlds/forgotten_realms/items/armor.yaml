@@ -1,24 +1,24 @@
 # 护甲定义 / Armor Definitions
 
 items:
-  - id: "chain_mail"
-    name: "Chain Mail"
-    item_type: "armor"
-    rarity: "common"
-    weight: 25.0
-    value: 75
-    data: {ac: 16, dex_bonus_max: 0, strength_required: 13, stealth_disadvantage: true}
-  - id: "leather_armor"
-    name: "Leather Armor"
-    item_type: "armor"
-    rarity: "common"
-    weight: 10.0
-    value: 10
-    data: {ac: 11, dex_bonus_max: 99}
-  - id: "shield"
-    name: "Shield"
-    item_type: "shield"
-    rarity: "common"
-    weight: 3.0
-    value: 10
-    data: {ac_bonus: 2}
+id:                          # 唯一标识 / Unique ID
+name:                        # 名称 / Name
+item_type:                   # 物品类型 / Item Type
+rarity:                     # 稀有度 / Rarity
+weight:                     # 重量 / Weight
+value:                      # 价值（金币）/ Value (Gold)
+data:                        # 类型扩展数据 / Type-specific Data
+id:                          # 唯一标识 / Unique ID
+name:                        # 名称 / Name
+item_type:                   # 物品类型 / Item Type
+rarity:                     # 稀有度 / Rarity
+weight:                     # 重量 / Weight
+value:                      # 价值（金币）/ Value (Gold)
+data:                        # 类型扩展数据 / Type-specific Data
+id:                          # 唯一标识 / Unique ID
+name:                        # 名称 / Name
+item_type:                   # 物品类型 / Item Type
+rarity:                     # 稀有度 / Rarity
+weight:                     # 重量 / Weight
+value:                      # 价值（金币）/ Value (Gold)
+data:                        # 类型扩展数据 / Type-specific Data

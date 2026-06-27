@@ -11,6 +11,7 @@ from src.pack import WorldLoader
 PACK_DIR = Path(__file__).resolve().parents[3] / "worlds"
 
 
+# === Test Class / 测试类 ===
 class TestWorldLoader:
     """Integration test: load forgotten_realms pack and verify WorldState."""
 

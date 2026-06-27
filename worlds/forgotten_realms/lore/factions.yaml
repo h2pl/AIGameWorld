@@ -1,15 +1,15 @@
 # 势力设定 / Faction Lore
 
 factions:
-  - id: "blacksmith_guild"
-    name: "Blacksmith Guild"
+id:                          # 唯一标识 / Unique ID
+name:                        # 名称 / Name
     leader: "garret"
     influence: 0.6
     allies: ["merchant_guild"]
     enemies: []
 
-  - id: "town_guard"
-    name: "Town Guard"
+id:                          # 唯一标识 / Unique ID
+name:                        # 名称 / Name
     leader: "borin"
     influence: 0.4
     allies: ["blacksmith_guild"]

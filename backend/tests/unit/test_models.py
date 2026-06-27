@@ -32,6 +32,7 @@ from src.models import (
 
 
 # === Test Classes / 测试类 ===
+# === Test Class / 测试类 ===
 class TestPlayerCharacter:
 # --- Test Cases / 测试用例 ---
     def test_minimal_pc(self):
@@ -80,6 +81,7 @@ class TestPlayerCharacter:
         assert pc.status == "sleeping"  # any string allowed by design
 
 
+# === Test Class / 测试类 ===
 class TestActor:
 # --- Test Cases / 测试用例 ---
     def test_minimal_actor(self):
@@ -121,6 +123,7 @@ class TestActor:
         assert actor.combat is None
 
 
+# === Test Class / 测试类 ===
 class TestItem:
 # --- Test Cases / 测试用例 ---
     def test_weapon_item(self):
@@ -156,6 +159,7 @@ class TestItem:
         assert key.item_type == ItemType.KEY
 
 
+# === Test Class / 测试类 ===
 class TestSceneObject:
 # --- Test Cases / 测试用例 ---
     def test_container(self):
@@ -193,6 +197,7 @@ class TestSceneObject:
         assert trap.interact_data["armed"] is True
 
 
+# === Test Class / 测试类 ===
 class TestStoryModels:
 # --- Test Cases / 测试用例 ---
     def test_story_arc(self):
@@ -238,6 +243,7 @@ class TestStoryModels:
         assert len(roster.current_members) == 4
 
 
+# === Test Class / 测试类 ===
 class TestEventAndAction:
 # --- Test Cases / 测试用例 ---
     def test_event(self):
@@ -266,6 +272,7 @@ class TestEventAndAction:
         assert action.action_type == "attack"
 
 
+# === Test Class / 测试类 ===
 class TestWorldState:
 # --- Test Cases / 测试用例 ---
     def test_empty_world_state(self):

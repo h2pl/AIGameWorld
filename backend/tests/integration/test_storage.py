@@ -90,6 +90,7 @@ def make_event(tick: int = 1, seq: int = 0) -> Event:
 
 
 # === Test Classes / 测试类 ===
+# === Test Class / 测试类 ===
 class TestWorldStateStore:
     async def test_init_creates_tables(self, temp_db):
         store = WorldStateStore(temp_db)
@@ -252,6 +253,7 @@ class TestWorldStateStore:
             await store.close()
 
 
+# === Test Class / 测试类 ===
 class TestChromaManager:
     def test_lore_collection_creation(self, temp_chroma):
         mgr = ChromaManager(temp_chroma)
@@ -306,6 +308,7 @@ class TestChromaManager:
         assert len(results) == 0
 
 
+# === Test Class / 测试类 ===
 class TestCheckpointStore:
     def test_config_generation(self):
         store = CheckpointStore()

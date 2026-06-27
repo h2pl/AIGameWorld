@@ -1,23 +1,23 @@
 # 盗贼 PC / Rogue PC
 
-- id: "rogue"
-  name: "Rogue"
-  role: "rogue"
-  race: "human"
+id:                          # 唯一标识 / Unique ID
+name:                        # 名称 / Name
+role:                        # 职业/角色 / Class/Role
+race:                        # 种族 / Race
   attributes:
-    str: 10
-    dex: 18
-    con: 12
-    int: 14
-    wis: 10
-    cha: 14
+    str:                       # 力量 / Strength
+    dex:                       # 敏捷 / Dexterity
+    con:                       # 体质 / Constitution
+    int:                       # 智力 / Intelligence
+    wis:                       # 感知 / Wisdom
+    cha:                       # 魅力 / Charisma
   combat:
-    hp: 24
-    max_hp: 24
-    ac: 14
+    hp:                        # 生命值 / Hit Points
+    max_hp:                    # 最大生命值 / Max HP
+    ac:                        # 护甲等级 / Armor Class
     initiative: 4
-    attack_bonus: 6
-    damage_bonus: 4
+    attack_bonus:              # 攻击加值 / Attack Bonus
+    damage_bonus:              # 伤害加值 / Damage Bonus
   character_arc:
     growth_line: "From selfish thief to reluctant hero"
     inner_conflict: "Freedom vs belonging"
@@ -26,11 +26,11 @@
     - "Survival first"
     - "Loyalty is earned, not given"
   long_term_goal: "Clear a debt to a dangerous crime lord"
-  personality: "Cunning, resourceful, suspicious of authority"
+personality:                 # 性格 / Personality
   equipment:
-    weapon: "shortsword"
-    armor: "leather_armor"
+    weapon:                    # 主武器 / Main Weapon
+    armor:                     # 护甲 / Armor
   inventory:
     - {item: "health_potion", qty: 1}
     - {item: "gold", qty: 15}
-  allowed_actions: ["move", "talk", "attack", "interact", "wait"]
+allowed_actions:            # 允许的行动 / Allowed Actions

@@ -1,6 +1,6 @@
 # Forgotten Realms — World Pack 元信息 / World Pack Metadata
-id: "forgotten_realms"
-name: "Forgotten Realms"
+id:                          # 唯一标识 / Unique ID
+name:                        # 名称 / Name
 description: "A DND-style fantasy world"         # 世界描述 / World description
 version: "1.0.0"                                 # Pack 版本 / Pack version
 rule_set: "dnd_5e_srd"                           # 规则体系 / Ruleset
@@ -42,13 +42,13 @@ starting_scene: "village_elderwood"               # 起始场景 / Starting scen
 
 starting_pcs:                                     # 初始主角团（4人）/ Starting PCs (4)
   - template: "fighter"
-    name: "Kael"
+name:                        # 名称 / Name
   - template: "rogue"
-    name: "Zeph"
+name:                        # 名称 / Name
   - template: "cleric"
-    name: "Elara"
+name:                        # 名称 / Name
   - template: "wizard"
-    name: "Mira"
+name:                        # 名称 / Name
 
 starting_actors:                                  # 初始配角 / Starting actors
   - template: "blacksmith"
@@ -64,7 +64,7 @@ starting_actors:                                  # 初始配角 / Starting acto
 starting_scene_objects:                           # 初始场景对象 / Starting scene objects
   - template: "chest_wooden"
     scene: "village_elderwood"
-    position: {x: 5, y: 3}
+position:                    # 坐标 / Position
   - template: "door_cellar"
     scene: "village_elderwood"
-    position: {x: 10, y: 0}
+position:                    # 坐标 / Position

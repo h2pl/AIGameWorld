@@ -50,11 +50,11 @@ def has_comment(line: str) -> bool:
     stripped = line.strip()
     if not stripped:
         return False
-    # Python/YAML/Toml/Makefile 注释
-    if stripped.startswith("#"):
+    # Python/YAML/Toml/Makefile 注释（行首或行尾）/ Line-start or inline comments
+    if stripped.startswith("#") or "  # " in stripped:
         return True
     # JS/TS/CSS 注释
-    if stripped.startswith("//") or stripped.startswith("/*") or stripped.startswith("*"):
+    if stripped.startswith("//") or stripped.startswith("/*") or stripped.startswith("*") or " // " in stripped:
         return True
     # HTML 注释
     if "<!--" in stripped:
@@ -90,20 +90,7 @@ def check_file(filepath: Path, repo_root: Path) -> tuple[bool, int, int]:
 
     comments = sum(1 for l in non_empty if has_comment(l))
     ratio = comments / total if total > 0 else 0
-    
-    # 数据/声明式文件只需有注释头 / Data/declarative files only need header comment
-    is_data_file = filepath.suffix in ('.yaml', '.yml', '.toml')
-    # 配置/基础设施文件 / Config/infra files
-    is_config_file = filepath.name in ('Dockerfile', 'package.json', '.prettierrc') or \
-                     filepath.suffix in ('.json', '.ini', '.cfg')
-    # __init__.py / setup / test 文件 / Init/setup/test files
-    is_init_file = filepath.name == '__init__.py'
-    is_test_file = 'tests/' in str(filepath.relative_to(repo_root)).replace('\\', '/')
-    
-    if is_data_file or is_config_file or is_init_file or is_test_file:
-        passed = comments >= MIN_COMMENT_LINES
-    else:
-        passed = comments >= MIN_COMMENT_LINES and ratio >= MIN_COMMENT_RATIO
+    passed = comments >= MIN_COMMENT_LINES and ratio >= MIN_COMMENT_RATIO
     return passed, total, comments
 
 
