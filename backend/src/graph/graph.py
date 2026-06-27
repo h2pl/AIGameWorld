@@ -19,7 +19,7 @@ from .subgraphs.exploration_engine import exploration_subgraph
 from .subgraphs.quest_engine import quest_subgraph
 from .subgraphs.reflection import reflection_subgraph
 from .subgraphs.story_summarizer import summarizer_subgraph
-from .adapters.wrappers import (
+from ..adapters.wrappers import (
     wrap_dm_create_input, unwrap_dm_create_output,
     wrap_world_engine_input, unwrap_world_engine_output,
     wrap_dm_narrate_input, unwrap_dm_narrate_output,
