@@ -1,3 +1,5 @@
+# 势力设定 / Faction Lore
+
 factions:
   - id: "blacksmith_guild"
     name: "Blacksmith Guild"

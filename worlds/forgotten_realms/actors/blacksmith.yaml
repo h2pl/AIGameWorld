@@ -1,3 +1,5 @@
+# 铁匠 Actor / Blacksmith Actor — function: merchant + dialogue
+
 - id: "blacksmith"
   name: "Blacksmith"
   role: "blacksmith"

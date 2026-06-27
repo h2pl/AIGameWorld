@@ -1,20 +1,21 @@
+// SimGameWorld 前端 TypeScript 配置 / Frontend TypeScript Config
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "outDir": "./dist",
-    "sourceMap": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["phaser"]
+    "target": "ES2022",                          // ES2022 编译目标
+    "module": "ESNext",                          // ESNext 模块系统
+    "moduleResolution": "bundler",               // Bundler 解析模式
+    "strict": true,                              // 严格模式 / Strict mode
+    "esModuleInterop": true,                     // ES Module 互操作
+    "skipLibCheck": true,                        // 跳过库声明检查 / Skip lib type check
+    "forceConsistentCasingInFileNames": true,    // 文件名大小写一致
+    "resolveJsonModule": true,                   // 导入 JSON 模块
+    "isolatedModules": true,                     // 隔离模块（Vite 要求）
+    "noEmit": true,                              // 不输出（Vite 接管构建）/ No emit (Vite builds)
+    "outDir": "./dist",                          // 输出目录
+    "sourceMap": true,                           // 生成 Source Map
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],    // 库支持
+    "types": ["phaser"]                          // Phaser 3 类型声明
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src"],                           // 包含目录
+  "exclude": ["node_modules", "dist"]            // 排除目录
 }

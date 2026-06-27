@@ -1,3 +1,5 @@
+# 宝箱定义 / Chest Definitions
+
 objects:
   - id: "chest_wooden"
     name: "Wooden Chest"

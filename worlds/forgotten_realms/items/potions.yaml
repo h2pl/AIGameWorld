@@ -1,3 +1,5 @@
+# 药水定义 / Potion Definitions
+
 items:
   - id: "health_potion"
     name: "Health Potion"

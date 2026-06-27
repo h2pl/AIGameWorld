@@ -1,3 +1,5 @@
+# 初始故事设置 / Initial Story Setup — 主线+伏笔+关系
+
 story_arcs:
   - id: "arc_bandit_threat"
     type: "main"

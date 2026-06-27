@@ -1,3 +1,5 @@
+# 护甲定义 / Armor Definitions
+
 items:
   - id: "chain_mail"
     name: "Chain Mail"

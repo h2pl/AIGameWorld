@@ -1,3 +1,5 @@
+# 武器定义 / Weapon Definitions
+
 items:
   - id: "longsword"
     name: "Longsword"

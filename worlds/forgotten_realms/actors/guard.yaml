@@ -1,3 +1,5 @@
+# 守卫 Actor / Guard Actor — function: enemy
+
 - id: "guard"
   name: "Guard"
   role: "guard"

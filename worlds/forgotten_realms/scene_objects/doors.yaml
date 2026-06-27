@@ -1,3 +1,5 @@
+# 门定义 / Door Definitions
+
 objects:
   - id: "door_cellar"
     name: "Cellar Door"

@@ -1,42 +1,46 @@
+# Forgotten Realms — World Pack 元信息 / World Pack Metadata
 id: "forgotten_realms"
 name: "Forgotten Realms"
-description: "A DND-style fantasy world"
-version: "1.0.0"
-rule_set: "dnd_5e_srd"
+description: "A DND-style fantasy world"         # 世界描述 / World description
+version: "1.0.0"                                 # Pack 版本 / Pack version
+rule_set: "dnd_5e_srd"                           # 规则体系 / Ruleset
 
+# === 文件清单 / File Manifest ===
 files:
-  lore:
+  lore:                                          # 世界观设定 / World lore
     - "lore/geography.yaml"
     - "lore/factions.yaml"
-  scenes:
+  scenes:                                        # 场景定义 / Scene definitions
     - "scenes/village_elderwood.yaml"
-  player_characters:
+  player_characters:                             # 主角团模板 / PC templates
     - "player_characters/fighter.yaml"
     - "player_characters/rogue.yaml"
     - "player_characters/cleric.yaml"
     - "player_characters/wizard.yaml"
-  actors:
+  actors:                                        # 配角模板 / Actor templates
     - "actors/blacksmith.yaml"
     - "actors/guard.yaml"
     - "actors/merchant.yaml"
-  items:
+  items:                                         # 物品定义 / Item definitions
     - "items/weapons.yaml"
     - "items/armor.yaml"
     - "items/potions.yaml"
     - "items/keys.yaml"
-  scene_objects:
+  scene_objects:                                 # 场景对象 / Scene objects
     - "scene_objects/chests.yaml"
     - "scene_objects/doors.yaml"
-  story_setup: "story_setup.yaml"
+  story_setup: "story_setup.yaml"                # 初始故事设置 / Initial story setup
 
+# === 精灵配置 / Sprite Config ===
 sprites:
-  frame_size: 48
-  directions: 4
-  frames_per_direction: 4
+  frame_size: 48                                  # 帧大小（像素）/ Frame size (px)
+  directions: 4                                   # 朝向数 / Number of directions
+  frames_per_direction: 4                         # 每朝向帧数 / Frames per direction
 
-starting_scene: "village_elderwood"
+# === 初始状态 / Initial State ===
+starting_scene: "village_elderwood"               # 起始场景 / Starting scene
 
-starting_pcs:
+starting_pcs:                                     # 初始主角团（4人）/ Starting PCs (4)
   - template: "fighter"
     name: "Kael"
   - template: "rogue"
@@ -46,7 +50,7 @@ starting_pcs:
   - template: "wizard"
     name: "Mira"
 
-starting_actors:
+starting_actors:                                  # 初始配角 / Starting actors
   - template: "blacksmith"
     count: 1
     name_override: "Garret"
@@ -57,7 +61,7 @@ starting_actors:
     count: 1
     name_override: "Selia"
 
-starting_scene_objects:
+starting_scene_objects:                           # 初始场景对象 / Starting scene objects
   - template: "chest_wooden"
     scene: "village_elderwood"
     position: {x: 5, y: 3}

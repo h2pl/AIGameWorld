@@ -1,3 +1,5 @@
+# 商人 Actor / Merchant Actor — function: merchant + dialogue
+
 - id: "merchant"
   name: "Merchant"
   role: "merchant"
