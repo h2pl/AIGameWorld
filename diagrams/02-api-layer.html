@@ -1,0 +1,44 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>API 层架构</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Microsoft YaHei',sans-serif;background:#fff;padding:24px;display:flex;justify-content:center}.d{width:1100px}.t{text-align:center;font-size:18px;font-weight:bold;color:#2E7D32;margin-bottom:2px}.st{text-align:center;font-size:11px;color:#78909C;margin-bottom:14px}
+.ly{position:relative;border-radius:8px;padding:12px 14px 12px 58px;margin-bottom:6px;background:#E8F5E9}.lb{position:absolute;left:0;top:0;bottom:0;width:44px;display:flex;align-items:center;justify-content:center;writing-mode:vertical-lr;letter-spacing:2px;font-size:12px;font-weight:bold;background:#C8E6C9;color:#2E7D32;border-radius:8px 0 0 8px}
+.bx{display:inline-block;background:#fff;border:1.5px solid #81C784;border-radius:6px;padding:6px 10px;text-align:center;margin:3px 4px;vertical-align:top;min-width:80px;font-size:10px}.bt{font-weight:bold;color:#333}.bd{color:#777;font-size:9px;line-height:1.3}
+.r{display:flex;flex-wrap:wrap;align-items:flex-start;gap:3px}
+.a{display:flex;align-items:center;justify-content:center;color:#90A4AE;font-size:9px;height:12px}.a::after{content:'▼';font-size:10px;margin-left:3px}
+.n{font-size:9px;color:#90A4AE;margin-top:3px}</style></head><body>
+<div class="d">
+<div class="t">API 层架构 — FastAPI + WebSocket</div>
+<div class="st">消息中转站 + 节奏控制器 · 不碰业务逻辑</div>
+<div class="ly"><div class="lb">应用入口</div><div class="r">
+<div class="bx"><div class="bt">FastAPI app</div><div class="bd">lifespan 管理启动/关闭<br>加载 World Pack<br>初始化编排层+ChromaDB</div></div>
+<div class="bx"><div class="bt">CORS 中间件</div><div class="bd">开发期 allow_origins=["*"]</div></div>
+<div class="bx"><div class="bt">静态文件(开发)</div><div class="bd">托管前端 dist/<br>生产用 Nginx</div></div>
+</div></div>
+<div class="a">路由注册</div>
+<div class="ly"><div class="lb">HTTP 路由</div><div class="r">
+<div class="bx"><div class="bt">GET /health</div><div class="bd">健康检查 {"status":"ok"}</div></div>
+<div class="bx"><div class="bt">GET /api/worlds</div><div class="bd">列出可用 World Pack</div></div>
+<div class="bx"><div class="bt">POST /api/worlds/{n}/load</div><div class="bd">切换 World Pack</div></div>
+<div class="bx"><div class="bt">GET /api/state</div><div class="bd">获取 World State 快照</div></div>
+<div class="bx"><div class="bt">GET /api/events</div><div class="bd">事件日志查询</div></div>
+</div></div>
+<div class="a">核心入口</div>
+<div class="ly"><div class="lb">WebSocket</div><div class="r">
+<div class="bx"><div class="bt">ConnectionManager</div><div class="bd">connect/accept<br>disconnect/broadcast<br>断连自动停止自动运行</div></div>
+<div class="bx"><div class="bt">MessageHandler</div><div class="bd">消息分发：类型→处理器<br>handle_init / next_tick<br>start_auto / stop_auto</div></div>
+<div class="bx"><div class="bt">/ws 端点</div><div class="bd">首次连接推送完整 WorldState<br>while True 接收消息</div></div>
+</div></div>
+<div class="a">节奏控制</div>
+<div class="ly"><div class="lb">TickController</div><div class="r">
+<div class="bx"><div class="bt">run_single_tick()</div><div class="bd">防重入 _running 标志<br>遍历 run_tick() yield<br>按 phase 广播</div></div>
+<div class="bx"><div class="bt">start_auto(ms)</div><div class="bd">asyncio.create_task 循环<br>间隔可配(默认2秒)</div></div>
+<div class="bx"><div class="bt">stop_auto()</div><div class="bd">cancel task<br>断连时自动调用</div></div>
+<div class="bx"><div class="bt">_execute_tick()</div><div class="bd">tick_start 广播<br>→ orchestrator.run_tick()<br>→ tick_complete 一次性推送</div></div>
+</div></div>
+<div class="a">兜底</div>
+<div class="ly"><div class="lb">错误降级</div><div class="r">
+<div class="bx"><div class="bt">4 级错误分级</div><div class="bd">致命=拒绝启动 500<br>可恢复=重试→降级wait<br>警告=降级+日志<br>信息=跳过继续运行</div></div>
+<div class="bx"><div class="bt">LLM 降级链</div><div class="bd">DeepSeek(主)→Claude(降级)<br>→降级输出 三层保底</div></div>
+<div class="bx"><div class="bt">WS 断连处理</div><div class="bd">前端断→停止自动运行+保存<br>后端崩→前端重连</div></div>
+</div></div>
+<div class="n">技术栈: FastAPI 0.138+ · Uvicorn · asyncio · Pydantic v2 消息校验 · 异步生成器流式推送</div>
+</div></body></html>

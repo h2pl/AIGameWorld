@@ -1,0 +1,43 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>Agent 层架构</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Microsoft YaHei',sans-serif;background:#fff;padding:24px;display:flex;justify-content:center}.d{width:1100px}.t{text-align:center;font-size:18px;font-weight:bold;color:#6A1B9A;margin-bottom:2px}.st{text-align:center;font-size:11px;color:#78909C;margin-bottom:14px}
+.ly{position:relative;border-radius:8px;padding:12px 14px 12px 58px;margin-bottom:6px;background:#F3E5F5}.lb{position:absolute;left:0;top:0;bottom:0;width:44px;display:flex;align-items:center;justify-content:center;writing-mode:vertical-lr;letter-spacing:2px;font-size:11px;font-weight:bold;background:#E1BEE7;color:#6A1B9A;border-radius:8px 0 0 8px}
+.bx{display:inline-block;background:#fff;border:1.5px solid #CE93D8;border-radius:6px;padding:6px 10px;text-align:center;margin:3px 4px;vertical-align:top;min-width:80px;font-size:10px}.bt{font-weight:bold;color:#333}.bd{color:#777;font-size:9px;line-height:1.3}
+.r{display:flex;flex-wrap:wrap;align-items:flex-start;gap:3px}
+.a{display:flex;align-items:center;justify-content:center;color:#90A4AE;font-size:9px;height:12px}.a::after{content:'▼';font-size:10px;margin-left:3px}
+.n{font-size:9px;color:#90A4AE;margin-top:3px}.g{font-size:10px;font-weight:bold;color:#6A1B9A;margin:4px 0 2px}</style></head><body>
+<div class="d">
+<div class="t">Agent 层架构 — DM + PC + Actor</div>
+<div class="st">Agent 只输出"意图"，不执行"后果" · DM 搭舞台不演戏 · 角色自己决策</div>
+
+<div class="g">DM Agent（情境创造者）</div>
+<div class="ly"><div class="lb">DM</div><div class="r">
+<div class="bx"><div class="bt">Phase 1: 创造情境</div><div class="bd">5 层完整上下文（故事/世界/角色/事件/观众）<br>DMInstruction[] + plot_brief + SceneDirection<br>铁律: 不扮演角色、不替角色决策、不写对话</div></div>
+<div class="bx"><div class="bt">Phase 6: 叙事渲染</div><div class="bd">基于实际结果 + plot_brief 讲故事<br>记录 BranchPoint + 伏笔回收<br>3-5 句第三人称 DND DM 口吻</div></div>
+<div class="bx"><div class="bt">DM 记忆系统</div><div class="bd">StoryArc 进度 (SQLite)<br>StoryHook 状态 (SQLite)<br>叙事历史 (ChromaDB dm_narrative)<br>事件摘要 (ChromaDB dm_summary)</div></div>
+<div class="bx"><div class="bt">节奏感知</div><div class="bd">距上次事件/战斗步数<br>叙事基调分析<br>需要冲突时主动注入</div></div>
+</div></div>
+
+<div class="g">PC Agent ×4（主角团深层决策）</div>
+<div class="ly"><div class="lb">PC</div><div class="r">
+<div class="bx"><div class="bt">决策上下文</div><div class="bd">角色弧(成长线/内心冲突/命运)<br>价值观 + 长期目标<br>plot_brief 当前剧情情境<br>装备影响可选行动</div></div>
+<div class="bx"><div class="bt">记忆检索</div><div class="bd">短期记忆 deq(10条)<br>长期 ChromaDB 语义 Top-K=5<br>反思 ChromaDB Top-K=3</div></div>
+<div class="bx"><div class="bt">决策流程</div><div class="bd">retrieve_memory→retrieve_lore→<br>build_context→llm_decide→<br>validate_action</div></div>
+<div class="bx"><div class="bt">降级策略</div><div class="bd">LLM 超时/解析失败<br>→ action_type="wait"</div></div>
+</div></div>
+
+<div class="g">Actor Agent ×N（配角浅层决策）</div>
+<div class="ly"><div class="lb">Actor</div><div class="r">
+<div class="bx"><div class="bt">决策驱动</div><div class="bd">功能标签 (merchant/enemy/...)<br>DM 注入的动机<br>行为模板 (behaviors/)</div></div>
+<div class="bx"><div class="bt">记忆差异</div><div class="bd">Top-K=3 (更浅)<br>反思阈值 200 (PC=100)<br>反思深度更轻量</div></div>
+<div class="bx"><div class="bt">模型分配</div><div class="bd">快模型 deepseek-chat<br>超时 8s (PC=10s)</div></div>
+</div></div>
+
+<div class="g">共享基础设施</div>
+<div class="ly"><div class="lb">共用</div><div class="r">
+<div class="bx"><div class="bt">LLM Client</div><div class="bd">多模型路由 + 降级链<br>DeepSeek(主)→Claude(降级)<br>→降级输出 三层保底<br>with_structured_output()</div></div>
+<div class="bx"><div class="bt">Memory System</div><div class="bd">三层: 短期 deq+长期 ChromaDB+反思 ChromaDB<br>每角色独立 collection 隔离<br>重要性累计触发反思</div></div>
+<div class="bx"><div class="bt">RAG System</div><div class="bd">Lore 语义检索 Top-K=3<br>World Pack 加载时灌入</div></div>
+<div class="bx"><div class="bt">Prompt 模板</div><div class="bd">Jinja2 模板管理<br>dm_create/narrate<br>pc_decide/actor_decide/reflect</div></div>
+</div></div>
+<div class="n">模型分配: DM创造=deepseek-reasoner(强) | PC决策=deepseek-chat(中) | Actor决策=deepseek-chat(快,8s) | 反思=deepseek-reasoner(强)</div>
+</div></body></html>

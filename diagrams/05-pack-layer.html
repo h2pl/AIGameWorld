@@ -1,0 +1,35 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>Pack 层架构</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Microsoft YaHei',sans-serif;background:#fff;padding:24px;display:flex;justify-content:center}.d{width:1100px}.t{text-align:center;font-size:18px;font-weight:bold;color:#880E4F;margin-bottom:2px}.st{text-align:center;font-size:11px;color:#78909C;margin-bottom:14px}
+.ly{position:relative;border-radius:8px;padding:12px 14px 12px 58px;margin-bottom:6px;background:#FCE4EC}.lb{position:absolute;left:0;top:0;bottom:0;width:44px;display:flex;align-items:center;justify-content:center;writing-mode:vertical-lr;letter-spacing:2px;font-size:11px;font-weight:bold;background:#F8BBD0;color:#880E4F;border-radius:8px 0 0 8px}
+.bx{display:inline-block;background:#fff;border:1.5px solid #F48FB1;border-radius:6px;padding:6px 10px;text-align:center;margin:3px 4px;vertical-align:top;min-width:80px;font-size:10px}.bt{font-weight:bold;color:#333}.bd{color:#777;font-size:9px;line-height:1.3}
+.r{display:flex;flex-wrap:wrap;align-items:flex-start;gap:3px}
+.a{display:flex;align-items:center;justify-content:center;color:#90A4AE;font-size:9px;height:12px}.a::after{content:'▼';font-size:10px;margin-left:3px}
+.n{font-size:9px;color:#90A4AE;margin-top:3px}.g{font-size:10px;font-weight:bold;color:#880E4F;margin:4px 0 2px}</style></head><body>
+<div class="d">
+<div class="t">Pack 层架构 — YAML 定义 + WorldLoader</div>
+<div class="st">可插拔世界观模块 · World Pack 是静态模板 · 运行时变化在数据层 · 参考 RimWorld Def 系统</div>
+
+<div class="g">WorldLoader 加载流程</div>
+<div class="ly"><div class="lb">加载</div><div class="r">
+<div class="bx"><div class="bt">1. meta.yaml 校验</div><div class="bd">Pydantic PackValidator<br>id/version/rule_set/files<br>sprites/starting_*</div></div>
+<div class="bx"><div class="bt">2. Lore → ChromaDB</div><div class="bd">YAML→文本块→灌向量<br>每 key 一个 chunk<br>metadata: source+section</div></div>
+<div class="bx"><div class="bt">3. 场景实例化</div><div class="bd">scenes/*.yaml → Scene<br>Landmarks/Exits/Environment</div></div>
+<div class="bx"><div class="bt">4. PC 实例化</div><div class="bd">模板→PlayerCharacter<br>角色弧/价值观/装备/背包</div></div>
+<div class="bx"><div class="bt">5. Actor 实例化</div><div class="bd">支持 count/name_override<br>功能标签/function_data</div></div>
+<div class="bx"><div class="bt">6. Items 加载</div><div class="bd">全局物品定义<br>按 ItemType 存 data</div></div>
+<div class="bx"><div class="bt">7. SceneObjects 加载</div><div class="bd">模板+实例化<br>按 position 放置</div></div>
+<div class="bx"><div class="bt">8. Story Setup</div><div class="bd">初始 StoryArc + StoryHook</div></div>
+</div></div>
+
+<div class="g">forgotten_realms Pack 内容</div>
+<div class="ly"><div class="lb">内容</div><div class="r">
+<div class="bx"><div class="bt">Lore (2 文件)</div><div class="bd">geography: 北方边境/Elderwood<br>factions: 铁匠公会/城镇守卫</div></div>
+<div class="bx"><div class="bt">Scene (1)</div><div class="bd">Elderwood 村庄 20×15</div></div>
+<div class="bx"><div class="bt">PC 模板 (4)</div><div class="bd">战士 Kael / 盗贼 Zeph<br>牧师 Elara / 法师 Mira</div></div>
+<div class="bx"><div class="bt">Actor 模板 (3)</div><div class="bd">铁匠 Garret(merchant+dialogue)<br>守卫 Borin+Dane(ally)<br>商人 Selia(merchant+dialogue)</div></div>
+<div class="bx"><div class="bt">Items (4 类 8 件)</div><div class="bd">武器×5 护甲×3 药水 钥匙</div></div>
+<div class="bx"><div class="bt">SceneObjects (2)</div><div class="bd">木箱 chest_wooden<br>地窖门 door_cellar</div></div>
+<div class="bx"><div class="bt">Story (2)</div><div class="bd">主线: Bandit Threat<br>伏笔: 狼嚎 + 神秘旅人</div></div>
+</div></div>
+<div class="n">核心原则: World Pack 是静态 Def，SQLite 是动态 Instance · 加载时 Def→Instance · 重置=清 Instance 重新实例化</div>
+</div></body></html>
