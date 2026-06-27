@@ -1,0 +1,69 @@
+[
+  {
+    "name": "UI 层 / Phaser 3 + DOM",
+    "color": "cyan",
+    "items": [
+      {"title": "瓦片地图 / Tilemap", "desc": "Phaser 3 渲染/Camera culling", "phase": 1},
+      {"title": "角色精灵 PC/Actor", "desc": "金边主角团/功能色配角/tween 动画", "phase": 1},
+      {"title": "场景对象 / SceneObject", "desc": "宝箱/门/陷阱/掉落物", "phase": 1},
+      {"title": "DOM 面板", "desc": "EventLog/Inspector/Narrative/Controls", "phase": 2},
+      {"title": "ViewStore", "desc": "发布订阅状态管理", "phase": 1}
+    ]
+  },
+  {
+    "name": "API 层 / FastAPI + WebSocket",
+    "color": "emerald",
+    "items": [
+      {"title": "FastAPI 路由", "desc": "/health /api/worlds /ws", "phase": 1},
+      {"title": "WebSocket 端点", "desc": "实时推送 tick_complete/combat_update", "phase": 1},
+      {"title": "TickController", "desc": "防重入/自动运行/节奏控制", "phase": 1},
+      {"title": "错误降级 / Fallback", "desc": "4 级错误分级/LLM 降级链", "phase": 1}
+    ]
+  },
+  {
+    "name": "编排层 / LangGraph TickGraph",
+    "color": "amber",
+    "items": [
+      {"title": "Phase 1: DM 创造情境", "desc": "DMInstruction[] + plot_brief + SceneDirection", "phase": 1},
+      {"title": "Phase 2: WorldEngine 执行", "desc": "场景实例化 + Actor 动机注入", "phase": 1},
+      {"title": "Phase 3: PC/Actor 并行决策", "desc": "Send fan-out 并行读快照", "phase": 1},
+      {"title": "Phase 4: Engine 裁决", "desc": "Combat/Dialogue/Exploration/Quest", "phase": 1},
+      {"title": "Phase 5: 状态更新", "desc": "合并结果→WorldState + 主角团变动", "phase": 2},
+      {"title": "Phase 6: DM 叙事渲染", "desc": "基于实际结果 + BranchPoint 记录", "phase": 1},
+      {"title": "Phase 7: 反思+摘要", "desc": "条件触发反思+StorySummarizer", "phase": 3}
+    ]
+  },
+  {
+    "name": "Agent 层 / DM + PC + Actor",
+    "color": "violet",
+    "items": [
+      {"title": "DM Agent", "desc": "情境创造者/叙事渲染/5层上下文", "phase": 1},
+      {"title": "PC Agent ×4", "desc": "角色弧驱动深层决策(强模型)", "phase": 1},
+      {"title": "Actor Agent ×N", "desc": "功能标签驱动浅层决策(快模型)", "phase": 1},
+      {"title": "记忆系统 / Memory", "desc": "短期deque+长期ChromaDB+反思", "phase": 1},
+      {"title": "RAG 系统", "desc": "Lore 语义检索 Top-K", "phase": 2}
+    ]
+  },
+  {
+    "name": "Pack 层 / YAML 定义",
+    "color": "rose",
+    "items": [
+      {"title": "世界设定 / Lore", "desc": "地理/历史/种族/势力→ChromaDB", "phase": 1},
+      {"title": "场景模板 / Scenes", "desc": "Landmarks/Exits/Environment", "phase": 1},
+      {"title": "PC 模板", "desc": "角色弧/价值观/装备/背包", "phase": 1},
+      {"title": "Actor 模板", "desc": "功能标签/function_data", "phase": 1},
+      {"title": "物品定义 / Items", "desc": "武器/护甲/药水/钥匙...", "phase": 1},
+      {"title": "故事设定 / Story", "desc": "初始主线 + 初始伏笔", "phase": 1}
+    ]
+  },
+  {
+    "name": "数据层 / SQLite + ChromaDB",
+    "color": "slate",
+    "items": [
+      {"title": "WorldStateStore", "desc": "SQLite WAL 模式/单事务 save_tick", "phase": 1},
+      {"title": "ChromaManager", "desc": "PC/Actor/DM 记忆+Lore 7collection", "phase": 1},
+      {"title": "CheckpointStore", "desc": "LangGraph MemorySaver 每Tick存档", "phase": 1},
+      {"title": "schema.sql", "desc": "15 张表含 JSON 嵌套列", "phase": 1}
+    ]
+  }
+]

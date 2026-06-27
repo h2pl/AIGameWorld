@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>SimGameWorld 分层架构图</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#fff;padding:24px;display:flex;justify-content:center}
+.diagram{width:1280px}
+.title{text-align:center;font-size:20px;font-weight:bold;color:#1A237E;margin-bottom:4px}
+.subtitle{text-align:center;font-size:11px;color:#78909C;margin-bottom:16px}
+
+/* Layer */
+.layer{position:relative;border-radius:8px;padding:14px 16px 14px 62px;margin-bottom:8px;min-height:50px}
+.layer-label{position:absolute;left:0;top:0;bottom:0;width:46px;display:flex;align-items:center;justify-content:center;writing-mode:vertical-lr;letter-spacing:3px;font-size:14px;font-weight:bold;border-radius:8px 0 0 8px}
+
+/* Layer colors — 6 layers */
+.L0{background:#E3F2FD}.L0 .layer-label{background:#BBDEFB;color:#1565C0}
+.L1{background:#E8F5E9}.L1 .layer-label{background:#C8E6C9;color:#2E7D32}
+.L2{background:#FFF3E0}.L2 .layer-label{background:#FFE0B2;color:#E65100}
+.L3{background:#F3E5F5}.L3 .layer-label{background:#E1BEE7;color:#6A1B9A}
+.L4{background:#FCE4EC}.L4 .layer-label{background:#F8BBD0;color:#880E4F}
+.L5{background:#ECEFF1}.L5 .layer-label{background:#CFD8DC;color:#37474F}
+
+/* Box card */
+.box{display:inline-block;background:#fff;border:1.5px solid #bbb;border-radius:6px;padding:7px 12px;text-align:center;margin:3px 5px;vertical-align:top;min-width:100px}
+.box-title{font-size:11px;font-weight:bold;color:#333;margin-bottom:1px}
+.box-desc{font-size:9px;color:#777;line-height:1.3}
+.box-phase{font-size:8px;color:#aaa}
+
+/* Row */
+.row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:3px}
+
+/* Arrows between layers */
+.arr{display:flex;align-items:center;justify-content:center;color:#90A4AE;font-size:9px;height:14px}
+.arr::after{content:'▼';font-size:12px;margin-left:4px}
+
+/* Legend */
+.legend{text-align:right;font-size:9px;color:#999;margin-top:8px}
+.legend span{margin:0 10px}
+</style>
+</head>
+<body>
+<div class="diagram">
+
+<div class="title">SimGameWorld 分层架构</div>
+<div class="subtitle">DM 驱动的 DND 世界模拟 / DM-Driven DND World Simulation · 6 层 | 50 tests green · M0-M2 ✅</div>
+
+<!-- ===== L0: UI 层 ===== -->
+<div class="layer L0">
+  <div class="layer-label">UI 层</div>
+  <div class="row">
+    <div class="box"><div class="box-title">Phaser 3 游戏引擎</div><div class="box-desc">瓦片地图 · Camera culling</div></div>
+    <div class="box"><div class="box-title">PC / Actor 精灵</div><div class="box-desc">金边主角团 · 功能色配角 · tween 动画</div></div>
+    <div class="box"><div class="box-title">SceneObject 渲染</div><div class="box-desc">宝箱/门/陷阱/掉落物</div></div>
+    <div class="box"><div class="box-title">EventLog 面板</div><div class="box-desc">事件列表 · 点击展开检定详情</div></div>
+    <div class="box"><div class="box-title">Inspector 面板</div><div class="box-desc">PC 视图(角色弧/装备) · Actor 视图(功能/动机)</div></div>
+    <div class="box"><div class="box-title">ViewStore</div><div class="box-desc">发布订阅 · 无状态管理库</div></div>
+  </div>
+  <div style="font-size:9px;color:#90A4AE;margin-top:4px">技术栈: TypeScript · Vite · 原生 DOM 面板 · WebSocket 客户端</div>
+</div>
+
+<div class="arr">WebSocket 双向通信</div>
+
+<!-- ===== L1: API 层 ===== -->
+<div class="layer L1">
+  <div class="layer-label">API 层</div>
+  <div class="row">
+    <div class="box"><div class="box-title">FastAPI 路由</div><div class="box-desc">/health · /api/worlds · /api/state</div></div>
+    <div class="box"><div class="box-title">WebSocket /ws</div><div class="box-desc">连接管理 · 广播 tick_complete / combat_update</div></div>
+    <div class="box"><div class="box-title">TickController</div><div class="box-desc">防重入 · 自动运行 · 节奏控制</div></div>
+    <div class="box"><div class="box-title">ErrorHandler</div><div class="box-desc">4 级错误分级 · LLM 超时降级</div></div>
+  </div>
+  <div style="font-size:9px;color:#90A4AE;margin-top:4px">技术栈: FastAPI · Uvicorn · asyncio · Pydantic v2 消息校验</div>
+</div>
+
+<div class="arr">run_tick() 异步生成器</div>
+
+<!-- ===== L2: 编排层 ===== -->
+<div class="layer L2">
+  <div class="layer-label">编排层</div>
+  <div style="font-size:10px;color:#E65100;font-weight:bold;margin-bottom:6px">LangGraph TickGraph — 7 Phase 主图 + 9 子图</div>
+  <div class="row">
+    <div class="box"><div class="box-title">P1: DM 创造情境</div><div class="box-desc">DMInstruction[]<br>+ plot_brief<br>+ SceneDirection</div></div>
+    <div class="box"><div class="box-title">P2: WorldEngine</div><div class="box-desc">场景实例化<br>Actor 动机注入</div></div>
+    <div class="box"><div class="box-title">P3: 角色并行决策</div><div class="box-desc">Send fan-out<br>4 PC + N Actor<br>读快照隔离</div></div>
+    <div class="box"><div class="box-title">P4: Engine 裁决</div><div class="box-desc">条件路由<br>Combat/Dialogue<br>/Exploration/Quest</div></div>
+    <div class="box"><div class="box-title">P5: 状态更新</div><div class="box-desc">合并结果<br>→ WorldState<br>+ 主角团变动</div></div>
+    <div class="box"><div class="box-title">P6: DM 叙事</div><div class="box-desc">基于实际结果<br>+ BranchPoint<br>+ 伏笔回收</div></div>
+    <div class="box"><div class="box-title">P7: 反思+摘要</div><div class="box-desc">PC 深度反思(阈值100)<br>Actor 轻量(阈值200)<br>StorySummarizer</div></div>
+  </div>
+  <div style="font-size:9px;color:#90A4AE;margin-top:4px">State 分层: OverallState + 10 独立 SubState · Checkpoint 每 Phase 存档 · 战斗独立 tick 子循环</div>
+</div>
+
+<div class="arr">子图调度</div>
+
+<!-- ===== L3: Agent 层 ===== -->
+<div class="layer L3">
+  <div class="layer-label">Agent 层</div>
+  <div class="row">
+    <div class="box"><div class="box-title">DM Agent</div><div class="box-desc">情境创造者<br>5 层完整上下文<br>Phase 1 + Phase 6</div></div>
+    <div class="box"><div class="box-title">PC Agent ×4</div><div class="box-desc">角色弧驱动<br>价值观 + 长期目标<br>深层决策 (强模型)</div></div>
+    <div class="box"><div class="box-title">Actor Agent ×N</div><div class="box-desc">功能标签驱动<br>DM 动机注入<br>浅层决策 (快模型)</div></div>
+    <div class="box"><div class="box-title">Memory System</div><div class="box-desc">三层记忆<br>短期 deque(10条)<br>长期 ChromaDB<br>反思 ChromaDB</div></div>
+    <div class="box"><div class="box-title">RAG System</div><div class="box-desc">Lore 语义检索<br>Top-K=3</div></div>
+    <div class="box"><div class="box-title">LLM Client</div><div class="box-desc">DeepSeek(主)<br>→ Claude(降级)<br>→ 降级输出</div></div>
+  </div>
+  <div style="font-size:9px;color:#90A4AE;margin-top:4px">with_structured_output() 禁止手写 json.loads · Jinja2 模板管理 Prompt · 输出护栏 4 层</div>
+</div>
+
+<div class="arr">数据读写</div>
+
+<!-- ===== L4: Pack 层 ===== -->
+<div class="layer L4">
+  <div class="layer-label">Pack 层</div>
+  <div class="row">
+    <div class="box"><div class="box-title">meta.yaml</div><div class="box-desc">世界元信息 · 规则集版本</div></div>
+    <div class="box"><div class="box-title">Lore 设定集</div><div class="box-desc">地理/历史/种族/势力 → ChromaDB</div></div>
+    <div class="box"><div class="box-title">Scene 场景</div><div class="box-desc">Landmarks · Exits · Environment</div></div>
+    <div class="box"><div class="box-title">PC 模板 ×4</div><div class="box-desc">角色弧 · 价值观 · 装备 · 背包</div></div>
+    <div class="box"><div class="box-title">Actor 模板</div><div class="box-desc">功能标签 · function_data</div></div>
+    <div class="box"><div class="box-title">Item 物品</div><div class="box-desc">武器/护甲/药水/钥匙...</div></div>
+    <div class="box"><div class="box-title">SceneObject</div><div class="box-desc">宝箱/门/陷阱</div></div>
+    <div class="box"><div class="box-title">Story Setup</div><div class="box-desc">初始主线 + 初始伏笔</div></div>
+  </div>
+  <div style="font-size:9px;color:#90A4AE;margin-top:4px">forgotten_realms: 4 PC + 4 Actor + 8 Item + 2 SceneObject + 2 Story · Pack 可插拔切换</div>
+</div>
+
+<div class="arr">启动加载 · 持久化</div>
+
+<!-- ===== L5: 数据层 ===== -->
+<div class="layer L5">
+  <div class="layer-label">数据层</div>
+  <div class="row">
+    <div class="box"><div class="box-title">WorldStateStore</div><div class="box-desc">SQLite WAL 模式<br>15 张表 · JSON 嵌套列<br>save_tick 单事务</div></div>
+    <div class="box"><div class="box-title">ChromaManager</div><div class="box-desc">7 个 Collection<br>PC/Actor 记忆隔离<br>DM 叙事+摘要独立</div></div>
+    <div class="box"><div class="box-title">CheckpointStore</div><div class="box-desc">LangGraph MemorySaver<br>每 Tick 存档<br>生产换 SqliteSaver</div></div>
+    <div class="box"><div class="box-title">schema.sql</div><div class="box-desc">player_characters · actors<br>scenes · items · scene_objects<br>story_arcs · story_hooks<br>events · narratives<br>quests · factions · main_cast</div></div>
+  </div>
+  <div style="font-size:9px;color:#90A4AE;margin-top:4px">模型层与存储层分离：models/ 纯 Pydantic · storage/ 封装 IO · 持久化三层：Checkpoint + SQLite + ChromaDB</div>
+</div>
+
+<div class="legend">
+  <span>编译产物 / Build artifacts</span>
+  <span style="margin-left:16px">最后更新: 2026-06-27</span>
+</div>
+
+</div>
+</body>
+</html>

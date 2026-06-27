@@ -1,0 +1,79 @@
+%% SimGameWorld TickGraph 7-Phase 流程图 / TickGraph 7-Phase Flow
+%% 每个 Tick 的完整执行流程 / Complete execution flow per Tick
+
+graph TB
+    START(["🎯 Tick 开始 / Tick Start"]) --> P1
+
+    subgraph P1["Phase 1: DM 创造情境 / Create Situation"]
+        P1A["读入 WorldState + DM 记忆 + StoryArc + 伏笔"]
+        P1B["DM Agent 生成: DMInstruction[] + plot_brief + SceneDirection"]
+        P1A --> P1B
+    end
+
+    P1 --> P2
+
+    subgraph P2["Phase 2: WorldEngine 执行 / Execute DM Instructions"]
+        P2A["执行 DMInstruction[]: 场景实例化 + Actor 动机注入 + 环境变化"]
+        P2B["输出: 世界变化 Event[]"]
+        P2A --> P2B
+    end
+
+    P2 --> P3
+
+    subgraph P3["Phase 3: PC/Actor 并行决策 / Parallel Decision"]
+        direction TB
+        P3A["读世界快照 Snapshot（角色间互不干扰）"]
+        P3B["PC Agent ×N（角色弧 + 价值观 + 记忆驱动）"]
+        P3C["Actor Agent ×M（功能标签 + DM 动机驱动）"]
+        P3D["Send fan-out 并行 → 输出 Action[]"]
+        P3A --> P3B
+        P3A --> P3C
+        P3B --> P3D
+        P3C --> P3D
+    end
+
+    P3 --> P4
+
+    subgraph P4["Phase 4: Engine 裁决 / Engine Resolution"]
+        direction LR
+        P4A["CombatEngine（战斗）"]
+        P4B["DialogueEngine（社交）"]
+        P4C["ExplorationEngine（探索）"]
+        P4D["QuestEngine（任务检查）"]
+    end
+
+    subgraph COMBAT["⚔️ 战斗子循环 / Combat Sub-loop"]
+        C1["掷先攻 / Roll Initiative"]
+        C2["回合循环 / Round Loop"]
+        C3["检查结束 / Check End"]
+        C1 --> C2 --> C3 --> C2
+    end
+
+    P4A -.触发.-> COMBAT
+    COMBAT -.结束.-> P5
+
+    P4 --> P5
+
+    subgraph P5["Phase 5: 状态更新 / State Update"]
+        P5A["合并所有结果 → WorldState"]
+        P5B["检查主角团变动（死亡/加入/离开）"]
+        P5A --> P5B
+    end
+
+    P5 --> P6
+
+    subgraph P6["Phase 6: DM 叙事渲染 / Narrative Rendering"]
+        P6A["基于实际结果 + plot_brief 生成叙事文本"]
+        P6B["记录 BranchPoint + 伏笔回收"]
+        P6A --> P6B
+    end
+
+    P6 --> P7
+
+    subgraph P7["Phase 7: 反思 + 摘要 / Reflection + Summary"]
+        P7A["PC 深度反思（阈值 100）"]
+        P7B["Actor 轻量反思（阈值 200）"]
+        P7C["StorySummarizer 每 10 步压缩"]
+    end
+
+    P7 --> END(["✅ Tick 结束 / Tick Complete"])
