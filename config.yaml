@@ -1,58 +1,73 @@
+# SimGameWorld 主配置文件 / Main configuration file
+# 所有 LLM API Key 通过环境变量注入，不写在此文件中 / API keys via env vars
+
+# === 服务器 / Server ===
 server:
-  host: "0.0.0.0"
-  port: 8000
+  host: "0.0.0.0"                    # 监听地址 / Listen address
+  port: 8000                          # 端口 / Port
 
+# === 世界 / World ===
 world:
-  default_pack: "forgotten_realms"
+  default_pack: "forgotten_realms"    # 默认 Pack 名称 / Default pack name
 
+# === LLM 配置 / LLM Configuration ===
+# 按 Agent 角色分别配置模型参数 / Per-agent-role model config
 llm:
   providers:
-    primary:
+    primary:                          # 主提供商 / Primary provider
       type: "deepseek"
       base_url: "https://api.deepseek.com/v1"
-    fallback:
+    fallback:                         # 降级备用 / Fallback provider
       type: "anthropic"
-  dm_create:
-    model: "deepseek-reasoner"
+
+  dm_create:                          # DM 创造情境 / DM context creation
+    model: "deepseek-reasoner"        # 推理模型 / Reasoning model
     fallback_model: "claude-sonnet-4-20250514"
-    temperature: 0.9
-    timeout: 15
-    retries: 1
-  dm_narrate:
+    temperature: 0.9                  # 高温度以鼓励创造性 / High temp for creativity
+    timeout: 15                       # 超时秒数 / Timeout seconds
+    retries: 1                        # 重试次数 / Retry count
+
+  dm_narrate:                         # DM 叙事 / DM narration
     model: "deepseek-chat"
     fallback_model: "claude-sonnet-4-20250514"
     temperature: 0.8
     timeout: 10
     retries: 1
-  pc_decision:
+
+  pc_decision:                        # PC 决策 / PC decision-making
     model: "deepseek-chat"
     fallback_model: "claude-sonnet-4-20250514"
-    temperature: 0.7
+    temperature: 0.7                  # 中等温度以保持理性 / Medium temp for rationality
     timeout: 10
     retries: 1
-  actor_decision:
+
+  actor_decision:                     # Actor 决策 / Actor decision-making
     model: "deepseek-chat"
-    fallback_model: "claude-haiku-4-20250514"
+    fallback_model: "claude-haiku-4-20250514"  # Actor 用轻量模型降低成本 / Light model to save cost
     temperature: 0.7
     timeout: 8
     retries: 1
-  reflection:
+
+  reflection:                         # 角色反思 / Character reflection
     model: "deepseek-reasoner"
     fallback_model: "claude-sonnet-4-20250514"
-    temperature: 0.5
+    temperature: 0.5                  # 低温度以保证分析准确 / Low temp for accurate analysis
     timeout: 15
     retries: 1
 
+# === 数据库 / Database ===
 database:
-  sqlite_path: "data/world.db"
-  chroma_path: "data/chroma/"
+  sqlite_path: "data/world.db"        # SQLite 数据库路径 / SQLite path
+  chroma_path: "data/chroma/"         # ChromaDB 数据目录 / ChromaDB data dir
 
+# === 自动运行 / Auto Run ===
 auto_run:
-  default_interval: 2000
+  default_interval: 2000              # 默认 tick 间隔（毫秒）/ Default tick interval (ms)
 
+# === 可观测性 / Observability ===
 observability:
   langfuse:
-    enabled: true
-    # 环境变量配置：LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_BASE_URL
-    # 自托管：base_url 指向 docker-compose 部署的 Langfuse Server
+    enabled: true                     # 启用 Langfuse Tracing / Enable Langfuse
+    # 环境变量：LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_BASE_URL
+    # 自托管时 base_url 指向 Docker 部署的 Langfuse / Self-hosted base_url → Docker
     tracing_environment: "development"
