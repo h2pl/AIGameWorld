@@ -1,0 +1,11 @@
+#!/bin/bash
+# SimGameWorld Pre-push Hook / 推送前检查
+# Runs full test suite before allowing push / 推送前跑全量测试
+set -e
+
+echo "=== Pre-push: 运行全部测试 / Running all tests ==="
+cd backend && uv run pytest && cd ..
+cd frontend && npx vitest run --passWithNoTests && cd ..
+
+echo ""
+echo "OK: 测试通过，允许推送 / Tests passed, pushing allowed"

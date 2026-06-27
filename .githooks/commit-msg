@@ -1,0 +1,40 @@
+#!/bin/bash
+# SimGameWorld Commit Message Hook / 提交信息格式检查
+# Enforces conventional commit format / 强制规范提交格式
+# Valid types: feat|fix|docs|chore|refactor|test|audit|rule|memory|style|perf|ci|build
+
+COMMIT_MSG=$(cat "$1")
+
+# Skip merge commits / 跳过合并提交
+if echo "$COMMIT_MSG" | grep -qE '^Merge'; then
+    exit 0
+fi
+
+# Conventional commit pattern / 规范化提交格式
+# Format: type(scope): subject
+# type: feat|fix|docs|chore|refactor|test|audit|rule|memory|style|perf|ci|build
+if ! echo "$COMMIT_MSG" | head -1 | grep -qE '^(feat|fix|docs|chore|refactor|test|audit|rule|memory|style|perf|ci|build)(\([^)]+\))?:.{1,}'; then
+    echo "ERROR: 提交信息格式不符合规范 / Commit message does not follow convention"
+    echo ""
+    echo "要求格式 / Required format:"
+    echo "  type(scope): subject"
+    echo ""
+    echo "有效类型 / Valid types:"
+    echo "  feat     = 新功能 / New feature"
+    echo "  fix      = 修复 bug / Bug fix"
+    echo "  docs     = 文档变更 / Documentation"
+    echo "  chore    = 杂项（注释/配置等）/ Chores"
+    echo "  refactor = 重构 / Refactoring"
+    echo "  test     = 测试 / Tests"
+    echo "  audit    = 自检 / Self-audit"
+    echo "  rule     = 规则变更 / Rule changes"
+    echo "  memory   = 记忆 / Memory"
+    echo ""
+    echo "示例 / Examples:"
+    echo "  feat(M3): TickGraph 7 Phase 主图骨架"
+    echo "  fix(storage): sqlite_store 事务死锁"
+    echo "  docs(SimGameWorld): 补充 API 契约文档"
+    exit 1
+fi
+
+exit 0
