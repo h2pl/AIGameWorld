@@ -40,6 +40,8 @@ class WorldLoader:
             raise FileNotFoundError(f"World Pack 未找到: {pack_dir}")
 
         meta = self._load_meta(pack_dir)
+        self._validate_rule_set(meta.rule_set)
+        self.pump_lore(pack_dir, pack_name)
 
         return WorldState(
             tick=0,
@@ -53,6 +55,10 @@ class WorldLoader:
             story_arcs=self._load_story_arcs(pack_dir, meta),
             story_hooks=self._load_story_hooks(pack_dir, meta),
         )
+
+    def _validate_rule_set(self, rule_set: str) -> None:
+        if rule_set not in {"dnd_5e_srd"}:
+            raise ValueError(f"Unsupported: {rule_set}")
 
     def _load_meta(self, pack_dir: Path) -> MetaYaml:
         """加载并校验 meta.yaml / Load and validate meta.yaml."""
