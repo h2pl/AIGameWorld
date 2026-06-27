@@ -33,6 +33,7 @@ class WorldLoader:
         self.worlds_dir = Path(worlds_dir)
         self.chroma = chroma
 
+    # TODO(M4): async def / Make async for M4
     def load(self, pack_name: str) -> WorldState:
         """主入口：加载 Pack 返回 WorldState / Main entry: load Pack and return WorldState."""
         pack_dir = self.worlds_dir / pack_name
@@ -70,6 +71,7 @@ class WorldLoader:
 
     # ---- Lore（灌入 ChromaDB）/ Lore pumped into ChromaDB ----
 
+    # TODO(M2): behaviors/ dir / TODO(M8): assets/ dir
     def pump_lore(self, pack_dir: Path, pack_name: str) -> None:
         """解析 lore/*.yaml 灌入 ChromaDB / Parse lore/*.yaml into ChromaDB."""
         lore_dir = pack_dir / "lore"
@@ -254,6 +256,7 @@ class WorldLoader:
         setup = self._load_story_setup(pack_dir, meta)
         return [StoryHook(**hook) for hook in setup.get("story_hooks", [])]
 
+    # TODO(M2): unload() via ChromaManager.drop_pack()
     def _load_story_setup(self, pack_dir: Path, meta: MetaYaml) -> dict:
         path = pack_dir / meta.files.story_setup
         if not path.exists():
