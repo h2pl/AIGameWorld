@@ -1,4 +1,4 @@
-# SimGameWorld
+# AIGameWorld
 
 > DM 驱动的虚拟 DND 世界模拟。DM 创造情境，主角团推动剧情，确定性规则让行为有真实后果。
 
@@ -34,7 +34,7 @@ docker compose -f docker/docker-compose.dev.yml up --build
 ## 项目结构
 
 ```
-SimGameWorld/
+AIGameWorld/
 ├── backend/     # Python 后端 (FastAPI + LangGraph)
 ├── frontend/    # TypeScript 前端 (Phaser 3)
 ├── worlds/      # World Pack 目录
@@ -45,7 +45,7 @@ SimGameWorld/
 
 ## 文档
 
-完整文档在 `knowledge/domains/dev/SimGameWorld/` 知识库中：
+完整文档在 `knowledge/domains/dev/AIGameWorld/` 知识库中：
 - README.md — 项目文档入口
 - PRD_最新版.md — 产品需求
 - 架构方案最新版.md — 架构设计

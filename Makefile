@@ -1,4 +1,4 @@
-# SimGameWorld 构建系统 / Build System
+# AIGameWorld 构建系统 / Build System
 # 使用方式：make <target> 或 make help 查看所有命令 / Usage: make <target> or make help
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c

@@ -1,5 +1,5 @@
 # Pack / Storage module — World YAML loading / World persistence
-"""SimGameWorld storage layer."""
+"""AIGameWorld storage layer."""
 
 from .sqlite_store import WorldStateStore
 from .chroma_store import ChromaManager

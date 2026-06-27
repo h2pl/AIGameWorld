@@ -26,7 +26,7 @@ class Orchestrator:
         # 当前 tick 号 / Current tick number
         self._tick = 0
         # Graph 配置（每个 tick 新 thread_id）/ Graph config (new thread per tick)
-        self._config = {"configurable": {"thread_id": "simgameworld"}}
+        self._config = {"configurable": {"thread_id": "AIGameWorld"}}
 
     @property
     def tick(self) -> int:

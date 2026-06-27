@@ -1,8 +1,8 @@
 // ============================================================
-// SimGameWorld Frontend / Frontend Package Config
+// AIGameWorld Frontend / Frontend Package Config
 // ============================================================
 {
-  "name": "simgameworld-frontend",         // Package name
+  "name": "AIGameWorld-frontend",         // Package name
   "version": "0.1.0",                      // Version
   "type": "module",                        // ES Module mode
   "engines": { "node": ">=20" },           // Min Node.js version

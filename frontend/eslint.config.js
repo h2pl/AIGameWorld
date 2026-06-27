@@ -1,4 +1,4 @@
-// SimGameWorld 前端 ESLint 配置 / Frontend ESLint Config
+// AIGameWorld 前端 ESLint 配置 / Frontend ESLint Config
 export default [
   {
     languageOptions: {

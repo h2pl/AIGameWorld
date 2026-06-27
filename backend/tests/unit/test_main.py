@@ -13,7 +13,7 @@ def client():
 
 def test_app_created():
     """App should be created with correct title."""
-    assert app.title == "SimGameWorld API"
+    assert app.title == "AIGameWorld API"
     assert app.version == "0.1.0"
 
 
@@ -23,4 +23,4 @@ def test_health_check(client):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
-    assert data["service"] == "simgameworld-backend"
+    assert data["service"] == "AIGameWorld-backend"

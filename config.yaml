@@ -1,4 +1,4 @@
-# SimGameWorld 主配置文件 / Main configuration file
+# AIGameWorld 主配置文件 / Main configuration file
 # 所有 LLM API Key 通过环境变量注入，不写在此文件中 / API keys via env vars
 
 # === 服务器 / Server ===

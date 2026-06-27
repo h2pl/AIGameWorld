@@ -1,4 +1,4 @@
-# SimGameWorld 开发环境 / Development Environment
+# AIGameWorld 开发环境 / Development Environment
 # 启动：docker compose -f docker/docker-compose.dev.yml up -d
 # 源码目录挂载为卷，支持热重载 / Source dirs mounted as volumes for hot reload
 

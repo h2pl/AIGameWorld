@@ -1,4 +1,4 @@
-/** SimGameWorld 前端入口 / Frontend entry point. */
+/** AIGameWorld 前端入口 / Frontend entry point. */
 import Phaser from "phaser";
 
 // Phaser 3 游戏配置 / Phaser 3 game config
@@ -11,7 +11,7 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: {
     create: function (this: Phaser.Scene) {
       // 占位文字——后续替换为 GameScene / Placeholder text — to be replaced by GameScene
-      this.add.text(480, 320, "SimGameWorld", {
+      this.add.text(480, 320, "AIGameWorld", {
         fontFamily: "Segoe UI, sans-serif",
         fontSize: "32px",
         color: "#ffffff",

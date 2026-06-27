@@ -1,4 +1,4 @@
-// SimGameWorld 前端 TypeScript 配置 / Frontend TypeScript Config
+// AIGameWorld 前端 TypeScript 配置 / Frontend TypeScript Config
 {
   "compilerOptions": {
     "target": "ES2022",                          // ES2022 编译目标

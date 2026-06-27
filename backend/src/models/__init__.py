@@ -1,4 +1,4 @@
-"""SimGameWorld Pydantic 模型导出 / Pydantic model exports.
+"""AIGameWorld Pydantic 模型导出 / Pydantic model exports.
 
 所有数据模型统一从这里 import / Import all data models from here.
 """

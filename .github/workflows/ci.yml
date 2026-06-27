@@ -1,4 +1,4 @@
-# SimGameWorld CI/CD Pipeline / 持续集成流水线
+# AIGameWorld CI/CD Pipeline / 持续集成流水线
 # 每次 push/PR 到 main 时自动运行 / Auto-runs on push/PR to main
 
 name: CI

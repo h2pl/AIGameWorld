@@ -1,4 +1,4 @@
-// SimGameWorld 前端 Vite 配置 / Frontend Vite Config
+// AIGameWorld 前端 Vite 配置 / Frontend Vite Config
 import { defineConfig } from "vite";
 
 export default defineConfig({
