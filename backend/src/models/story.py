@@ -52,6 +52,20 @@ class CastChangeEvent(BaseModel):
     arc_id: str | None = None
 
 
+class Quest(BaseModel):
+    """A quest that can be assigned to PCs."""
+
+    id: str
+    arc_id: str | None = None
+    title: str = ""
+    description: str = ""
+    status: str = "inactive"  # inactive / active / completed / failed
+    progress: dict = Field(default_factory=dict)
+    assigned_pcs: list[str] = Field(default_factory=list)
+    created_tick: int | None = None
+    completed_tick: int | None = None
+
+
 class MainCastRoster(BaseModel):
     """Main cast roster – tracks membership changes over time."""
 

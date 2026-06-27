@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from .character import PlayerCharacter, Actor
 from .item import Item
 from .scene_object import SceneObject
-from .story import StoryArc, StoryHook, MainCastRoster
+from .story import Quest, StoryArc, StoryHook, MainCastRoster
 from .event import Event
 
 
@@ -57,7 +57,7 @@ class WorldState(BaseModel):
     story_hooks: list[StoryHook] = Field(default_factory=list)
 
     # ---- World state ----
-    quests: list[dict] = Field(default_factory=list)
+    quests: list[Quest] = Field(default_factory=list)
     factions: dict[str, Faction] = Field(default_factory=dict)
     weather: str = "normal"
     time_of_day: str = "day"

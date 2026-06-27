@@ -18,6 +18,7 @@ from .story import (
     BranchPoint,
     CastChangeEvent,
     MainCastRoster,
+    Quest,
     StoryArc,
     StoryHook,
 )
@@ -43,6 +44,7 @@ __all__ = [
     "Location",
     "MainCastRoster",
     "PlayerCharacter",
+    "Quest",
     "Relationship",
     "Scene",
     "SceneObject",
