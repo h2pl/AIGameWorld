@@ -6,7 +6,7 @@ from src.graph.graph import (
     build_tick_graph,
     OverallState,
     phase1_dm_create,
-    phase2_world_engine,
+    phase2_world,
     phase3_character_decide,
     phase4_engines,
     phase5_state_update,
@@ -93,9 +93,9 @@ def test_phase1_dm_create(base_state):
     assert "Tick 0" in result["plot_brief"]
 
 
-def test_phase2_world_engine(base_state):
+def test_phase2_world(base_state):
     """Phase 2: 应该返回空事件列表."""
-    result = phase2_world_engine(base_state)
+    result = phase2_world(base_state)
     assert "world_events" in result
     assert result["world_events"] == []
 

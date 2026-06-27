@@ -9,4 +9,4 @@ def build_world_subgraph() -> StateGraph:
     graph.add_edge("world_update", END)
     return graph
 
-world_engine_subgraph = build_world_subgraph().compile()
+world_subgraph = build_world_subgraph().compile()

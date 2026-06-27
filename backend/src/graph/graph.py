@@ -11,14 +11,14 @@ from langgraph.graph import StateGraph, END
 from .state import OverallState
 
 from .subgraphs.dm_subgraph import dm_subgraph, DMSubState
-from .subgraphs.world_engine import world_engine_subgraph, WorldEngineSubState
+from .subgraphs.world import world_subgraph, WorldEngineSubState
 from .subgraphs.character_agent import pc_subgraph, actor_subgraph
-from .subgraphs.combat_engine import combat_subgraph
-from .subgraphs.dialogue_engine import dialogue_subgraph
-from .subgraphs.exploration_engine import exploration_subgraph
-from .subgraphs.quest_engine import quest_subgraph
+from .subgraphs.combat import combat_subgraph
+from .subgraphs.dialogue import dialogue_subgraph
+from .subgraphs.exploration import exploration_subgraph
+from .subgraphs.quest import quest_subgraph
 from .subgraphs.reflection import reflection_subgraph
-from .subgraphs.story_summarizer import summarizer_subgraph
+from .subgraphs.summarizer import summarizer_subgraph
 from ..adapters.wrappers import (
     wrap_dm_create_input, unwrap_dm_create_output,
     wrap_world_engine_input, unwrap_world_engine_output,
@@ -43,10 +43,10 @@ def phase1_dm_create(state: OverallState) -> dict:
     return unwrap_dm_create_output(result)
 
 
-def phase2_world_engine(state: OverallState) -> dict:
+def phase2_world(state: OverallState) -> dict:
     """Phase 2: invoke WorldEngine Subgraph / invoke WorldEngine subgraph."""
     we_input = wrap_world_engine_input(state)
-    result = world_engine_subgraph.invoke(we_input)
+    result = world_subgraph.invoke(we_input)
     return unwrap_world_engine_output(result)
 
 
@@ -140,7 +140,7 @@ def build_tick_graph() -> StateGraph:
     graph = StateGraph(OverallState)
 
     graph.add_node("phase1_dm_create", phase1_dm_create)
-    graph.add_node("phase2_world_engine", phase2_world_engine)
+    graph.add_node("phase2_world", phase2_world)
     graph.add_node("phase3_character_decide", phase3_character_decide)
     graph.add_node("phase4_engines", phase4_engines)
     graph.add_node("phase5_state_update", phase5_state_update)
@@ -148,8 +148,8 @@ def build_tick_graph() -> StateGraph:
     graph.add_node("phase7_reflection", phase7_reflection)
 
     graph.set_entry_point("phase1_dm_create")
-    graph.add_edge("phase1_dm_create", "phase2_world_engine")
-    graph.add_edge("phase2_world_engine", "phase3_character_decide")
+    graph.add_edge("phase1_dm_create", "phase2_world")
+    graph.add_edge("phase2_world", "phase3_character_decide")
     graph.add_edge("phase3_character_decide", "phase4_engines")
     graph.add_edge("phase4_engines", "phase5_state_update")
     graph.add_edge("phase5_state_update", "phase6_dm_narrate")
