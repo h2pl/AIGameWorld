@@ -89,6 +89,7 @@ def make_event(tick: int = 1, seq: int = 0) -> Event:
     return Event(id=f"evt_{tick}_{seq}", tick=tick, seq=seq, type="test_event")
 
 
+# === Test Classes / 测试类 ===
 class TestWorldStateStore:
     async def test_init_creates_tables(self, temp_db):
         store = WorldStateStore(temp_db)

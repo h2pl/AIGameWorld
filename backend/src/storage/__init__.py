@@ -1,3 +1,4 @@
+# Pack / Storage module — World YAML loading / World persistence
 """SimGameWorld storage layer."""
 
 from .sqlite_store import WorldStateStore

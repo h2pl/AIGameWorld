@@ -24,6 +24,7 @@ jobs:
       - run: uv sync                       # 安装依赖 / Install deps
       - run: uv run ruff check .           # Lint 检查 / Lint check
       - run: uv run ruff format --check .  # 格式检查 / Format check
+      - run: python .githooks/check-comments.py --all  # 注释检查 / Comment check
       - run: uv run mypy src/              # 类型检查 / Type check
       - run: uv run pytest --cov           # 测试 + 覆盖率 / Tests + coverage
 

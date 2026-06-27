@@ -31,13 +31,16 @@ from src.models import (
 )
 
 
+# === Test Classes / 测试类 ===
 class TestPlayerCharacter:
+# --- Test Cases / 测试用例 ---
     def test_minimal_pc(self):
         pc = PlayerCharacter(id="kael", name="Kael", role="fighter")
         assert pc.id == "kael"
         assert pc.status == "active"
         assert pc.reflection_threshold == 100
 
+# --- Test Cases / 测试用例 ---
     def test_pc_with_full_character_arc(self):
         arc = CharacterArc(
             growth_line="From lone wolf to guardian",
@@ -55,6 +58,7 @@ class TestPlayerCharacter:
         assert pc.character_arc.growth_line == "From lone wolf to guardian"
         assert pc.values == ["Protect the weak", "Justice above law"]
 
+# --- Test Cases / 测试用例 ---
     def test_pc_equipment_and_inventory(self):
         eq = Equipment(weapon="longsword", armor="chain_mail", off_hand="shield")
         inv = [InventorySlot(item_id="health_potion", qty=2)]
@@ -69,6 +73,7 @@ class TestPlayerCharacter:
         assert pc.inventory[0].item_id == "health_potion"
         assert pc.inventory[0].qty == 2
 
+# --- Test Cases / 测试用例 ---
     def test_pc_status_enum_violation_caught(self):
         """status field is free-form string for flexibility, but typical values are active/dead/left."""
         pc = PlayerCharacter(id="test", name="Test", role="fighter", status="sleeping")
@@ -76,11 +81,13 @@ class TestPlayerCharacter:
 
 
 class TestActor:
+# --- Test Cases / 测试用例 ---
     def test_minimal_actor(self):
         actor = Actor(id="garret", name="Garret", role="blacksmith")
         assert actor.id == "garret"
         assert actor.reflection_threshold == 200
 
+# --- Test Cases / 测试用例 ---
     def test_actor_with_functions(self):
         actor = Actor(
             id="mira",
@@ -95,6 +102,7 @@ class TestActor:
         assert ActorFunction.MERCHANT in actor.functions
         assert actor.function_data["merchant"]["gold"] == 500
 
+# --- Test Cases / 测试用例 ---
     def test_actor_dm_control(self):
         actor = Actor(
             id="bandit",
@@ -107,12 +115,14 @@ class TestActor:
         assert actor.dm_assigned is True
         assert "Raid" in actor.motivation_injected
 
+# --- Test Cases / 测试用例 ---
     def test_actor_combat_optional(self):
         actor = Actor(id="villager", name="Villager", role="bystander", combat=None)
         assert actor.combat is None
 
 
 class TestItem:
+# --- Test Cases / 测试用例 ---
     def test_weapon_item(self):
         sword = Item(
             id="longsword",
@@ -123,6 +133,7 @@ class TestItem:
         assert sword.item_type == ItemType.WEAPON
         assert sword.data["damage_dice"] == "1d8"
 
+# --- Test Cases / 测试用例 ---
     def test_armor_item(self):
         armor = Item(
             id="chain_mail",
@@ -134,6 +145,7 @@ class TestItem:
         )
         assert armor.data["ac"] == 16
 
+# --- Test Cases / 测试用例 ---
     def test_key_item(self):
         key = Item(
             id="rusty_key",
@@ -145,6 +157,7 @@ class TestItem:
 
 
 class TestSceneObject:
+# --- Test Cases / 测试用例 ---
     def test_container(self):
         chest = SceneObject(
             id="chest_01",
@@ -159,6 +172,7 @@ class TestSceneObject:
         assert chest.object_type == SceneObjectType.CONTAINER
         assert chest.interact_data["locked"] is True
 
+# --- Test Cases / 测试用例 ---
     def test_door(self):
         door = SceneObject(
             id="cellar_door",
@@ -168,6 +182,7 @@ class TestSceneObject:
         )
         assert door.interact_data["key_id"] == "rusty_key"
 
+# --- Test Cases / 测试用例 ---
     def test_trap(self):
         trap = SceneObject(
             id="trap_01",
@@ -179,6 +194,7 @@ class TestSceneObject:
 
 
 class TestStoryModels:
+# --- Test Cases / 测试用例 ---
     def test_story_arc(self):
         arc = StoryArc(
             id="arc_bandits",
@@ -191,6 +207,7 @@ class TestStoryModels:
         assert arc.stage == "\u94fa\u9648"
         assert len(arc.main_cast) == 2
 
+# --- Test Cases / 测试用例 ---
     def test_branch_point(self):
         bp = BranchPoint(
             tick=5,
@@ -201,6 +218,7 @@ class TestStoryModels:
         )
         assert bp.tick == 5
 
+# --- Test Cases / 测试用例 ---
     def test_story_hook(self):
         hook = StoryHook(
             id="hook_wolves",
@@ -211,6 +229,7 @@ class TestStoryModels:
         )
         assert hook.status == "planted"
 
+# --- Test Cases / 测试用例 ---
     def test_main_cast_roster(self):
         roster = MainCastRoster(
             current_members=["kael", "zeph", "elara", "mira"],
@@ -220,6 +239,7 @@ class TestStoryModels:
 
 
 class TestEventAndAction:
+# --- Test Cases / 测试用例 ---
     def test_event(self):
         evt = Event(
             id="evt_1_0",
@@ -232,6 +252,7 @@ class TestEventAndAction:
         )
         assert evt.type == "combat_hit"
 
+# --- Test Cases / 测试用例 ---
     def test_action(self):
         action = Action(
             character_id="kael",
@@ -246,12 +267,14 @@ class TestEventAndAction:
 
 
 class TestWorldState:
+# --- Test Cases / 测试用例 ---
     def test_empty_world_state(self):
         ws = WorldState()
         assert ws.tick == 0
         assert ws.weather == "normal"
         assert ws.time_of_day == "day"
 
+# --- Test Cases / 测试用例 ---
     def test_world_state_with_entities(self):
         pc = PlayerCharacter(id="kael", name="Kael", role="fighter")
         actor = Actor(id="garret", name="Garret", role="blacksmith")

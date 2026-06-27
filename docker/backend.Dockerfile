@@ -1,5 +1,6 @@
 # SimGameWorld 后端 Dockerfile / Backend Dockerfile
 # 多阶段构建：builder（安装依赖）→ runtime（运行） / Multi-stage: builder → runtime
+# === Build Stage / 构建阶段 ===
 FROM python:3.14-slim AS builder
 WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv  # uv 包管理器
