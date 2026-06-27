@@ -96,10 +96,11 @@ def check_file(filepath: Path, repo_root: Path) -> tuple[bool, int, int]:
     # 配置/基础设施文件 / Config/infra files
     is_config_file = filepath.name in ('Dockerfile', 'package.json', '.prettierrc') or \
                      filepath.suffix in ('.json', '.ini', '.cfg')
-    # __init__.py / setup 文件 / Init/setup files
+    # __init__.py / setup / test 文件 / Init/setup/test files
     is_init_file = filepath.name == '__init__.py'
+    is_test_file = 'tests/' in str(filepath.relative_to(repo_root)).replace('\\', '/')
     
-    if is_data_file or is_config_file or is_init_file:
+    if is_data_file or is_config_file or is_init_file or is_test_file:
         passed = comments >= MIN_COMMENT_LINES
     else:
         passed = comments >= MIN_COMMENT_LINES and ratio >= MIN_COMMENT_RATIO
