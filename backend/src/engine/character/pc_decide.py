@@ -1,3 +1,7 @@
+"""PC decision logic / PC 决策逻辑.
+
+基于 design/04-agent-layer.md §6 / Based on agent layer design.
+"""
 """CharacterAgent 子图 / Character Agent Subgraph — compiled StateGraph.
 
 Phase 3: PC/Actor 决策 / PC/Actor decisions.
@@ -60,3 +64,4 @@ def build_actor_subgraph() -> StateGraph:
 
 pc_subgraph = build_pc_subgraph().compile()
 actor_subgraph = build_actor_subgraph().compile()
+

@@ -1,3 +1,8 @@
+"""Engine combat logic / combat 业务逻辑.
+
+基于 design/03-orchestration-layer.md / Based on orchestration layer design.
+"""
+
 """CombatEngine 子图 / Combat Engine Subgraph — compiled StateGraph.
 
 Phase 4: 回合制战斗 / Turn-based combat.

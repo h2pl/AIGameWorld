@@ -1,3 +1,8 @@
+"""Engine quest logic / quest 业务逻辑.
+
+基于 design/03-orchestration-layer.md / Based on orchestration layer design.
+"""
+
 """QuestEngine 子图 / Quest Engine Subgraph — compiled StateGraph.
 
 Phase 4: 每 Tick 检查任务完成 / Per-tick quest completion check.

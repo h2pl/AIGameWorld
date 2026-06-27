@@ -1,3 +1,8 @@
+"""Engine reflection logic / reflection 业务逻辑.
+
+基于 design/03-orchestration-layer.md / Based on orchestration layer design.
+"""
+
 """CharacterReflection 子图 / Character Reflection Subgraph — compiled StateGraph.
 
 Phase 7: 角色反思 / Character reflection.

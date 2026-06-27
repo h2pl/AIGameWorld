@@ -1,3 +1,8 @@
+"""Engine dialogue logic / dialogue 业务逻辑.
+
+基于 design/03-orchestration-layer.md / Based on orchestration layer design.
+"""
+
 """DialogueEngine 子图 / Dialogue Engine Subgraph — compiled StateGraph.
 
 Phase 4: D20 对话检定 / D20 dialogue check.

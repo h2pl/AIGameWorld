@@ -1,3 +1,8 @@
+"""Engine dm logic / dm 业务逻辑.
+
+基于 design/03-orchestration-layer.md / Based on orchestration layer design.
+"""
+
 """DM Agent 子图 / DM Agent Subgraph — compiled StateGraph.
 
 Phase 1 (create context) / Phase 6 (narrate).

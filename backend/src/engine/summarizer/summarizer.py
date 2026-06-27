@@ -1,3 +1,8 @@
+"""Engine summarizer logic / summarizer 业务逻辑.
+
+基于 design/03-orchestration-layer.md / Based on orchestration layer design.
+"""
+
 """StorySummarizer 子图 / Story Summarizer Subgraph — compiled StateGraph.
 
 Phase 7: 每 N 步压缩 Event Log → 剧情梗概 / Compress events into summary.

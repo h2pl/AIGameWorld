@@ -1,3 +1,8 @@
+"""Engine exploration logic / exploration 业务逻辑.
+
+基于 design/03-orchestration-layer.md / Based on orchestration layer design.
+"""
+
 """ExplorationEngine 子图 / Exploration Engine Subgraph — compiled StateGraph.
 
 Phase 4: 移动/交互检定 / Movement/interaction check.

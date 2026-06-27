@@ -1,3 +1,8 @@
+"""Engine world logic / world 业务逻辑.
+
+基于 design/03-orchestration-layer.md / Based on orchestration layer design.
+"""
+
 """WorldEngine 子图 / World Engine Subgraph — compiled StateGraph.
 
 Phase 2: 执行 DM 指令 / Execute DM instructions.
