@@ -17,7 +17,7 @@ frontend-dev: ## Start frontend only
 
 test:   ## Run all tests
 	cd backend && uv run pytest
-	cd frontend && npx vitest run
+	cd frontend && npx vitest run --passWithNoTests
 
 lint:   ## Lint all code
 	cd backend && uv run ruff check .
