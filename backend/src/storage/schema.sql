@@ -1,5 +1,5 @@
 --  ============================================================
---  SimGameWorld SQLite Schema / 数据库表结构定义
+--  AIGameWorld SQLite Schema / 数据库表结构定义
 --  15 张表：实体 + 故事 + 关系 + 日志 / 15 tables: entities + stories + relations + logs
 --  WAL 模式：支持并发读 + 单写 / WAL mode: concurrent reads + single write
 --  ============================================================
