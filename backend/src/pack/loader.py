@@ -1,6 +1,15 @@
-"""WorldLoader – Load World Pack YAML files into WorldState.
+"""WorldLoader — 从 YAML 加载 World Pack 到 WorldState / Load World Pack YAML into WorldState.
 
-Based on docs/05-world-pack-layer.md §9 (now §9 in current doc).
+基于 docs/05-world-pack-layer.md §9 / Based on docs/05-world-pack-layer.md.
+加载顺序 / Load order:
+  1. meta.yaml 校验 / Validate meta.yaml
+  2. Lore → ChromaDB / Pump lore into ChromaDB
+  3. 场景定义 / Scene definitions
+  4. PC 模板 → 实例化 / PC templates → instantiate
+  5. Actor 模板 → 实例化 / Actor templates → instantiate
+  6. Item 物品定义 / Item definitions
+  7. SceneObject 场景对象 / Scene objects
+  8. story_setup 初始剧情 / Initial story setup
 """
 
 import json
@@ -9,38 +18,26 @@ from pathlib import Path
 import yaml
 
 from src.models import (
-    Actor,
-    Attributes,
-    CharacterArc,
-    CombatStats,
-    Equipment,
-    InventorySlot,
-    Item,
-    ItemType,
-    Location,
-    PlayerCharacter,
-    Scene,
-    SceneObject,
-    SceneObjectType,
-    StoryArc,
-    StoryHook,
-    WorldState,
+    Actor, Attributes, CharacterArc, CombatStats, Equipment,
+    InventorySlot, Item, ItemType, Location,
+    PlayerCharacter, Scene, SceneObject, SceneObjectType, StoryArc, StoryHook, WorldState,
 )
 from src.storage import ChromaManager
 from .validator import PackValidator, MetaYaml
 
 
 class WorldLoader:
-    """Loads a World Pack directory into a WorldState and ChromaDB."""
+    """加载 World Pack 目录到 WorldState 和 ChromaDB / Loads a World Pack into WorldState + ChromaDB."""
 
     def __init__(self, worlds_dir: Path, chroma: ChromaManager):
         self.worlds_dir = Path(worlds_dir)
         self.chroma = chroma
 
     def load(self, pack_name: str) -> WorldState:
+        """主入口：加载 Pack 返回 WorldState / Main entry: load Pack and return WorldState."""
         pack_dir = self.worlds_dir / pack_name
         if not pack_dir.exists():
-            raise FileNotFoundError(f"World Pack not found: {pack_dir}")
+            raise FileNotFoundError(f"World Pack 未找到: {pack_dir}")
 
         meta = self._load_meta(pack_dir)
 
@@ -58,16 +55,17 @@ class WorldLoader:
         )
 
     def _load_meta(self, pack_dir: Path) -> MetaYaml:
+        """加载并校验 meta.yaml / Load and validate meta.yaml."""
         path = pack_dir / "meta.yaml"
         if not path.exists():
-            raise FileNotFoundError(f"meta.yaml not found in {pack_dir}")
+            raise FileNotFoundError(f"meta.yaml 未找到: {pack_dir}")
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         return PackValidator.validate(data)
 
-    # ---- Lore (pumped into ChromaDB by caller) ----
+    # ---- Lore（灌入 ChromaDB）/ Lore pumped into ChromaDB ----
 
     def pump_lore(self, pack_dir: Path, pack_name: str) -> None:
-        """Parse lore/*.yaml and pump text chunks into ChromaDB."""
+        """解析 lore/*.yaml 灌入 ChromaDB / Parse lore/*.yaml into ChromaDB."""
         lore_dir = pack_dir / "lore"
         if not lore_dir.exists():
             return
@@ -81,16 +79,16 @@ class WorldLoader:
                 chunk_id = f"{yaml_file.stem}_{key}"
                 collection.add(ids=[chunk_id], documents=[text], metadatas=[{"source": yaml_file.name, "section": key}])
 
-    # ---- Scenes ----
+    # ---- 场景 / Scenes ----
 
     def _load_scenes(self, pack_dir: Path, meta: MetaYaml) -> dict[str, Scene]:
+        """加载场景定义 / Load scene definitions."""
         scenes = {}
         for rel_path in meta.files.scenes:
             data = yaml.safe_load((pack_dir / rel_path).read_text(encoding="utf-8"))
             for entry in (data if isinstance(data, list) else [data]):
                 scenes[entry["id"]] = Scene(
-                    id=entry["id"],
-                    name=entry.get("name", ""),
+                    id=entry["id"], name=entry.get("name", ""),
                     type=entry.get("type", "village"),
                     description=entry.get("description", ""),
                     exits=entry.get("exits", []),
@@ -100,9 +98,10 @@ class WorldLoader:
                 )
         return scenes
 
-    # ---- PC Instances ----
+    # ---- PC 实例 / PC Instances ----
 
     def _load_pc_instances(self, pack_dir: Path, meta: MetaYaml) -> dict[str, PlayerCharacter]:
+        """从模板实例化起始主角团 / Instantiate starting PCs from templates."""
         templates = self._load_pc_templates(pack_dir, meta)
         pcs = {}
         for spec in meta.starting_pcs:
@@ -126,8 +125,10 @@ class WorldLoader:
                 long_term_goal=tpl.get("long_term_goal", ""),
                 values=tpl.get("values", []),
                 personality=tpl.get("personality", ""),
-                equipment=Equipment(weapon=eq.get("weapon"), off_hand=eq.get("off_hand"),
-                                   armor=eq.get("armor"), accessories=eq.get("accessories", [])),
+                equipment=Equipment(
+                    weapon=eq.get("weapon"), off_hand=eq.get("off_hand"),
+                    armor=eq.get("armor"), accessories=eq.get("accessories", []),
+                ),
                 inventory=[InventorySlot(item_id=i["item"], qty=i.get("qty", 1)) for i in inv],
                 relationships={},
                 joined_tick=0, roster_status="member",
@@ -138,14 +139,14 @@ class WorldLoader:
         templates = {}
         for rel_path in meta.files.player_characters:
             data = yaml.safe_load((pack_dir / rel_path).read_text(encoding="utf-8"))
-            items = data if isinstance(data, list) else [data]
-            for entry in items:
+            for entry in (data if isinstance(data, list) else [data]):
                 templates[entry["id"]] = entry
         return templates
 
-    # ---- Actor Instances ----
+    # ---- Actor 实例 / Actor Instances ----
 
     def _load_actor_instances(self, pack_dir: Path, meta: MetaYaml) -> dict[str, Actor]:
+        """从模板实例化起始 Actor / Instantiate starting Actors from templates."""
         templates = self._load_actor_templates(pack_dir, meta)
         actors = {}
         for spec in meta.starting_actors:
@@ -165,8 +166,9 @@ class WorldLoader:
                     personality=tpl.get("personality", ""),
                     functions=tpl.get("functions", []),
                     function_data=tpl.get("function_data", {}),
-                    equipment=Equipment(weapon=eq.get("weapon"), off_hand=eq.get("off_hand"),
-                                        armor=eq.get("armor"), accessories=eq.get("accessories", [])) if eq else None,
+                    equipment=Equipment(**{
+                        k: eq[k] for k in ("weapon", "off_hand", "armor", "accessories") if k in eq
+                    }) if eq else None,
                     inventory=[InventorySlot(item_id=i["item"], qty=i.get("qty", 1)) for i in inv],
                     relationships={},
                 )
@@ -176,22 +178,23 @@ class WorldLoader:
         templates = {}
         for rel_path in meta.files.actors:
             data = yaml.safe_load((pack_dir / rel_path).read_text(encoding="utf-8"))
-            items = data if isinstance(data, list) else [data]
-            for entry in items:
+            for entry in (data if isinstance(data, list) else [data]):
                 templates[entry["id"]] = entry
         return templates
 
     @staticmethod
     def _resolve_names(spec) -> list[str]:
+        """解析 Actor 实例名（支持列表/单个/count 三种模式）/ Resolve Actor instance names."""
         if isinstance(spec.name_override, list):
             return spec.name_override
         if spec.name_override:
             return [spec.name_override]
         return [f"{spec.template}_{i + 1}" for i in range(spec.count)]
 
-    # ---- Items ----
+    # ---- 物品 / Items ----
 
     def _load_items(self, pack_dir: Path, meta: MetaYaml) -> dict[str, Item]:
+        """加载全局物品定义 / Load global item definitions."""
         items = {}
         for rel_path in meta.files.items:
             data = yaml.safe_load((pack_dir / rel_path).read_text(encoding="utf-8"))
@@ -201,17 +204,16 @@ class WorldLoader:
                     id=entry["id"], name=entry.get("name", ""),
                     item_type=ItemType(entry["item_type"]),
                     rarity=entry.get("rarity", "common"),
-                    weight=entry.get("weight", 0.0),
-                    value=entry.get("value", 0),
+                    weight=entry.get("weight", 0.0), value=entry.get("value", 0),
                     description=entry.get("description", ""),
-                    data=entry.get("data", {}),
-                    pack_name=meta.id,
+                    data=entry.get("data", {}), pack_name=meta.id,
                 )
         return items
 
-    # ---- Scene Objects ----
+    # ---- 场景对象 / Scene Objects ----
 
     def _load_scene_objects(self, pack_dir: Path, meta: MetaYaml) -> dict[str, SceneObject]:
+        """加载场景对象（宝箱/门/陷阱等）/ Load scene objects (chests/doors/traps/etc.)."""
         templates = {}
         for rel_path in meta.files.scene_objects:
             data = yaml.safe_load((pack_dir / rel_path).read_text(encoding="utf-8"))
@@ -224,8 +226,7 @@ class WorldLoader:
             tpl = templates[spec.template]
             obj_id = f"{spec.scene}_{spec.template}"
             objects[obj_id] = SceneObject(
-                id=obj_id,
-                name=tpl.get("name", spec.template),
+                id=obj_id, name=tpl.get("name", spec.template),
                 object_type=SceneObjectType(tpl.get("object_type", "decoration")),
                 scene_id=spec.scene,
                 position_x=spec.position.get("x", 0),
@@ -235,13 +236,15 @@ class WorldLoader:
             )
         return objects
 
-    # ---- Story ----
+    # ---- 故事 / Story ----
 
     def _load_story_arcs(self, pack_dir: Path, meta: MetaYaml) -> list[StoryArc]:
+        """加载初始剧情线 / Load initial story arcs."""
         setup = self._load_story_setup(pack_dir, meta)
         return [StoryArc(**arc) for arc in setup.get("story_arcs", [])]
 
     def _load_story_hooks(self, pack_dir: Path, meta: MetaYaml) -> list[StoryHook]:
+        """加载初始伏笔 / Load initial story hooks."""
         setup = self._load_story_setup(pack_dir, meta)
         return [StoryHook(**hook) for hook in setup.get("story_hooks", [])]
 
