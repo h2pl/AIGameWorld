@@ -1,0 +1,40 @@
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+world:
+  default_pack: "forgotten_realms"
+
+llm:
+  dm_create:
+    model: "deepseek-reasoner"
+    temperature: 0.9
+    timeout: 15
+    retries: 1
+  dm_narrate:
+    model: "deepseek-chat"
+    temperature: 0.8
+    timeout: 10
+    retries: 1
+  pc_decision:
+    model: "deepseek-chat"
+    temperature: 0.7
+    timeout: 10
+    retries: 1
+  actor_decision:
+    model: "deepseek-chat"
+    temperature: 0.7
+    timeout: 8
+    retries: 1
+  reflection:
+    model: "deepseek-reasoner"
+    temperature: 0.5
+    timeout: 15
+    retries: 1
+
+database:
+  sqlite_path: "data/world.db"
+  chroma_path: "data/chroma/"
+
+auto_run:
+  default_interval: 2000
