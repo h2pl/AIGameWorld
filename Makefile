@@ -1,18 +1,18 @@
 .PHONY: setup dev backend-dev frontend-dev test lint fmt docker-up clean help
 
-setup:  ## First-time setup
-	@echo "Backend:  cd backend && uv sync"
-	@echo "Frontend: cd frontend && npm install"
-	@echo "Copy .env.example to .env and fill in API keys"
+setup:  ## Install all dependencies (first-time only)
+	cd backend && uv sync
+	cd frontend && npm install
+	@echo Done! Copy .env.example to .env and fill in DEEPSEEK_API_KEY
 
-dev:  ## Start both backend and frontend (run in separate terminals)
-	@echo "Terminal 1: make backend-dev"
-	@echo "Terminal 2: make frontend-dev"
+dev:  ## Start backend + frontend (Ctrl+C to stop both)
+	cd backend && uv run uvicorn src.main:app --reload --port 8000 & \
+	cd ../frontend && npx vite --port 3000
 
-backend-dev:  ## Start backend dev server
+backend-dev:  ## Start backend only
 	cd backend && uv run uvicorn src.main:app --reload --port 8000
 
-frontend-dev: ## Start frontend dev server
+frontend-dev: ## Start frontend only
 	cd frontend && npx vite --port 3000
 
 test:   ## Run all tests
@@ -36,6 +36,13 @@ clean:  ## Remove artifacts
 	find . -type d -name .ruff_cache -exec rm -rf {} +
 	rm -rf data/*.db data/chroma/
 
-help:   ## Show help
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-15s %s\n", $$1, $$2}'
+help:   ## Show available commands
+	@echo "  setup         Install all dependencies"
+	@echo "  dev           Start backend + frontend"
+	@echo "  backend-dev   Start backend only"
+	@echo "  frontend-dev  Start frontend only"
+	@echo "  test          Run all tests"
+	@echo "  lint          Lint all code"
+	@echo "  fmt           Format all code"
+	@echo "  clean         Remove artifacts"
 .DEFAULT_GOAL := help
