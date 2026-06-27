@@ -11,9 +11,6 @@ Phase 1 (create context) / Phase 6 (narrate).
 
 from typing import TypedDict, Any
 
-from langgraph.graph import StateGraph, END
-
-
 class DMSubState(TypedDict):
     """DM 子图状态 / DM subgraph state."""
     tick: int
@@ -22,7 +19,6 @@ class DMSubState(TypedDict):
     scene_direction: dict[str, Any]
     narrative_out: str
     character_actions: list[dict[str, Any]]
-
 
 # ============================================================
 # Phase 1 Node: 创造情境 / Create context
@@ -40,7 +36,6 @@ def dm_create_node(state: DMSubState) -> dict:
         "scene_direction": {"featured_pcs": [], "featured_actors": []},
     }
 
-
 # ============================================================
 # Phase 6 Node: 叙事 / Narrate
 # ============================================================
@@ -55,7 +50,6 @@ def dm_narrate_node(state: DMSubState) -> dict:
     narrative = f"[DM Narrative] {plot} (Actions: {len(actions)})"
     return {"narrative_out": narrative}
 
-
 # ============================================================
 # 构建 + compile 子图 / Build + compile subgraph
 # ============================================================
@@ -66,26 +60,3 @@ def dm_route(state: DMSubState) -> str:
     if state.get("character_actions"):
         return "dm_narrate"
     return "dm_create"
-
-
-def build_dm_subgraph() -> StateGraph:
-    """构建 DM 子图 / Build DM subgraph.
-    两个节点: dm_create (P1) + dm_narrate (P6), 按输入自动路由.
-    Two nodes: dm_create (P1) + dm_narrate (P6), auto-routed by input.
-    """
-    graph = StateGraph(DMSubState)
-    graph.add_node("dm_create", dm_create_node)
-    graph.add_node("dm_narrate", dm_narrate_node)
-    graph.set_entry_point("dm_create")
-    graph.add_conditional_edges("dm_create", dm_route, {
-        "dm_narrate": "dm_narrate",
-        "dm_create": END,
-    })
-    graph.add_edge("dm_narrate", END)
-    return graph
-
-
-dm_subgraph = build_dm_subgraph().compile()
-"""DM 子图编译实例 / Compiled DM subgraph instance.
-Phase 1 (create) 和 Phase 6 (narrate) 共用一个 compile, 按输入自动路由.
-"""
