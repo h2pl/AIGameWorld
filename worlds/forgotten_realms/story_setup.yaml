@@ -1,24 +1,22 @@
-# 初始故事设置 / Initial Story Setup — 主线+伏笔+关系
-
 story_arcs:
-id:                          # 唯一标识 / Unique ID
-type:                        # 类型 / Type
-title:                       # 标题 / Title
-stage:                       # 阶段 / Stage
-main_cast:                   # 主角团 / Main Cast
-supporting_actors:           # 配角 / Supporting Actors
-status:                      # 状态 / Status
+  - id: "arc_bandit_threat"
+    type: "main"
+    title: "Bandit Threat"
+    stage: "setup"
+    main_cast: ["Kael", "Zeph", "Elara", "Mira"]
+    supporting_actors: ["Garret", "Borin"]
+    status: "setup"
 
 story_hooks:
-id:                          # 唯一标识 / Unique ID
-planted_tick:                # 埋设 tick
-description:                 # 描述 / Description
-intended_payoff:             # 预期回收方式
-urgency:                     # 紧迫度
-status:                      # 状态 / Status
-id:                          # 唯一标识 / Unique ID
-planted_tick:                # 埋设 tick
-description:                 # 描述 / Description
-intended_payoff:             # 预期回收方式
-urgency:                     # 紧迫度
-status:                      # 状态 / Status
+  - id: "hook_wolf_howls"
+    planted_tick: 0
+    description: "Distant wolf howls echo through the forest"
+    intended_payoff: "A wolf pack threatens the village"
+    urgency: 5
+    status: "planted"
+  - id: "hook_stranger"
+    planted_tick: 0
+    description: "A mysterious traveler passes through the village"
+    intended_payoff: "The traveler brings news of the outside world"
+    urgency: 10
+    status: "planted"

@@ -1,23 +1,21 @@
-# 埃尔伍德村场景 / Elderwood Village Scene
-
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
-type:                        # 类型 / Type
-description:                 # 描述 / Description
+id: "village_elderwood"
+name: "Elderwood Village"
+type: "village"
+description: "A quiet border village, smoke rising from the blacksmith's chimney."
 grid:
   width: 20
   height: 15
   tile_size: 48
 landmarks:
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
-position:                    # 坐标 / Position
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
-position:                    # 坐标 / Position
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
-position:                    # 坐标 / Position
+  - id: "blacksmith_shop"
+    name: "Blacksmith"
+    position: {x: 5, y: 7}
+  - id: "tavern"
+    name: "Tavern"
+    position: {x: 12, y: 3}
+  - id: "market"
+    name: "Market"
+    position: {x: 10, y: 8}
 exits:
   - {target_scene: "forest_north", position: {x: 10, y: 0}, description: "Path to the northern forest"}
 environment:

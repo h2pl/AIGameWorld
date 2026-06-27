@@ -1,23 +1,21 @@
-# 战士 PC / Fighter PC
-
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
-role:                        # 职业/角色 / Class/Role
-race:                        # 种族 / Race
+- id: "fighter"
+  name: "Fighter"
+  role: "fighter"
+  race: "human"
   attributes:
-    str:                       # 力量 / Strength
-    dex:                       # 敏捷 / Dexterity
-    con:                       # 体质 / Constitution
-    int:                       # 智力 / Intelligence
-    wis:                       # 感知 / Wisdom
-    cha:                       # 魅力 / Charisma
+    str: 16
+    dex: 12
+    con: 16
+    int: 10
+    wis: 10
+    cha: 12
   combat:
-    hp:                        # 生命值 / Hit Points
-    max_hp:                    # 最大生命值 / Max HP
-    ac:                        # 护甲等级 / Armor Class
+    hp: 32
+    max_hp: 32
+    ac: 16
     initiative: 1
-    attack_bonus:              # 攻击加值 / Attack Bonus
-    damage_bonus:              # 伤害加值 / Damage Bonus
+    attack_bonus: 5
+    damage_bonus: 3
   character_arc:
     growth_line: "From lone wolf to guardian of the weak"
     inner_conflict: "Strength vs restraint — when to fight, when to endure"
@@ -27,13 +25,13 @@ race:                        # 种族 / Race
     - "Justice above law"
     - "Companions before honor"
   long_term_goal: "Find the missing mentor and inherit his will to defend the border"
-personality:                 # 性格 / Personality
+  personality: "Brave, direct, stubborn, loyal to companions"
   equipment:
-    weapon:                    # 主武器 / Main Weapon
-    armor:                     # 护甲 / Armor
-    off_hand:                  # 副手 / Off-hand
+    weapon: "longsword"
+    armor: "chain_mail"
+    off_hand: "shield"
     accessories: []
   inventory:
     - {item: "health_potion", qty: 2}
     - {item: "gold", qty: 30}
-allowed_actions:            # 允许的行动 / Allowed Actions
+  allowed_actions: ["move", "talk", "attack", "interact", "wait"]

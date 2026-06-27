@@ -1,23 +1,21 @@
-# 法师 PC / Wizard PC
-
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
-role:                        # 职业/角色 / Class/Role
-race:                        # 种族 / Race
+- id: "wizard"
+  name: "Wizard"
+  role: "wizard"
+  race: "elf"
   attributes:
-    str:                       # 力量 / Strength
-    dex:                       # 敏捷 / Dexterity
-    con:                       # 体质 / Constitution
-    int:                       # 智力 / Intelligence
-    wis:                       # 感知 / Wisdom
-    cha:                       # 魅力 / Charisma
+    str: 8
+    dex: 12
+    con: 12
+    int: 18
+    wis: 14
+    cha: 10
   combat:
-    hp:                        # 生命值 / Hit Points
-    max_hp:                    # 最大生命值 / Max HP
-    ac:                        # 护甲等级 / Armor Class
+    hp: 22
+    max_hp: 22
+    ac: 12
     initiative: 1
-    attack_bonus:              # 攻击加值 / Attack Bonus
-    damage_bonus:              # 伤害加值 / Damage Bonus
+    attack_bonus: 4
+    damage_bonus: 4
   character_arc:
     growth_line: "From arrogant scholar to wise protector"
     inner_conflict: "Knowledge vs wisdom"
@@ -26,10 +24,10 @@ race:                        # 种族 / Race
     - "Knowledge must be shared"
     - "Power tempered by wisdom"
   long_term_goal: "Recover a lost artifact from an ancient ruin"
-personality:                 # 性格 / Personality
+  personality: "Curious, analytical, slightly condescending"
   equipment:
-    weapon:                    # 主武器 / Main Weapon
+    weapon: "staff"
   inventory:
     - {item: "health_potion", qty: 2}
     - {item: "gold", qty: 25}
-allowed_actions:            # 允许的行动 / Allowed Actions
+  allowed_actions: ["move", "talk", "attack", "interact", "wait"]

@@ -1,18 +1,16 @@
-# 地理设定 / Geography Lore
-
 world:
-name:                        # 名称 / Name
-type:                        # 类型 / Type
+  name: "Forgotten Realms"
+  type: "fantasy"
 
 regions:
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
+  - id: "north_border"
+    name: "North Border"
     terrain: "Dense forest, hills, rivers"
     climate: "Cold, long winters"
 
 settlements:
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
+  - id: "village_elderwood"
+    name: "Elderwood Village"
     region: "north_border"
     population: 200
     economy: "Lumber and iron mining"

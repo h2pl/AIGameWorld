@@ -1,13 +1,11 @@
-# 宝箱定义 / Chest Definitions
-
 objects:
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
-object_type:                 # 对象类型 / Object Type
-interactable:                # 是否可交互 / Interactable
+  - id: "chest_wooden"
+    name: "Wooden Chest"
+    object_type: "container"
+    interactable: true
     interact_data:
-    locked:                    # 是否锁定 / Locked
-    lock_dc:                   # 开锁 DC / Lock DC
+      locked: false
+      lock_dc: 0
       items:
         - {item_id: "gold", qty: 20}
         - {item_id: "health_potion", qty: 1}

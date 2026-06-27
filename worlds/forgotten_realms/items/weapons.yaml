@@ -1,38 +1,36 @@
-# 武器定义 / Weapon Definitions
-
 items:
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
-item_type:                   # 物品类型 / Item Type
-rarity:                     # 稀有度 / Rarity
-weight:                     # 重量 / Weight
-value:                      # 价值（金币）/ Value (Gold)
-data:                        # 类型扩展数据 / Type-specific Data
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
-item_type:                   # 物品类型 / Item Type
-rarity:                     # 稀有度 / Rarity
-weight:                     # 重量 / Weight
-value:                      # 价值（金币）/ Value (Gold)
-data:                        # 类型扩展数据 / Type-specific Data
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
-item_type:                   # 物品类型 / Item Type
-rarity:                     # 稀有度 / Rarity
-weight:                     # 重量 / Weight
-value:                      # 价值（金币）/ Value (Gold)
-data:                        # 类型扩展数据 / Type-specific Data
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
-item_type:                   # 物品类型 / Item Type
-rarity:                     # 稀有度 / Rarity
-weight:                     # 重量 / Weight
-value:                      # 价值（金币）/ Value (Gold)
-data:                        # 类型扩展数据 / Type-specific Data
-id:                          # 唯一标识 / Unique ID
-name:                        # 名称 / Name
-item_type:                   # 物品类型 / Item Type
-rarity:                     # 稀有度 / Rarity
-weight:                     # 重量 / Weight
-value:                      # 价值（金币）/ Value (Gold)
-data:                        # 类型扩展数据 / Type-specific Data
+  - id: "longsword"
+    name: "Longsword"
+    item_type: "weapon"
+    rarity: "common"
+    weight: 3.0
+    value: 15
+    data: {damage_dice: "1d8", damage_type: "slashing", properties: ["versatile"]}
+  - id: "shortsword"
+    name: "Shortsword"
+    item_type: "weapon"
+    rarity: "common"
+    weight: 2.0
+    value: 10
+    data: {damage_dice: "1d6", damage_type: "piercing", properties: ["finesse"]}
+  - id: "mace"
+    name: "Mace"
+    item_type: "weapon"
+    rarity: "common"
+    weight: 4.0
+    value: 5
+    data: {damage_dice: "1d6", damage_type: "bludgeoning"}
+  - id: "staff"
+    name: "Staff"
+    item_type: "weapon"
+    rarity: "common"
+    weight: 4.0
+    value: 2
+    data: {damage_dice: "1d6", damage_type: "bludgeoning", properties: ["versatile"]}
+  - id: "war_hammer"
+    name: "War Hammer"
+    item_type: "weapon"
+    rarity: "common"
+    weight: 5.0
+    value: 10
+    data: {damage_dice: "1d8", damage_type: "bludgeoning"}
