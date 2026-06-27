@@ -1,7 +1,7 @@
 {
   "dependencies": ["langchain_openai", "langchain_community", "."],
   "graphs": {
-    "aigameworld": "./backend/src/engine/tick_graph.py:graph"
+    "aigameworld": "./backend/src/graph/graph.py:graph"
   },
   "env": "./backend/.env"
 }

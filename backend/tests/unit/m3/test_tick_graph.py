@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.engine.tick_graph import (
+from src.graph.graph import (
     build_tick_graph,
     OverallState,
     phase1_dm_create,

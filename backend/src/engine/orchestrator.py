@@ -5,7 +5,7 @@
 
 from langgraph.checkpoint.memory import MemorySaver
 
-from .tick_graph import build_tick_graph, OverallState
+from ..graph.graph import build_tick_graph, OverallState
 
 
 class Orchestrator:

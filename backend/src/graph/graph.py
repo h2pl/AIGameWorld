@@ -4,21 +4,22 @@
 每个 Phase 节点通过 Wrapper invoke 对应子图的 compile() / Each phase invokes subgraph compile via wrapper.
 """
 
-from typing import TypedDict, Annotated, Any
-from operator import add
+from typing import Any
 
 from langgraph.graph import StateGraph, END
 
-from .subgraphs.dm_subgraph import dm_subgraph, DMSubState
-from .subgraphs.world_engine import world_engine_subgraph, WorldEngineSubState
-from .subgraphs.character_agent import pc_subgraph, actor_subgraph
-from .subgraphs.combat_engine import combat_subgraph
-from .subgraphs.dialogue_engine import dialogue_subgraph
-from .subgraphs.exploration_engine import exploration_subgraph
-from .subgraphs.quest_engine import quest_subgraph
-from .subgraphs.reflection import reflection_subgraph
-from .subgraphs.story_summarizer import summarizer_subgraph
-from .wrappers import (
+from .state import OverallState
+
+from ..engine.subgraphs.dm_subgraph import dm_subgraph, DMSubState
+from ..engine.subgraphs.world_engine import world_engine_subgraph, WorldEngineSubState
+from ..engine.subgraphs.character_agent import pc_subgraph, actor_subgraph
+from ..engine.subgraphs.combat_engine import combat_subgraph
+from ..engine.subgraphs.dialogue_engine import dialogue_subgraph
+from ..engine.subgraphs.exploration_engine import exploration_subgraph
+from ..engine.subgraphs.quest_engine import quest_subgraph
+from ..engine.subgraphs.reflection import reflection_subgraph
+from ..engine.subgraphs.story_summarizer import summarizer_subgraph
+from .infra.wrappers import (
     wrap_dm_create_input, unwrap_dm_create_output,
     wrap_world_engine_input, unwrap_world_engine_output,
     wrap_dm_narrate_input, unwrap_dm_narrate_output,
@@ -28,42 +29,6 @@ from .wrappers import (
 # ============================================================
 # OverallState: 主图状态 / Main graph state
 # ============================================================
-class OverallState(TypedDict):
-    """7 Phase 主图状态 / 7-phase main graph state."""
-
-    tick: int  # 当前 tick 号 / Current tick number
-
-    # Phase 1: DM 创造情境 / DM creates context
-    dm_instructions: list[dict[str, Any]]
-    plot_brief: str
-    scene_direction: dict[str, Any]
-
-    # Phase 2: WorldEngine / World engine execution
-    world_events: Annotated[list[dict[str, Any]], add]
-
-    # Phase 3: 角色决策 / Character decisions
-    character_actions: Annotated[list[dict[str, Any]], add]
-
-    # Phase 4: Engine 裁决 / Engine resolution
-    engine_results: Annotated[list[dict[str, Any]], add]
-    combat_result: dict[str, Any] | None
-
-    # Phase 5: 状态合并 / State merge
-    state_diff: dict[str, Any]
-    cast_changes: list[dict[str, Any]]
-
-    # Phase 6: DM 叙事 / DM narration
-    narrative: str
-
-    # Phase 7: 反思 + 摘要 / Reflection + summary
-    reflected_characters: list[str]
-    summary_compressed: bool
-
-    # 控制 / Control
-    errors: Annotated[list[str], add]
-    needs_reflection: bool
-
-
 # ============================================================
 # Phase 节点：invoke 子图 / Phase nodes: invoke subgraphs
 # ============================================================
@@ -196,3 +161,9 @@ def build_tick_graph() -> StateGraph:
     graph.add_edge("phase7_reflection", END)
 
     return graph
+
+
+# 编译后的图实例（供 LangGraph Studio / langgraph.json 引用）
+# Compiled graph instance for LangGraph Studio and langgraph.json
+graph = build_tick_graph().compile()
+
