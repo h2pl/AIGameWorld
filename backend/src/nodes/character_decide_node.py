@@ -1,7 +1,7 @@
 """Phase 3 节点: 唤醒 PC + Actor 决策。"""
 from typing import Any
 
-from .character_nodes import pc_decide_node, actor_decide_node
+from .character_node import pc_decide_node, actor_decide_node
 
 
 def character_decide_node(state: dict[str, Any]) -> dict[str, Any]:

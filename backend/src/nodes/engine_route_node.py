@@ -1,10 +1,10 @@
 """Phase 4 节点: 路由到各 Engine。"""
 from typing import Any
 
-from .combat_nodes import combat_node
-from .dialogue_nodes import dialogue_node
-from .exploration_nodes import exploration_node
-from .quest_nodes import quest_node
+from .combat_node import combat_node
+from .dialogue_node import dialogue_node
+from .exploration_node import exploration_node
+from .quest_node import quest_node
 
 
 def engine_route_node(state: dict[str, Any]) -> dict[str, Any]:

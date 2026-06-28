@@ -2,9 +2,9 @@
 import pytest
 
 from src.graph.graph import build_tick_graph, OverallState
-from src.nodes.dm_nodes import dm_create_node, dm_narrate_node
-from src.nodes.world_nodes import world_update_node
-from src.nodes.state_update_nodes import state_update_node
+from src.nodes.dm_node import dm_create_node, dm_narrate_node
+from src.nodes.world_node import world_update_node
+from src.nodes.state_update_node import state_update_node
 from src.graph.subgraphs.character_subgraph import character_subgraph
 from src.graph.subgraphs.engine_subgraph import engine_subgraph
 from src.graph.subgraphs.reflection_subgraph import reflection_subgraph

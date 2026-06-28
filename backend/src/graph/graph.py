@@ -36,9 +36,9 @@ from langgraph.graph import StateGraph, END
 from .state import OverallState
 
 # node（单步）
-from ..nodes.dm_nodes import dm_create_node, dm_narrate_node
-from ..nodes.world_nodes import world_update_node
-from ..nodes.state_update_nodes import state_update_node
+from ..nodes.dm_node import dm_create_node, dm_narrate_node
+from ..nodes.world_node import world_update_node
+from ..nodes.state_update_node import state_update_node
 
 # subgraph（多 node 协调）
 from .subgraphs.character_subgraph import character_subgraph
