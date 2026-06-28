@@ -1,66 +1,19 @@
-"""AIGameWorld Pydantic 模型导出 / Pydantic model exports.
+"""AIGameWorld 数据模型：Engine 输入 / 输出类型
 
-所有数据模型统一从这里 import / Import all data models from here.
+Model 层职责: 定义所有跨层共享的数据结构（无依赖 LangGraph / 业务逻辑）
 """
 
-# === Character / Roles ===
-from .character import (
-    # PC/Actor models
-    Actor,
-    ActorFunction,
-    Attributes,
-    CharacterArc,
-    CombatStats,
-    Equipment,
-    InventorySlot,
-    Location,
-    PlayerCharacter,
-    Relationship,
-)
-# === Item / Items ===
-from .item import Item, ItemType
-# === Scene Object / SO ===
-from .scene_object import SceneObject, SceneObjectType
-# === Story / Stories ===
-from .story import (
-    BranchPoint,
-    CastChangeEvent,
-    MainCastRoster,
-    Quest,
-    StoryArc,
-    StoryHook,
-)
-# === Event / Events ===
-from .event import Event
-# === Action / Actions ===
-from .action import Action
-# === World / World State ===
-from .world import Faction, Scene, WorldState
+from .dm import DMCreateInput, DMCreateOutput, DMNarrateInput, DMNarrateOutput
+from .world import WorldInput, WorldOutput
+from .character import PCDecideInput, PCDecideOutput, ActorDecideInput, ActorDecideOutput
+from .engine import CombatInput, CombatOutput, DialogueInput, DialogueOutput, ExplorationInput, ExplorationOutput, QuestInput
+from .reflection import ReflectionInput, SummarizerInput
 
 __all__ = [
-    "Action",
-    "Actor",
-    "ActorFunction",
-    "Attributes",
-    "BranchPoint",
-    "CastChangeEvent",
-    "CharacterArc",
-    "CombatStats",
-    "Equipment",
-    "Event",
-    "Faction",
-    "InventorySlot",
-    "Item",
-    "ItemType",
-    "Location",
-    "MainCastRoster",
-    "PlayerCharacter",
-    "Quest",
-    "Relationship",
-    "Scene",
-    "SceneObject",
-    "SceneObjectType",
-    "StoryArc",
-    "StoryHook",
-    "WorldState",
+    "DMCreateInput", "DMCreateOutput", "DMNarrateInput", "DMNarrateOutput",
+    "WorldInput", "WorldOutput",
+    "PCDecideInput", "PCDecideOutput", "ActorDecideInput", "ActorDecideOutput",
+    "CombatInput", "CombatOutput", "DialogueInput", "DialogueOutput",
+    "ExplorationInput", "ExplorationOutput", "QuestInput",
+    "ReflectionInput", "SummarizerInput",
 ]
