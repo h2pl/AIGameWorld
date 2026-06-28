@@ -26,19 +26,14 @@ class CombatStats(BaseModel):
 
 class Attributes(BaseModel):
     """六维属性 / Six core attributes."""
-    strength: int = 10       # "str"
-    dexterity: int = 10      # "dex"
-    constitution: int = 10   # "con"
-    intelligence: int = 10   # "int"
-    wisdom: int = 10         # "wis"
-    charisma: int = 10       # "cha"
+    model_config = {"populate_by_name": True}
 
-    class Config:
-        populate_by_name = True
-        json_schema_extra = {
-            "aliases": {"str": "strength", "dex": "dexterity", "con": "constitution",
-                        "int": "intelligence", "wis": "wisdom", "cha": "charisma"}
-        }
+    strength: int = 10
+    dexterity: int = 10
+    constitution: int = 10
+    intelligence: int = 10
+    wisdom: int = 10
+    charisma: int = 10
 
 
 class Equipment(BaseModel):
