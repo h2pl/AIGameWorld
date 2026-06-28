@@ -1,6 +1,9 @@
-"""Repository 层：领域数据访问（只操作领域实体，不暴露 dict/ORM）."""
+"""Repository 层：领域实体存取（零 SQL，调 SQLiteClient）."""
 
-from .world_state_repo import CharacterRepo
-from .sqlite_world_state_repo import SQLiteCharacterRepo
+from .character_repo import CharacterRepo
+from .event_repo import EventRepo
+from .story_repo import StoryRepo
+from .item_repo import ItemRepo
+from .scene_repo import SceneRepo
 
-__all__ = ["CharacterRepo", "SQLiteCharacterRepo"]
+__all__ = ["CharacterRepo", "EventRepo", "StoryRepo", "ItemRepo", "SceneRepo"]

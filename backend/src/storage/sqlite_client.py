@@ -1,55 +1,54 @@
-"""SQLite 客户端——封装所有裸 SQL，不涉及业务."""
+"""SQLite 裸操作——封装 connect / execute / fetch / schema，零业务."""
 
-import json
+from pathlib import Path
 from typing import Any
 
 import aiosqlite
 
 
 class SQLiteClient:
-    """封装 SQLite 建表/增删查，对外只暴露方法名，不暴露 SQL."""
+    """SQLite 连接管理 + 裸 SQL 执行."""
 
-    def __init__(self, db_path: str = "data/world_state.db"):
-        self._db_path = db_path
+    def __init__(self, db_path: str | Path = "data/world_state.db"):
+        self._db_path = Path(db_path)
+        self._db: aiosqlite.Connection | None = None
 
-    async def _connect(self) -> aiosqlite.Connection:
-        return aiosqlite.connect(self._db_path)
+    async def connect(self) -> None:
+        self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._db = await aiosqlite.connect(str(self._db_path))
+        self._db.row_factory = aiosqlite.Row
 
-    # ── 建表 ──
-    async def create_character_table(self) -> None:
-        async with await self._connect() as db:
-            await db.execute("""
-                CREATE TABLE IF NOT EXISTS characters (
-                    id TEXT PRIMARY KEY,
-                    character_type TEXT NOT NULL,
-                    data_json TEXT NOT NULL
-                )
-            """)
-            await db.commit()
+    async def close(self) -> None:
+        if self._db:
+            await self._db.close()
+            self._db = None
 
-    # ── 写 ──
-    async def insert_character(self, character_id: str, character_type: str, data: dict[str, Any]) -> None:
-        async with await self._connect() as db:
-            await db.execute(
-                "INSERT OR REPLACE INTO characters (id, character_type, data_json) VALUES (?, ?, ?)",
-                (character_id, character_type, json.dumps(data, default=str)),
-            )
-            await db.commit()
+    async def init_schema(self) -> None:
+        """执行 schema.sql / Run schema.sql."""
+        schema = (Path(__file__).parent / "schema.sql").read_text(encoding="utf-8")
+        await self._db.executescript(schema)
+        await self._db.commit()
 
-    # ── 查 ──
-    async def find_character(self, character_id: str, character_type: str) -> dict[str, Any] | None:
-        async with await self._connect() as db:
-            async with db.execute(
-                "SELECT data_json FROM characters WHERE id = ? AND character_type = ?",
-                (character_id, character_type),
-            ) as cursor:
-                row = await cursor.fetchone()
-                return json.loads(row[0]) if row else None
+    @property
+    def db(self) -> aiosqlite.Connection:
+        if not self._db:
+            raise RuntimeError("SQLiteClient not connected. Call connect() first.")
+        return self._db
 
-    async def find_all_characters(self, character_type: str) -> list[dict[str, Any]]:
-        async with await self._connect() as db:
-            async with db.execute(
-                "SELECT data_json FROM characters WHERE character_type = ?", (character_type,)
-            ) as cursor:
-                rows = await cursor.fetchall()
-                return [json.loads(r[0]) for r in rows]
+    async def execute(self, sql: str, params: tuple = ()) -> None:
+        await self._db.execute(sql, params)
+
+    async def fetch_all(self, sql: str, params: tuple = ()) -> list[dict[str, Any]]:
+        async with self._db.execute(sql, params) as cursor:
+            return [dict(row) for row in await cursor.fetchall()]
+
+    async def fetch_one(self, sql: str, params: tuple = ()) -> dict[str, Any] | None:
+        async with self._db.execute(sql, params) as cursor:
+            row = await cursor.fetchone()
+            return dict(row) if row else None
+
+    async def commit(self) -> None:
+        await self._db.commit()
+
+    async def begin(self) -> None:
+        await self._db.execute("BEGIN")

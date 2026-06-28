@@ -1,66 +1,119 @@
-"""角色领域模型 / Character Domain Models."""
+"""角色领域模型 / Character Domain Models — 完整版."""
+
 from pydantic import BaseModel, Field
 
 
-# === DND 六维属性 ===
+# ============================================================
+# 值对象 / Value Objects
+# ============================================================
+class Location(BaseModel):
+    """位置 / Location."""
+    scene_id: str = ""
+    position_x: int = 0
+    position_y: int = 0
+
+
+class CombatStats(BaseModel):
+    """战斗属性（DND-style stats）/ Combat stats (DND-style)."""
+    hp: int = 10
+    max_hp: int = 10
+    ac: int = 10
+    initiative: int = 0
+    speed: int = 30
+    attack_bonus: int = 0
+    damage_dice: str = "1d4"
+
+
 class Attributes(BaseModel):
-    """角色基础属性（D20 修正值 = (stat - 10) // 2）"""
-    strength: int = 10
-    dexterity: int = 10
-    constitution: int = 10
-    intelligence: int = 10
-    wisdom: int = 10
-    charisma: int = 10
+    """六维属性 / Six core attributes."""
+    strength: int = 10       # "str"
+    dexterity: int = 10      # "dex"
+    constitution: int = 10   # "con"
+    intelligence: int = 10   # "int"
+    wisdom: int = 10         # "wis"
+    charisma: int = 10       # "cha"
+
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
+            "aliases": {"str": "strength", "dex": "dexterity", "con": "constitution",
+                        "int": "intelligence", "wis": "wisdom", "cha": "charisma"}
+        }
 
 
-# === 装备槽位 ===
 class Equipment(BaseModel):
-    weapon: str | None = None
-    armor: str | None = None
-    shield: str | None = None
-    accessory: str | None = None
+    """装备 / Equipment."""
+    weapon_id: str | None = None
+    armor_id: str | None = None
+    shield_id: str | None = None
+    accessory_id: str | None = None
 
 
-# === 角色基类 ===
-class Character(BaseModel):
-    """角色基类——PC 和 Actor 共享字段."""
+class InventorySlot(BaseModel):
+    """背包槽位 / Inventory slot."""
+    item_id: str = ""
+    quantity: int = 1
+
+
+class Relationship(BaseModel):
+    """角色关系 / Character relationship."""
+    attitude: str = "neutral"       # friendly / neutral / hostile
+    description: str = ""
+
+
+class CharacterArc(BaseModel):
+    """角色弧 / Character arc."""
+    stage: str = "setup"            # setup / growth / crisis / resolution
+    progress: float = 0.0
+    description: str = ""
+
+
+# ============================================================
+# 实体 / Entities
+# ============================================================
+class Actor(BaseModel):
+    """NPC Actor——AI 控制."""
 
     id: str
     name: str = ""
-    character_type: str = "pc"               # "pc" | "actor"
+    role: str = ""                   # merchant / guard / quest_giver / villager
+    race: str | None = None
+    status: str = "active"
+    location: Location = Field(default_factory=Location)
     attributes: Attributes = Field(default_factory=Attributes)
-    level: int = 1
-    hp: int = 10
-    max_hp: int = 10
-    inventory: list[str] = Field(default_factory=list)   # Item ID 列表
+    combat: CombatStats | None = None
+    personality: str = ""
+    functions: list[str] = Field(default_factory=list)
+    function_data: dict = Field(default_factory=dict)
+    equipment: Equipment | None = None
+    inventory: list[InventorySlot] = Field(default_factory=list)
+    memory_count: int = 0
+    importance_accumulator: float = 0.0
+    relationships: dict[str, Relationship] = Field(default_factory=dict)
+    dm_assigned: bool = False
+    motivation_injected: str | None = None
+    service_arcs: list[str] = Field(default_factory=list)
+
+
+class PlayerCharacter(BaseModel):
+    """Player Character——受玩家控制."""
+
+    id: str
+    name: str = ""
+    role: str = ""
+    race: str | None = None
+    status: str = "active"
+    location: Location = Field(default_factory=Location)
+    attributes: Attributes = Field(default_factory=Attributes)
+    combat: CombatStats = Field(default_factory=CombatStats)
+    character_arc: CharacterArc = Field(default_factory=CharacterArc)
+    long_term_goal: str = ""
+    values: list[str] = Field(default_factory=list)
+    personality: str = ""
     equipment: Equipment = Field(default_factory=Equipment)
-    scene_id: str = ""                                   # 当前所在场景
-    position_x: int = 0
-    position_y: int = 0
-    alive: bool = True
-    pack_name: str = ""
-
-
-# === PC（可扮演角色） ===
-class PC(Character):
-    """Player Character——受玩家控制、有角色弧."""
-
-    character_type: str = "pc"
-    backstory: str = ""                     # 背景故事
-    personality: str = ""                   # 性格描述
-    long_term_goal: str = ""                # 长期目标
-    short_term_goal: str = ""               # 当前短期目标
-    character_arc: str = ""                 # 角色弧阶段: setup / growth / crisis / resolution
-    relationships: dict[str, str] = Field(default_factory=dict)  # character_id → 关系描述
-
-
-# === Actor（NPC） ===
-class Actor(Character):
-    """Non-Player Actor——AI 控制、有功能标签."""
-
-    character_type: str = "actor"
-    role: str = ""                          # 功能角色: merchant / guard / quest_giver / villager
-    personality: str = ""                   # 性格标签
-    daily_schedule: list[str] = Field(default_factory=list)  # 每日作息
-    faction: str = ""                       # 所属势力
-    reputation: int = 50                    # 声望值 (0-100)
+    inventory: list[InventorySlot] = Field(default_factory=list)
+    memory_count: int = 0
+    importance_accumulator: float = 0.0
+    relationships: dict[str, Relationship] = Field(default_factory=dict)
+    joined_tick: int = 0
+    roster_status: str = "member"
