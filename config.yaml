@@ -11,47 +11,50 @@ world:
   default_pack: "forgotten_realms"    # 默认 Pack 名称 / Default pack name
 
 # === LLM 配置 / LLM Configuration ===
-# 按 Agent 角色分别配置模型参数 / Per-agent-role model config
+# 支持 OpenAI-compatible API：DeepSeek / GLM / ZenProxy
+# API Key 通过环境变量注入：DEEPSEEK_API_KEY / GLM_API_KEY / ANTHROPIC_API_KEY
 llm:
   providers:
-    primary:                          # 主提供商 / Primary provider
-      type: "deepseek"
+    primary:                          # 默认提供商（被 base_url 覆盖时无效）
+      type: "openai"
       base_url: "https://api.deepseek.com/v1"
-    fallback:                         # 降级备用 / Fallback provider
-      type: "anthropic"
 
-  dm_create:                          # DM 创造情境 / DM context creation
-    model: "deepseek-reasoner"        # 推理模型 / Reasoning model
-    fallback_model: "claude-sonnet-4-20250514"
-    temperature: 0.9                  # 高温度以鼓励创造性 / High temp for creativity
-    timeout: 15                       # 超时秒数 / Timeout seconds
-    retries: 1                        # 重试次数 / Retry count
+  # DM 创造情境（强推理模型）
+  dm_create:
+    model: "deepseek-reasoner"
+    # base_url: "https://open.bigmodel.cn/api/paas/v4"     # GLM-5.2
+    # base_url: "http://localhost:8080/v1"                  # ZenProxy
+    temperature: 0.9
+    timeout: 15
+    retries: 1
 
-  dm_narrate:                         # DM 叙事 / DM narration
+  # DM 叙事（快模型）
+  dm_narrate:
     model: "deepseek-chat"
-    fallback_model: "claude-sonnet-4-20250514"
+    # model: "glm-4-flash"                                  # GLM-5.2 快模型
+    # base_url: "http://localhost:8080/v1"                  # ZenProxy
     temperature: 0.8
     timeout: 10
     retries: 1
 
-  pc_decision:                        # PC 决策 / PC decision-making
+  # PC 决策（中模型）
+  pc_decision:
     model: "deepseek-chat"
-    fallback_model: "claude-sonnet-4-20250514"
-    temperature: 0.7                  # 中等温度以保持理性 / Medium temp for rationality
+    temperature: 0.7
     timeout: 10
     retries: 1
 
-  actor_decision:                     # Actor 决策 / Actor decision-making
+  # Actor 决策（快模型——降低成本）
+  actor_decision:
     model: "deepseek-chat"
-    fallback_model: "claude-haiku-4-20250514"  # Actor 用轻量模型降低成本 / Light model to save cost
     temperature: 0.7
     timeout: 8
     retries: 1
 
-  reflection:                         # 角色反思 / Character reflection
+  # 角色反思（强推理模型）
+  reflection:
     model: "deepseek-reasoner"
-    fallback_model: "claude-sonnet-4-20250514"
-    temperature: 0.5                  # 低温度以保证分析准确 / Low temp for accurate analysis
+    temperature: 0.5
     timeout: 15
     retries: 1
 

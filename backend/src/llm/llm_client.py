@@ -82,7 +82,8 @@ class LLMClient:
             ("actor_decision", config.actor_decision),
             ("reflection", config.reflection),
         ]:
-            self._models[purpose] = _build_model(cfg, primary_url, primary_key)
+            model_url = cfg.base_url or primary_url
+            self._models[purpose] = _build_model(cfg, model_url, primary_key)
             self._fallbacks[purpose] = _build_fallback_model(cfg, fallback_url, fallback_key)
             self._timeouts[purpose] = cfg.timeout
             self._retries[purpose] = cfg.retries

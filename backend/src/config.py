@@ -24,6 +24,7 @@ class ProvidersConfig(BaseModel):
 class LLMModelConfig(BaseModel):
     """单 LLM 用途的模型配置 / Single LLM purpose model config."""
     model: str                          # 模型名 / Model name
+    base_url: str | None = None         # 覆盖 provider base_url（ZenProxy/GLM等）/ Override base_url
     fallback_model: str | None = None   # 降级模型 / Fallback model
     temperature: float                  # 温度 / Temperature
     timeout: int                        # 超时（秒）/ Timeout in seconds
