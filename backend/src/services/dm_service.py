@@ -12,8 +12,8 @@ from ..engine.dm.dm import DMSubState, dm_create as _dm_create, dm_narrate as _d
 from ..graph.state import OverallState
 
 
-def _build_dm_substate(state: OverallState) -> DMSubState:
-    """从 graph State 构造 DMSubState / Build DMSubState from graph State."""
+def _to_dm_input(state: OverallState) -> DMSubState:
+    """① State → Engine 输入"""
     return {
         "tick": state.get("tick", 0),
         "plot_brief": state.get("plot_brief", ""),
@@ -32,7 +32,7 @@ def dm_create(state: OverallState) -> dict[str, Any]:
     ③ 映射回 State key
     产出 / Outputs: dm_instructions, plot_brief, scene_direction
     """
-    engine_input = _build_dm_substate(state)                        # ①
+    engine_input = _to_dm_input(state)                              # ①
     result = _dm_create(engine_input)                               # ②
     return {                                                        # ③
         "dm_instructions": result.get("instructions_out", []),
@@ -49,7 +49,7 @@ def dm_narrate(state: OverallState) -> dict[str, Any]:
     ③ 映射回 State key
     产出 / Outputs: narrative, needs_reflection
     """
-    engine_input = _build_dm_substate(state)                        # ①
+    engine_input = _to_dm_input(state)                              # ①
     result = _dm_narrate(engine_input)                              # ②
     return {                                                        # ③
         "narrative": result.get("narrative_out", ""),
