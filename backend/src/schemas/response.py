@@ -32,7 +32,7 @@ class DMCreateResponse(BaseModel):
 
     @classmethod
     def from_entity(cls, dm: DMInstruction) -> DMCreateResponse:
-        return cls(instructions_out=[dm.model_dump()])
+        return cls(instructions_out=[dm.model_dump_json()])
 
 
 class DMNarrateResponse(BaseModel):
