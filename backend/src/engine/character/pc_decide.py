@@ -23,7 +23,7 @@ def pc_decide_node(state: PCSubState) -> dict:
     后续 M5 接入 LLM / M5 connects to LLM.
     """
     return {
-        "action": {
+        "action_out": {
             "character_id": state.get("pc_id", "unknown"),
             "type": "explore",
             "description": "Looking around the area.",

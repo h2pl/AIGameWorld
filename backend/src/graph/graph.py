@@ -10,7 +10,7 @@ from langgraph.graph import StateGraph, END
 
 from .state import OverallState
 
-from .subgraphs.dm_subgraph import dm_subgraph, DMSubState
+from .subgraphs.dm_subgraph import dm_create_subgraph, dm_narrate_subgraph, DMSubState
 from .subgraphs.world_subgraph import world_subgraph, WorldEngineSubState
 from .subgraphs.character_subgraph import pc_subgraph, actor_subgraph
 from .subgraphs.combat_subgraph import combat_subgraph
@@ -39,7 +39,7 @@ def phase1_dm_create(state: OverallState) -> dict:
     DM 子图读出 WorldState + StoryArc → plot_brief + SceneDirection.
     """
     dm_input = wrap_dm_create_input(state)
-    result = dm_subgraph.invoke(dm_input)
+    result = dm_create_subgraph.invoke(dm_input)
     return unwrap_dm_create_output(result)
 
 
@@ -118,7 +118,7 @@ def phase5_state_update(state: OverallState) -> dict:
 def phase6_dm_narrate(state: OverallState) -> dict:
     """Phase 6: invoke DM Subgraph (narration) / invoke DM subgraph for narration."""
     dm_input = wrap_dm_narrate_input(state)
-    result = dm_subgraph.invoke(dm_input)
+    result = dm_narrate_subgraph.invoke(dm_input)
     update = unwrap_dm_narrate_output(result)
     update["needs_reflection"] = state["tick"] % 5 == 0
     return update

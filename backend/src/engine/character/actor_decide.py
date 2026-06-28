@@ -23,7 +23,7 @@ def actor_decide_node(state: ActorSubState) -> dict:
     后续 M5 接入 LLM / M5 connects to LLM.
     """
     return {
-        "action": {
+        "action_out": {
             "character_id": state.get("actor_id", "unknown"),
             "type": "idle",
             "description": "Going about daily business.",
