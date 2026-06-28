@@ -1,13 +1,18 @@
 """DM Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
 
 from ...models.dm import DMCreateInput, DMCreateOutput, DMNarrateInput, DMNarrateOutput
+from ...models.instruction import DMInstruction
 
 
 def dm_create(input: DMCreateInput) -> DMCreateOutput:
-    """Phase 1: DM 创造情境 / DM creates context. Mock. M4 接入 LLM."""
-    return DMCreateOutput(
-        plot_brief=f"[Tick {input.tick}] The adventure continues in the Forgotten Realms.",
-    )
+    """Phase 1: DM 创造情境 / DM creates context.
+
+    ① Input → Domain Model  ② 业务逻辑  ③ Domain → Output
+    Mock. M4 接入 LLM.
+    """
+    dm = DMInstruction.from_input(input)             # ① Input → Domain
+    dm.plot_brief = f"[Tick {input.tick}] The adventure continues..."  # ②
+    return dm.to_output()                            # ③ Domain → Output
 
 
 def dm_narrate(input: DMNarrateInput) -> DMNarrateOutput:
