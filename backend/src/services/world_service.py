@@ -1,10 +1,11 @@
-"""World Node: State <-> Service glue / World 节点：State ↔ Service 胶水。"""
+"""World Service: State ↔ Engine adapter / World 服务：State ↔ Engine 适配。"""
 from typing import Any
 
 from ..engine.world.world import WorldEngineSubState, execute_instructions
+from ..graph.state import OverallState
 
 
-def world_update_node(state: dict[str, Any]) -> dict[str, Any]:
+def world_update(state: OverallState) -> dict[str, Any]:
     """Phase 2: WorldEngine 执行 DM 指令 / Execute DM instructions.
 
     graph State → WorldEngineSubState → execute_instructions() → graph State keys.

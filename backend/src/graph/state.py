@@ -44,3 +44,39 @@ class OverallState(TypedDict):
     # 控制 / Control
     errors: Annotated[list[str], add]
     needs_reflection: bool
+
+
+# ============================================================
+# SubState: 各子图专属状态 / Subgraph-specific state schemas
+# ============================================================
+class CharacterSubState(TypedDict):
+    """Phase 3: 角色决策子图 / Character decision subgraph."""
+    tick: int
+    plot_brief: str
+    scene_direction: dict[str, Any]
+    character_actions: Annotated[list[dict[str, Any]], add]
+
+
+class EngineSubState(TypedDict):
+    """Phase 4: Engine 裁决子图 / Engine resolution subgraph."""
+    participants: list[str]
+    round: int
+    speaker: str
+    target: str
+    intent: str
+    character_id: str
+    action_type: str
+    quests: list[dict[str, Any]]
+    event_log: list[dict[str, Any]]
+    engine_results: Annotated[list[dict[str, Any]], add]
+    combat_result: dict[str, Any] | None
+
+
+class ReflectionSubState(TypedDict):
+    """Phase 7: 反思 + 摘要子图 / Reflection + summary subgraph."""
+    tick: int
+    character_id: str
+    memories: list[dict[str, Any]]
+    events: list[dict[str, Any]]
+    reflected_characters: list[str]
+    summary_compressed: bool

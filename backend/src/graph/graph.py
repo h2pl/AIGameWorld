@@ -3,29 +3,29 @@
 START
  |
  v
- phase1_dm_create   [node]      DM 创造情境   dm_create_node
+ dm_service.dm_create              [node]      DM 创造情境   dm_create
  |
  v
- phase2_world       [node]      World 引擎    world_update_node
+ world_service.world_update        [node]      World 引擎    world_update
  |
  v
- phase3_char_decide [subgraph]  角色决策      character_subgraph
+ character_subgraph             [subgraph]  角色决策      character_subgraph
  |
  v
- phase4_engines     [subgraph]  Engine 路由   engine_subgraph
+ engine_subgraph                [subgraph]  Engine 路由   engine_subgraph
  |
  v
- phase5_update      [node]      状态合并更新   state_update_node
+ state_update_service.state_update [node]      状态合并更新   state_update
  |
  v
- phase6_narrate     [node]      DM 叙事       dm_narrate_node
+ dm_service.dm_narrate             [node]      DM 叙事       dm_narrate
  |
  +-- needs_reflection? --False--> END
  |
  True
  |
  v
- phase7_reflect     [subgraph]  反思/摘要     reflection_subgraph
+ reflection_subgraph [subgraph]  反思/摘要     reflection_subgraph
  |
  v
  END
@@ -35,10 +35,8 @@ from langgraph.graph import StateGraph, END
 
 from .state import OverallState
 
-# node（单步）
-from ..nodes.dm_node import dm_create_node, dm_narrate_node
-from ..nodes.world_node import world_update_node
-from ..nodes.state_update_node import state_update_node
+# service（状态适配层）— 模块级导入，方便 key = 文件名.函数名
+from ..services import dm_service, world_service, state_update_service
 
 # subgraph（多 node 协调）
 from .subgraphs.character_subgraph import character_subgraph
@@ -49,26 +47,26 @@ from .subgraphs.reflection_subgraph import reflection_subgraph
 def build_tick_graph() -> StateGraph:
     graph = StateGraph(OverallState)
 
-    graph.add_node("phase1_dm_create", dm_create_node)
-    graph.add_node("phase2_world", world_update_node)
-    graph.add_node("phase3_char_decide", character_subgraph)
-    graph.add_node("phase4_engines", engine_subgraph)
-    graph.add_node("phase5_update", state_update_node)
-    graph.add_node("phase6_narrate", dm_narrate_node)
-    graph.add_node("phase7_reflect", reflection_subgraph)
+    graph.add_node("dm_service.dm_create", dm_service.dm_create)
+    graph.add_node("world_service.world_update", world_service.world_update)
+    graph.add_node("character_subgraph", character_subgraph)
+    graph.add_node("engine_subgraph", engine_subgraph)
+    graph.add_node("state_update_service.state_update", state_update_service.state_update)
+    graph.add_node("dm_service.dm_narrate", dm_service.dm_narrate)
+    graph.add_node("reflection_subgraph", reflection_subgraph)
 
-    graph.set_entry_point("phase1_dm_create")
-    graph.add_edge("phase1_dm_create", "phase2_world")
-    graph.add_edge("phase2_world", "phase3_char_decide")
-    graph.add_edge("phase3_char_decide", "phase4_engines")
-    graph.add_edge("phase4_engines", "phase5_update")
-    graph.add_edge("phase5_update", "phase6_narrate")
+    graph.set_entry_point("dm_service.dm_create")
+    graph.add_edge("dm_service.dm_create", "world_service.world_update")
+    graph.add_edge("world_service.world_update", "character_subgraph")
+    graph.add_edge("character_subgraph", "engine_subgraph")
+    graph.add_edge("engine_subgraph", "state_update_service.state_update")
+    graph.add_edge("state_update_service.state_update", "dm_service.dm_narrate")
 
     graph.add_conditional_edges(
-        "phase6_narrate",
-        lambda s: "phase7_reflect" if s.get("needs_reflection") else END,
+        "dm_service.dm_narrate",
+        lambda s: "reflection_subgraph" if s.get("needs_reflection") else END,
     )
-    graph.add_edge("phase7_reflect", END)
+    graph.add_edge("reflection_subgraph", END)
 
     return graph
 
