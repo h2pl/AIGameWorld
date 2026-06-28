@@ -1,7 +1,6 @@
-"""LLM 集成测试 CLI。用法: python -m src.cli_llm (需先配 .env 里的 DEEPSEEK_API_KEY)"""
+"""LLM 集成测试 CLI。用法: python -m src.cli_llm (Zen Proxy 无需 API key)"""
 
 import asyncio
-import os
 
 from src.config import load_config
 from src.llm.llm_client import LLMClient
@@ -10,10 +9,6 @@ from src.engine.orchestrator import Orchestrator
 
 async def test_llm_client() -> None:
     """测试 LLMClient 基础调用."""
-    if not os.environ.get("DEEPSEEK_API_KEY"):
-        print("Skipped: DEEPSEEK_API_KEY not set")
-        return
-
     config = load_config("config.yaml")
     client = LLMClient(config.llm)
     print(f"LLMClient initialized: {len(client._models)} models configured")
@@ -30,10 +25,6 @@ async def test_llm_client() -> None:
 
 async def test_dm_engine() -> None:
     """测试 DM engine + LLM."""
-    if not os.environ.get("DEEPSEEK_API_KEY"):
-        print("Skipped: DEEPSEEK_API_KEY not set")
-        return
-
     config = load_config("config.yaml")
     client = LLMClient(config.llm)
 
@@ -57,10 +48,6 @@ async def test_dm_engine() -> None:
 
 async def test_full_tick_with_llm() -> None:
     """全链路：Graph + LLM."""
-    if not os.environ.get("DEEPSEEK_API_KEY"):
-        print("Skipped: DEEPSEEK_API_KEY not set")
-        return
-
     config = load_config("config.yaml")
     client = LLMClient(config.llm)
 
