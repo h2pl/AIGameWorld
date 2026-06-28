@@ -67,3 +67,22 @@ class ReflectionRequest(BaseModel):
 class SummarizerRequest(BaseModel):
     events: list[dict[str, Any]] = []
     tick: int = 0
+
+
+# === Domain: Story (M4+) ===
+class StoryAdvanceRequest(BaseModel):
+    tick: int = 0
+    narrative: str = ""
+    character_actions: list[dict[str, Any]] = []
+
+
+# === Domain: Item (M8+) ===
+class ItemQueryRequest(BaseModel):
+    item_id: str = ""
+
+
+# === Domain: SceneObject (M8+) ===
+class SceneObjectInteractRequest(BaseModel):
+    object_id: str = ""
+    character_id: str = ""
+    action_type: str = ""

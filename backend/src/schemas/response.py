@@ -6,6 +6,7 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from ..domain.instruction import DMInstruction
     from ..domain.action import Action
+    from ..domain.event import Event
 
 
 # === Phase 1 & 6: DM ===
@@ -27,6 +28,10 @@ class DMNarrateResponse(BaseModel):
 class WorldUpdateResponse(BaseModel):
     events_out: list[dict[str, Any]] = []
 
+    @classmethod
+    def from_entities(cls, events: list[Event]) -> WorldUpdateResponse:
+        return cls(events_out=[e.model_dump() for e in events])
+
 
 # === Phase 3: Character ===
 class PCDecideResponse(BaseModel):
@@ -36,11 +41,7 @@ class PCDecideResponse(BaseModel):
 
     @classmethod
     def from_entity(cls, action: Action) -> PCDecideResponse:
-        return cls(
-            character_id=action.character_id,
-            type=action.action_type,
-            description=action.reasoning,
-        )
+        return cls(character_id=action.character_id, type=action.action_type, description=action.reasoning)
 
 
 class ActorDecideResponse(BaseModel):
@@ -50,11 +51,7 @@ class ActorDecideResponse(BaseModel):
 
     @classmethod
     def from_entity(cls, action: Action) -> ActorDecideResponse:
-        return cls(
-            character_id=action.character_id,
-            type=action.action_type,
-            description=action.reasoning,
-        )
+        return cls(character_id=action.character_id, type=action.action_type, description=action.reasoning)
 
 
 # === Phase 4: Engines ===
@@ -69,5 +66,27 @@ class DialogueResponse(BaseModel):
 
 
 class ExplorationResponse(BaseModel):
+    success: bool | None = None
+    result: dict[str, Any] | None = None
+
+
+# === Domain: Story (M4+) ===
+class StoryAdvanceResponse(BaseModel):
+    arcs_updated: list[dict[str, Any]] = []
+    hooks_resolved: list[str] = []
+    quests_completed: list[dict[str, Any]] = []
+
+
+# === Domain: Item (M8+) ===
+class ItemResponse(BaseModel):
+    id: str = ""
+    name: str = ""
+    item_type: str = ""
+    rarity: str = "common"
+    description: str = ""
+
+
+# === Domain: SceneObject (M8+) ===
+class SceneObjectInteractResponse(BaseModel):
     success: bool | None = None
     result: dict[str, Any] | None = None
