@@ -1,6 +1,6 @@
 """World Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
 
-from ...models.world import WorldInput, WorldOutput
+from ...models.io.world import WorldInput, WorldOutput
 
 
 def execute_instructions(input: WorldInput) -> WorldOutput:

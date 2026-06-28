@@ -1,4 +1,4 @@
-"""Character 模型：Engine 输入 / 输出"""
+"""Character IO：Engine 输入 / 输出"""
 from pydantic import BaseModel
 
 

@@ -1,6 +1,6 @@
 """Character Service: State ↔ Engine adapter."""
 from typing import Any
-from ..models.character import PCDecideInput, ActorDecideInput
+from ..models.io.character import PCDecideInput, ActorDecideInput
 from ..engine.character.pc_decide import pc_decide as _pc_decide
 from ..engine.character.actor_decide import actor_decide as _actor_decide
 from ..graph.state import CharacterSubState

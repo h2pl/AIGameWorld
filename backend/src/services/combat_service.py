@@ -1,6 +1,6 @@
 """Combat Service: State ↔ Engine adapter."""
 from typing import Any
-from ..models.engine import CombatInput
+from ..models.io.engine import CombatInput
 from ..engine.combat.combat import resolve_combat as _resolve_combat
 from ..graph.state import EngineSubState
 

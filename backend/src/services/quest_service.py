@@ -1,6 +1,6 @@
 """Quest Service: State ↔ Engine adapter."""
 from typing import Any
-from ..models.engine import QuestInput
+from ..models.io.engine import QuestInput
 from ..engine.quest.quest import check_quests as _check_quests
 from ..graph.state import EngineSubState
 

@@ -1,6 +1,6 @@
 """Reflection Service: State ↔ Engine adapter."""
 from typing import Any
-from ..models.reflection import ReflectionInput
+from ..models.io.reflection import ReflectionInput
 from ..engine.reflection.reflection import reflect as _reflect
 from ..graph.state import ReflectionSubState
 

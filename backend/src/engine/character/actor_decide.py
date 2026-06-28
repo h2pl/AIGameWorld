@@ -1,6 +1,6 @@
 """Actor Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
 
-from ...models.character import ActorDecideInput, ActorDecideOutput
+from ...models.io.character import ActorDecideInput, ActorDecideOutput
 
 
 def actor_decide(input: ActorDecideInput) -> ActorDecideOutput:

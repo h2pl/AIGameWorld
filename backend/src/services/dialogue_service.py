@@ -1,6 +1,6 @@
 """Dialogue Service: State ↔ Engine adapter."""
 from typing import Any
-from ..models.engine import DialogueInput
+from ..models.io.engine import DialogueInput
 from ..engine.dialogue.dialogue import resolve_dialogue as _resolve_dialogue
 from ..graph.state import EngineSubState
 

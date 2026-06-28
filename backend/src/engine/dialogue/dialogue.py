@@ -1,6 +1,6 @@
 """Dialogue Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
 
-from ...models.engine import DialogueInput, DialogueOutput
+from ...models.io.engine import DialogueInput, DialogueOutput
 
 
 def resolve_dialogue(input: DialogueInput) -> DialogueOutput:

@@ -1,7 +1,7 @@
 """DM Service: State ↔ Engine adapter."""
 from typing import Any
 
-from ..models.dm import DMCreateInput, DMNarrateInput
+from ..models.io.dm import DMCreateInput, DMNarrateInput
 from ..engine.dm.dm import dm_create as _dm_create, dm_narrate as _dm_narrate
 from ..graph.state import OverallState
 

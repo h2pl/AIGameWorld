@@ -1,6 +1,6 @@
 """PC Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
 
-from ...models.character import PCDecideInput, PCDecideOutput
+from ...models.io.character import PCDecideInput, PCDecideOutput
 
 
 def pc_decide(input: PCDecideInput) -> PCDecideOutput:

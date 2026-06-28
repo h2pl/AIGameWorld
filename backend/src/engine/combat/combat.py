@@ -1,6 +1,6 @@
 """Combat Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
 
-from ...models.engine import CombatInput, CombatOutput
+from ...models.io.engine import CombatInput, CombatOutput
 
 
 def resolve_combat(input: CombatInput) -> CombatOutput | None:

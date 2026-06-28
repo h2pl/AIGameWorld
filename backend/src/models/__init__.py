@@ -1,13 +1,29 @@
-"""AIGameWorld 数据模型：Engine 输入 / 输出类型
+"""AIGameWorld 数据模型
 
-Model 层职责: 定义所有跨层共享的数据结构（无依赖 LangGraph / 业务逻辑）
+├── io/                  Engine 输入/输出契约（Service ↔ Engine 的接口类型）
+│   ├── dm.py            DMCreateInput/Output, DMNarrateInput/Output
+│   ├── world.py         WorldInput/Output
+│   ├── character.py     PCDecideInput/Output, ActorDecideInput/Output
+│   ├── engine.py        Combat/Dialogue/Exploration/Quest Input/Output
+│   └── reflection.py    ReflectionInput, SummarizerInput
+│
+├── instruction.py       DM 指令领域模型（DMInstruction, PlotEvent 等）
+├── action.py            角色行动领域模型（Action）
+├── event.py             世界事件领域模型（Event）
+├── story.py             故事领域模型（StoryArc, Quest, StoryHook 等）
+├── item.py              道具领域模型
+├── character.py         角色领域模型
+└── scene_object.py      场景物体领域模型
 """
 
-from .dm import DMCreateInput, DMCreateOutput, DMNarrateInput, DMNarrateOutput
-from .world import WorldInput, WorldOutput
-from .character import PCDecideInput, PCDecideOutput, ActorDecideInput, ActorDecideOutput
-from .engine import CombatInput, CombatOutput, DialogueInput, DialogueOutput, ExplorationInput, ExplorationOutput, QuestInput
-from .reflection import ReflectionInput, SummarizerInput
+from .io import (
+    DMCreateInput, DMCreateOutput, DMNarrateInput, DMNarrateOutput,
+    WorldInput, WorldOutput,
+    PCDecideInput, PCDecideOutput, ActorDecideInput, ActorDecideOutput,
+    CombatInput, CombatOutput, DialogueInput, DialogueOutput,
+    ExplorationInput, ExplorationOutput, QuestInput,
+    ReflectionInput, SummarizerInput,
+)
 
 __all__ = [
     "DMCreateInput", "DMCreateOutput", "DMNarrateInput", "DMNarrateOutput",

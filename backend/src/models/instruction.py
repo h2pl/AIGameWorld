@@ -10,7 +10,7 @@ from typing import Literal, TYPE_CHECKING
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
-    from .dm import DMCreateInput, DMCreateOutput
+    from .io.dm import DMCreateInput, DMCreateOutput
 
 
 class DMInstruction(BaseModel):

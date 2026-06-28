@@ -1,6 +1,6 @@
 """DM Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
 
-from ...models.dm import DMCreateInput, DMCreateOutput, DMNarrateInput, DMNarrateOutput
+from ...models.io.dm import DMCreateInput, DMCreateOutput, DMNarrateInput, DMNarrateOutput
 from ...models.instruction import DMInstruction
 
 

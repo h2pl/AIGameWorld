@@ -1,4 +1,4 @@
-"""World 模型：Engine 输入 / 输出"""
+"""World IO：Engine 输入 / 输出"""
 from typing import Any
 from pydantic import BaseModel
 

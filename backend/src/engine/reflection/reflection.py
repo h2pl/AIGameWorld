@@ -1,6 +1,6 @@
 """Reflection Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
 
-from ...models.reflection import ReflectionInput
+from ...models.io.reflection import ReflectionInput
 
 
 def reflect(input: ReflectionInput) -> str:

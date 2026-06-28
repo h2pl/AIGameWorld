@@ -1,6 +1,6 @@
 """Summarizer Service: State ↔ Engine adapter."""
 from typing import Any
-from ..models.reflection import SummarizerInput
+from ..models.io.reflection import SummarizerInput
 from ..engine.summarizer.summarizer import summarize as _summarize
 from ..graph.state import ReflectionSubState
 

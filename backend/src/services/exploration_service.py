@@ -1,6 +1,6 @@
 """Exploration Service: State ↔ Engine adapter."""
 from typing import Any
-from ..models.engine import ExplorationInput
+from ..models.io.engine import ExplorationInput
 from ..engine.exploration.exploration import resolve_exploration as _resolve_exploration
 from ..graph.state import EngineSubState
 

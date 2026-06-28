@@ -1,6 +1,6 @@
 """World Service: State ↔ Engine adapter."""
 from typing import Any
-from ..models.world import WorldInput
+from ..models.io.world import WorldInput
 from ..engine.world.world import execute_instructions
 from ..graph.state import OverallState
 

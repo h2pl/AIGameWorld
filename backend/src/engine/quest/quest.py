@@ -1,6 +1,6 @@
 """Quest Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
 
-from ...models.engine import QuestInput
+from ...models.io.engine import QuestInput
 
 
 def check_quests(input: QuestInput) -> list[str]:

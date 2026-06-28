@@ -1,6 +1,6 @@
 """Summarizer Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
 
-from ...models.reflection import SummarizerInput
+from ...models.io.reflection import SummarizerInput
 
 
 def summarize(input: SummarizerInput) -> str:
