@@ -27,12 +27,14 @@ def _build_dm_substate(state: OverallState) -> DMSubState:
 def dm_create(state: OverallState) -> dict[str, Any]:
     """Phase 1: DM 创造情境 / DM creates context.
 
-    graph State → DMSubState → dm_create() → graph State keys.
+    ① State → DMSubState
+    ② 调用 Engine
+    ③ 映射回 State key
     产出 / Outputs: dm_instructions, plot_brief, scene_direction
     """
-    sub_state = _build_dm_substate(state)
-    result = _dm_create(sub_state)
-    return {
+    engine_input = _build_dm_substate(state)                        # ①
+    result = _dm_create(engine_input)                               # ②
+    return {                                                        # ③
         "dm_instructions": result.get("instructions_out", []),
         "plot_brief": result.get("plot_brief", ""),
         "scene_direction": result.get("scene_direction", {}),
@@ -42,12 +44,14 @@ def dm_create(state: OverallState) -> dict[str, Any]:
 def dm_narrate(state: OverallState) -> dict[str, Any]:
     """Phase 6: DM 叙事 / DM narrates.
 
-    graph State → DMSubState → dm_narrate() → graph State keys.
+    ① State → DMSubState
+    ② 调用 Engine
+    ③ 映射回 State key
     产出 / Outputs: narrative, needs_reflection
     """
-    sub_state = _build_dm_substate(state)
-    result = _dm_narrate(sub_state)
-    return {
+    engine_input = _build_dm_substate(state)                        # ①
+    result = _dm_narrate(engine_input)                              # ②
+    return {                                                        # ③
         "narrative": result.get("narrative_out", ""),
         "needs_reflection": state.get("tick", 0) % 5 == 0,
     }

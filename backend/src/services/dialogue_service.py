@@ -4,14 +4,24 @@ from ..engine.dialogue.dialogue import resolve_dialogue as _resolve_dialogue
 from ..graph.state import EngineSubState
 
 
+def _to_dialogue_input(state: EngineSubState) -> dict[str, Any]:
+    """① State → Engine 输入"""
+    return {
+        "speaker": state.get("speaker", ""),
+        "target": state.get("target", ""),
+        "intent": state.get("intent", ""),
+    }
+
+
 def dialogue(state: EngineSubState) -> dict[str, Any]:
     """Phase 4: 对话检定 / Dialogue check.
 
+    ① State → Engine 输入
+    ② 调用 Engine
+    ③ 映射回 State key
     产出 / Outputs: engine_results
     """
-    result = _resolve_dialogue(
-        speaker=state.get("speaker", ""),
-        target=state.get("target", ""),
-        intent=state.get("intent", ""),
-    )
-    return {"engine_results": [{"engine": "dialogue", "result": result}]}
+    engine_input = _to_dialogue_input(state)                     # ①
+    result = _resolve_dialogue(**engine_input)                    # ②
+    return {"engine_results": [{"engine": "dialogue", "result": result}]}  # ③
+

@@ -5,39 +5,60 @@ from ..engine.character.actor_decide import actor_decide as _actor_decide
 from ..graph.state import CharacterSubState
 
 
+def _to_pc_input(state: CharacterSubState, pc_id: str) -> dict[str, Any]:
+    """① State → Engine 输入（per-PC）"""
+    return {
+        "pc_id": pc_id,
+        "plot_brief": state.get("plot_brief", ""),
+        "tick": state.get("tick", 0),
+    }
+
+
+def _to_actor_input(state: CharacterSubState, actor_id: str) -> dict[str, Any]:
+    """① State → Engine 输入（per-Actor）"""
+    return {
+        "actor_id": actor_id,
+        "plot_brief": state.get("plot_brief", ""),
+        "tick": state.get("tick", 0),
+    }
+
+
 def pc_decide(state: CharacterSubState) -> dict[str, Any]:
     """Phase 3: 处理所有 featured PC 决策 / All featured PCs decide.
 
-    graph State → [pc_decide()] → graph State keys.
+    ① 遍历 state.scene_direction.featured_pcs → _to_pc_input
+    ② 调用 Engine per-PC
+    ③ 汇总为 character_actions
     产出 / Outputs: character_actions (add reducer)
     """
     direction = state.get("scene_direction", {})
-    plot_brief = state.get("plot_brief", "")
-    tick = state.get("tick", 0)
     actions = []
 
     for pc_id in direction.get("featured_pcs", []):
-        action = _pc_decide(pc_id=pc_id, plot_brief=plot_brief, tick=tick)
+        engine_input = _to_pc_input(state, pc_id)             # ①
+        action = _pc_decide(**engine_input)                    # ②
         if action:
             actions.append(action)
 
-    return {"character_actions": actions}
+    return {"character_actions": actions}                      # ③
 
 
 def actor_decide(state: CharacterSubState) -> dict[str, Any]:
     """Phase 3: 处理所有 featured Actor 决策 / All featured Actors decide.
 
-    graph State → [actor_decide()] → graph State keys.
+    ① 遍历 state.scene_direction.featured_actors → _to_actor_input
+    ② 调用 Engine per-Actor
+    ③ 汇总为 character_actions
     产出 / Outputs: character_actions (add reducer)
     """
     direction = state.get("scene_direction", {})
-    plot_brief = state.get("plot_brief", "")
-    tick = state.get("tick", 0)
     actions = []
 
     for actor_id in direction.get("featured_actors", []):
-        action = _actor_decide(actor_id=actor_id, plot_brief=plot_brief, tick=tick)
+        engine_input = _to_actor_input(state, actor_id)       # ①
+        action = _actor_decide(**engine_input)                 # ②
         if action:
             actions.append(action)
 
-    return {"character_actions": actions}
+    return {"character_actions": actions}                      # ③
+

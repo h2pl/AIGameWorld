@@ -5,16 +5,24 @@ from ..engine.world.world import WorldEngineSubState, execute_instructions
 from ..graph.state import OverallState
 
 
-def world_update(state: OverallState) -> dict[str, Any]:
-    """Phase 2: WorldEngine 执行 DM 指令 / Execute DM instructions.
-
-    graph State → WorldEngineSubState → execute_instructions() → graph State keys.
-    产出 / Outputs: world_events
-    """
-    sub_state: WorldEngineSubState = {
+def _to_world_input(state: OverallState) -> WorldEngineSubState:
+    """① State → Engine 输入"""
+    return {
         "tick": state.get("tick", 0),
         "dm_instructions": state.get("dm_instructions", []),
         "events_out": [],
     }
-    result = execute_instructions(sub_state)
-    return {"world_events": result.get("events_out", [])}
+
+
+def world_update(state: OverallState) -> dict[str, Any]:
+    """Phase 2: WorldEngine 执行 DM 指令 / Execute DM instructions.
+
+    ① State → WorldEngineSubState
+    ② 调用 Engine
+    ③ 映射回 State key
+    产出 / Outputs: world_events
+    """
+    engine_input = _to_world_input(state)       # ①
+    result = execute_instructions(engine_input)  # ②
+    return {"world_events": result.get("events_out", [])}  # ③
+
