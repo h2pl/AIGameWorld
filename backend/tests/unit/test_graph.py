@@ -3,7 +3,9 @@ import pytest
 
 from src.graph.graph import build_tick_graph, OverallState
 from src.services import dm_service, world_service, state_update_service
-from src.graph.subgraphs import character_subgraph, engine_subgraph, reflection_subgraph
+from src.graph.subgraphs.character_subgraph import character_subgraph
+from src.graph.subgraphs.engine_subgraph import engine_subgraph
+from src.graph.subgraphs.reflection_subgraph import reflection_subgraph
 
 
 def test_build_graph_returns_state_graph():
