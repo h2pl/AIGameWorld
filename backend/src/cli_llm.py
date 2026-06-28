@@ -4,8 +4,8 @@ import asyncio
 import os
 
 from src.config import load_config
-from src.agents.llm_client import LLMClient
-from src.agents.dm_agent import DMAgent
+from src.llm.llm_client import LLMClient
+from src.llm.dm_agent import DMAgent
 from src.engine.orchestrator import Orchestrator
 
 
