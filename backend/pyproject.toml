@@ -68,9 +68,4 @@ addopts = "-v --tb=short"           # 详细输出 + 短回溯 / Verbose + short
 [tool.coverage.run]
 source = ["src"]
 
-# === Pyright / Basedpyright 类型检查配置 / Type Check Config ===
-# basic 模式下 Unknown 系规则从 error 降级为 warning/off。
-# 仅显式关闭 langgraph 无类型存根的连锁噪音；自己代码的类型错误仍会被检查。
-[tool.pyright]
-typeCheckingMode = "basic"
-reportMissingTypeStubs = false           # langgraph 无 .pyi 存根
+# Pyright 配置已统一到项目根 pyrightconfig.json
