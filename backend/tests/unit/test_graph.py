@@ -1,8 +1,10 @@
 """测试 TickGraph 7 Phase 主图。"""
+import asyncio
 import pytest
 
 from src.graph.graph import build_tick_graph, OverallState
-from src.services import dm_service, world_service, state_update_service
+from src.services import world_service, state_update_service
+from src.services import dm_service
 from src.graph.subgraphs.character_subgraph import character_subgraph
 from src.graph.subgraphs.engine_subgraph import engine_subgraph
 from src.graph.subgraphs.reflection_subgraph import reflection_subgraph
@@ -43,8 +45,9 @@ def base_state() -> OverallState:
     )
 
 
-def test_phase1_dm_create(base_state):
-    r = dm_service.dm_create(base_state)
+@pytest.mark.asyncio
+async def test_phase1_dm_create(base_state):
+    r = await dm_service.dm_create(base_state)
     assert "dm_instructions" in r
     assert "plot_brief" in r
 
@@ -70,14 +73,16 @@ def test_phase5_state_update(base_state):
     assert "state_diff" in r
 
 
-def test_phase6_narrate(base_state):
+@pytest.mark.asyncio
+async def test_phase6_narrate(base_state):
     base_state["character_actions"] = [{"action": "test"}]
-    r = dm_service.dm_narrate(base_state)
+    r = await dm_service.dm_narrate(base_state)
     assert "narrative" in r
     assert "needs_reflection" in r
 
 
-def test_phase6_reflection_trigger():
+@pytest.mark.asyncio
+async def test_phase6_reflection_trigger():
     state = OverallState(
         tick=5,
         dm_instructions=[], plot_brief="Test", scene_direction={},
@@ -86,11 +91,12 @@ def test_phase6_reflection_trigger():
         narrative="", reflected_characters=[], summary_compressed=False,
         errors=[], needs_reflection=False,
     )
-    r = dm_service.dm_narrate(state)
+    r = await dm_service.dm_narrate(state)
     assert r["needs_reflection"] is True
 
 
-def test_phase6_no_reflection_low_tick():
+@pytest.mark.asyncio
+async def test_phase6_no_reflection_low_tick():
     state = OverallState(
         tick=1,
         dm_instructions=[], plot_brief="Test", scene_direction={},
@@ -99,7 +105,7 @@ def test_phase6_no_reflection_low_tick():
         narrative="", reflected_characters=[], summary_compressed=False,
         errors=[], needs_reflection=False,
     )
-    r = dm_service.dm_narrate(state)
+    r = await dm_service.dm_narrate(state)
     assert r["needs_reflection"] is False
 
 
