@@ -1,18 +1,18 @@
-"""agents/ 单元测试——LLMClient + DMAgent mock."""
+"""agents/ 单元测试——LLMClient + DMLlm mock."""
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.schemas.llm_output import DMOutput, DMNarrativeSchema, SceneDirectionOutput
 
 
-class TestDMAgent:
-    """DMAgent create_situation + narrate 测试（mock LLM）."""
+class TestDMLlm:
+    """DMLlm create_situation + narrate 测试（mock LLM）."""
 
     @pytest.mark.asyncio
     async def test_create_situation_mock(self):
-        from src.llm.dm_agent import DMAgent
+        from src.llm.dm_llm import DMLlm
 
-        agent = DMAgent(AsyncMock())
+        agent = DMLlm(AsyncMock())
         result = await agent.create_situation(plot_brief_prev="Prev plot.")
 
         assert "plot_brief" in result
@@ -21,7 +21,7 @@ class TestDMAgent:
 
     @pytest.mark.asyncio
     async def test_create_situation_with_llm(self):
-        from src.llm.dm_agent import DMAgent, _DM_SYSTEM_PROMPT
+        from src.llm.dm_llm import DMLlm, _DM_SYSTEM_PROMPT
 
         llm = MagicMock()
         expected = DMOutput(
@@ -32,7 +32,7 @@ class TestDMAgent:
             ),
         )
         llm.call_structured = AsyncMock(return_value=expected)
-        agent = DMAgent(llm)
+        agent = DMLlm(llm)
 
         result = await agent.create_situation(plot_brief_prev="Camping.")
 
@@ -43,11 +43,11 @@ class TestDMAgent:
 
     @pytest.mark.asyncio
     async def test_create_situation_llm_fails_fallback(self):
-        from src.llm.dm_agent import DMAgent
+        from src.llm.dm_llm import DMLlm
 
         llm = MagicMock()
         llm.call_structured = AsyncMock(return_value=None)
-        agent = DMAgent(llm)
+        agent = DMLlm(llm)
 
         result = await agent.create_situation(plot_brief_prev="Test")
 
@@ -56,9 +56,9 @@ class TestDMAgent:
 
     @pytest.mark.asyncio
     async def test_narrate_mock(self):
-        from src.llm.dm_agent import DMAgent
+        from src.llm.dm_llm import DMLlm
 
-        agent = DMAgent(AsyncMock())
+        agent = DMLlm(AsyncMock())
         result = await agent.narrate(plot_brief="Test", character_actions=[])
 
         assert "narrative" in result
@@ -67,12 +67,12 @@ class TestDMAgent:
 
     @pytest.mark.asyncio
     async def test_narrate_with_llm(self):
-        from src.llm.dm_agent import DMAgent
+        from src.llm.dm_llm import DMLlm
 
         llm = MagicMock()
         expected = DMNarrativeSchema(narrative="The party fights bravely.")
         llm.call_structured = AsyncMock(return_value=expected)
-        agent = DMAgent(llm)
+        agent = DMLlm(llm)
 
         result = await agent.narrate(
             plot_brief="A fight breaks out.",
@@ -85,7 +85,7 @@ class TestDMAgent:
     @pytest.mark.asyncio
     async def test_system_prompt_loaded(self):
         """§5.4 System Prompt 不为空."""
-        from src.llm.dm_agent import _DM_SYSTEM_PROMPT
+        from src.llm.dm_llm import _DM_SYSTEM_PROMPT
 
         assert "Dungeon Master" in _DM_SYSTEM_PROMPT
         assert "不扮演任何角色" in _DM_SYSTEM_PROMPT
@@ -97,7 +97,7 @@ class TestDMSafety:
     @pytest.mark.asyncio
     async def test_dm_does_not_write_character_dialogue(self):
         """DM 不得写角色对话."""
-        from src.llm.dm_agent import _DM_SYSTEM_PROMPT
+        from src.llm.dm_llm import _DM_SYSTEM_PROMPT
 
         assert "不写角色的对话内容" in _DM_SYSTEM_PROMPT
         assert "不扮演任何角色" in _DM_SYSTEM_PROMPT
@@ -106,9 +106,9 @@ class TestDMSafety:
     @pytest.mark.asyncio
     async def test_dm_fallback_does_not_write_dialogue(self):
         """降级输出不得含角色对话引导."""
-        from src.llm.dm_agent import DMAgent, _DM_SYSTEM_PROMPT
+        from src.llm.dm_llm import DMLlm, _DM_SYSTEM_PROMPT
 
-        agent = DMAgent(AsyncMock())
+        agent = DMLlm(AsyncMock())
         result = await agent.create_situation(plot_brief_prev="")
 
         # 降级 plot_brief 不含对话引导符（引号/冒号+说话）
@@ -119,7 +119,7 @@ class TestDMSafety:
     @pytest.mark.asyncio
     async def test_dm_output_has_no_action_decisions(self):
         """DM instruction 不含角色行为决策."""
-        from src.llm.dm_agent import DMAgent
+        from src.llm.dm_llm import DMLlm
 
         llm = AsyncMock()
         from src.schemas.llm_output import DMOutput, SceneDirectionOutput
@@ -128,7 +128,7 @@ class TestDMSafety:
             scene_direction=SceneDirectionOutput(featured_pcs=[], featured_actors=[]),
             instructions=[],
         ))
-        agent = DMAgent(llm)
+        agent = DMLlm(llm)
         result = await agent.create_situation()
 
         # DM 指定了参演人员但不决定他们做什么

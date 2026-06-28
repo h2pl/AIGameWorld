@@ -5,7 +5,7 @@ import os
 
 from src.config import load_config
 from src.llm.llm_client import LLMClient
-from src.llm.dm_agent import DMAgent
+from src.llm.dm_llm import DMLlm
 from src.engine.orchestrator import Orchestrator
 
 
@@ -30,15 +30,15 @@ async def test_llm_client() -> None:
     print("✅ LLMClient works!")
 
 
-async def test_dm_agent() -> None:
-    """测试 DMAgent 创造情境 + 叙事."""
+async def test_dm_llm() -> None:
+    """测试 DMLlm 创造情境 + 叙事."""
     if not os.environ.get("DEEPSEEK_API_KEY"):
-        print("❌ 未设置 DEEPSEEK_API_KEY，跳过 DMAgent 测试。")
+        print("❌ 未设置 DEEPSEEK_API_KEY，跳过 DMLlm 测试。")
         return
 
     config = load_config("config.yaml")
     client = LLMClient(config.llm)
-    agent = DMAgent(client)
+    agent = DMLlm(client)
 
     # 测试创造情境
     print("\n--- create_situation ---")
@@ -57,7 +57,7 @@ async def test_dm_agent() -> None:
         character_actions=actions,
     )
     print(f"  narrative: {result2['narrative'][:200]}")
-    print("✅ DMAgent works!")
+    print("✅ DMLlm works!")
 
 
 async def test_full_tick_with_llm() -> None:
@@ -68,10 +68,10 @@ async def test_full_tick_with_llm() -> None:
 
     config = load_config("config.yaml")
     client = LLMClient(config.llm)
-    agent = DMAgent(client)
+    agent = DMLlm(client)
 
-    orch = Orchestrator(dm_agent=agent)
-    print("Orchestrator with DMAgent initialized. Running 1 tick...\n")
+    orch = Orchestrator(dm_llm=agent)
+    print("Orchestrator with DMLlm initialized. Running 1 tick...\n")
 
     result = await orch.run_tick()
     print(f"[Tick {result['tick']}]")
@@ -85,7 +85,7 @@ def main() -> None:
     import argparse
     parser = argparse.ArgumentParser(description="LLM 集成测试")
     parser.add_argument("--client", action="store_true", help="Test LLMClient only")
-    parser.add_argument("--agent", action="store_true", help="Test DMAgent")
+    parser.add_argument("--agent", action="store_true", help="Test DMLlm")
     parser.add_argument("--tick", action="store_true", help="Test full tick with LLM")
     parser.add_argument("--all", action="store_true", help="Test everything")
 
@@ -95,7 +95,7 @@ def main() -> None:
     if run_all or args.client:
         asyncio.run(test_llm_client())
     if run_all or args.agent:
-        asyncio.run(test_dm_agent())
+        asyncio.run(test_dm_llm())
     if run_all or args.tick:
         asyncio.run(test_full_tick_with_llm())
 

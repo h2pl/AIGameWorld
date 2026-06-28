@@ -26,7 +26,7 @@ _DM_SYSTEM_PROMPT = """你是 AIGameWorld 的 DM（Dungeon Master），负责一
 - 你创造情境，角色自己决定如何应对"""
 
 
-class DMAgent:
+class DMLlm:
     """DM Agent——情境创造 + 叙事渲染。per §5.3."""
 
     def __init__(self, llm_client: LLMClient):

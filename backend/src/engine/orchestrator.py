@@ -15,7 +15,7 @@ class Orchestrator:
         self,
         session_id: str = "default",
         checkpointer: BaseCheckpointSaver | None = None,
-        dm_agent: Any = None,
+        dm_llm: Any = None,
         reflection_interval: int = 5,
     ):
         self._graph = build_tick_graph()
@@ -23,7 +23,7 @@ class Orchestrator:
         self._app = self._graph.compile(checkpointer=self._checkpointer)
         self._tick = 0
         self._config = {"configurable": {"thread_id": session_id}}
-        self._dm_agent = dm_agent
+        self._dm_llm = dm_llm
         self._reflection_interval = reflection_interval
 
     @property
@@ -54,8 +54,8 @@ class Orchestrator:
         initial_state["tick"] = self._tick
 
         config = {**self._config}
-        if self._dm_agent:
-            config["configurable"]["dm_agent"] = self._dm_agent
+        if self._dm_llm:
+            config["configurable"]["dm_llm"] = self._dm_llm
             config["configurable"]["reflection_interval"] = self._reflection_interval
 
         result = await self._app.ainvoke(initial_state, config)

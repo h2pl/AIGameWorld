@@ -1,4 +1,4 @@
-"""DM Engine: mock 或 DMAgent 驱动."""
+"""DM Engine: mock 或 DMLlm 驱动."""
 
 from typing import Any
 
@@ -19,7 +19,7 @@ async def dm_create(
     req: DMCreateRequest,
     agent: Any = None,
 ) -> DMCreateResponse:
-    """Phase 1: DM 创造情境。agent 提供时走 DMAgent，否则走 mock."""
+    """Phase 1: DM 创造情境。agent 提供时走 DMLlm，否则走 mock."""
     if agent is not None:
         result = await agent.create_situation(plot_brief_prev=req.plot_brief)
         direction = SceneDirection(
@@ -39,7 +39,7 @@ async def dm_narrate(
     req: DMNarrateRequest,
     agent: Any = None,
 ) -> DMNarrateResponse:
-    """Phase 6: DM 叙事。agent 提供时走 DMAgent，否则走 mock."""
+    """Phase 6: DM 叙事。agent 提供时走 DMLlm，否则走 mock."""
     if agent is not None:
         result = await agent.narrate(
             plot_brief=req.plot_brief,

@@ -1,4 +1,4 @@
-"""LLM 客户端 + DMAgent 单元测试。per design/04-agent-layer.md §13 + 06-llm-dev-guide.md."""
+"""LLM 客户端 + DMLlm 单元测试。per design/04-agent-layer.md §13 + 06-llm-dev-guide.md."""
 
 import pytest
 
