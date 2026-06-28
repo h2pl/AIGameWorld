@@ -1,5 +1,4 @@
-"""Agent 层——DM/PC/Actor + LLM + 记忆 + RAG."""
+"""LLM 基础设施——客户端 + Prompts."""
 from .llm_client import LLMClient
-from .dm_llm import DMLlm
 
-__all__ = ["LLMClient", "DMLlm"]
+__all__ = ["LLMClient"]

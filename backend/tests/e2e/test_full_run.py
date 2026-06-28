@@ -22,7 +22,7 @@ class TestFullTickRun:
     @pytest.mark.asyncio
     async def test_5_ticks_with_agent_mock(self):
         """5 步 + mock DMLlm——验证 LLM 链路不崩溃."""
-        from src.llm.dm_llm import DMLlm
+        from src.engine.dm.dm_llm import DMLlm
         from src.schemas.llm_output import DMOutput, DMNarrativeSchema
 
         llm = AsyncMock()

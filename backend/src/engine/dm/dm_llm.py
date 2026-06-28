@@ -6,8 +6,8 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from .llm_client import LLMClient
-from ..schemas.llm_output import DMOutput, DMNarrativeSchema, SceneDirectionOutput
+from ...llm.llm_client import LLMClient
+from ...schemas.llm_output import DMOutput, DMNarrativeSchema, SceneDirectionOutput
 
 logger = logging.getLogger(__name__)
 

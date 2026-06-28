@@ -5,7 +5,7 @@ import os
 
 from src.config import load_config
 from src.llm.llm_client import LLMClient
-from src.llm.dm_llm import DMLlm
+from src.engine.dm.dm_llm import DMLlm
 from src.engine.orchestrator import Orchestrator
 
 
