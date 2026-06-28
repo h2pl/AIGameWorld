@@ -1,13 +1,13 @@
 """Exploration Service: State ↔ Engine adapter."""
-from typing import Any
+
 from ..schemas.request import ExplorationRequest
-from ..engine.exploration.exploration import resolve_exploration as _resolve_exploration
+from ..engine.exploration import exploration as exploration_engine
 from ..graph.state import EngineSubState
 
 
-def exploration(state: EngineSubState) -> dict[str, Any]:
+def exploration(state: EngineSubState) -> dict:
     """Phase 4: 探索检定."""
-    result = _resolve_exploration(ExplorationRequest(
+    result = exploration_engine.resolve_exploration(ExplorationRequest(
         character_id=state.get("character_id", ""),
         action_type=state.get("action_type", ""),
     ))

@@ -1,13 +1,13 @@
 """Dialogue Service: State ↔ Engine adapter."""
-from typing import Any
+
 from ..schemas.request import DialogueRequest
-from ..engine.dialogue.dialogue import resolve_dialogue as _resolve_dialogue
+from ..engine.dialogue import dialogue as dialogue_engine
 from ..graph.state import EngineSubState
 
 
-def dialogue(state: EngineSubState) -> dict[str, Any]:
+def dialogue(state: EngineSubState) -> dict:
     """Phase 4: 对话检定."""
-    result = _resolve_dialogue(DialogueRequest(
+    result = dialogue_engine.resolve_dialogue(DialogueRequest(
         speaker=state.get("speaker", ""),
         target=state.get("target", ""),
         intent=state.get("intent", ""),

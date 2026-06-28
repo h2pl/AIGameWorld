@@ -1,13 +1,13 @@
 """World Service: State ↔ Engine adapter."""
-from typing import Any
+
 from ..schemas.request import WorldUpdateRequest
-from ..engine.world.world import execute_instructions
+from ..engine.world import world as world_engine
 from ..graph.state import OverallState
 
 
-def world_update(state: OverallState) -> dict[str, Any]:
+def world_update(state: OverallState) -> dict:
     """Phase 2: WorldEngine 执行 DM 指令."""
-    result = execute_instructions(WorldUpdateRequest(
+    result = world_engine.execute_instructions(WorldUpdateRequest(
         tick=state.get("tick", 0),
         dm_instructions=state.get("dm_instructions", []),
     ))

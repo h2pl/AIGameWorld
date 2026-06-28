@@ -1,13 +1,13 @@
 """Quest Service: State ↔ Engine adapter."""
-from typing import Any
+
 from ..schemas.request import QuestRequest
-from ..engine.quest.quest import check_quests as _check_quests
+from ..engine.quest import quest as quest_engine
 from ..graph.state import EngineSubState
 
 
-def quest(state: EngineSubState) -> dict[str, Any]:
+def quest(state: EngineSubState) -> dict:
     """Phase 4: 任务检查."""
-    result = _check_quests(QuestRequest(
+    result = quest_engine.check_quests(QuestRequest(
         quests=state.get("quests", []),
         event_log=state.get("event_log", []),
     ))

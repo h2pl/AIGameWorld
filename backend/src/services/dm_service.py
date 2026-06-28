@@ -1,13 +1,13 @@
 """DM Service: State ↔ Engine adapter."""
 
 from ..schemas.request import DMCreateRequest, DMNarrateRequest
-from ..engine.dm.dm import dm_create as _dm_create, dm_narrate as _dm_narrate
+from ..engine.dm import dm as dm_engine
 from ..graph.state import OverallState
 
 
 async def dm_create(state: OverallState, agent=None) -> dict:
     """Phase 1: DM 创造情境."""
-    result = await _dm_create(
+    result = await dm_engine.dm_create(
         DMCreateRequest(tick=state.get("tick", 0), plot_brief=state.get("plot_brief", "")),
         agent=agent,
     )
@@ -20,7 +20,7 @@ async def dm_create(state: OverallState, agent=None) -> dict:
 
 async def dm_narrate(state: OverallState, agent=None, reflection_interval: int = 5) -> dict:
     """Phase 6: DM 叙事."""
-    result = await _dm_narrate(
+    result = await dm_engine.dm_narrate(
         DMNarrateRequest(
             tick=state.get("tick", 0),
             plot_brief=state.get("plot_brief", ""),
