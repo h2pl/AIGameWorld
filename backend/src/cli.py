@@ -11,22 +11,33 @@ from src.engine.orchestrator import Orchestrator
 
 async def run_ticks(n: int) -> None:
     orch = Orchestrator()
+    print("Phase 1 — Tick Loop Demo (全部 Engine Mock)")
+    print(f"Running {n} tick(s)...\n")
+
     for i in range(n):
         result = await orch.run_tick()
         tick = result["tick"]
         narrative = result.get("narrative", "")
-        actions = result.get("events", [])
+        events = result.get("events", [])
+        actions = result.get("character_actions", [])
         errors = result.get("errors", [])
 
-        print(f"\n{'='*60}")
+        print(f"{'='*60}")
         print(f"[Tick {tick}]")
         if narrative:
             print(f"  📖 {narrative}")
-        for action in actions[:5]:
-            print(f"  ⚡ {action}")
+        for a in actions:
+            cid = a.get("character_id", "?")
+            atype = a.get("type", "?")
+            desc = a.get("description", "")
+            print(f"  🎭 {cid}({atype}): {desc}")
+        for ev in events:
+            print(f"  ⚡ {ev.get('type','?')}: {ev.get('description','')}")
         if errors:
             print(f"  ❌ Errors: {errors}")
-        print(f"{'='*60}")
+
+    print(f"{'='*60}")
+    print(f"Done. {n} tick(s) completed.")
 
 
 def main() -> None:

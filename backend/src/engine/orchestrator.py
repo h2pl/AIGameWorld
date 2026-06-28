@@ -81,6 +81,7 @@ class Orchestrator:
             "tick": result["tick"],
             "narrative": result.get("narrative", ""),
             "events": result.get("world_events", []),
+            "character_actions": result.get("character_actions", []),
             "errors": result.get("errors", []),
         }
 
