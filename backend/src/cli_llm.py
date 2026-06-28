@@ -9,7 +9,7 @@ from src.engine.orchestrator import Orchestrator
 
 async def test_llm_client() -> None:
     """测试 LLMClient 基础调用."""
-    config = load_config("config.yaml")
+    config = load_config("../config.yaml")
     client = LLMClient(config.llm)
     print(f"LLMClient initialized: {len(client._models)} models configured")
 
@@ -25,7 +25,7 @@ async def test_llm_client() -> None:
 
 async def test_dm_engine() -> None:
     """测试 DM engine + LLM."""
-    config = load_config("config.yaml")
+    config = load_config("../config.yaml")
     client = LLMClient(config.llm)
 
     from src.engine.dm.dm import dm_create, dm_narrate
@@ -48,7 +48,7 @@ async def test_dm_engine() -> None:
 
 async def test_full_tick_with_llm() -> None:
     """全链路：Graph + LLM."""
-    config = load_config("config.yaml")
+    config = load_config("../config.yaml")
     client = LLMClient(config.llm)
 
     orch = Orchestrator(llm=client)
