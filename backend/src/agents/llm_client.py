@@ -8,8 +8,13 @@ from typing import Callable
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
 from pydantic import BaseModel
+
+try:
+    from langchain_anthropic import ChatAnthropic
+    _HAS_ANTHROPIC = True
+except ImportError:
+    _HAS_ANTHROPIC = False
 
 from ..config import LLMConfig, LLMModelConfig
 
@@ -32,7 +37,7 @@ def _build_fallback_model(cfg: LLMModelConfig, fallback_base_url: str | None, ap
         return None
     # 如果有 Anthropic 降级 provider，用 Claude
     fallback_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-    if fallback_base_url and fallback_key:
+    if _HAS_ANTHROPIC and fallback_base_url and fallback_key:
         return ChatAnthropic(
             model=cfg.fallback_model,
             temperature=cfg.temperature,
