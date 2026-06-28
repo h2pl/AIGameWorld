@@ -1,31 +1,33 @@
-"""TickGraph 主图：7 Phase StateGraph 编排 — 纯子图连线，零 wrapper。
+"""TickGraph 主图：7 Phase 编排 — node + subgraph 混合。
 
-基于 design/03-orchestration-layer.md §5 / Based on orchestration layer design.
-全部 7 个 Phase 以 subgraph-as-node 挂载，主图不含任何业务逻辑。
+Phase 1/2/5/6: plain node（单步），Phase 3/4/7: subgraph（多步协调）。
 """
 
 from langgraph.graph import StateGraph, END
 
 from .state import OverallState
 
-from .subgraphs.dm_subgraph import dm_create_subgraph, dm_narrate_subgraph
-from .subgraphs.world_subgraph import world_subgraph
+# Phase 1/2/5/6: plain node — 单步读 State → 调 Service → 写 State
+from ..nodes.dm_nodes import dm_create_node, dm_narrate_node
+from ..nodes.world_nodes import world_update_node
+from ..nodes.state_update_nodes import state_update_node
+
+# Phase 3/4/7: subgraph — 含内部协调逻辑
 from .subgraphs.character_coordinator import character_coordinator_subgraph
 from .subgraphs.engine_router import engine_router_subgraph
-from .subgraphs.state_update_subgraph import state_update_subgraph
 from .subgraphs.reflection_coordinator import reflection_coordinator_subgraph
 
 
 def build_tick_graph() -> StateGraph:
-    """构建 7 Phase TickGraph — 全部子图作为节点。"""
+    """构建 7 Phase TickGraph。"""
     graph = StateGraph(OverallState)
 
-    graph.add_node("phase1_dm_create", dm_create_subgraph)
-    graph.add_node("phase2_world", world_subgraph)
+    graph.add_node("phase1_dm_create", dm_create_node)
+    graph.add_node("phase2_world", world_update_node)
     graph.add_node("phase3_char_decide", character_coordinator_subgraph)
     graph.add_node("phase4_engines", engine_router_subgraph)
-    graph.add_node("phase5_update", state_update_subgraph)
-    graph.add_node("phase6_narrate", dm_narrate_subgraph)
+    graph.add_node("phase5_update", state_update_node)
+    graph.add_node("phase6_narrate", dm_narrate_node)
     graph.add_node("phase7_reflect", reflection_coordinator_subgraph)
 
     graph.set_entry_point("phase1_dm_create")
