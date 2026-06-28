@@ -12,7 +12,7 @@ class DMCreateRequest(BaseModel):
 class DMNarrateRequest(BaseModel):
     tick: int = 0
     plot_brief: str = ""
-    dm_instructions: list[dict[str, Any]] = []
+    dm_instructions: list[str] = []
     scene_direction: dict[str, Any] = {}
     character_actions: list[dict[str, Any]] = []
 
@@ -20,7 +20,7 @@ class DMNarrateRequest(BaseModel):
 # === Phase 2: World ===
 class WorldUpdateRequest(BaseModel):
     tick: int = 0
-    dm_instructions: list[dict[str, Any]] = []
+    dm_instructions: list[str] = []
 
 
 # === Phase 3: Character ===

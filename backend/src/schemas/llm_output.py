@@ -20,7 +20,7 @@ class BranchPoint(BaseModel):
 
 class DMOutput(BaseModel):
     """DM 创造情境输出。per §5.4."""
-    instructions: list[dict] = Field(default_factory=list)
+    instructions: list[str] = Field(default_factory=list, description="玩家可执行的行动建议")
     plot_brief: str = Field(description="本步剧情梗概（2-3句）")
     scene_direction: SceneDirectionOutput = Field(default_factory=SceneDirectionOutput)
 

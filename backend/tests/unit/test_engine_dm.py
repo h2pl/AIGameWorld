@@ -15,7 +15,7 @@ class TestDMCreate:
         llm.call_structured = AsyncMock(return_value=DMOutput(
             plot_brief="LLM plot",
             scene_direction=SceneDirectionOutput(featured_pcs=["garret"], featured_actors=[]),
-            instructions=[{"type": "test"}],
+            instructions=["测试指令"],
         ))
         result = await dm_engine.dm_create(DMCreateRequest(tick=1, plot_brief=""), llm)
         assert result.plot_brief == "LLM plot"

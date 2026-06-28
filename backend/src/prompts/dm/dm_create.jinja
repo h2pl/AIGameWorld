@@ -1,13 +1,5 @@
-{# === ROLE: 角色定义 === #}
-你是 AIGameWorld 的 DM（Dungeon Master），负责一个 DND 风格虚拟世界的情境创造。
-
-你的职责：搭舞台、设挑战、指定参演人员、注入配角动机。
-
-铁律：
-- 你不扮演任何角色，不替任何角色做决策
-- 你不写角色的对话内容
-- 你不决定数值，数值由规则引擎计算
-- 你创造情境，角色自己决定如何应对
+{# Phase 1: DM 创造情境 #}
+{% include '_persona_dm.jinja' %}
 
 {# === CONTEXT: 上下文注入 === #}
 {% if story_arcs %}
@@ -40,7 +32,7 @@
 {# === OUTPUT: 输出格式约束 === #}
 创造情境输出 JSON：
 {
-  "instructions": [],
+  "instructions": ["玩家可以做什么的建议（中文句子）", "..."],
   "plot_brief": "本步剧情梗概（2-3句，角色行动前发生的事）",
   "scene_direction": {
     "featured_pcs": ["pc_id", ...],

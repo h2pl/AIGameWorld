@@ -17,7 +17,7 @@ async def test_session_isolation():
 
     state_a = OverallState(
         tick=0,
-        dm_instructions=[{"type": "create", "content": "A"}],
+        dm_instructions=["探索酒馆，寻找线索"],
         plot_brief="",
         scene_direction={},
         world_events=[],
@@ -34,7 +34,7 @@ async def test_session_isolation():
     )
     state_b = OverallState(
         tick=0,
-        dm_instructions=[{"type": "create", "content": "B"}],
+        dm_instructions=["与酒保交谈打听消息"],
         plot_brief="",
         scene_direction={},
         world_events=[],
@@ -68,7 +68,7 @@ async def test_history_available_after_tick():
     orch = Orchestrator(session_id="history-test")
     state = OverallState(
         tick=0,
-        dm_instructions=[{"type": "create", "content": "test"}],
+        dm_instructions=["测试指令"],
         plot_brief="",
         scene_direction={},
         world_events=[],

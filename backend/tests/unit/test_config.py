@@ -39,4 +39,4 @@ def test_model_can_override_base_url():
 def test_config_observability():
     """Observability config should load Langfuse settings."""
     config = load_config(CONFIG_PATH)
-    assert config.observability.langfuse.enabled is True
+    assert config.observability.langfuse.enabled is False

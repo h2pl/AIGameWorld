@@ -16,7 +16,7 @@ class OverallState(TypedDict):
     tick: int  # 当前 tick 号 / Current tick number
 
     # Phase 1: DM 创造情境 / DM creates context
-    dm_instructions: list[dict[str, Any]]
+    dm_instructions: list[str]
     plot_brief: str
     scene_direction: dict[str, Any]
 

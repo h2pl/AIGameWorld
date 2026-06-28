@@ -1,48 +1,54 @@
 # AIGameWorld 主配置文件 / Main configuration file
-# 所有 LLM API Key 通过环境变量注入，不写在此文件中 / API keys via env vars
+# 切换 LLM Provider：设置环境变量 LLM_PROVIDER=glm|deepseek|zen-proxy，或改 llm_provider 字段
 
 # === 服务器 / Server ===
 server:
-  host: "0.0.0.0"                    # 监听地址 / Listen address
-  port: 8000                          # 端口 / Port
+  host: "0.0.0.0"
+  port: 8000
 
 # === 世界 / World ===
 world:
-  default_pack: "forgotten_realms"    # 默认 Pack 名称 / Default pack name
+  default_pack: "forgotten_realms"
 
-# === LLM 配置 / LLM Configuration ===
-# 支持 OpenAI-compatible API：DeepSeek / GLM / ZenProxy
-# API Key 通过环境变量注入：DEEPSEEK_API_KEY / GLM_API_KEY / ANTHROPIC_API_KEY
-llm:
-  providers:
-    primary:                          # Zen Proxy 本地代理（端口 6446，无需 API key）
-      type: "openai"
-      base_url: "http://localhost:6446/v1"
+# === LLM Provider 配置（只管"连到哪"）===
+llm_provider: "zen-proxy"             # 默认 provider，环境变量 LLM_PROVIDER 可覆盖
 
+llm_providers:
+  zen-proxy:
+    base_url: "http://localhost:6446/v1"
+    api_key_env: "DEEPSEEK_API_KEY"
+    client_backend: "requests"            # Zen Proxy 用 requests（httpx 不兼容）
+  glm:
+    base_url: "https://open.bigmodel.cn/api/paas/v4"
+    api_key_env: "GLM_API_KEY"
+    client_backend: "langchain"
+  deepseek:
+    base_url: "https://api.deepseek.com/v1"
+    api_key_env: "DEEPSEEK_API_KEY"
+    client_backend: "langchain"
+
+# === LLM Purpose 配置（只管"怎么调"，只写一份，不随 provider 切换而改动）===
+llm_purposes:
   dm_create:
-    model: "deepseek-v4-flash-free"
+    model: "deepseek-v4-flash-free"       # 切换 provider 时需改模型名
     temperature: 0.9
-    timeout: 15
+    timeout: 20
     retries: 1
-
   dm_narrate:
     model: "deepseek-v4-flash-free"
     temperature: 0.8
-    timeout: 10
+    timeout: 30
     retries: 1
-
   pc_decision:
     model: "deepseek-v4-flash-free"
     temperature: 0.7
     timeout: 10
     retries: 1
-
   actor_decision:
     model: "deepseek-v4-flash-free"
     temperature: 0.7
     timeout: 8
     retries: 1
-
   reflection:
     model: "deepseek-v4-flash-free"
     temperature: 0.5
@@ -51,17 +57,16 @@ llm:
 
 # === 数据库 / Database ===
 database:
-  sqlite_path: "data/world.db"        # SQLite 数据库路径 / SQLite path
-  chroma_path: "data/chroma/"         # ChromaDB 数据目录 / ChromaDB data dir
+  sqlite_path: "data/world.db"
+  chroma_path: "data/chroma/"
 
 # === 自动运行 / Auto Run ===
 auto_run:
-  default_interval: 2000              # 默认 tick 间隔（毫秒）/ Default tick interval (ms)
+  default_interval: 2000
+  reflection_interval: 5
 
 # === 可观测性 / Observability ===
 observability:
   langfuse:
-    enabled: true                     # 启用 Langfuse Tracing / Enable Langfuse
-    # 环境变量：LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_BASE_URL
-    # 自托管时 base_url 指向 Docker 部署的 Langfuse / Self-hosted base_url → Docker
+    enabled: false
     tracing_environment: "development"

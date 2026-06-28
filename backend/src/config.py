@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import yaml
@@ -11,8 +12,9 @@ from pydantic_settings import BaseSettings
 
 class ProviderConfig(BaseModel):
     """LLM 提供商配置 / LLM provider configuration."""
-    type: str  # "deepseek" | "anthropic"
+    type: str  # "deepseek" | "anthropic" | "openai"
     base_url: str | None = None
+    api_key_env: str = "DEEPSEEK_API_KEY"  # 从哪个环境变量读取 API key
 
 
 class ProvidersConfig(BaseModel):
@@ -25,6 +27,7 @@ class LLMModelConfig(BaseModel):
     """单 LLM 用途的模型配置 / Single LLM purpose model config."""
     model: str                          # 模型名 / Model name
     base_url: str | None = None         # 覆盖 provider base_url（ZenProxy/GLM等）/ Override base_url
+    client_backend: str = "langchain"   # 客户端后端：langchain(ChatOpenAI) | requests(RequestsChatModel)
     fallback_model: str | None = None   # 降级模型 / Fallback model
     temperature: float                  # 温度 / Temperature
     timeout: int                        # 超时（秒）/ Timeout in seconds
@@ -87,12 +90,30 @@ class Config(BaseSettings):
 
     @classmethod
     def from_yaml(cls, path: str = "config.yaml") -> Config:
-        """从 config.yaml 加载配置 / Load config from config.yaml."""
+        """从 config.yaml 加载配置，provider + purposes 分离合并."""
         config_path = Path(path)
         if not config_path.exists():
             raise FileNotFoundError(f"Config file not found: {path}")
         with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
+
+        # 选择 provider（环境变量 LLM_PROVIDER > yaml llm_provider）
+        providers = data.pop("llm_providers", None)
+        purposes = data.pop("llm_purposes", None)
+        yaml_provider = data.pop("llm_provider", None)
+        if providers and purposes:
+            provider_name = os.environ.get("LLM_PROVIDER") or yaml_provider
+            if not provider_name or provider_name not in providers:
+                available = ", ".join(providers.keys())
+                raise ValueError(f"LLM provider '{provider_name}' not found. Available: {available}")
+            provider = providers[provider_name]
+            backend = provider.pop("client_backend", "langchain")
+            # 组装 llm 配置：provider 的 client_backend 注入每个 purpose
+            data["llm"] = {
+                "providers": {"primary": {"type": "openai", **provider}},
+                **{k: {**v, "client_backend": backend} for k, v in purposes.items()},
+            }
+            print(f"[Config] LLM provider: {provider_name}")
         return cls(**data)
 
 

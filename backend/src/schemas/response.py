@@ -1,7 +1,7 @@
 """Engine 输出 Schema / Response DTO"""
 from __future__ import annotations
 from typing import Any, TYPE_CHECKING
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from ..domain.instruction import DMInstruction
@@ -26,7 +26,7 @@ class SummarizerResponse(BaseModel):
 
 # === Phase 1 & 6: DM ===
 class DMCreateResponse(BaseModel):
-    instructions_out: list[dict[str, Any]] = []
+    instructions_out: list[str] = Field(default_factory=list)
     plot_brief: str = ""
     scene_direction: dict[str, Any] = {}
 

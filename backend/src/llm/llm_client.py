@@ -1,21 +1,40 @@
-"""LLM 客户端——多模型路由 + requests 直连（httpx 与 Zen Proxy 不兼容）."""
+"""LLM 客户端——多模型路由，支持 langchain(ChatOpenAI) 和 requests(RequestsChatModel) 双后端."""
 
 import asyncio
-import json
 import logging
 import os
-from typing import Callable
+import re
+import time
+import traceback
+from typing import Any, Callable
 
 import requests
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import BaseMessage, AIMessage
+from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
 from langchain_core.outputs import ChatResult, ChatGeneration
-from pydantic import BaseModel
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, ValidationError
 
 from ..config import LLMConfig, LLMModelConfig
 
 logger = logging.getLogger(__name__)
 
+# ============================================================
+# 企业级日志辅助
+# ============================================================
+
+def _log_ctx(purpose: str, attempt: int, max_attempts: int, **kwargs: Any) -> dict[str, Any]:
+    """构建结构化日志上下文."""
+    ctx: dict[str, Any] = {
+        "purpose": purpose,
+        "attempt": f"{attempt + 1}/{max_attempts}",
+        **kwargs,
+    }
+    return ctx
+
+# ============================================================
+# RequestsChatModel —— 解决 Zen Proxy 502
+# ============================================================
 
 class RequestsChatModel(BaseChatModel):
     """用 requests 替代 httpx 的 ChatModel——解决 Zen Proxy 502 问题."""
@@ -23,12 +42,14 @@ class RequestsChatModel(BaseChatModel):
     model: str = ""
     temperature: float = 0.7
     base_url: str = ""
+    timeout: int = 30
 
     def _generate(self, messages: list[BaseMessage], stop=None, run_manager=None, **kwargs):
         raise NotImplementedError("Use async version")
 
     async def _agenerate(self, messages: list[BaseMessage], stop=None, run_manager=None, **kwargs):
         _role_map = {"human": "user", "ai": "assistant"}
+        msg_count = len(messages)
         payload = {
             "model": self.model,
             "messages": [{"role": _role_map.get(m.type, m.type), "content": m.content} for m in messages],
@@ -37,27 +58,93 @@ class RequestsChatModel(BaseChatModel):
         if "response_format" in kwargs:
             payload["response_format"] = kwargs["response_format"]
 
-        loop = asyncio.get_event_loop()
-        resp = await loop.run_in_executor(
-            None,
-            lambda: requests.post(
-                f"{self.base_url}/chat/completions",
-                json=payload,
-                timeout=self.timeout if hasattr(self, 'timeout') else 30,
-            ),
+        url = f"{self.base_url}/chat/completions"
+        t_start = time.monotonic()
+        logger.debug(
+            "LLM 请求发送",
+            extra={"model": self.model, "url": url, "messages": msg_count, "timeout": self.timeout},
         )
-        resp.raise_for_status()
+
+        loop = asyncio.get_event_loop()
+        try:
+            resp = await loop.run_in_executor(
+                None,
+                lambda: requests.post(url, json=payload, timeout=self.timeout),
+            )
+            elapsed = time.monotonic() - t_start
+            logger.debug("LLM 收到响应", extra={"model": self.model, "status": resp.status_code, "elapsed": f"{elapsed:.1f}s"})
+            resp.raise_for_status()
+        except requests.Timeout:
+            elapsed = time.monotonic() - t_start
+            logger.error(
+                "LLM HTTP 超时——服务端在超时窗口内未返回任何数据",
+                extra={"model": self.model, "url": url, "http_timeout": f"{self.timeout}s", "elapsed": f"{elapsed:.1f}s"},
+            )
+            raise RuntimeError(
+                f"HTTP 请求超时：{url} 在 {self.timeout}s 内无响应（已等待 {elapsed:.1f}s）"
+            )
+        except requests.ConnectionError as e:
+            logger.error(
+                "LLM 连接失败——代理或服务端不可达",
+                extra={"model": self.model, "url": url, "error": str(e)},
+            )
+            raise RuntimeError(f"连接失败：{url} — {e}")
+        except requests.HTTPError as e:
+            body = e.response.text[:500] if e.response is not None else "(无响应体)"
+            logger.error(
+                "LLM HTTP 错误",
+                extra={"model": self.model, "url": url, "status": e.response.status_code if e.response else "?", "body": body},
+            )
+            raise RuntimeError(f"HTTP {e.response.status_code}：{body}")
+
         data = resp.json()
-        content = data["choices"][0]["message"]["content"]
+        finish_reason = data["choices"][0].get("finish_reason", "?")
+        content: str = data["choices"][0]["message"]["content"]
+        logger.debug(
+            "LLM 响应内容",
+            extra={"model": self.model, "finish_reason": finish_reason, "content_len": len(content), "content_preview": content[:120]},
+        )
         return ChatResult(generations=[ChatGeneration(message=AIMessage(content=content))])
 
     @property
     def _llm_type(self) -> str:
         return "requests-chat"
 
+# ============================================================
+# JSON 提取
+# ============================================================
 
-def _build_model(cfg: LLMModelConfig, base_url: str | None, api_key: str | None = None) -> BaseChatModel:
-    """构建基于 requests 的 ChatModel."""
+def _extract_json(text: str) -> str:
+    """从 LLM 回复中提取 JSON——兼容 markdown code block 包裹."""
+    # 尝试匹配 ```json ... ``` 代码块
+    m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+    if m:
+        return m.group(1).strip()
+    # 尝试匹配第一个 { 到最后一个 }
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end > start:
+        return text[start:end + 1]
+    return text
+
+# ============================================================
+# Langchain Model 构建
+# ============================================================
+
+def _build_model_langchain(cfg: LLMModelConfig, base_url: str | None, api_key: str | None = None) -> BaseChatModel:
+    """使用 LangChain ChatOpenAI（标准 OpenAI 兼容 API）."""
+    return ChatOpenAI(
+        model=cfg.model,
+        temperature=cfg.temperature,
+        base_url=(base_url or "https://api.openai.com/v1"),
+        api_key=api_key or "sk-dummy",
+        timeout=cfg.timeout,
+        max_retries=cfg.retries,
+    )
+
+
+def _build_model_requests(cfg: LLMModelConfig, base_url: str | None, api_key: str | None = None) -> BaseChatModel:
+    """使用 requests 直连（Zen Proxy / Node.js 代理兼容）."""
     return RequestsChatModel(
         model=cfg.model,
         temperature=cfg.temperature,
@@ -65,22 +152,43 @@ def _build_model(cfg: LLMModelConfig, base_url: str | None, api_key: str | None 
     )
 
 
+def _build_model(cfg: LLMModelConfig, base_url: str | None, api_key: str | None = None) -> BaseChatModel:
+    """根据 client_backend 选择后端构建 ChatModel."""
+    backend = cfg.client_backend or "langchain"
+    if backend == "requests":
+        return _build_model_requests(cfg, base_url, api_key)
+    return _build_model_langchain(cfg, base_url, api_key)
+
+
 def _build_fallback_model(cfg: LLMModelConfig, fallback_base_url: str | None, api_key: str | None = None) -> BaseChatModel | None:
-    """构建降级模型."""
+    """构建降级模型（与主模型使用相同 backend）."""
     if not cfg.fallback_model:
         return None
-    return RequestsChatModel(
+    backend = cfg.client_backend or "langchain"
+    if backend == "requests":
+        return RequestsChatModel(
+            model=cfg.fallback_model,
+            temperature=cfg.temperature,
+            base_url=(fallback_base_url or "https://api.openai.com/v1").rstrip("/"),
+        )
+    return ChatOpenAI(
         model=cfg.fallback_model,
         temperature=cfg.temperature,
-        base_url=(fallback_base_url or "https://api.openai.com/v1").rstrip("/"),
+        base_url=(fallback_base_url or "https://api.openai.com/v1"),
+        api_key=api_key or "sk-dummy",
+        timeout=cfg.timeout,
+        max_retries=cfg.retries,
     )
 
+# ============================================================
+# LLMClient —— 重试 + 结构化调用
+# ============================================================
 
 class LLMClient:
     """多模型 LLM 客户端."""
 
     def __init__(self, config: LLMConfig):
-        primary_key = os.environ.get("DEEPSEEK_API_KEY")
+        primary_key = os.environ.get(config.providers.primary.api_key_env, "")
         primary_url = config.providers.primary.base_url
         fallback_url = config.providers.fallback.base_url if config.providers.fallback else None
 
@@ -102,46 +210,162 @@ class LLMClient:
             self._timeouts[purpose] = cfg.timeout
             self._retries[purpose] = cfg.retries
 
+    # --------------------------------------------------------
+    # call —— 纯文本调用
+    # --------------------------------------------------------
+
     async def call(self, purpose: str, messages: list[BaseMessage]) -> str | None:
         model = self._models[purpose]
-        for attempt in range(self._retries[purpose] + 1):
+        timeout = self._timeouts[purpose]
+        max_attempts = self._retries[purpose] + 1
+
+        logger.info(
+            f"[{purpose}] 开始调用",
+            extra=_log_ctx(purpose, -1, max_attempts, model_name=str(model), timeout=timeout, mode="text"),
+        )
+
+        for attempt in range(max_attempts):
+            t_start = time.monotonic()
             try:
                 result = await asyncio.wait_for(
                     model._agenerate(messages),
-                    timeout=self._timeouts[purpose],
+                    timeout=timeout,
                 )
-                return result.generations[0].message.content
+                elapsed = time.monotonic() - t_start
+                content = result.generations[0].message.content
+                logger.info(
+                    f"[{purpose}] 调用成功",
+                    extra=_log_ctx(purpose, attempt, max_attempts, elapsed=f"{elapsed:.1f}s", content_len=len(str(content))),
+                )
+                return content
+
             except asyncio.TimeoutError:
-                logger.warning(f"LLM {purpose} timed out (attempt {attempt+1})")
+                elapsed = time.monotonic() - t_start
+                logger.warning(
+                    f"[{purpose}] 应用层超时——等待 {timeout}s 后取消（实际已等 {elapsed:.1f}s），LLM 未在时限内返回完整响应",
+                    extra=_log_ctx(purpose, attempt, max_attempts, timeout=f"{timeout}s", elapsed=f"{elapsed:.1f}s",
+                                   hint="如需更长等待时间，请增加 config.yaml 中该 purpose 的 timeout 值"),
+                )
+
             except asyncio.CancelledError:
                 raise
+
+            except RuntimeError as e:
+                logger.error(
+                    f"[{purpose}] 网络/协议层错误: {e}",
+                    extra=_log_ctx(purpose, attempt, max_attempts, error_type="RuntimeError"),
+                    exc_info=True,
+                )
+
             except Exception as e:
-                logger.warning(f"LLM {purpose} failed (attempt {attempt+1}): {e}")
-            if attempt < self._retries[purpose]:
+                logger.error(
+                    f"[{purpose}] 未预期的异常: {type(e).__name__}: {e}",
+                    extra=_log_ctx(purpose, attempt, max_attempts, error_type=type(e).__name__),
+                    exc_info=True,
+                )
+
+            if attempt < max_attempts - 1:
                 await asyncio.sleep(0.5)
-        logger.error(f"LLM {purpose} degraded")
+
+        logger.error(
+            f"[{purpose}] 全部 {max_attempts} 次尝试均失败，返回 None",
+            extra=_log_ctx(purpose, max_attempts - 1, max_attempts, result="degraded"),
+        )
         return None
+
+    # --------------------------------------------------------
+    # call_structured —— 结构化 JSON 调用
+    # --------------------------------------------------------
 
     async def call_structured(
         self, purpose: str, schema: type[BaseModel],
         messages: list[BaseMessage], fallback: Callable[[], BaseModel],
     ) -> BaseModel:
+        """结构化调用——纯文本请求 + 手动解析 JSON（兼容 Zen Proxy 免费模型）."""
         model = self._models[purpose]
-        for attempt in range(self._retries[purpose] + 1):
+        timeout = self._timeouts[purpose]
+        max_attempts = self._retries[purpose] + 1
+
+        # 注入 JSON 格式要求
+        fields = schema.model_fields
+        field_desc = ", ".join(
+            f"{k}({v.annotation.__name__ if hasattr(v.annotation, '__name__') else str(v.annotation)})"
+            for k, v in fields.items()
+        )
+        json_hint = HumanMessage(content=f"请只输出一个 JSON 对象，字段：{{{field_desc}}}")
+        augmented = list(messages) + [json_hint]
+
+        logger.info(
+            f"[{purpose}] 开始结构化调用",
+            extra=_log_ctx(purpose, -1, max_attempts, model_name=str(model), timeout=timeout, schema=schema.__name__, mode="structured"),
+        )
+
+        last_content: str | None = None
+
+        for attempt in range(max_attempts):
+            t_start = time.monotonic()
             try:
                 result = await asyncio.wait_for(
-                    model._agenerate(messages, response_format={"type": "json_object"}),
-                    timeout=self._timeouts[purpose],
+                    model._agenerate(augmented),
+                    timeout=timeout,
                 )
+                elapsed = time.monotonic() - t_start
                 content = result.generations[0].message.content
-                return schema.model_validate_json(content)
+                last_content = content
+
+                # 尝试解析 JSON
+                json_str = _extract_json(content)
+                parsed = schema.model_validate_json(json_str)
+                logger.info(
+                    f"[{purpose}] 结构化调用成功",
+                    extra=_log_ctx(purpose, attempt, max_attempts, elapsed=f"{elapsed:.1f}s", raw_len=len(content), json_len=len(json_str)),
+                )
+                return parsed
+
+            except (ValueError, ValidationError) as e:
+                # JSON 解析失败——打印原始响应，帮助调试 prompt
+                elapsed = time.monotonic() - t_start
+                raw = last_content or "(无)"
+                logger.error(
+                    f"[{purpose}] JSON 解析失败——LLM 返回了非 JSON 内容\n"
+                    f"  → 解析错误: {e}\n"
+                    f"  → 原始响应（前 500 字符）: {raw[:500]}\n"
+                    f"  → 提取的 JSON 片段: {_extract_json(raw)[:200] if raw else '(空)'}",
+                    extra=_log_ctx(purpose, attempt, max_attempts, error_type="ValidationError", elapsed=f"{elapsed:.1f}s",
+                                   raw_preview=raw[:200], json_extract=_extract_json(raw)[:200] if raw else ""),
+                )
+
             except asyncio.TimeoutError:
-                logger.warning(f"LLM {purpose} structured timed out (attempt {attempt+1})")
+                elapsed = time.monotonic() - t_start
+                logger.warning(
+                    f"[{purpose}] 应用层超时——等待 {timeout}s 后取消（实际已等 {elapsed:.1f}s），免费模型生成结构化 JSON 较慢\n"
+                    f"  → 建议：增加 config.yaml 中 {purpose}.timeout 或换用付费模型",
+                    extra=_log_ctx(purpose, attempt, max_attempts, timeout=f"{timeout}s", elapsed=f"{elapsed:.1f}s",
+                                   hint="免费模型生成 JSON 通常需要更长时间"),
+                )
+
             except asyncio.CancelledError:
                 raise
+
+            except RuntimeError as e:
+                logger.error(
+                    f"[{purpose}] 网络/协议层错误: {e}",
+                    extra=_log_ctx(purpose, attempt, max_attempts, error_type="RuntimeError"),
+                    exc_info=True,
+                )
+
             except Exception as e:
-                logger.warning(f"LLM {purpose} structured failed (attempt {attempt+1}): {e}")
-            if attempt < self._retries[purpose]:
+                logger.error(
+                    f"[{purpose}] 未预期的异常: {type(e).__name__}: {e}",
+                    extra=_log_ctx(purpose, attempt, max_attempts, error_type=type(e).__name__),
+                    exc_info=True,
+                )
+
+            if attempt < max_attempts - 1:
                 await asyncio.sleep(0.5)
-        logger.error(f"LLM {purpose} structured degraded")
+
+        logger.error(
+            f"[{purpose}] 全部 {max_attempts} 次结构化调用均失败，启用 fallback",
+            extra=_log_ctx(purpose, max_attempts - 1, max_attempts, result="degraded"),
+        )
         return fallback()
