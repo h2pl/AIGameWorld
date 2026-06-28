@@ -20,9 +20,8 @@ class TestFullTickRun:
             assert result["tick"] == i
 
     @pytest.mark.asyncio
-    async def test_5_ticks_with_agent_mock(self):
-        """5 步 + mock DMLlm——验证 LLM 链路不崩溃."""
-        from src.engine.dm.dm_llm import DMLlm
+    async def test_5_ticks_with_llm_mock(self):
+        """5 步 + mock LLM——验证 LLM 链路不崩溃."""
         from src.schemas.llm_output import DMOutput, DMNarrativeSchema
 
         llm = AsyncMock()
@@ -31,8 +30,7 @@ class TestFullTickRun:
         ] + [
             DMNarrativeSchema(narrative=f"Narrative {i}") for i in range(10)
         ])
-        agent = DMLlm(llm)
-        orch = Orchestrator(dm_llm=agent)
+        orch = Orchestrator(llm=llm)
 
         for i in range(5):
             result = await orch.run_tick()

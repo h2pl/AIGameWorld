@@ -5,97 +5,91 @@ import os
 
 from src.config import load_config
 from src.llm.llm_client import LLMClient
-from src.engine.dm.dm_llm import DMLlm
 from src.engine.orchestrator import Orchestrator
 
 
 async def test_llm_client() -> None:
     """测试 LLMClient 基础调用."""
     if not os.environ.get("DEEPSEEK_API_KEY"):
-        print("❌ 未设置 DEEPSEEK_API_KEY，跳过 LLM 测试。请在 .env 里配置。")
+        print("Skipped: DEEPSEEK_API_KEY not set")
         return
 
     config = load_config("config.yaml")
     client = LLMClient(config.llm)
     print(f"LLMClient initialized: {len(client._models)} models configured")
 
-    # 简单调用测试
-    from langchain_core.messages import HumanMessage, SystemMessage
+    from langchain_core.messages import SystemMessage, HumanMessage
 
     result = await client.call(
         "dm_create",
         [SystemMessage(content="Reply in one word."), HumanMessage(content="Hello")],
     )
     print(f"LLM call result: {result[:80] if result else 'None'}...")
-    print("✅ LLMClient works!")
+    print("LLMClient works!")
 
 
-async def test_dm_llm() -> None:
-    """测试 DMLlm 创造情境 + 叙事."""
+async def test_dm_engine() -> None:
+    """测试 DM engine + LLM."""
     if not os.environ.get("DEEPSEEK_API_KEY"):
-        print("❌ 未设置 DEEPSEEK_API_KEY，跳过 DMLlm 测试。")
+        print("Skipped: DEEPSEEK_API_KEY not set")
         return
 
     config = load_config("config.yaml")
     client = LLMClient(config.llm)
-    agent = DMLlm(client)
 
-    # 测试创造情境
-    print("\n--- create_situation ---")
-    result = await agent.create_situation(plot_brief_prev="The party rests at camp.")
-    print(f"  plot_brief: {result['plot_brief'][:100]}")
-    print(f"  scene_direction: {result['scene_direction']}")
+    from src.engine.dm.dm import dm_create, dm_narrate
+    from src.schemas.request import DMCreateRequest, DMNarrateRequest
 
-    # 测试叙事
-    print("\n--- narrate ---")
-    actions = [
-        {"character_id": "alex", "type": "explore", "description": "Alex scouts ahead."},
-        {"character_id": "maya", "type": "social", "description": "Maya talks to a traveler."},
-    ]
-    result2 = await agent.narrate(
-        plot_brief="The party encounters a strange traveler on the road.",
-        character_actions=actions,
-    )
-    print(f"  narrative: {result2['narrative'][:200]}")
-    print("✅ DMLlm works!")
+    print("\n--- dm_create ---")
+    result = await dm_create(DMCreateRequest(tick=0, plot_brief=""), client)
+    print(f"  plot_brief: {result.plot_brief[:100]}")
+    print(f"  scene_direction: {result.scene_direction}")
+
+    print("\n--- dm_narrate ---")
+    result2 = await dm_narrate(DMNarrateRequest(
+        tick=0, plot_brief="The party encounters a strange traveler.",
+        dm_instructions=[], scene_direction={},
+        character_actions=[{"character_id": "alex", "type": "explore"}],
+    ), client)
+    print(f"  narrative: {result2.narrative_out[:200]}")
+    print("DM engine works!")
 
 
 async def test_full_tick_with_llm() -> None:
-    """全链路：Graph + LLM。"""
+    """全链路：Graph + LLM."""
     if not os.environ.get("DEEPSEEK_API_KEY"):
-        print("❌ 未设置 DEEPSEEK_API_KEY，跳过。")
+        print("Skipped: DEEPSEEK_API_KEY not set")
         return
 
     config = load_config("config.yaml")
     client = LLMClient(config.llm)
-    agent = DMLlm(client)
 
-    orch = Orchestrator(dm_llm=agent)
-    print("Orchestrator with DMLlm initialized. Running 1 tick...\n")
+    orch = Orchestrator(llm=client)
+    print("Orchestrator with LLM initialized. Running 1 tick...\n")
 
     result = await orch.run_tick()
     print(f"[Tick {result['tick']}]")
     print(f"  [DM] {result.get('narrative', '')[:200]}")
     for a in result.get("character_actions", [])[:3]:
         print(f"  [Act] {a.get('character_id','?')}({a.get('type','?')}): {a.get('description','')}")
-    print("\n✅ Full tick with LLM works!")
+    print("\nFull tick with LLM works!")
 
 
 def main() -> None:
     import argparse
     parser = argparse.ArgumentParser(description="LLM 集成测试")
     parser.add_argument("--client", action="store_true", help="Test LLMClient only")
-    parser.add_argument("--agent", action="store_true", help="Test DMLlm")
+    parser.add_argument("--engine", action="store_true", help="Test DM engine")
     parser.add_argument("--tick", action="store_true", help="Test full tick with LLM")
     parser.add_argument("--all", action="store_true", help="Test everything")
 
     args = parser.parse_args()
-    run_all = args.all or not (args.client or args.agent or args.tick)
+    run_all = args.all or not (args.client or args.engine or args.tick)
 
     if run_all or args.client:
         asyncio.run(test_llm_client())
-    if run_all or args.agent:
-        asyncio.run(test_dm_llm())
+    if run_all or args.engine:
+        asyncio.run(test_dm_engine())
     if run_all or args.tick:
         asyncio.run(test_full_tick_with_llm())
 

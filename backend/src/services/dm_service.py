@@ -5,11 +5,11 @@ from ..engine.dm import dm as dm_engine
 from ..graph.state import OverallState
 
 
-async def dm_create(state: OverallState, agent=None) -> dict:
+async def dm_create(state: OverallState, llm=None) -> dict:
     """Phase 1: DM 创造情境."""
     result = await dm_engine.dm_create(
         DMCreateRequest(tick=state.get("tick", 0), plot_brief=state.get("plot_brief", "")),
-        agent=agent,
+        llm=llm,
     )
     return {
         "dm_instructions": result.instructions_out,
@@ -18,7 +18,7 @@ async def dm_create(state: OverallState, agent=None) -> dict:
     }
 
 
-async def dm_narrate(state: OverallState, agent=None, reflection_interval: int = 5) -> dict:
+async def dm_narrate(state: OverallState, llm=None, reflection_interval: int = 5) -> dict:
     """Phase 6: DM 叙事."""
     result = await dm_engine.dm_narrate(
         DMNarrateRequest(
@@ -28,7 +28,7 @@ async def dm_narrate(state: OverallState, agent=None, reflection_interval: int =
             scene_direction=state.get("scene_direction", {}),
             character_actions=state.get("character_actions", []),
         ),
-        agent=agent,
+        llm=llm,
     )
     return {
         "narrative": result.narrative_out,

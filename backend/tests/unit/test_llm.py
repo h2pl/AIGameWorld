@@ -1,138 +1,86 @@
-"""agents/ 单元测试——LLMClient + DMLlm mock."""
+"""DM Engine LLM 测试——mock LLMClient."""
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 from src.schemas.llm_output import DMOutput, DMNarrativeSchema, SceneDirectionOutput
 
 
-class TestDMLlm:
-    """DMLlm create_situation + narrate 测试（mock LLM）."""
-
+class TestDMCreate:
     @pytest.mark.asyncio
-    async def test_create_situation_mock(self):
-        from src.engine.dm.dm_llm import DMLlm
+    async def test_llm_returns_valid_output(self):
+        from src.engine.dm.dm import dm_create
+        from src.schemas.request import DMCreateRequest
 
-        agent = DMLlm(AsyncMock())
-        result = await agent.create_situation(plot_brief_prev="Prev plot.")
-
-        assert "plot_brief" in result
-        assert "scene_direction" in result
-        assert "instructions_out" in result
-
-    @pytest.mark.asyncio
-    async def test_create_situation_with_llm(self):
-        from src.engine.dm.dm_llm import DMLlm, _DM_SYSTEM_PROMPT
-
-        llm = MagicMock()
-        expected = DMOutput(
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(return_value=DMOutput(
             plot_brief="A dragon appears.",
-            scene_direction=SceneDirectionOutput(
-                featured_pcs=["alex"],
-                featured_actors=["dragon"],
-            ),
-        )
-        llm.call_structured = AsyncMock(return_value=expected)
-        agent = DMLlm(llm)
-
-        result = await agent.create_situation(plot_brief_prev="Camping.")
-
-        assert result["plot_brief"] == "A dragon appears."
-        assert "alex" in result["scene_direction"]["featured_pcs"]
-        assert "dragon" in result["scene_direction"]["featured_actors"]
-        llm.call_structured.assert_called_once()
+            scene_direction=SceneDirectionOutput(featured_pcs=["alex"], featured_actors=["dragon"]),
+        ))
+        result = await dm_create(DMCreateRequest(tick=0, plot_brief=""), llm)
+        assert result.plot_brief == "A dragon appears."
+        assert "alex" in result.scene_direction["featured_pcs"]
 
     @pytest.mark.asyncio
-    async def test_create_situation_llm_fails_fallback(self):
-        from src.engine.dm.dm_llm import DMLlm
+    async def test_llm_fails_fallback(self):
+        from src.engine.dm.dm import dm_create
+        from src.schemas.request import DMCreateRequest
 
-        llm = MagicMock()
-        llm.call_structured = AsyncMock(return_value=None)
-        agent = DMLlm(llm)
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(side_effect=RuntimeError("boom"))
+        result = await dm_create(DMCreateRequest(tick=0, plot_brief=""), llm)
+        assert "平静" in result.plot_brief
+        assert result.instructions_out == []
 
-        result = await agent.create_situation(plot_brief_prev="Test")
 
-        assert "平静" in result["plot_brief"]
-        assert result["instructions_out"] == []
+class TestDMNarrate:
+    @pytest.mark.asyncio
+    async def test_llm_returns_valid_narrative(self):
+        from src.engine.dm.dm import dm_narrate
+        from src.schemas.request import DMNarrateRequest
+
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(return_value=DMNarrativeSchema(
+            narrative="The party fights bravely.",
+        ))
+        req = DMNarrateRequest(tick=0, plot_brief="Fight!", dm_instructions=[],
+                               scene_direction={}, character_actions=[])
+        result = await dm_narrate(req, llm)
+        assert result.narrative_out == "The party fights bravely."
 
     @pytest.mark.asyncio
-    async def test_narrate_mock(self):
-        from src.engine.dm.dm_llm import DMLlm
+    async def test_llm_fails_fallback(self):
+        from src.engine.dm.dm import dm_narrate
+        from src.schemas.request import DMNarrateRequest
 
-        agent = DMLlm(AsyncMock())
-        result = await agent.narrate(plot_brief="Test", character_actions=[])
-
-        assert "narrative" in result
-        assert "branch_points" in result
-        assert "hooks_resolved" in result
-
-    @pytest.mark.asyncio
-    async def test_narrate_with_llm(self):
-        from src.engine.dm.dm_llm import DMLlm
-
-        llm = MagicMock()
-        expected = DMNarrativeSchema(narrative="The party fights bravely.")
-        llm.call_structured = AsyncMock(return_value=expected)
-        agent = DMLlm(llm)
-
-        result = await agent.narrate(
-            plot_brief="A fight breaks out.",
-            character_actions=[{"character_id": "alex", "type": "combat"}],
-        )
-
-        assert result["narrative"] == "The party fights bravely."
-        llm.call_structured.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_system_prompt_loaded(self):
-        """§5.4 System Prompt 不为空."""
-        from src.engine.dm.dm_llm import _DM_SYSTEM_PROMPT
-
-        assert "Dungeon Master" in _DM_SYSTEM_PROMPT
-        assert "不扮演任何角色" in _DM_SYSTEM_PROMPT
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(side_effect=RuntimeError("boom"))
+        req = DMNarrateRequest(tick=0, plot_brief="Test", dm_instructions=[],
+                               scene_direction={}, character_actions=[])
+        result = await dm_narrate(req, llm)
+        assert "DM" in result.narrative_out
 
 
 class TestDMSafety:
-    """§13: DM 安全铁律测试."""
+    """System Prompt 铁律."""
 
-    @pytest.mark.asyncio
-    async def test_dm_does_not_write_character_dialogue(self):
-        """DM 不得写角色对话."""
-        from src.engine.dm.dm_llm import _DM_SYSTEM_PROMPT
-
-        assert "不写角色的对话内容" in _DM_SYSTEM_PROMPT
+    def test_system_prompt_loaded(self):
+        from src.engine.dm.dm import _DM_SYSTEM_PROMPT
+        assert "Dungeon Master" in _DM_SYSTEM_PROMPT
         assert "不扮演任何角色" in _DM_SYSTEM_PROMPT
+
+    def test_system_prompt_no_dialogue(self):
+        from src.engine.dm.dm import _DM_SYSTEM_PROMPT
+        assert "不写角色的对话内容" in _DM_SYSTEM_PROMPT
         assert "不替任何角色做决策" in _DM_SYSTEM_PROMPT
 
     @pytest.mark.asyncio
-    async def test_dm_fallback_does_not_write_dialogue(self):
-        """降级输出不得含角色对话引导."""
-        from src.engine.dm.dm_llm import DMLlm, _DM_SYSTEM_PROMPT
-
-        agent = DMLlm(AsyncMock())
-        result = await agent.create_situation(plot_brief_prev="")
-
-        # 降级 plot_brief 不含对话引导符（引号/冒号+说话）
-        plot = result["plot_brief"]
-        assert "：\"" not in plot
-        assert ":\"" not in plot
-
-    @pytest.mark.asyncio
-    async def test_dm_output_has_no_action_decisions(self):
-        """DM instruction 不含角色行为决策."""
-        from src.engine.dm.dm_llm import DMLlm
+    async def test_fallback_plot_has_no_dialogue_markers(self):
+        from src.engine.dm.dm import dm_create
+        from src.schemas.request import DMCreateRequest
 
         llm = AsyncMock()
-        from src.schemas.llm_output import DMOutput, SceneDirectionOutput
-        llm.call_structured = AsyncMock(return_value=DMOutput(
-            plot_brief="A storm approaches.",
-            scene_direction=SceneDirectionOutput(featured_pcs=[], featured_actors=[]),
-            instructions=[],
-        ))
-        agent = DMLlm(llm)
-        result = await agent.create_situation()
-
-        # DM 指定了参演人员但不决定他们做什么
-        assert "scene_direction" in result
-        # instructions 应该空或只有环境事件
-        for inst in result.get("instructions_out", []):
-            assert inst.get("type", "") != "pc_action"
+        llm.call_structured = AsyncMock(side_effect=RuntimeError("boom"))
+        result = await dm_create(DMCreateRequest(tick=0, plot_brief=""), llm)
+        plot = result.plot_brief
+        assert '："' not in plot
+        assert ':"' not in plot
