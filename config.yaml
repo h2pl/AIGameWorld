@@ -11,46 +11,45 @@ world:
   default_pack: "forgotten_realms"
 
 # === LLM Provider 配置（只管"连到哪"）===
-llm_provider: "zen-proxy"             # 默认 provider，环境变量 LLM_PROVIDER 可覆盖
+llm_provider: "glm"             # 默认 provider，环境变量 LLM_PROVIDER 可覆盖
 
 llm_providers:
   zen-proxy:
+    model: "deepseek-v4-flash-free"       # 默认模型，切 provider 自动换
     base_url: "http://localhost:6446/v1"
-    api_key_env: "DEEPSEEK_API_KEY"
-    client_backend: "requests"            # Zen Proxy 用 requests（httpx 不兼容）
+    api_key_env: ""                       # Zen Proxy 不需要 API key
+    client_backend: "requests"
   glm:
+    model: "glm-5.1"
     base_url: "https://open.bigmodel.cn/api/paas/v4"
     api_key_env: "GLM_API_KEY"
     client_backend: "langchain"
   deepseek:
+    model: "deepseek-chat"
     base_url: "https://api.deepseek.com/v1"
     api_key_env: "DEEPSEEK_API_KEY"
     client_backend: "langchain"
 
 # === LLM Purpose 配置（只管"怎么调"，只写一份，不随 provider 切换而改动）===
+# model 从 provider 继承，不需要在这里写
 llm_purposes:
   dm_create:
-    model: "deepseek-v4-flash-free"       # 切换 provider 时需改模型名
     temperature: 0.9
     timeout: 20
     retries: 1
   dm_narrate:
-    model: "deepseek-v4-flash-free"
     temperature: 0.8
     timeout: 30
     retries: 1
   pc_decision:
-    model: "deepseek-v4-flash-free"
     temperature: 0.7
     timeout: 10
     retries: 1
   actor_decision:
-    model: "deepseek-v4-flash-free"
     temperature: 0.7
     timeout: 8
     retries: 1
   reflection:
-    model: "deepseek-v4-flash-free"
     temperature: 0.5
     timeout: 15
     retries: 1

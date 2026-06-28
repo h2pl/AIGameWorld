@@ -188,7 +188,8 @@ class LLMClient:
     """多模型 LLM 客户端."""
 
     def __init__(self, config: LLMConfig):
-        primary_key = os.environ.get(config.providers.primary.api_key_env, "")
+        key_env = config.providers.primary.api_key_env
+        primary_key = os.environ.get(key_env, "") if key_env else ""
         primary_url = config.providers.primary.base_url
         fallback_url = config.providers.fallback.base_url if config.providers.fallback else None
 

@@ -108,10 +108,16 @@ class Config(BaseSettings):
                 raise ValueError(f"LLM provider '{provider_name}' not found. Available: {available}")
             provider = providers[provider_name]
             backend = provider.pop("client_backend", "langchain")
-            # 组装 llm 配置：provider 的 client_backend 注入每个 purpose
+            default_model = provider.pop("model", None)
+            # 组装 llm：provider 的 client_backend + model 注入每个 purpose
+            merged = {}
+            for name, pur in purposes.items():
+                merged[name] = {**pur, "client_backend": backend}
+                if default_model and "model" not in pur:
+                    merged[name]["model"] = default_model
             data["llm"] = {
                 "providers": {"primary": {"type": "openai", **provider}},
-                **{k: {**v, "client_backend": backend} for k, v in purposes.items()},
+                **merged,
             }
             print(f"[Config] LLM provider: {provider_name}")
         return cls(**data)

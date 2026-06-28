@@ -15,11 +15,12 @@ def test_config_loads_providers():
 
 
 def test_config_model_configs_complete():
-    """Each LLM purpose should have model configured."""
+    """Each LLM purpose should have model and params configured."""
     config = load_config(CONFIG_PATH)
-    assert config.llm.dm_create.model == "deepseek-v4-flash-free"
+    # model 从 provider 继承，不检查具体值
+    assert config.llm.dm_create.model
     assert config.llm.dm_create.temperature == 0.9
-    assert config.llm.dm_narrate.model == "deepseek-v4-flash-free"
+    assert config.llm.dm_narrate.model
     assert config.llm.pc_decision.timeout == 10
     assert config.llm.actor_decision.retries == 1
     assert config.llm.reflection.temperature == 0.5
