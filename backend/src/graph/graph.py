@@ -9,7 +9,7 @@ START
  phase2_world       [node]      World 引擎    world_update_node
  |
  v
- phase3_char_decide [subgraph]  角色决策协调   character_subgraph
+ phase3_char_decide [subgraph]  角色决策      character_subgraph
  |
  v
  phase4_engines     [subgraph]  Engine 路由   engine_subgraph
@@ -25,7 +25,7 @@ START
  True
  |
  v
- phase7_reflect     [subgraph]  反思/摘要协调  reflection_subgraph
+ phase7_reflect     [subgraph]  反思/摘要     reflection_subgraph
  |
  v
  END

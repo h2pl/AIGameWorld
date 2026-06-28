@@ -1,4 +1,4 @@
-"""Phase 4 协调子图: 路由到各 Engine。"""
+"""Phase 4 子图: 路由到各 Engine。"""
 from typing import Any
 
 from langgraph.graph import StateGraph, END
@@ -9,7 +9,7 @@ from ...nodes.exploration_nodes import exploration_node
 from ...nodes.quest_nodes import quest_node
 
 
-def _engine_router(state: dict[str, Any]) -> dict[str, Any]:
+def _engine_route(state: dict[str, Any]) -> dict[str, Any]:
     """条件路由到各 Engine。后续 M6 按 Action type 条件路由。"""
     results = []
 
@@ -30,9 +30,9 @@ def _engine_router(state: dict[str, Any]) -> dict[str, Any]:
 
 def build_engine_subgraph() -> StateGraph:
     graph = StateGraph(dict)
-    graph.add_node("engine_router", _engine_router)
-    graph.set_entry_point("engine_router")
-    graph.add_edge("engine_router", END)
+    graph.add_node("engine_route", _engine_route)
+    graph.set_entry_point("engine_route")
+    graph.add_edge("engine_route", END)
     return graph
 
 

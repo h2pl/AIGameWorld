@@ -1,4 +1,4 @@
-"""Phase 7 协调子图: Reflection + Summarizer。"""
+"""Phase 7 子图: Reflection + Summarizer。"""
 from typing import Any
 
 from langgraph.graph import StateGraph, END
@@ -7,7 +7,7 @@ from ...nodes.reflection_nodes import reflection_node
 from ...nodes.summarizer_nodes import summarizer_node
 
 
-def _reflection_coordinator(state: dict[str, Any]) -> dict[str, Any]:
+def _reflection_decide(state: dict[str, Any]) -> dict[str, Any]:
     """协调 Reflection + Summarizer。"""
     reflection_node({"character_id": "", "memories": []})
     summarizer_node({"events": [], "tick": state.get("tick", 0)})
@@ -16,9 +16,9 @@ def _reflection_coordinator(state: dict[str, Any]) -> dict[str, Any]:
 
 def build_reflection_subgraph() -> StateGraph:
     graph = StateGraph(dict)
-    graph.add_node("reflection_coordinator", _reflection_coordinator)
-    graph.set_entry_point("reflection_coordinator")
-    graph.add_edge("reflection_coordinator", END)
+    graph.add_node("reflection_decide", _reflection_decide)
+    graph.set_entry_point("reflection_decide")
+    graph.add_edge("reflection_decide", END)
     return graph
 
 

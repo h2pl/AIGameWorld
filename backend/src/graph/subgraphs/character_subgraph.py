@@ -1,4 +1,4 @@
-"""Phase 3 协调子图: 唤醒 PC + Actor 决策。"""
+"""Phase 3 子图: 唤醒 PC + Actor 决策。"""
 from typing import Any
 
 from langgraph.graph import StateGraph, END
