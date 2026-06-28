@@ -41,7 +41,7 @@ async def test_dm_engine() -> None:
     config = load_config("../config.yaml")
     client = LLMClient(config.llm)
 
-    from src.engine.dm.dm import dm_create, dm_narrate, _DM_SYSTEM_PROMPT
+    from src.engine.dm.dm import dm_create, dm_narrate
     from src.schemas.request import DMCreateRequest, DMNarrateRequest
 
     # ── dm_create ──
@@ -55,14 +55,13 @@ async def test_dm_engine() -> None:
         plot_brief_prev=create_req.plot_brief, pacing={},
     )
     print(f"  [INPUT]  tick={create_req.tick}, plot_brief_prev='{create_req.plot_brief}'")
-    print(f"  [INPUT]  system_prompt (first 80 chars): {_DM_SYSTEM_PROMPT[:80]}...")
-    print(f"  [INPUT]  rendered prompt (first 200 chars): {prompt[:200]}...")
+    print(f"  [INPUT]  rendered prompt:\n{prompt}")
     print(_SUB)
 
     result = await dm_create(create_req, client)
-    print(f"  [OUTPUT] plot_brief: {result.plot_brief[:120]}")
+    print(f"  [OUTPUT] plot_brief: {result.plot_brief}")
     print(f"  [OUTPUT] instructions ({len(result.instructions_out)}): {result.instructions_out}")
-    print(f"  [OUTPUT] scene_direction: {json.dumps(result.scene_direction, ensure_ascii=False)[:200]}")
+    print(f"  [OUTPUT] scene_direction: {json.dumps(result.scene_direction, ensure_ascii=False)}")
     print(_SUB)
     print("  dm_create OK")
 
@@ -86,11 +85,11 @@ async def test_dm_engine() -> None:
     print(f"  [INPUT]  tick={narrate_req.tick}")
     print(f"  [INPUT]  plot_brief: {narrate_req.plot_brief}")
     print(f"  [INPUT]  character_actions: {narrate_req.character_actions}")
-    print(f"  [INPUT]  rendered prompt (first 200 chars): {prompt_n[:200]}...")
+    print(f"  [INPUT]  rendered prompt:\n{prompt_n}")
     print(_SUB)
 
     result2 = await dm_narrate(narrate_req, client)
-    print(f"  [OUTPUT] narrative: {result2.narrative_out[:200]}")
+    print(f"  [OUTPUT] narrative: {result2.narrative_out}")
     print(f"  [OUTPUT] branch_points: {result2.branch_points}")
     print(f"  [OUTPUT] hooks_resolved: {result2.hooks_resolved}")
     print(_SUB)
@@ -113,9 +112,9 @@ async def test_full_tick_with_llm() -> None:
 
     result = await orch.run_tick()
     print(f"  [OUTPUT] Tick {result['tick']}")
-    print(f"  [OUTPUT] DM narrative: {result.get('narrative', '')[:200]}")
+    print(f"  [OUTPUT] DM narrative: {result.get('narrative', '')}")
     for a in result.get("character_actions", [])[:5]:
-        print(f"  [OUTPUT] Act: {a.get('character_id','?')}({a.get('type','?')}): {a.get('description','')[:80]}")
+        print(f"  [OUTPUT] Act: {a.get('character_id','?')}({a.get('type','?')}): {a.get('description','')}")
     errs = result.get("errors", [])
     if errs:
         print(f"  [OUTPUT] errors: {errs}")
