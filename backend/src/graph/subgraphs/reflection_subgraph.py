@@ -1,6 +1,6 @@
 """Phase 7 子图: Reflection + Summarizer。"""
 from langgraph.graph import StateGraph, END
-from ...nodes.reflection_decide import reflection_decide_node
+from ...nodes.reflection_decide_node import reflection_decide_node
 
 
 def build_reflection_subgraph() -> StateGraph:

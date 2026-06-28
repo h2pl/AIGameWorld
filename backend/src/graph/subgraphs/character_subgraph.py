@@ -1,6 +1,6 @@
 """Phase 3 子图: 唤醒 PC + Actor 决策。"""
 from langgraph.graph import StateGraph, END
-from ...nodes.character_decide import character_decide_node
+from ...nodes.character_decide_node import character_decide_node
 
 
 def build_character_subgraph() -> StateGraph:

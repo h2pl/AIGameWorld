@@ -1,6 +1,6 @@
 """Phase 4 子图: 路由到各 Engine。"""
 from langgraph.graph import StateGraph, END
-from ...nodes.engine_route import engine_route_node
+from ...nodes.engine_route_node import engine_route_node
 
 
 def build_engine_subgraph() -> StateGraph:
