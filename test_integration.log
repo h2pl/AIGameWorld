@@ -17,4 +17,4 @@ tests\integration\test_storage.py ................                       [100%]
     if asyncio.iscoroutinefunction(f):
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================== 23 passed, 1 warning in 8.13s ========================
+======================== 23 passed, 1 warning in 7.05s ========================
