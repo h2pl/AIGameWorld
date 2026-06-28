@@ -7,6 +7,7 @@
 
 import asyncio
 import argparse
+from datetime import datetime
 
 from src.engine.orchestrator import Orchestrator
 from src.storage.sqlite_client import SQLiteClient
@@ -80,6 +81,8 @@ async def run_full(db_path: str, n: int) -> None:
     print(f"DB: {db_path}")
     print(f"Running {n} tick(s)...\n")
 
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     # 1. DB 初始化
     db = SQLiteClient(db_path)
     await db.connect()
@@ -87,7 +90,7 @@ async def run_full(db_path: str, n: int) -> None:
     repo = CharacterRepo(db)
     print("  [DB] initialized (15 tables)")
 
-    # 2. 种子 demo 角色
+    # 2. 种子 demo 角色（ON CONFLICT 防重复写入）
     pcs = _seed_pcs()
     for pc in pcs:
         await repo.save_pc(pc)
@@ -112,7 +115,7 @@ async def run_full(db_path: str, n: int) -> None:
         actions = result.get("character_actions", [])
         errors = result.get("errors", [])
 
-        # 4. 写 DB
+        # 4. 写 DB（事件 ID 含 run_id 防跨次冲突）
         if narrative:
             await db.execute(
                 "INSERT INTO narratives (tick, content) VALUES (?, ?)",
@@ -122,7 +125,7 @@ async def run_full(db_path: str, n: int) -> None:
             await db.execute(
                 "INSERT INTO events (id, tick, seq, type, source, data_json) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                (f"evt_{tick}_{j}", tick, j, ev.get("type", "?"), "dm", "{}"),
+                (f"evt_{run_id}_{tick}_{j}", tick, j, ev.get("type", "?"), "dm", "{}"),
             )
         await db.execute(
             "INSERT OR REPLACE INTO world_meta (key, value) VALUES (?, ?)",
