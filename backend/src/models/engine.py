@@ -1,48 +1,46 @@
-"""Engine 模型：各 Engine 的输入 / 输出类型"""
-from typing import TypedDict, Any
+"""Engine 模型：各 Engine 的输入 / 输出"""
+from typing import Any
+from pydantic import BaseModel
 
 
-class CombatInput(TypedDict):
+class CombatInput(BaseModel):
     """Phase 4: 战斗裁决的 Engine 输入"""
-    participants: list[str]
-    round: int
+    participants: list[str] = []
+    round: int = 1
 
 
-class CombatOutput(TypedDict, total=False):
-    """Phase 4: 战斗裁决的 Engine 输出"""
-    winner: str
-    combat_log: list[dict[str, Any]]
+class CombatOutput(BaseModel):
+    """Phase 4: 战斗裁决的 Engine 输出（M6 接入 DndRules）"""
+    winner: str | None = None
+    combat_log: list[dict[str, Any]] = []
 
 
-class DialogueInput(TypedDict):
+class DialogueInput(BaseModel):
     """Phase 4: 对话检定的 Engine 输入"""
-    speaker: str
-    target: str
-    intent: str
+    speaker: str = ""
+    target: str = ""
+    intent: str = ""
 
 
-class DialogueOutput(TypedDict, total=False):
+class DialogueOutput(BaseModel):
     """Phase 4: 对话检定的 Engine 输出"""
-    success: bool
-    content: str
+    success: bool | None = None
+    content: str | None = None
 
 
-class ExplorationInput(TypedDict):
+class ExplorationInput(BaseModel):
     """Phase 4: 探索检定的 Engine 输入"""
-    character_id: str
-    action_type: str
+    character_id: str = ""
+    action_type: str = ""
 
 
-class ExplorationOutput(TypedDict, total=False):
+class ExplorationOutput(BaseModel):
     """Phase 4: 探索检定的 Engine 输出"""
-    success: bool
-    result: dict[str, Any]
+    success: bool | None = None
+    result: dict[str, Any] | None = None
 
 
-class QuestInput(TypedDict):
+class QuestInput(BaseModel):
     """Phase 4: 任务检查的 Engine 输入"""
-    quests: list[dict[str, Any]]
-    event_log: list[dict[str, Any]]
-
-
-# check_quests returns list[str], no TypedDict needed
+    quests: list[dict[str, Any]] = []
+    event_log: list[dict[str, Any]] = []

@@ -1,13 +1,14 @@
-"""World 模型：Engine 输入 / 输出类型"""
-from typing import TypedDict, Any
+"""World 模型：Engine 输入 / 输出"""
+from typing import Any
+from pydantic import BaseModel
 
 
-class WorldInput(TypedDict):
+class WorldInput(BaseModel):
     """Phase 2: WorldEngine 的 Engine 输入"""
-    tick: int
-    dm_instructions: list[dict[str, Any]]
+    tick: int = 0
+    dm_instructions: list[dict[str, Any]] = []
 
 
-class WorldOutput(TypedDict):
+class WorldOutput(BaseModel):
     """Phase 2: WorldEngine 的 Engine 输出"""
-    events_out: list[dict[str, Any]]
+    events_out: list[dict[str, Any]] = []

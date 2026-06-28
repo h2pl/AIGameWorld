@@ -5,11 +5,10 @@ from ..engine.reflection.reflection import reflect as _reflect
 from ..graph.state import ReflectionSubState
 
 
-def _to_reflection_input(state: ReflectionSubState) -> ReflectionInput:
-    return {"character_id": state.get("character_id", ""), "memories": state.get("memories", [])}
-
-
 def reflect(state: ReflectionSubState) -> dict[str, Any]:
-    """Phase 7: 角色反思. 产出 / Outputs: reflected_characters"""
-    _reflect(_to_reflection_input(state))
+    """Phase 7: 角色反思."""
+    _reflect(ReflectionInput(
+        character_id=state.get("character_id", ""),
+        memories=state.get("memories", []),
+    ))
     return {"reflected_characters": []}
