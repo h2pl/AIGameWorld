@@ -1,0 +1,27 @@
+"""共享 fixtures——per 11-testing-strategy.md §3."""
+import pytest
+import asyncio
+
+from src.graph.graph import OverallState
+
+
+@pytest.fixture
+def base_state() -> OverallState:
+    """基础 mock state."""
+    return OverallState(
+        tick=0,
+        dm_instructions=[],
+        plot_brief="",
+        scene_direction={},
+        world_events=[],
+        character_actions=[],
+        engine_results=[],
+        combat_result=None,
+        state_diff={},
+        cast_changes=[],
+        narrative="",
+        reflected_characters=[],
+        summary_compressed=False,
+        errors=[],
+        needs_reflection=False,
+    )
