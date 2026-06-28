@@ -69,15 +69,8 @@ addopts = "-v --tb=short"           # 详细输出 + 短回溯 / Verbose + short
 source = ["src"]
 
 # === Pyright / Basedpyright 类型检查配置 / Type Check Config ===
-# 注意: CodeBuddy 内置 basedpyright 默认 strict 模式，会报 Unknown/未使用调用等警告。
-# 这里关闭 langgraph 无存根文件导致的噪音，实际类型由 mypy + tests 保证。
+# basic 模式下 Unknown 系规则从 error 降级为 warning/off。
+# 仅显式关闭 langgraph 无类型存根的连锁噪音；自己代码的类型错误仍会被检查。
 [tool.pyright]
 typeCheckingMode = "basic"
-reportMissingTypeStubs = false
-reportMissingTypeArgument = false
-reportUnknownVariableType = false
-reportUnknownArgumentType = false
-reportUnknownParameterType = false
-reportUnknownLambdaType = false
-reportUnknownMemberType = false
-reportUnusedCallResult = false
+reportMissingTypeStubs = false           # langgraph 无 .pyi 存根
