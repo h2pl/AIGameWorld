@@ -23,6 +23,8 @@ _DM_SYSTEM_PROMPT = _PROMPTS.get_template("_persona_dm.jinja").render()
 
 async def dm_create(req: DMCreateRequest, llm) -> DMCreateResponse:
     """Phase 1: DM 创造情境."""
+    if llm is None:
+        return _fallback_create()
     try:
         prompt = _PROMPTS.get_template("dm/dm_create.jinja").render(
             story_arcs=[],
@@ -56,6 +58,8 @@ async def dm_create(req: DMCreateRequest, llm) -> DMCreateResponse:
 
 async def dm_narrate(req: DMNarrateRequest, llm) -> DMNarrateResponse:
     """Phase 6: DM 叙事."""
+    if llm is None:
+        return _fallback_narrate()
     try:
         prompt = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
             plot_brief=req.plot_brief,
