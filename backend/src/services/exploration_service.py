@@ -11,4 +11,4 @@ def exploration(state: EngineSubState) -> dict[str, Any]:
         character_id=state.get("character_id", ""),
         action_type=state.get("action_type", ""),
     ))
-    return {"engine_results": [{"engine": "exploration", "result": result}]}
+    return {"engine_results": [{"engine": "exploration", "result": result.model_dump()}]}

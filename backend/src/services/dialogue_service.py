@@ -12,4 +12,4 @@ def dialogue(state: EngineSubState) -> dict[str, Any]:
         target=state.get("target", ""),
         intent=state.get("intent", ""),
     ))
-    return {"engine_results": [{"engine": "dialogue", "result": result}]}
+    return {"engine_results": [{"engine": "dialogue", "result": result.model_dump()}]}

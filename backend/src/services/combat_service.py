@@ -11,4 +11,4 @@ def combat(state: EngineSubState) -> dict[str, Any]:
         participants=state.get("participants", []),
         round=state.get("round", 1),
     ))
-    return {"engine_results": [{"engine": "combat", "result": result}], "combat_result": result}
+    return {"engine_results": [{"engine": "combat", "result": result.model_dump()}], "combat_result": result.model_dump()}
