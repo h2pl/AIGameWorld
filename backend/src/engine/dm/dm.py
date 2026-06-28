@@ -1,5 +1,7 @@
 """DM Engine: mock 或 DMAgent 驱动."""
 
+from typing import Any
+
 from ...schemas.request import DMCreateRequest, DMNarrateRequest
 from ...schemas.response import DMCreateResponse, DMNarrateResponse
 from ...domain.instruction import SceneDirection
@@ -15,7 +17,7 @@ _DEMO_PLOTS = [
 
 async def dm_create(
     req: DMCreateRequest,
-    agent=None,  # Optional[DMAgent] for Phase 2+
+    agent: Any = None,
 ) -> DMCreateResponse:
     """Phase 1: DM 创造情境。agent 提供时走 DMAgent，否则走 mock."""
     if agent is not None:
@@ -35,7 +37,7 @@ async def dm_create(
 
 async def dm_narrate(
     req: DMNarrateRequest,
-    agent=None,  # Optional[DMAgent] for Phase 2+
+    agent: Any = None,
 ) -> DMNarrateResponse:
     """Phase 6: DM 叙事。agent 提供时走 DMAgent，否则走 mock."""
     if agent is not None:
