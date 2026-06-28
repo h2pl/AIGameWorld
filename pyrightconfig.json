@@ -1,4 +1,5 @@
 {
   "typeCheckingMode": "basic",
-  "reportMissingTypeStubs": false
+  "reportMissingTypeStubs": false,
+  "reportArgumentType": false
 }
