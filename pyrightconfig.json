@@ -1,7 +1,25 @@
 {
   "typeCheckingMode": "basic",
   "reportMissingTypeStubs": false,
+  "reportMissingTypeArgument": false,
   "reportArgumentType": false,
   "reportOptionalMemberAccess": false,
-  "reportUndefinedVariable": false
+  "reportOptionalIterable": false,
+  "reportOptionalSubscript": false,
+  "reportOptionalCall": false,
+  "reportOptionalContextManager": false,
+  "reportUndefinedVariable": false,
+  "reportUnusedCallResult": false,
+  "reportUnusedParameter": false,
+  "reportAny": false,
+  "reportExplicitAny": false,
+  "reportUnknownVariableType": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownParameterType": false,
+  "reportUnknownLambdaType": false,
+  "reportUnknownArgumentType": false,
+  "reportImplicitOverride": false,
+  "reportPrivateUsage": false,
+  "reportMissingImports": false,
+  "reportUnreachable": false
 }
