@@ -37,5 +37,5 @@ def dm_narrate(req: DMNarrateRequest) -> DMNarrateResponse:
         else "The scene is quiet for now..."
     )
     return DMNarrateResponse(
-        narrative_out=f"[DM] {req.plot_brief}  {action_text}",
+        narrative_out=f"{req.plot_brief}  {action_text}",
     )
