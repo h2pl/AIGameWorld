@@ -86,3 +86,8 @@ class SceneObjectInteractRequest(BaseModel):
     object_id: str = ""
     character_id: str = ""
     action_type: str = ""
+
+
+# === Domain: Character (Phase 3+) ===
+class CharacterLoadRequest(BaseModel):
+    character_id: str = ""

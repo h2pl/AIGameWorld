@@ -90,3 +90,16 @@ class ItemResponse(BaseModel):
 class SceneObjectInteractResponse(BaseModel):
     success: bool | None = None
     result: dict[str, Any] | None = None
+
+
+# === Domain: Character (Phase 3+) ===
+class CharacterResponse(BaseModel):
+    id: str = ""
+    name: str = ""
+    character_type: str = "pc"
+    attributes: dict[str, int] = {}
+    level: int = 1
+    hp: int = 10
+    max_hp: int = 10
+    scene_id: str = ""
+    alive: bool = True

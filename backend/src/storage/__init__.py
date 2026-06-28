@@ -1,7 +1,6 @@
-# Pack / Storage module — World YAML loading / World persistence
 """AIGameWorld storage layer."""
 
-from .sqlite_store import WorldStateStore
+from .world_state_store import WorldStateStore
 from .chroma_store import ChromaManager
 from .memory_store import CharacterMemoryStore
 
