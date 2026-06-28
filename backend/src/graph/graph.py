@@ -41,9 +41,9 @@ from ..nodes.world_nodes import world_update_node
 from ..nodes.state_update_nodes import state_update_node
 
 # subgraph（多 node 协调）
-from .subgraphs.character_coordinator import character_coordinator_subgraph
-from .subgraphs.engine_router import engine_router_subgraph
-from .subgraphs.reflection_coordinator import reflection_coordinator_subgraph
+from .subgraphs.character_coordinator_subgraph import character_coordinator_subgraph
+from .subgraphs.engine_router_subgraph import engine_router_subgraph
+from .subgraphs.reflection_coordinator_subgraph import reflection_coordinator_subgraph
 
 
 def build_tick_graph() -> StateGraph:

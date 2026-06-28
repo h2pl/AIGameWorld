@@ -5,9 +5,9 @@ from src.graph.graph import build_tick_graph, OverallState
 from src.nodes.dm_nodes import dm_create_node, dm_narrate_node
 from src.nodes.world_nodes import world_update_node
 from src.nodes.state_update_nodes import state_update_node
-from src.graph.subgraphs.character_coordinator import character_coordinator_subgraph
-from src.graph.subgraphs.engine_router import engine_router_subgraph
-from src.graph.subgraphs.reflection_coordinator import reflection_coordinator_subgraph
+from src.graph.subgraphs.character_coordinator_subgraph import character_coordinator_subgraph
+from src.graph.subgraphs.engine_router_subgraph import engine_router_subgraph
+from src.graph.subgraphs.reflection_coordinator_subgraph import reflection_coordinator_subgraph
 
 
 def test_build_graph_returns_state_graph():
