@@ -3,6 +3,8 @@
 基于 design/03-orchestration-layer.md / Based on orchestration layer design.
 """
 
+from langgraph.checkpoint.base import BaseCheckpointSaver
+
 from ..graph.checkpoints import create_dev_checkpointer
 from ..graph.graph import build_tick_graph, OverallState
 
@@ -16,16 +18,21 @@ class Orchestrator:
     - 对外提供 run_tick() 接口 / Public run_tick() interface
     """
 
-    def __init__(self, session_id: str = "default"):
+    def __init__(
+        self,
+        session_id: str = "default",
+        checkpointer: BaseCheckpointSaver | None = None,
+    ):
         # 构建主图 / Build main graph
         self._graph = build_tick_graph()
-        # Checkpointer 工厂：开发用内存，生产可换 SQLite / Factory: dev in-memory, prod swappable
-        self._checkpointer = create_dev_checkpointer()
+        # Checkpointer：可注入，默认开发环境内存版 / Injectable, defaults to dev in-memory
+        self._checkpointer = checkpointer or create_dev_checkpointer()
         self._app = self._graph.compile(checkpointer=self._checkpointer)
         # 当前 tick 号 / Current tick number
         self._tick = 0
         # Graph 配置：按 session_id 隔离存档 / Config isolated by session_id
         self._config = {"configurable": {"thread_id": session_id}}
+
 
     @property
     def tick(self) -> int:

@@ -1,24 +1,15 @@
-"""Engine exploration logic / exploration 业务逻辑.
-
-基于 design/03-orchestration-layer.md / Based on orchestration layer design.
-"""
-
-"""ExplorationEngine 子图 / Exploration Engine Subgraph — compiled StateGraph.
-
-Phase 4: 移动/交互检定 / Movement/interaction check.
-"""
+"""Exploration Service: 纯业务逻辑 / Pure business logic (Service layer)."""
 
 from typing import TypedDict, Any
 
+
 class ExplorationSubState(TypedDict):
-    """ExplorationEngine 子图状态 / ExplorationEngine subgraph state."""
+    """Exploration Service 内部数据契约 / Exploration service internal data contract."""
     character_id: str
     action_type: str
     check_result: dict[str, Any]
 
-def resolve_exploration_node(state: ExplorationSubState) -> dict:
-    """探索检定 / Exploration check.
-    
-    Mock: 空检定 / Empty check.
-    """
-    return {"check_result": {}}
+
+def resolve_exploration(character_id: str, action_type: str) -> dict[str, Any]:
+    """探索检定 / Exploration check. Mock."""
+    return {}
