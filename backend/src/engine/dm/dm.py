@@ -1,34 +1,38 @@
-"""DM Service: 纯业务逻辑 / Pure business logic (Service layer).
+"""DM Engine: 纯业务逻辑 / Pure business logic (Engine layer).
 
-Service 层职责: 封装业务逻辑 / LLM 调用 / Prompt 构造 / 工具协调 / 不依赖 LangGraph
+Engine 层职责: LLM 调用 / Prompt 构造 / 工具协调 / 不依赖 LangGraph
 """
 
 from typing import TypedDict, Any
 
 
-class DMSubState(TypedDict):
-    """DM Service 内部数据契约 / DM service internal data contract."""
+class DMCreateInput(TypedDict):
+    """Phase 1: DM 创造情境的 Engine 输入"""
     tick: int
     plot_brief: str
-    instructions_out: list[dict[str, Any]]
+
+
+class DMNarrateInput(TypedDict):
+    """Phase 6: DM 叙事的 Engine 输入"""
+    tick: int
+    plot_brief: str
+    dm_instructions: list[dict[str, Any]]
     scene_direction: dict[str, Any]
-    narrative_out: str
     character_actions: list[dict[str, Any]]
 
 
-def dm_create(state: DMSubState) -> dict:
+def dm_create(input: DMCreateInput) -> dict:
     """Phase 1: DM 创造情境 / DM creates context. Mock. M4 接入 LLM."""
-    tick = state.get("tick", 0)
+    tick = input.get("tick", 0)
     return {
-        "plot_brief": f"[Tick {tick}] The adventure continues in the Forgotten Realms.",
         "instructions_out": [],
+        "plot_brief": f"[Tick {tick}] The adventure continues in the Forgotten Realms.",
         "scene_direction": {"featured_pcs": [], "featured_actors": []},
     }
 
 
-def dm_narrate(state: DMSubState) -> dict:
+def dm_narrate(input: DMNarrateInput) -> dict:
     """Phase 6: DM 叙事 / DM narrates. Mock. M4 接入 LLM."""
-    plot = state.get("plot_brief", "")
-    actions = state.get("character_actions", [])
-    narrative = f"[DM Narrative] {plot} (Actions: {len(actions)})"
-    return {"narrative_out": narrative}
+    plot = input.get("plot_brief", "")
+    actions = input.get("character_actions", [])
+    return {"narrative_out": f"[DM Narrative] {plot} (Actions: {len(actions)})"}

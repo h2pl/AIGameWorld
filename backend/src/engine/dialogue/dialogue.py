@@ -1,16 +1,15 @@
-"""Dialogue Service: 纯业务逻辑 / Pure business logic (Service layer)."""
+"""Dialogue Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
 
 from typing import TypedDict, Any
 
 
-class DialogueSubState(TypedDict):
-    """Dialogue Service 内部数据契约 / Dialogue service internal data contract."""
+class DialogueInput(TypedDict):
+    """Phase 4: 对话检定的 Engine 输入"""
     speaker: str
     target: str
     intent: str
-    check_result: dict[str, Any]
 
 
-def resolve_dialogue(speaker: str, target: str, intent: str) -> dict[str, Any]:
+def resolve_dialogue(input: DialogueInput) -> dict[str, Any]:
     """对话检定 / Dialogue check. Mock."""
     return {}
