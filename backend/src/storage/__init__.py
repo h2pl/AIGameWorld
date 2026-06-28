@@ -2,7 +2,6 @@
 
 from .sqlite_client import SQLiteClient
 from .chroma_store import ChromaManager
-from .memory_store import CharacterMemoryStore
 
-__all__ = ["SQLiteClient", "ChromaManager", "CharacterMemoryStore"]
+__all__ = ["SQLiteClient", "ChromaManager"]
 
