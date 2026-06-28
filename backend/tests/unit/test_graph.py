@@ -5,9 +5,9 @@ from src.graph.graph import build_tick_graph, OverallState
 from src.nodes.dm_nodes import dm_create_node, dm_narrate_node
 from src.nodes.world_nodes import world_update_node
 from src.nodes.state_update_nodes import state_update_node
-from src.graph.subgraphs.character_coordinator_subgraph import character_coordinator_subgraph
-from src.graph.subgraphs.engine_router_subgraph import engine_router_subgraph
-from src.graph.subgraphs.reflection_coordinator_subgraph import reflection_coordinator_subgraph
+from src.graph.subgraphs.character_subgraph import character_subgraph
+from src.graph.subgraphs.engine_subgraph import engine_subgraph
+from src.graph.subgraphs.reflection_subgraph import reflection_subgraph
 
 
 def test_build_graph_returns_state_graph():
@@ -57,12 +57,12 @@ def test_phase2_world(base_state):
 
 
 def test_phase3_char_decide(base_state):
-    r = character_coordinator_subgraph.invoke(base_state)
+    r = character_subgraph.invoke(base_state)
     assert r["character_actions"] == []
 
 
 def test_phase4_engine_router(base_state):
-    r = engine_router_subgraph.invoke(base_state)
+    r = engine_subgraph.invoke(base_state)
     assert "engine_results" in r
     assert r["combat_result"] is None
 
@@ -106,7 +106,7 @@ def test_phase6_no_reflection_low_tick():
 
 
 def test_phase7_reflect(base_state):
-    r = reflection_coordinator_subgraph.invoke(base_state)
+    r = reflection_subgraph.invoke(base_state)
     assert "reflected_characters" in r
 
 

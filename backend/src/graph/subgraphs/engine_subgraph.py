@@ -28,7 +28,7 @@ def _engine_router(state: dict[str, Any]) -> dict[str, Any]:
     return {"engine_results": results, "combat_result": cr.get("result")}
 
 
-def build_engine_router_subgraph() -> StateGraph:
+def build_engine_subgraph() -> StateGraph:
     graph = StateGraph(dict)
     graph.add_node("engine_router", _engine_router)
     graph.set_entry_point("engine_router")
@@ -36,4 +36,4 @@ def build_engine_router_subgraph() -> StateGraph:
     return graph
 
 
-engine_router_subgraph = build_engine_router_subgraph().compile()
+engine_subgraph = build_engine_subgraph().compile()

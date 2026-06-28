@@ -14,7 +14,7 @@ def _reflection_coordinator(state: dict[str, Any]) -> dict[str, Any]:
     return {"reflected_characters": [], "summary_compressed": False}
 
 
-def build_reflection_coordinator_subgraph() -> StateGraph:
+def build_reflection_subgraph() -> StateGraph:
     graph = StateGraph(dict)
     graph.add_node("reflection_coordinator", _reflection_coordinator)
     graph.set_entry_point("reflection_coordinator")
@@ -22,4 +22,4 @@ def build_reflection_coordinator_subgraph() -> StateGraph:
     return graph
 
 
-reflection_coordinator_subgraph = build_reflection_coordinator_subgraph().compile()
+reflection_subgraph = build_reflection_subgraph().compile()

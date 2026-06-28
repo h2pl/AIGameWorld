@@ -27,7 +27,7 @@ def _character_decide(state: dict[str, Any]) -> dict[str, Any]:
     return {"character_actions": actions}
 
 
-def build_character_coordinator_subgraph() -> StateGraph:
+def build_character_subgraph() -> StateGraph:
     graph = StateGraph(dict)
     graph.add_node("character_decide", _character_decide)
     graph.set_entry_point("character_decide")
@@ -35,4 +35,4 @@ def build_character_coordinator_subgraph() -> StateGraph:
     return graph
 
 
-character_coordinator_subgraph = build_character_coordinator_subgraph().compile()
+character_subgraph = build_character_subgraph().compile()
