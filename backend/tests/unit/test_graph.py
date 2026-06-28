@@ -5,14 +5,13 @@ import pytest
 from src.graph.graph import (
     build_tick_graph,
     OverallState,
-    phase1_dm_create,
-    phase2_world,
     phase3_character_decide,
     phase4_engines,
     phase5_state_update,
-    phase6_dm_narrate,
     phase7_reflection,
 )
+from src.graph.subgraphs.dm_subgraph import dm_create_subgraph, dm_narrate_subgraph
+from src.graph.subgraphs.world_subgraph import world_subgraph
 
 
 # ============================================================
@@ -85,8 +84,8 @@ def base_state() -> OverallState:
 
 
 def test_phase1_dm_create(base_state):
-    """Phase 1: 应该返回 plot_brief 和 scene_direction."""
-    result = phase1_dm_create(base_state)
+    """Phase 1: DM 创造子图应返回 plot_brief 和 scene_direction."""
+    result = dm_create_subgraph.invoke(base_state)
     assert "dm_instructions" in result
     assert "plot_brief" in result
     assert "scene_direction" in result
@@ -94,10 +93,11 @@ def test_phase1_dm_create(base_state):
 
 
 def test_phase2_world(base_state):
-    """Phase 2: 应该返回空事件列表."""
-    result = phase2_world(base_state)
+    """Phase 2: WorldEngine 子图应返回空事件列表."""
+    result = world_subgraph.invoke(base_state)
     assert "world_events" in result
     assert result["world_events"] == []
+
 
 
 def test_phase3_character_decide(base_state):
@@ -124,12 +124,11 @@ def test_phase5_state_update(base_state):
 
 def test_phase6_dm_narrate(base_state):
     """Phase 6: 应该返回 narrative 和 needs_reflection.
-    
-    DM 子图有路由: character_actions 有值 → narrate 模式.
-    dm_create_node 会覆盖 plot_brief（Mock 行为），然后 dm_narrate 拼接叙事.
+
+    DM 叙事子图根据 character_actions 生成叙事文本.
     """
     base_state["character_actions"] = [{"action": "test"}]  # 触发 narrate 路由
-    result = phase6_dm_narrate(base_state)
+    result = dm_narrate_subgraph.invoke(base_state)
     assert "narrative" in result
     assert "needs_reflection" in result
     assert len(result["narrative"]) > 0  # DM 子图产出叙事
@@ -145,7 +144,7 @@ def test_phase6_reflection_trigger():
         narrative="", reflected_characters=[], summary_compressed=False,
         errors=[], needs_reflection=False,
     )
-    result = phase6_dm_narrate(state)
+    result = dm_narrate_subgraph.invoke(state)
     assert result["needs_reflection"] is True  # tick=5, 5%5==0
 
 
@@ -159,8 +158,9 @@ def test_phase6_no_reflection_low_tick():
         narrative="", reflected_characters=[], summary_compressed=False,
         errors=[], needs_reflection=False,
     )
-    result = phase6_dm_narrate(state)
+    result = dm_narrate_subgraph.invoke(state)
     assert result["needs_reflection"] is False  # tick=1, 1%5≠0
+
 
 
 def test_phase7_reflection(base_state):

@@ -26,7 +26,7 @@ from src.models import (
     StoryHook,
     WorldState,
 )
-from src.storage import ChromaManager, CheckpointStore, WorldStateStore
+from src.storage import ChromaManager, WorldStateStore
 
 
 @pytest.fixture
@@ -308,15 +308,4 @@ class TestChromaManager:
         assert len(results) == 0
 
 
-# === Test Class / 测试类 ===
-class TestCheckpointStore:
-    def test_config_generation(self):
-        store = CheckpointStore()
-        config = store.get_config("thread_1", "tick_1")
-        assert config["configurable"]["thread_id"] == "thread_1"
-        assert config["configurable"]["checkpoint_id"] == "tick_1"
-        assert "checkpoint_ns" in config["configurable"]
 
-    def test_saver_is_initialized(self):
-        store = CheckpointStore()
-        assert store.saver is not None

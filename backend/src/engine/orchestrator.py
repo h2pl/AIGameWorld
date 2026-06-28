@@ -3,8 +3,7 @@
 基于 design/03-orchestration-layer.md / Based on orchestration layer design.
 """
 
-from langgraph.checkpoint.memory import MemorySaver
-
+from ..graph.checkpoints import create_dev_checkpointer
 from ..graph.graph import build_tick_graph, OverallState
 
 
@@ -17,16 +16,16 @@ class Orchestrator:
     - 对外提供 run_tick() 接口 / Public run_tick() interface
     """
 
-    def __init__(self):
+    def __init__(self, session_id: str = "default"):
         # 构建主图 / Build main graph
         self._graph = build_tick_graph()
-        # MemorySaver: 内存级 Checkpoint / In-memory checkpointer
-        self._checkpointer = MemorySaver()
+        # Checkpointer 工厂：开发用内存，生产可换 SQLite / Factory: dev in-memory, prod swappable
+        self._checkpointer = create_dev_checkpointer()
         self._app = self._graph.compile(checkpointer=self._checkpointer)
         # 当前 tick 号 / Current tick number
         self._tick = 0
-        # Graph 配置（每个 tick 新 thread_id）/ Graph config (new thread per tick)
-        self._config = {"configurable": {"thread_id": "AIGameWorld"}}
+        # Graph 配置：按 session_id 隔离存档 / Config isolated by session_id
+        self._config = {"configurable": {"thread_id": session_id}}
 
     @property
     def tick(self) -> int:
@@ -78,6 +77,31 @@ class Orchestrator:
             "errors": result.get("errors", []),
         }
 
+    def get_state(self) -> OverallState:
+        """获取当前会话的最新状态 / Get latest state for current session."""
+        return self._app.get_state(self._config)
+
+    def get_history(self) -> list[OverallState]:
+        """获取当前会话的执行历史（支持时间旅行）/ Get execution history for time travel."""
+        return list(self._app.get_state_history(self._config))
+
+    def rollback(self, tick: int) -> OverallState:
+        """回滚到指定 tick 的状态 / Rollback state to a specific tick.
+
+        Args:
+            tick: 目标 tick 号 / target tick number
+
+        Returns:
+            OverallState: 回滚后的状态 / state after rollback
+        """
+        for state in self.get_history():
+            if state.metadata.get("tick") == tick:
+                self._app.update_state(self._config, state.values)
+                self._tick = tick
+                return state.values
+        raise ValueError(f"Tick {tick} not found in session history")
+
     def reset(self) -> None:
         """重置 tick 计数器 / Reset tick counter."""
         self._tick = 0
+
