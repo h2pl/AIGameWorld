@@ -15,45 +15,36 @@ world:
 # API Key 通过环境变量注入：DEEPSEEK_API_KEY / GLM_API_KEY / ANTHROPIC_API_KEY
 llm:
   providers:
-    primary:                          # Zen Proxy 本地代理
+    primary:                          # Zen Proxy 本地代理（端口 6446，无需 API key）
       type: "openai"
-      base_url: "http://localhost:8080/v1"
+      base_url: "http://localhost:6446/v1"
 
-  # DM 创造情境（强推理模型）
   dm_create:
-    model: "deepseek-reasoner"
-    # base_url: "https://open.bigmodel.cn/api/paas/v4"     # GLM-5.2
-    # base_url: "http://localhost:8080/v1"                  # ZenProxy
+    model: "deepseek-v4-flash-free"
     temperature: 0.9
     timeout: 15
     retries: 1
 
-  # DM 叙事（快模型）
   dm_narrate:
-    model: "deepseek-chat"
-    # model: "glm-4-flash"                                  # GLM-5.2 快模型
-    # base_url: "http://localhost:8080/v1"                  # ZenProxy
+    model: "deepseek-v4-flash-free"
     temperature: 0.8
     timeout: 10
     retries: 1
 
-  # PC 决策（中模型）
   pc_decision:
-    model: "deepseek-chat"
+    model: "deepseek-v4-flash-free"
     temperature: 0.7
     timeout: 10
     retries: 1
 
-  # Actor 决策（快模型——降低成本）
   actor_decision:
-    model: "deepseek-chat"
+    model: "deepseek-v4-flash-free"
     temperature: 0.7
     timeout: 8
     retries: 1
 
-  # 角色反思（强推理模型）
   reflection:
-    model: "deepseek-reasoner"
+    model: "deepseek-v4-flash-free"
     temperature: 0.5
     timeout: 15
     retries: 1
