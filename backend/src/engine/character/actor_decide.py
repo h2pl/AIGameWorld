@@ -6,9 +6,12 @@ from ...domain.action import Action
 
 
 def actor_decide(req: ActorDecideRequest) -> ActorDecideResponse:
-    """Phase 3: Actor 决策. Mock. M5 接入 LLM.
-
-    ① Request → Domain  ② 业务逻辑  ③ Domain → Response
-    """
-    action = Action.from_actor_request(req)
-    return action.to_actor_response()
+    """Phase 3: Actor 决策. Mock. M5 接入 LLM."""
+    action = Action(
+        character_id=req.actor_id,
+        character_type="actor",
+        tick=req.tick,
+        action_type="idle",
+        reasoning=f"Actor {req.actor_id} deciding based on: {req.plot_brief}",
+    )
+    return ActorDecideResponse.from_entity(action)

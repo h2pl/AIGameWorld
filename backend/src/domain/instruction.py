@@ -1,12 +1,6 @@
-"""DM 指令领域模型 / DM Instruction Domain Models."""
-from __future__ import annotations
-from typing import Literal, TYPE_CHECKING
-
+"""DM 指令领域模型."""
+from typing import Literal
 from pydantic import BaseModel, Field
-
-if TYPE_CHECKING:
-    from ...schemas.request import DMCreateRequest
-    from ...schemas.response import DMCreateResponse
 
 
 class DMInstruction(BaseModel):
@@ -15,20 +9,6 @@ class DMInstruction(BaseModel):
     type: Literal["plot_event", "actor_motivation", "scene_change", "scene_direction"]
     priority: int = 0
     description: str = ""
-
-    @classmethod
-    def from_request(cls, req: DMCreateRequest) -> DMInstruction:
-        """Schema Request → Domain Model"""
-        return cls(tick=req.tick, plot_brief=req.plot_brief, type="scene_direction")
-
-    def to_response(self) -> DMCreateResponse:
-        """Domain Model → Schema Response"""
-        from ...schemas.response import DMCreateResponse
-        return DMCreateResponse(
-            instructions_out=[self.model_dump()],
-            plot_brief=getattr(self, "plot_brief", ""),
-            scene_direction=getattr(self, "scene_direction", {}),
-        )
 
 
 class PlotEvent(DMInstruction):
