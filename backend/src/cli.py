@@ -12,7 +12,7 @@ from datetime import datetime
 from src.engine.orchestrator import Orchestrator
 from src.storage.sqlite_client import SQLiteClient
 from src.repository.character_repo import CharacterRepo
-from src.domain import PlayerCharacter, Actor, Location, Attributes, CombatStats, Equipment, CharacterArc
+from src.domain import PlayerCharacter, Actor, Location, Attributes, CombatStats, CharacterArc
 
 
 # ── 种子数据 ──
@@ -20,17 +20,17 @@ def _seed_pcs() -> list[PlayerCharacter]:
     return [
         PlayerCharacter(
             id="alex", name="Alex", role="fighter", race="human",
-            scene_id="tavern", location=Location(scene_id="tavern"),
+            location=Location(scene_id="tavern"),
             attributes=Attributes(strength=16, dexterity=12, constitution=14, intelligence=10, wisdom=10, charisma=12),
             combat=CombatStats(hp=28, max_hp=28, ac=16, initiative=2, attack_bonus=5),
-            character_arc=CharacterArc(growth_line="prove_worth", inner_conflict="recklessness"),
+            character_arc=CharacterArc(stage="growth", description="Prove his worth as a warrior"),
         ),
         PlayerCharacter(
             id="maya", name="Maya", role="rogue", race="elf",
-            scene_id="tavern", location=Location(scene_id="tavern"),
+            location=Location(scene_id="tavern"),
             attributes=Attributes(strength=10, dexterity=18, constitution=12, intelligence=14, wisdom=12, charisma=14),
             combat=CombatStats(hp=20, max_hp=20, ac=14, initiative=4, attack_bonus=6),
-            character_arc=CharacterArc(growth_line="find_purpose", inner_conflict="trust"),
+            character_arc=CharacterArc(stage="crisis", description="Struggling with trust issues"),
         ),
     ]
 
@@ -39,14 +39,14 @@ def _seed_actors() -> list[Actor]:
     return [
         Actor(
             id="innkeeper", name="Greta", role="innkeeper", race="dwarf",
-            scene_id="tavern", location=Location(scene_id="tavern"),
+            location=Location(scene_id="tavern"),
             attributes=Attributes(strength=12, dexterity=8, constitution=14, intelligence=10, wisdom=14, charisma=16),
             personality="Warm but sharp-eyed. Knows everyone's secrets.",
             functions=["dialogue", "merchant"],
         ),
         Actor(
             id="guard", name="Sergeant Cole", role="town_guard", race="human",
-            scene_id="town_square", location=Location(scene_id="town_square"),
+            location=Location(scene_id="town_square"),
             attributes=Attributes(strength=14, dexterity=10, constitution=14, intelligence=10, wisdom=12, charisma=10),
             combat=CombatStats(hp=22, max_hp=22, ac=15, initiative=1, attack_bonus=4),
             personality="Stern but fair. Served the town for 20 years.",
@@ -104,7 +104,7 @@ async def run_full(db_path: str, n: int) -> None:
 
     # 3. Tick 循环
     orch = Orchestrator()
-    for i in range(n):
+    for _ in range(n):
         loaded_pcs = await repo.load_pcs()
         loaded_actors = await repo.load_actors()
 
@@ -152,7 +152,7 @@ async def run_mock(n: int) -> None:
     print("Phase 1 -- Mock Loop (no DB)")
     print(f"Running {n} tick(s)...\n")
 
-    for i in range(n):
+    for _ in range(n):
         result = await orch.run_tick()
         _print_tick(result["tick"],
                     result.get("narrative", ""),
