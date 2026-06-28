@@ -2,7 +2,7 @@
 
 import uuid
 
-from ..storage.chroma_store import ChromaClient
+from ..storage.chroma_client import ChromaClient
 
 
 class MemoryRepo:
