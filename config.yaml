@@ -15,9 +15,9 @@ world:
 # API Key 通过环境变量注入：DEEPSEEK_API_KEY / GLM_API_KEY / ANTHROPIC_API_KEY
 llm:
   providers:
-    primary:                          # 默认提供商（被 base_url 覆盖时无效）
+    primary:                          # Zen Proxy 本地代理
       type: "openai"
-      base_url: "https://api.deepseek.com/v1"
+      base_url: "http://localhost:8080/v1"
 
   # DM 创造情境（强推理模型）
   dm_create:
