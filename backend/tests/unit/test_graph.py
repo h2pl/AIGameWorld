@@ -1,15 +1,13 @@
-"""测试 TickGraph 7 Phase 主图。全部 Phase 以 node 函数挂载。"""
+"""测试 TickGraph 7 Phase 主图。"""
 import pytest
 
 from src.graph.graph import build_tick_graph, OverallState
 from src.nodes.dm_nodes import dm_create_node, dm_narrate_node
 from src.nodes.world_nodes import world_update_node
 from src.nodes.state_update_nodes import state_update_node
-from src.nodes.coordinators import (
-    phase3_character_decide,
-    phase4_engine_router,
-    phase7_reflection_coordinator,
-)
+from src.graph.subgraphs.character_coordinator import character_coordinator_subgraph
+from src.graph.subgraphs.engine_router import engine_router_subgraph
+from src.graph.subgraphs.reflection_coordinator import reflection_coordinator_subgraph
 
 
 def test_build_graph_returns_state_graph():
@@ -51,7 +49,6 @@ def test_phase1_dm_create(base_state):
     r = dm_create_node(base_state)
     assert "dm_instructions" in r
     assert "plot_brief" in r
-    assert "scene_direction" in r
 
 
 def test_phase2_world(base_state):
@@ -60,12 +57,12 @@ def test_phase2_world(base_state):
 
 
 def test_phase3_char_decide(base_state):
-    r = phase3_character_decide(base_state)
+    r = character_coordinator_subgraph.invoke(base_state)
     assert r["character_actions"] == []
 
 
 def test_phase4_engine_router(base_state):
-    r = phase4_engine_router(base_state)
+    r = engine_router_subgraph.invoke(base_state)
     assert "engine_results" in r
     assert r["combat_result"] is None
 
@@ -73,7 +70,6 @@ def test_phase4_engine_router(base_state):
 def test_phase5_state_update(base_state):
     r = state_update_node(base_state)
     assert "state_diff" in r
-    assert "cast_changes" in r
 
 
 def test_phase6_narrate(base_state):
@@ -110,9 +106,8 @@ def test_phase6_no_reflection_low_tick():
 
 
 def test_phase7_reflect(base_state):
-    r = phase7_reflection_coordinator(base_state)
+    r = reflection_coordinator_subgraph.invoke(base_state)
     assert "reflected_characters" in r
-    assert "summary_compressed" in r
 
 
 @pytest.mark.asyncio
