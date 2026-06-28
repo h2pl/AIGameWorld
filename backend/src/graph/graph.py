@@ -1,25 +1,53 @@
-"""TickGraph 主图：7 Phase 编排 — node + subgraph 混合。
+"""TickGraph 主图 — 7 Phase 顺序执行 + 条件分支。
 
-Phase 1/2/5/6: plain node（单步），Phase 3/4/7: subgraph（多步协调）。
+START
+ |
+ v
+ phase1_dm_create   [node]      DM 创造情境   dm_create_node
+ |
+ v
+ phase2_world       [node]      World 引擎    world_update_node
+ |
+ v
+ phase3_char_decide [subgraph]  角色决策协调   character_coordinator_subgraph
+ |
+ v
+ phase4_engines     [subgraph]  Engine 路由   engine_router_subgraph
+ |
+ v
+ phase5_update      [node]      状态合并更新   state_update_node
+ |
+ v
+ phase6_narrate     [node]      DM 叙事       dm_narrate_node
+ |
+ +-- needs_reflection? --False--> END
+ |
+ True
+ |
+ v
+ phase7_reflect     [subgraph]  反思/摘要协调  reflection_coordinator_subgraph
+ |
+ v
+ END
+
+[node] = 单步函数: 读 State -> 调 Service -> 写 State
+[subgraph] = 子图: 含内部路由/协调逻辑
 """
 
 from langgraph.graph import StateGraph, END
 
 from .state import OverallState
 
-# Phase 1/2/5/6: plain node — 单步读 State → 调 Service → 写 State
 from ..nodes.dm_nodes import dm_create_node, dm_narrate_node
 from ..nodes.world_nodes import world_update_node
 from ..nodes.state_update_nodes import state_update_node
 
-# Phase 3/4/7: subgraph — 含内部协调逻辑
 from .subgraphs.character_coordinator import character_coordinator_subgraph
 from .subgraphs.engine_router import engine_router_subgraph
 from .subgraphs.reflection_coordinator import reflection_coordinator_subgraph
 
 
 def build_tick_graph() -> StateGraph:
-    """构建 7 Phase TickGraph。"""
     graph = StateGraph(OverallState)
 
     graph.add_node("phase1_dm_create", dm_create_node)
