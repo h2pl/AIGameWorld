@@ -1,8 +1,9 @@
-"""Dialogue Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
+"""Dialogue Engine: 纯业务逻辑."""
 
-from ...models.io.engine import DialogueInput, DialogueOutput
+from ...schemas.request import DialogueRequest
+from ...schemas.response import DialogueResponse
 
 
-def resolve_dialogue(input: DialogueInput) -> DialogueOutput:
-    """对话检定 / Dialogue check. Mock."""
-    return DialogueOutput()
+def resolve_dialogue(req: DialogueRequest) -> DialogueResponse:
+    """对话检定. Mock."""
+    return DialogueResponse()

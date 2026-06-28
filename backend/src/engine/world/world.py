@@ -1,8 +1,9 @@
-"""World Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
+"""World Engine: 纯业务逻辑."""
 
-from ...models.io.world import WorldInput, WorldOutput
+from ...schemas.request import WorldUpdateRequest
+from ...schemas.response import WorldUpdateResponse
 
 
-def execute_instructions(input: WorldInput) -> WorldOutput:
-    """执行 DM 指令 / Execute DM instructions. Mock. M6 接入场景实例化."""
-    return WorldOutput()
+def execute_instructions(req: WorldUpdateRequest) -> WorldUpdateResponse:
+    """执行 DM 指令. Mock. M6 接入场景实例化."""
+    return WorldUpdateResponse()

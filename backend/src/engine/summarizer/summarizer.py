@@ -1,8 +1,8 @@
-"""Summarizer Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
+"""Summarizer Engine: 纯业务逻辑."""
 
-from ...models.io.reflection import SummarizerInput
+from ...schemas.request import SummarizerRequest
 
 
-def summarize(input: SummarizerInput) -> str:
-    """压缩事件 / Compress events. Mock."""
+def summarize(req: SummarizerRequest) -> str:
+    """压缩事件. Mock."""
     return ""

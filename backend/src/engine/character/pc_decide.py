@@ -1,12 +1,13 @@
-"""PC Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
+"""PC Engine: 纯业务逻辑."""
 
-from ...models.io.character import PCDecideInput, PCDecideOutput
+from ...schemas.request import PCDecideRequest
+from ...schemas.response import PCDecideResponse
 
 
-def pc_decide(input: PCDecideInput) -> PCDecideOutput:
-    """Phase 3: PC 决策 / PC decides action. Mock. M5 接入 LLM."""
-    return PCDecideOutput(
-        character_id=input.pc_id,
+def pc_decide(req: PCDecideRequest) -> PCDecideResponse:
+    """Phase 3: PC 决策. Mock. M5 接入 LLM."""
+    return PCDecideResponse(
+        character_id=req.pc_id,
         type="explore",
         description="Looking around the area.",
     )

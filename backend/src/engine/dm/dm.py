@@ -1,22 +1,18 @@
-"""DM Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
+"""DM Engine: 纯业务逻辑."""
 
-from ...models.io.dm import DMCreateInput, DMCreateOutput, DMNarrateInput, DMNarrateOutput
-from ...models.instruction import DMInstruction
-
-
-def dm_create(input: DMCreateInput) -> DMCreateOutput:
-    """Phase 1: DM 创造情境 / DM creates context.
-
-    ① Input → Domain Model  ② 业务逻辑  ③ Domain → Output
-    Mock. M4 接入 LLM.
-    """
-    dm = DMInstruction.from_input(input)             # ① Input → Domain
-    dm.plot_brief = f"[Tick {input.tick}] The adventure continues..."  # ②
-    return dm.to_output()                            # ③ Domain → Output
+from ...schemas.request import DMCreateRequest, DMNarrateRequest
+from ...schemas.response import DMCreateResponse, DMNarrateResponse
+from ...domain.entities.instruction import DMInstruction
 
 
-def dm_narrate(input: DMNarrateInput) -> DMNarrateOutput:
-    """Phase 6: DM 叙事 / DM narrates. Mock. M4 接入 LLM."""
-    return DMNarrateOutput(
-        narrative_out=f"[DM Narrative] {input.plot_brief} (Actions: {len(input.character_actions)})",
+def dm_create(req: DMCreateRequest) -> DMCreateResponse:
+    """Phase 1: DM 创造情境. Mock. M4 接入 LLM."""
+    dm = DMInstruction.from_request(req)
+    return dm.to_response()
+
+
+def dm_narrate(req: DMNarrateRequest) -> DMNarrateResponse:
+    """Phase 6: DM 叙事. Mock. M4 接入 LLM."""
+    return DMNarrateResponse(
+        narrative_out=f"[DM Narrative] {req.plot_brief} (Actions: {len(req.character_actions)})",
     )

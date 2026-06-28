@@ -1,8 +1,9 @@
-"""Exploration Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
+"""Exploration Engine: 纯业务逻辑."""
 
-from ...models.io.engine import ExplorationInput, ExplorationOutput
+from ...schemas.request import ExplorationRequest
+from ...schemas.response import ExplorationResponse
 
 
-def resolve_exploration(input: ExplorationInput) -> ExplorationOutput:
-    """探索检定 / Exploration check. Mock."""
-    return ExplorationOutput()
+def resolve_exploration(req: ExplorationRequest) -> ExplorationResponse:
+    """探索检定. Mock."""
+    return ExplorationResponse()

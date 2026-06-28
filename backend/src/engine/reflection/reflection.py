@@ -1,8 +1,8 @@
-"""Reflection Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
+"""Reflection Engine: 纯业务逻辑."""
 
-from ...models.io.reflection import ReflectionInput
+from ...schemas.request import ReflectionRequest
 
 
-def reflect(input: ReflectionInput) -> str:
-    """角色反思 / Character reflection. Mock."""
+def reflect(req: ReflectionRequest) -> str:
+    """角色反思. Mock."""
     return ""

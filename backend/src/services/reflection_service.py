@@ -1,13 +1,13 @@
 """Reflection Service: State ↔ Engine adapter."""
 from typing import Any
-from ..models.io.reflection import ReflectionInput
+from ..schemas.request import ReflectionRequest
 from ..engine.reflection.reflection import reflect as _reflect
 from ..graph.state import ReflectionSubState
 
 
 def reflect(state: ReflectionSubState) -> dict[str, Any]:
     """Phase 7: 角色反思."""
-    _reflect(ReflectionInput(
+    _reflect(ReflectionRequest(
         character_id=state.get("character_id", ""),
         memories=state.get("memories", []),
     ))

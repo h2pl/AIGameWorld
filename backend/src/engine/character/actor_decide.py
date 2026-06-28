@@ -1,12 +1,13 @@
-"""Actor Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
+"""Actor Engine: 纯业务逻辑."""
 
-from ...models.io.character import ActorDecideInput, ActorDecideOutput
+from ...schemas.request import ActorDecideRequest
+from ...schemas.response import ActorDecideResponse
 
 
-def actor_decide(input: ActorDecideInput) -> ActorDecideOutput:
-    """Phase 3: Actor 决策 / Actor decides action. Mock. M5 接入 LLM."""
-    return ActorDecideOutput(
-        character_id=input.actor_id,
+def actor_decide(req: ActorDecideRequest) -> ActorDecideResponse:
+    """Phase 3: Actor 决策. Mock. M5 接入 LLM."""
+    return ActorDecideResponse(
+        character_id=req.actor_id,
         type="idle",
         description="Going about daily business.",
     )

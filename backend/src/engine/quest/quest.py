@@ -1,8 +1,8 @@
-"""Quest Engine: 纯业务逻辑 / Pure business logic (Engine layer)."""
+"""Quest Engine: 纯业务逻辑."""
 
-from ...models.io.engine import QuestInput
+from ...schemas.request import QuestRequest
 
 
-def check_quests(input: QuestInput) -> list[str]:
-    """检查任务完成 / Check quest completion. Mock."""
+def check_quests(req: QuestRequest) -> list[str]:
+    """检查任务完成. Mock."""
     return []
