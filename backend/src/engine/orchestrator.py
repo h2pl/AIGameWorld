@@ -3,6 +3,8 @@
 基于 design/03-orchestration-layer.md / Based on orchestration layer design.
 """
 
+from typing import Any
+
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from ..graph.checkpoints import create_dev_checkpointer
@@ -11,7 +13,7 @@ from ..graph.graph import build_tick_graph, OverallState
 
 class Orchestrator:
     """TickGraph 编排器 / Orchestrates the TickGraph.
-    
+
     职责 / Responsibilities:
     - 初始化 TickGraph + Checkpointer / Initialize graph + checkpointer
     - 管理 tick 执行 / Manage tick execution
@@ -22,6 +24,8 @@ class Orchestrator:
         self,
         session_id: str = "default",
         checkpointer: BaseCheckpointSaver | None = None,
+        dm_agent: Any = None,  # Optional[DMAgent] for Phase 2+ LLM
+        reflection_interval: int = 5,
     ):
         # 构建主图 / Build main graph
         self._graph = build_tick_graph()
@@ -32,7 +36,9 @@ class Orchestrator:
         self._tick = 0
         # Graph 配置：按 session_id 隔离存档 / Config isolated by session_id
         self._config = {"configurable": {"thread_id": session_id}}
-
+        # Phase 2+ DMAgent 注入 / DMAgent for Phase 2+ LLM
+        self._dm_agent = dm_agent
+        self._reflection_interval = reflection_interval
 
     @property
     def tick(self) -> int:
@@ -41,15 +47,14 @@ class Orchestrator:
 
     async def run_tick(self, initial_state: OverallState | None = None) -> dict:
         """执行一个完整 Tick（7 Phase）/ Execute one complete tick.
-        
+
         Args:
-            initial_state: 初始状态（首次从 WorldState 构造）/ Initial state (from WorldState for first tick)
-            
+            initial_state: 初始状态（首次从 WorldState 构造）
+
         Returns:
-            dict: 包含 narrative 和 events 的结果 / Result with narrative and events
+            dict: 包含 narrative 和 events 的结果
         """
         if initial_state is None:
-            # 后续 tick 从上次状态继续 / Subsequent ticks continue from previous state
             initial_state = OverallState(
                 tick=self._tick,
                 dm_instructions=[],
@@ -68,13 +73,16 @@ class Orchestrator:
                 needs_reflection=False,
             )
 
-        # 确保 tick 号正确 / Ensure correct tick number
         initial_state["tick"] = self._tick
 
-        # 执行主图 / Run the main graph
-        result = await self._app.ainvoke(initial_state, self._config)
+        # Phase 2+: 如有 DMAgent，通过 config 传递给 graph nodes
+        config = {**self._config}
+        if self._dm_agent:
+            config["configurable"]["dm_agent"] = self._dm_agent
+            config["configurable"]["reflection_interval"] = self._reflection_interval
 
-        # 更新内部 tick / Update internal tick
+        result = await self._app.ainvoke(initial_state, config)
+
         self._tick += 1
 
         return {
@@ -94,14 +102,7 @@ class Orchestrator:
         return list(self._app.get_state_history(self._config))
 
     def rollback(self, tick: int) -> OverallState:
-        """回滚到指定 tick 的状态 / Rollback state to a specific tick.
-
-        Args:
-            tick: 目标 tick 号 / target tick number
-
-        Returns:
-            OverallState: 回滚后的状态 / state after rollback
-        """
+        """回滚到指定 tick 的状态 / Rollback state to a specific tick."""
         for state in self.get_history():
             if state.metadata.get("tick") == tick:
                 self._app.update_state(self._config, state.values)
@@ -112,4 +113,3 @@ class Orchestrator:
     def reset(self) -> None:
         """重置 tick 计数器 / Reset tick counter."""
         self._tick = 0
-

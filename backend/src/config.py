@@ -60,6 +60,7 @@ class WorldConfig(BaseModel):
 class AutoRunConfig(BaseModel):
     """自动运行配置 / Auto-run configuration."""
     default_interval: int = 2000  # 毫秒 / milliseconds
+    reflection_interval: int = 5  # 每 N ticks 触发一次反思
 
 
 class LangfuseConfig(BaseModel):

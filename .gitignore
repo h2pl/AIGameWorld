@@ -20,6 +20,7 @@ dist/
 data/
 *.db
 *.db-journal
+*.log
 
 # Environment
 .env

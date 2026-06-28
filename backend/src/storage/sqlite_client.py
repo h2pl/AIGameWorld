@@ -1,5 +1,6 @@
 """SQLite 裸操作——封装 connect / execute / fetch / schema，零业务."""
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -52,3 +53,14 @@ class SQLiteClient:
 
     async def begin(self) -> None:
         await self._db.execute("BEGIN")
+
+    @asynccontextmanager
+    async def transaction(self):
+        """事务上下文管理器——自动 commit/rollback."""
+        await self.begin()
+        try:
+            yield
+            await self.commit()
+        except Exception:
+            await self._db.rollback()
+            raise

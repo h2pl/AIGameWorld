@@ -18,7 +18,7 @@ async def dm_create(state: OverallState, agent=None) -> dict:
     }
 
 
-async def dm_narrate(state: OverallState, agent=None) -> dict:
+async def dm_narrate(state: OverallState, agent=None, reflection_interval: int = 5) -> dict:
     """Phase 6: DM 叙事."""
     result = await _dm_narrate(
         DMNarrateRequest(
@@ -32,5 +32,5 @@ async def dm_narrate(state: OverallState, agent=None) -> dict:
     )
     return {
         "narrative": result.narrative_out,
-        "needs_reflection": state.get("tick", 0) % 5 == 0,
+        "needs_reflection": state.get("tick", 0) % reflection_interval == 0 and state.get("tick", 0) > 0,
     }
