@@ -12,7 +12,8 @@ import pytest
 from src.config import load_config, LLMModelConfig, ProviderConfig, ProvidersConfig, LLMConfig
 from src.llm.llm_client import LLMClient, _extract_json
 
-CONFIG_PATH = str(Path(__file__).resolve().parents[3] / "config.yaml")
+CONFIG_PATH = str(Path(__file__).resolve().parents[4] / "config.yaml")
+ENV_PATH = Path(__file__).resolve().parents[4] / ".env"
 
 
 class TestEnvLoading:
@@ -21,7 +22,7 @@ class TestEnvLoading:
     def test_dotenv_loaded(self):
         """config import 时 load_dotenv 应已执行，环境变量可读."""
         from dotenv import load_dotenv
-        path = Path(__file__).resolve().parents[3] / ".env"
+        path = Path(__file__).resolve().parents[4] / ".env"
         assert path.exists(), f".env not found at {path}"
         loaded = load_dotenv(path, override=True)
         assert loaded, f"load_dotenv({path}) returned False"

@@ -118,7 +118,7 @@ class TestReflectionService:
     def test_reflection_returns_insights(self):
         state = {"tick": 5, "character_id": "pc1", "memories": [],
                  "events": [], "reflected_characters": [], "summary_compressed": False}
-        result = reflection_service.reflection(state)
+        result = reflection_service.reflect(state)
         assert "reflected_characters" in result
 
 
@@ -126,5 +126,5 @@ class TestSummarizerService:
     def test_summarizer_returns_result(self):
         state = {"tick": 10, "character_id": "", "memories": [],
                  "events": [{"id": "e1"}], "reflected_characters": [], "summary_compressed": False}
-        result = summarizer_service.summarizer(state)
+        result = summarizer_service.summarize(state)
         assert "summary_compressed" in result

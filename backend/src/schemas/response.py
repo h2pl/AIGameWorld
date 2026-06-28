@@ -37,6 +37,8 @@ class DMCreateResponse(BaseModel):
 
 class DMNarrateResponse(BaseModel):
     narrative_out: str = ""
+    branch_points: list[dict[str, Any]] = Field(default_factory=list)
+    hooks_resolved: list[str] = Field(default_factory=list)
 
 
 # === Phase 2: World ===

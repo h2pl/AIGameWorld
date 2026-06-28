@@ -74,7 +74,11 @@ async def dm_narrate(req: DMNarrateRequest, llm) -> DMNarrateResponse:
             [SystemMessage(content=_DM_SYSTEM_PROMPT), HumanMessage(content=prompt)],
             fallback=lambda: DMNarrativeSchema(narrative="（DM 沉默了...）"),
         )
-        return DMNarrateResponse(narrative_out=result.narrative)
+        return DMNarrateResponse(
+            narrative_out=result.narrative,
+            branch_points=[bp.model_dump() for bp in result.branch_points],
+            hooks_resolved=result.hooks_resolved,
+        )
     except Exception:
         logger.exception("dm_narrate failed, using fallback")
         return _fallback_narrate()
@@ -89,4 +93,4 @@ def _fallback_create() -> DMCreateResponse:
 
 
 def _fallback_narrate() -> DMNarrateResponse:
-    return DMNarrateResponse(narrative_out="（DM 沉默了...）")
+    return DMNarrateResponse(narrative_out="（DM 沉默了...）", branch_points=[], hooks_resolved=[])

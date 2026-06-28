@@ -34,6 +34,7 @@ async def test_dm_engine() -> None:
     print("\n--- dm_create ---")
     result = await dm_create(DMCreateRequest(tick=0, plot_brief=""), client)
     print(f"  plot_brief: {result.plot_brief[:100]}")
+    print(f"  instructions: {result.instructions_out}")
     print(f"  scene_direction: {result.scene_direction}")
 
     print("\n--- dm_narrate ---")
@@ -43,6 +44,8 @@ async def test_dm_engine() -> None:
         character_actions=[{"character_id": "alex", "type": "explore"}],
     ), client)
     print(f"  narrative: {result2.narrative_out[:200]}")
+    print(f"  branch_points: {result2.branch_points}")
+    print(f"  hooks_resolved: {result2.hooks_resolved}")
     print("DM engine works!")
 
 
