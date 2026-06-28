@@ -1,50 +1,63 @@
-"""SQLite 实现 WorldStateRepo — 用 storage/sqlite_client 做裸 DB 操作，自身只做领域读写。"""
+"""SQLite 实现 CharacterRepo——用 storage/sqlite_client 做裸 DB，自身只做 PC/Actor 存取."""
 
 import json
-from typing import Any
 
+from ..domain import PC, Actor
 from ..storage.sqlite_client import SQLiteClient
-from .world_state_repo import WorldStateRepo
+from .world_state_repo import CharacterRepo
 
 
-class SQLiteWorldStateRepo(WorldStateRepo):
-    """领域层：tick 状态存取。不写 SQL，调 SQLiteClient."""
+class SQLiteCharacterRepo(CharacterRepo):
+    """PC/Actor 领域实体存取。不写 connect/execute，调 SQLiteClient."""
 
     def __init__(self, client: SQLiteClient | None = None):
         self._client = client or SQLiteClient()
 
     async def init(self) -> None:
         await self._client.execute("""
-            CREATE TABLE IF NOT EXISTS tick_states (
-                tick INTEGER PRIMARY KEY,
-                state_json TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            CREATE TABLE IF NOT EXISTS characters (
+                id TEXT PRIMARY KEY,
+                character_type TEXT NOT NULL,
+                data_json TEXT NOT NULL
             )
         """)
 
-    async def save(self, state: dict[str, Any], tick: int) -> None:
+    # ── PC ──
+    async def save_pc(self, pc: PC) -> None:
         await self._client.execute(
-            "INSERT OR REPLACE INTO tick_states (tick, state_json) VALUES (?, ?)",
-            tick, json.dumps(state, default=str),
+            "INSERT OR REPLACE INTO characters (id, character_type, data_json) VALUES (?, ?, ?)",
+            pc.id, "pc", pc.model_dump_json(),
         )
 
-    async def load(self, tick: int) -> dict[str, Any] | None:
+    async def find_pc(self, character_id: str) -> PC | None:
         row = await self._client.fetch_one(
-            "SELECT state_json FROM tick_states WHERE tick = ?", tick,
+            "SELECT data_json FROM characters WHERE id = ? AND character_type = 'pc'",
+            character_id,
         )
-        return json.loads(row[0]) if row else None
+        return PC(**json.loads(row[0])) if row else None
 
-    async def load_latest(self) -> dict[str, Any] | None:
-        row = await self._client.fetch_one(
-            "SELECT tick, state_json FROM tick_states ORDER BY tick DESC LIMIT 1",
-        )
-        return {**json.loads(row[1]), "tick": row[0]} if row else None
-
-    async def rollback(self, tick: int) -> None:
-        await self._client.execute("DELETE FROM tick_states WHERE tick > ?", tick)
-
-    async def get_history(self, limit: int = 10) -> list[dict[str, Any]]:
+    async def find_all_pcs(self) -> list[PC]:
         rows = await self._client.fetch_all(
-            "SELECT tick, state_json FROM tick_states ORDER BY tick DESC LIMIT ?", limit,
+            "SELECT data_json FROM characters WHERE character_type = 'pc'",
         )
-        return [{**json.loads(r[1]), "tick": r[0]} for r in rows]
+        return [PC(**json.loads(r[0])) for r in rows]
+
+    # ── Actor ──
+    async def save_actor(self, actor: Actor) -> None:
+        await self._client.execute(
+            "INSERT OR REPLACE INTO characters (id, character_type, data_json) VALUES (?, ?, ?)",
+            actor.id, "actor", actor.model_dump_json(),
+        )
+
+    async def find_actor(self, character_id: str) -> Actor | None:
+        row = await self._client.fetch_one(
+            "SELECT data_json FROM characters WHERE id = ? AND character_type = 'actor'",
+            character_id,
+        )
+        return Actor(**json.loads(row[0])) if row else None
+
+    async def find_all_actors(self) -> list[Actor]:
+        rows = await self._client.fetch_all(
+            "SELECT data_json FROM characters WHERE character_type = 'actor'",
+        )
+        return [Actor(**json.loads(r[0])) for r in rows]

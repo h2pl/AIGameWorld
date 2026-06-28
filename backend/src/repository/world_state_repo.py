@@ -1,40 +1,16 @@
-"""WorldState Repository 接口 / Repository interface.
+"""Repository 接口——只操作领域模型，不暴露 dict/ORM."""
 
-定义领域层需要的数据操作，不绑定具体存储技术。
-"""
-from abc import ABC, abstractmethod
-from typing import Any
+from typing import Protocol
+
+from ..domain import PC, Actor
 
 
-class WorldStateRepo(ABC):
-    """Tick State 仓储接口 / Repository for tick-level state."""
+class CharacterRepo(Protocol):
+    """角色仓储——操作 PC/Actor 领域实体."""
 
-    @abstractmethod
-    async def init(self) -> None:
-        """初始化 / Initialize storage."""
-        ...
-
-    @abstractmethod
-    async def save(self, state: dict[str, Any], tick: int) -> None:
-        """保存当前 tick 状态 / Save tick state."""
-        ...
-
-    @abstractmethod
-    async def load(self, tick: int) -> dict[str, Any] | None:
-        """读取指定 tick 状态 / Load tick state."""
-        ...
-
-    @abstractmethod
-    async def load_latest(self) -> dict[str, Any] | None:
-        """读取最新状态 / Load latest state."""
-        ...
-
-    @abstractmethod
-    async def rollback(self, tick: int) -> None:
-        """回退到指定 tick / Rollback to tick."""
-        ...
-
-    @abstractmethod
-    async def get_history(self, limit: int = 10) -> list[dict[str, Any]]:
-        """获取历史 / Get tick history."""
-        ...
+    async def save_pc(self, pc: PC) -> None: ...
+    async def save_actor(self, actor: Actor) -> None: ...
+    async def find_pc(self, character_id: str) -> PC | None: ...
+    async def find_actor(self, character_id: str) -> Actor | None: ...
+    async def find_all_pcs(self) -> list[PC]: ...
+    async def find_all_actors(self) -> list[Actor]: ...
