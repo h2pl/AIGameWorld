@@ -2,7 +2,7 @@
 
 from ...schemas.request import DMCreateRequest, DMNarrateRequest
 from ...schemas.response import DMCreateResponse, DMNarrateResponse
-from ...domain.entities.instruction import DMInstruction
+from ...domain.instruction import DMInstruction
 
 
 def dm_create(req: DMCreateRequest) -> DMCreateResponse:

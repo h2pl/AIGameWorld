@@ -2,7 +2,7 @@
 
 from ...schemas.request import PCDecideRequest
 from ...schemas.response import PCDecideResponse
-from ...domain.entities.action import Action
+from ...domain.action import Action
 
 
 def pc_decide(req: PCDecideRequest) -> PCDecideResponse:

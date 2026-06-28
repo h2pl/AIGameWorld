@@ -2,7 +2,7 @@
 
 from ...schemas.request import ActorDecideRequest
 from ...schemas.response import ActorDecideResponse
-from ...domain.entities.action import Action
+from ...domain.action import Action
 
 
 def actor_decide(req: ActorDecideRequest) -> ActorDecideResponse:
