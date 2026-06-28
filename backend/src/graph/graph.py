@@ -3,35 +3,32 @@
 START
  |
  v
- phase1_dm_create   [node]      DM 创造情境   dm_create_node
+ phase1_dm_create   [node]  DM 创造情境   dm_create_node
  |
  v
- phase2_world       [node]      World 引擎    world_update_node
+ phase2_world       [node]  World 引擎    world_update_node
  |
  v
- phase3_char_decide [subgraph]  角色决策协调   character_coordinator_subgraph
+ phase3_char_decide [node]  角色决策协调   phase3_character_decide
  |
  v
- phase4_engines     [subgraph]  Engine 路由   engine_router_subgraph
+ phase4_engines     [node]  Engine 路由   phase4_engine_router
  |
  v
- phase5_update      [node]      状态合并更新   state_update_node
+ phase5_update      [node]  状态合并更新   state_update_node
  |
  v
- phase6_narrate     [node]      DM 叙事       dm_narrate_node
+ phase6_narrate     [node]  DM 叙事       dm_narrate_node
  |
  +-- needs_reflection? --False--> END
  |
  True
  |
  v
- phase7_reflect     [subgraph]  反思/摘要协调  reflection_coordinator_subgraph
+ phase7_reflect     [node]  反思/摘要协调  phase7_reflection_coordinator
  |
  v
  END
-
-[node] = 单步函数: 读 State -> 调 Service -> 写 State
-[subgraph] = 子图: 含内部路由/协调逻辑
 """
 
 from langgraph.graph import StateGraph, END
@@ -41,22 +38,24 @@ from .state import OverallState
 from ..nodes.dm_nodes import dm_create_node, dm_narrate_node
 from ..nodes.world_nodes import world_update_node
 from ..nodes.state_update_nodes import state_update_node
-
-from .subgraphs.character_coordinator import character_coordinator_subgraph
-from .subgraphs.engine_router import engine_router_subgraph
-from .subgraphs.reflection_coordinator import reflection_coordinator_subgraph
+from ..nodes.coordinators import (
+    phase3_character_decide,
+    phase4_engine_router,
+    phase7_reflection_coordinator,
+)
 
 
 def build_tick_graph() -> StateGraph:
+    """构建 7 Phase TickGraph — 全部 plain node，零 subgraph。"""
     graph = StateGraph(OverallState)
 
     graph.add_node("phase1_dm_create", dm_create_node)
     graph.add_node("phase2_world", world_update_node)
-    graph.add_node("phase3_char_decide", character_coordinator_subgraph)
-    graph.add_node("phase4_engines", engine_router_subgraph)
+    graph.add_node("phase3_char_decide", phase3_character_decide)
+    graph.add_node("phase4_engines", phase4_engine_router)
     graph.add_node("phase5_update", state_update_node)
     graph.add_node("phase6_narrate", dm_narrate_node)
-    graph.add_node("phase7_reflect", reflection_coordinator_subgraph)
+    graph.add_node("phase7_reflect", phase7_reflection_coordinator)
 
     graph.set_entry_point("phase1_dm_create")
     graph.add_edge("phase1_dm_create", "phase2_world")
