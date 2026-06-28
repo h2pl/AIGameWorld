@@ -7,8 +7,8 @@ from ..graph.state import ReflectionSubState
 
 def summarize(state: ReflectionSubState) -> dict[str, Any]:
     """Phase 7: 事件压缩."""
-    _summarize(SummarizerRequest(
+    result = _summarize(SummarizerRequest(
         events=state.get("events", []),
         tick=state.get("tick", 0),
     ))
-    return {"summary_compressed": False}
+    return {"summary_compressed": result.compressed}

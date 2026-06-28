@@ -9,6 +9,21 @@ if TYPE_CHECKING:
     from ..domain.event import Event
 
 
+# === Phase 4: Quest ===
+class QuestResponse(BaseModel):
+    completed_ids: list[str] = []
+
+
+# === Phase 7: Reflection + Summarizer ===
+class ReflectionResponse(BaseModel):
+    insights_out: list[dict[str, Any]] = []
+
+
+class SummarizerResponse(BaseModel):
+    compressed: bool = False
+    summary_text: str = ""
+
+
 # === Phase 1 & 6: DM ===
 class DMCreateResponse(BaseModel):
     instructions_out: list[dict[str, Any]] = []

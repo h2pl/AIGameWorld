@@ -7,8 +7,8 @@ from ..graph.state import ReflectionSubState
 
 def reflect(state: ReflectionSubState) -> dict[str, Any]:
     """Phase 7: 角色反思."""
-    _reflect(ReflectionRequest(
+    result = _reflect(ReflectionRequest(
         character_id=state.get("character_id", ""),
         memories=state.get("memories", []),
     ))
-    return {"reflected_characters": []}
+    return {"reflected_characters": result.model_dump().get("insights_out", [])}
