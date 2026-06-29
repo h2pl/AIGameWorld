@@ -75,7 +75,11 @@ class TestRequestSchemas:
         assert r.actor_id == "npc_guard"
 
     def test_combat_request(self):
-        r = CombatRequest(participants=["a", "b"], round=2)
+        from src.schemas.request import CombatParticipant
+        r = CombatRequest(participants=[
+            CombatParticipant(name="a", team="party"),
+            CombatParticipant(name="b", team="enemy"),
+        ], round=2)
         assert len(r.participants) == 2
 
     def test_dialogue_request(self):

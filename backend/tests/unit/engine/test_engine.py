@@ -26,10 +26,12 @@ class TestCombatEngine:
         r = resolve_combat(CombatRequest(participants=[]))
         assert r.winner is None
 
-    def test_with_participants(self):
-        r = resolve_combat(CombatRequest(participants=["hero", "goblin"]))
-        assert r.winner == "hero"
-        assert len(r.combat_log) == 1
+    def test_party_auto_wins_against_nothing(self):
+        from src.schemas.request import CombatParticipant
+        r = resolve_combat(CombatRequest(
+            participants=[CombatParticipant(name="hero", team="party", hp=10, max_hp=10)]
+        ))
+        assert r.winner == "party"
 
 
 class TestDialogueEngine:

@@ -84,7 +84,9 @@ class ActorDecideResponse(EngineResponse):
 # Phase 4: Engines
 # ============================================================
 class CombatResponse(EngineResponse):
-    winner: str | None = None
+    winner: str | None = None  # "party" | "enemy" | None
+    rounds: int = 0
+    survivors: list[dict[str, Any]] = []
     combat_log: list[dict[str, Any]] = []
 
 

@@ -45,8 +45,20 @@ class ActorDecideRequest(BaseModel):
 
 
 # === Phase 4: Engines ===
+class CombatParticipant(BaseModel):
+    """战斗参与者 / Combat participant."""
+    name: str = ""
+    team: str = "enemy"  # "party" | "enemy"
+    hp: int = 0
+    max_hp: int = 0
+    ac: int = 10
+    atk_bonus: int = 0
+    damage_dice: str = "1d6"
+    dex_mod: int = 0
+
+
 class CombatRequest(BaseModel):
-    participants: list[str] = []
+    participants: list[CombatParticipant] = []
     round: int = 1
 
 
