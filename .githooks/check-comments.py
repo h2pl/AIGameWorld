@@ -81,6 +81,9 @@ def has_comment(line: str) -> bool:
     # SQL 注释
     if stripped.startswith("--"):
         return True
+    # Jinja2 模板注释 / Jinja2 template comments
+    if stripped.startswith("{#") or stripped.startswith("{#-"):
+        return True
     return False
 
 
