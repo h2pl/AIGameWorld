@@ -121,6 +121,8 @@ class SceneObjectInteractRequest(BaseModel):
     object_id: str = ""
     character_id: str = ""
     action_type: str = ""
+    attribute_mod: int = 0  # 开锁=敏捷, 破门=力量, 拆陷阱=智力
+    dc: int = 10
 
 
 # === Domain: Character (Phase 3+) ===
