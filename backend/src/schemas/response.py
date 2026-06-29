@@ -60,6 +60,7 @@ class PCDecideResponse(BaseModel):
     character_id: str = ""
     type: str = ""
     description: str = ""
+    errors: list[str] = Field(default_factory=list)  # 降级/异常时写入 / written on fallback
 
     @classmethod
     def from_entity(cls, action: Action) -> PCDecideResponse:
@@ -72,6 +73,7 @@ class ActorDecideResponse(BaseModel):
     character_id: str = ""
     type: str = ""
     description: str = ""
+    errors: list[str] = Field(default_factory=list)  # 降级/异常时写入 / written on fallback
 
     @classmethod
     def from_entity(cls, action: Action) -> ActorDecideResponse:

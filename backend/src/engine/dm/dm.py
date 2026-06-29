@@ -18,25 +18,15 @@ from ...domain.instruction import SceneDirection
 from ...schemas.llm_output import DMNarrativeSchema, DMOutput, SceneDirectionOutput
 from ...schemas.request import DMCreateRequest, DMNarrateRequest
 from ...schemas.response import DMCreateResponse, DMNarrateResponse
+from ...utils.helpers import get_llm, get_repo
 
 logger = logging.getLogger(__name__)
 
 _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
 _DM_SYSTEM_PROMPT = _PROMPTS.get_template("_dm_system.jinja").render()
+
 # ── Helpers / 辅助函数 ──
-
-
-def _get_llm(config):
-    if config and "configurable" in config:
-        return config["configurable"].get("llm")
-    return None
-
-
-def _get_repos(config: RunnableConfig | None):
-    if config and "configurable" in config:
-        return config["configurable"].get("repos")
-    return None
 
 
 async def dm_create(
@@ -45,13 +35,12 @@ async def dm_create(
 ) -> DMCreateResponse:
 # ── 护栏校验 / Guardrails ──
     """Phase 1: DM 创造情境 / DM creates the scene."""
-    llm = _get_llm(config)
+    llm = get_llm(config)
 
     if llm is None:
         return DMCreateResponse(instructions_out=[], plot_brief="平静的一天，没有特别事件。")
     try:
-        repos = _get_repos(config)
-        story_repo = repos.get("story") if repos else None
+        story_repo = get_repo(config, "story")
         story_arcs = await story_repo.load_arcs() if story_repo else []
         all_hooks = await story_repo.load_hooks() if story_repo else []
         active_hooks = [h for h in all_hooks if h.status == "planted"]
@@ -96,7 +85,7 @@ async def dm_create(
 
 async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DMNarrateResponse:
     """Phase 6: DM 叙事 / DM narrates the scene."""
-    llm = _get_llm(config)
+    llm = get_llm(config)
 
     if llm is None:
         return DMNarrateResponse(narrative_out="（DM 沉默了...）")
@@ -120,8 +109,7 @@ async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DM
             branch_points=[bp.model_dump() for bp in result.branch_points],
             hooks_resolved=result.hooks_resolved,
         )
-        repos = _get_repos(config)
-        story_repo = repos.get("story") if repos else None
+        story_repo = get_repo(config, "story")
         if story_repo:
             await _persist_narrate_results(story_repo, response, req.tick)
         return response

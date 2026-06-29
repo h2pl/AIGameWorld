@@ -11,6 +11,7 @@ from langchain_core.runnables.config import RunnableConfig
 from ...schemas.llm_output import CharacterActionSchema
 from ...schemas.request import ActorDecideRequest
 from ...schemas.response import ActorDecideResponse
+from ...utils.helpers import get_llm, get_repo
 
 logger = logging.getLogger(__name__)
 
@@ -18,29 +19,21 @@ _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
 _VALID_ACTIONS = {"move", "talk", "attack", "interact", "wait"}
 
-# ── Helpers / 辅助函数 ──
-
-
-def _get_repos(config: RunnableConfig | None):
-    if config and "configurable" in config:
-        return config["configurable"].get("repos")
-    return None
-
-
 # ── 主决策入口 / Main decision entry ──
 
 
 async def actor_decide(
     req: ActorDecideRequest, config: RunnableConfig = None
 ) -> ActorDecideResponse:
-    _cfg = config.get("configurable", {}) if config else {}
-    llm = _cfg.get("llm")
+    llm = get_llm(config)
     if llm is None:
-        return _fallback(req)
+        return ActorDecideResponse(
+            character_id=req.actor_id, type="idle", description=f"{req.actor_id} goes about their business.",
+            errors=["LLM 不可用，使用降级输出 / LLM unavailable, fallback used"],
+        )
     try:
-        repos = _get_repos(config)
-        char_repo = repos.get("char") if repos else None
-        memory_repo = repos.get("memory") if repos else None
+        char_repo = get_repo(config, "char")
+        memory_repo = get_repo(config, "memory")
 
         actor = await char_repo.load_actor(req.actor_id) if char_repo else None
         query = req.plot_brief or "最近发生了什么"
@@ -71,7 +64,10 @@ async def actor_decide(
         )
     except Exception:
         logger.exception("actor_decide LLM failed for %s", req.actor_id)
-        return _fallback(req)
+        return ActorDecideResponse(
+            character_id=req.actor_id, type="idle", description=f"{req.actor_id} goes about their business.",
+            errors=["actor_decide LLM 调用失败，使用降级输出"],
+        )
 
 
 # ── 护栏 + 降级 / Guardrails + fallback ──
@@ -83,11 +79,3 @@ def _validate(result: CharacterActionSchema) -> CharacterActionSchema:
     if not result.reasoning or not result.reasoning.strip():
         result.reasoning = "继续日常行为。"
     return result
-
-
-def _fallback(req: ActorDecideRequest) -> ActorDecideResponse:
-    return ActorDecideResponse(
-        character_id=req.actor_id,
-        type="idle",
-        description=f"{req.actor_id} goes about their business.",
-    )

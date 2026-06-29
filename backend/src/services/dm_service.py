@@ -26,7 +26,7 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
 
 async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict:
     """Phase 6: DM 叙事 / DM narrates the scene."""
-    interval = (config or {}).get("configurable", {}).get("reflection_interval", 5)
+    interval = config.get("configurable", {}).get("reflection_interval", 5) if config else 5
     result = await dm_engine.dm_narrate(
         DMNarrateRequest(
             tick=state.get("tick", 0),

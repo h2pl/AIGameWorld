@@ -1,17 +1,23 @@
 """Engine 输入 Schema / Request DTO"""
 
+from __future__ import annotations
+
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 # === Phase 1 & 6: DM ===
 class DMCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     tick: int = 0
     plot_brief: str = ""
 
 
 class DMNarrateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     tick: int = 0
     plot_brief: str = ""
     dm_instructions: list[str] = []
