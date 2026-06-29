@@ -29,7 +29,7 @@ def setup_logging(level: int = logging.INFO) -> None:
         root.addHandler(h)
 
     # 降噪——第三方库日志只显示 WARNING+
-    for noisy in ("httpx", "httpcore", "chromadb", "urllib3", "openai"):
+    for noisy in ("httpx", "httpcore", "chromadb", "urllib3", "openai", "langchain", "langchain_openai"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
