@@ -1,4 +1,6 @@
 {
+  // Pyright / basedpyright 类型检查配置 / Type checking config
+  // basic 模式: 只报关键类型错误 / basic mode: only report critical type errors
   "typeCheckingMode": "basic",
   "reportMissingTypeStubs": false,
   "reportMissingTypeArgument": false,
@@ -10,9 +12,6 @@
   "reportOptionalContextManager": false,
   "reportUndefinedVariable": false,
   "reportUnusedCallResult": false,
-  "reportUnusedParameter": false,
-  "reportAny": false,
-  "reportExplicitAny": false,
   "reportUnknownVariableType": false,
   "reportUnknownMemberType": false,
   "reportUnknownParameterType": false,

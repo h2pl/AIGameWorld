@@ -33,6 +33,7 @@ dev = [
     "pytest-cov>=7.1",              # 覆盖率 / Coverage
     "mypy>=2.1",                    # 类型检查 / Type checking
     "httpx>=0.28.1",                # HTTP 测试客户端 / HTTP test client
+    "pyright>=1.1.411",
 ]
 
 # === 生产扩展 / Production Extensions ===

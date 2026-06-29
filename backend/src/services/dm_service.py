@@ -4,7 +4,7 @@
 不直接访问 Repository（Engine 自己调，遵守 Service → Engine → Repository 分层）。
 """
 
-from langgraph.types import RunnableConfig
+from langchain_core.runnables.config import RunnableConfig
 
 from ..engine.dm import dm as dm_engine
 from ..graph.state import OverallState

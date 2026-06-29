@@ -276,7 +276,7 @@ class LLMClient:
                     timeout=timeout,
                 )
                 elapsed = time.monotonic() - t_start
-                content = result.generations[0].message.content
+                content = str(result.generations[0].message.content)
                 logger.info(
                     f"[{purpose}] 调用成功",
                     extra=_log_ctx(
@@ -284,7 +284,7 @@ class LLMClient:
                         attempt,
                         max_attempts,
                         elapsed=f"{elapsed:.1f}s",
-                        content_len=len(str(content)),
+                        content_len=len(content),
                     ),
                 )
                 return content
@@ -377,7 +377,7 @@ class LLMClient:
                     timeout=timeout,
                 )
                 elapsed = time.monotonic() - t_start
-                content = result.generations[0].message.content
+                content = str(result.generations[0].message.content)
                 last_content = content
 
                 # 尝试解析 JSON
