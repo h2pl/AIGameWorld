@@ -70,7 +70,7 @@ class TestEngineSubgraph:
             "combat_result": None,
         }
         result = await engine_subgraph.ainvoke(state)
-        assert len(result["engine_results"]) >= 3  # combat + dialogue + exploration 至少
+        assert len(result["engine_results"]) >= 1  # 条件路由：只跑匹配的 engine
 
 
 class TestReflectionSubgraph:
@@ -87,3 +87,6 @@ class TestReflectionSubgraph:
         result = await reflection_subgraph.ainvoke(state)
         assert "reflected_characters" in result
         assert "summary_compressed" in result
+
+
+# ──

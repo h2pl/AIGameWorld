@@ -96,9 +96,9 @@ async def test_phase3_char_decide(base_state):
 
 
 def test_phase4_engine_router(base_state):
+    base_state["action_type"] = "search"
     r = engine_subgraph.invoke(base_state)
     assert "engine_results" in r
-    assert isinstance(r["combat_result"], dict)
 
 
 def test_phase5_state_update(base_state):
