@@ -6,8 +6,8 @@ from ..schemas.request import DialogueRequest
 
 
 def dialogue(state: EngineSubState) -> dict:
-    """Phase 4: 对话检定."""
-    result = dialogue_engine.resolve_dialogue(
+    """Phase 4: 对话检定 / Social check."""
+    result = dialogue_engine.resolve_persuasion(
         DialogueRequest(
             speaker=state.get("speaker", ""),
             target=state.get("target", ""),

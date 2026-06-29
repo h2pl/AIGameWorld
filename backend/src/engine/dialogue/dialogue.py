@@ -1,6 +1,7 @@
-"""Dialogue Engine——D20 对话检定 / D20 dialogue check.
+"""Dialogue Engine——社交检定 / Social skill check.
 
-通用社交检定，支持说服/欺瞒/威吓/表演/洞悉等 / Generic social check (persuasion/deception/intimidation/performance/insight).
+注意：普通对话（talk）不需要检定，只有说服/欺瞒/威吓等影响他人的行为才掷 D20。
+Ordinary conversation doesn't roll dice — only persuasion/intimidation/deception checks do.
 """
 
 from ...rules.dnd_rules import resolve_check
@@ -8,12 +9,12 @@ from ...schemas.request import DialogueRequest
 from ...schemas.response import DialogueResponse
 
 
-def resolve_dialogue(req: DialogueRequest) -> DialogueResponse:
-    """对话检定——基础 D20 检定 / Basic D20 social check."""
+def resolve_persuasion(req: DialogueRequest) -> DialogueResponse:
+    """社交检定——D20 + 修正 vs DC / Social skill check."""
     if not req.speaker:
-        return DialogueResponse(success=False, content="无效对话者。")
+        return DialogueResponse(success=False, content="无效角色。")
     result = resolve_check(bonus=req.attribute_mod, dc=req.dc)
-    intent = req.intent or "检定"
+    intent = req.intent or "说服"
     return DialogueResponse(
         success=result.success,
         content=(

@@ -4,7 +4,7 @@ import pytest
 
 # ── Engine imports / 引擎导入 ──
 from src.engine.combat.combat import resolve_combat
-from src.engine.dialogue.dialogue import resolve_dialogue
+from src.engine.dialogue.dialogue import resolve_persuasion
 from src.engine.exploration.exploration import resolve_exploration
 from src.engine.quest.quest import check_quests
 from src.engine.reflection.reflection import reflect
@@ -36,11 +36,11 @@ class TestCombatEngine:
 
 class TestDialogueEngine:
     def test_persuasion_success(self):
-        r = resolve_dialogue(DialogueRequest(speaker="pc1", target="npc1", intent="persuade", attribute_mod=3, dc=12))
+        r = resolve_persuasion(DialogueRequest(speaker="pc1", target="npc1", intent="persuade", attribute_mod=3, dc=12))
         assert isinstance(r.success, bool)
 
     def test_empty_speaker(self):
-        r = resolve_dialogue(DialogueRequest())
+        r = resolve_persuasion(DialogueRequest())
         assert r.success is False
 
 
