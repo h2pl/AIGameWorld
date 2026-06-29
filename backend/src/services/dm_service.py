@@ -53,5 +53,5 @@ async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict
         "branch_points": result.branch_points,
         "hooks_resolved": result.hooks_resolved,
         "errors": result.errors,
-        "needs_reflection": state.get("tick", 0) % interval == 0 and state.get("tick", 0) > 0,
+        "needs_reflection": state.get("tick", 0) % interval == 0,
     }

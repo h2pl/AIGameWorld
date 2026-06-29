@@ -18,7 +18,7 @@ class TestFullTickRun:
             result = await orch.run_tick()
             assert "tick" in result
             assert "narrative" in result
-            assert result["tick"] == i
+            assert result["tick"] == i + 1
 
     @pytest.mark.asyncio
     async def test_5_ticks_with_llm_mock(self):
@@ -34,7 +34,7 @@ class TestFullTickRun:
 
         for i in range(5):
             result = await orch.run_tick()
-            assert result["tick"] == i
+            assert result["tick"] == i + 1
             assert "narrative" in result
 
     @pytest.mark.asyncio
@@ -43,8 +43,8 @@ class TestFullTickRun:
         orch = Orchestrator()
         for i in range(5):
             result = await orch.run_tick()
-            assert result["tick"] == i
-        assert orch.tick == 5
+            assert result["tick"] == i + 1
+        assert orch.tick == 6
 
     @pytest.mark.asyncio
     async def test_run_tick_returns_character_actions(self):
@@ -74,7 +74,7 @@ class TestFullTickRun:
         orch = Orchestrator()
         await orch.run_tick()
         orch.reset()
-        assert orch.tick == 0
+        assert orch.tick == 1
 
     @pytest.mark.asyncio
     async def test_orchestrator_with_custom_state(self):
@@ -102,7 +102,7 @@ class TestFullTickRun:
             needs_reflection=False,
         )
         result = await orch.run_tick(state)
-        assert result["tick"] == 0
+        assert result["tick"] == 1
 
     @pytest.mark.asyncio
     async def test_rollback_requires_checkpoint(self):
@@ -120,4 +120,4 @@ class TestFullTickRun:
         orch = Orchestrator(reflection_interval=2)
         for _ in range(3):
             result = await orch.run_tick()
-        assert result["tick"] == 2
+        assert result["tick"] == 3  # 从1开始

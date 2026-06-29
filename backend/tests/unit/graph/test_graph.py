@@ -180,8 +180,8 @@ async def test_full_tick_cycle():
     for i in range(10):
         result = await orch.run_tick()
         assert "narrative" in result
-        assert result["tick"] == i
-    assert orch.tick == 10
+        assert result["tick"] == i + 1  # tick 从 1 开始
+    assert orch.tick == 11
 
 
 @pytest.mark.asyncio

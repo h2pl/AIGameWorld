@@ -18,7 +18,7 @@ async def test_ten_ticks_no_crash():
     orch = Orchestrator()
     for i in range(10):
         result = await orch.run_tick()
-        assert result["tick"] == i
+        assert result["tick"] == i + 1
         assert result.get("errors", []) == []
 
 
@@ -34,8 +34,8 @@ async def test_tick_has_character_actions():
 @pytest.mark.asyncio
 async def test_orchestrator_tick_counter():
     orch = Orchestrator()
-    assert orch.tick == 0
-    await orch.run_tick()
     assert orch.tick == 1
     await orch.run_tick()
     assert orch.tick == 2
+    await orch.run_tick()
+    assert orch.tick == 3

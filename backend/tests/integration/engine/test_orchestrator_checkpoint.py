@@ -95,4 +95,4 @@ async def test_history_available_after_tick():
 
     assert len(history) >= 1
     latest = orch.get_state()
-    assert latest.values["tick"] == 0
+    assert latest.values["tick"] == 1

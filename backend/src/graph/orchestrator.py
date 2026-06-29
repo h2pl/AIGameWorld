@@ -25,7 +25,7 @@ class Orchestrator:
         self._graph = build_tick_graph()
         self._checkpointer = checkpointer or checkpoints.create_dev_checkpointer()
         self._app = self._graph.compile(checkpointer=self._checkpointer)
-        self._tick = 0
+        self._tick = 1
         self._config = {"configurable": {"thread_id": session_id}}
         self._llm = llm
         self._reflection_interval = reflection_interval
@@ -59,7 +59,7 @@ class Orchestrator:
             )
             # P2-5: 非首轮从 checkpoint 恢复 plot_brief，保证 DM 剧情跨 tick 连续 /
             #       non-first tick: restore plot_brief from checkpoint for continuity
-            if self._tick > 0:
+            if self._tick > 1:
                 prev = self._app.get_state(self._config)
                 if prev and prev.values:
                     initial_state["plot_brief"] = prev.values.get("plot_brief", "")
@@ -110,4 +110,4 @@ class Orchestrator:
         raise ValueError(f"Tick {tick} not found in session history")
 
     def reset(self) -> None:
-        self._tick = 0
+        self._tick = 1
