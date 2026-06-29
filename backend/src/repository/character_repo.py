@@ -125,12 +125,24 @@ class CharacterRepo:
 
     # ── 读 ──
     async def load_pcs(self) -> list[PlayerCharacter]:
+        """加载全部 PC / Load all PCs."""
         rows = await self._db.fetch_all("SELECT * FROM player_characters")
         return [_pc_from_row(r) for r in rows]
 
+    async def load_pc(self, char_id: str) -> PlayerCharacter | None:
+        """按 ID 加载单个 PC / Load PC by ID."""
+        row = await self._db.fetch_one("SELECT * FROM player_characters WHERE id = ?", (char_id,))
+        return _pc_from_row(row) if row else None
+
     async def load_actors(self) -> list[Actor]:
+        """加载全部 Actor / Load all Actors."""
         rows = await self._db.fetch_all("SELECT * FROM actors")
         return [_actor_from_row(r) for r in rows]
+
+    async def load_actor(self, actor_id: str) -> Actor | None:
+        """按 ID 加载单个 Actor / Load Actor by ID."""
+        row = await self._db.fetch_one("SELECT * FROM actors WHERE id = ?", (actor_id,))
+        return _actor_from_row(row) if row else None
 
 
 # Row → Model

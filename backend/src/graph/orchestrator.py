@@ -1,10 +1,12 @@
 """编排器 / Orchestrator: 主图入口 + run_tick() 控制."""
 
+import time
 from typing import Any
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.types import StateSnapshot
 
+from ..utils.logging import log_phase
 from . import checkpoints
 from .graph import OverallState, build_tick_graph
 
@@ -71,7 +73,9 @@ class Orchestrator:
         if self._repos:
             config["configurable"]["repos"] = self._repos
 
+        t_start = time.monotonic()
         result = await self._app.ainvoke(initial_state, config)
+        log_phase("tick", self._tick, elapsed=time.monotonic() - t_start, errors=len(result.get("errors", [])))
         self._tick += 1
 
         return {

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
     from ..domain.action import Action
@@ -12,42 +12,40 @@ if TYPE_CHECKING:
     from ..domain.instruction import DMInstruction
 
 
-# === Phase 4: Quest ===
-class QuestResponse(BaseModel):
-    completed_ids: list[str] = []
+# ============================================================
+# 公共基类 / Common base
+# ============================================================
+class EngineResponse(BaseModel):
+    """所有 Engine 输出 DTO 的基类——统一 errors 字段 / Base response with errors."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    errors: list[str] = Field(default_factory=list)
 
 
-# === Phase 7: Reflection + Summarizer ===
-class ReflectionResponse(BaseModel):
-    insights_out: list[dict[str, Any]] = []
-
-
-class SummarizerResponse(BaseModel):
-    compressed: bool = False
-    summary_text: str = ""
-
-
-# === Phase 1 & 6: DM ===
-class DMCreateResponse(BaseModel):
+# ============================================================
+# Phase 1 & 6: DM
+# ============================================================
+class DMCreateResponse(EngineResponse):
     instructions_out: list[str] = Field(default_factory=list)
     plot_brief: str = ""
     scene_direction: dict[str, Any] = {}
-    errors: list[str] = Field(default_factory=list)  # 降级/异常时写入 / written on fallback
 
     @classmethod
     def from_entity(cls, dm: DMInstruction) -> DMCreateResponse:
         return cls(instructions_out=[dm.model_dump_json()])
 
 
-class DMNarrateResponse(BaseModel):
+class DMNarrateResponse(EngineResponse):
     narrative_out: str = ""
     branch_points: list[dict[str, Any]] = Field(default_factory=list)
     hooks_resolved: list[str] = Field(default_factory=list)
-    errors: list[str] = Field(default_factory=list)  # 降级/异常时写入 / written on fallback
 
 
-# === Phase 2: World ===
-class WorldUpdateResponse(BaseModel):
+# ============================================================
+# Phase 2: World
+# ============================================================
+class WorldUpdateResponse(EngineResponse):
     events_out: list[dict[str, Any]] = []
 
     @classmethod
@@ -55,12 +53,13 @@ class WorldUpdateResponse(BaseModel):
         return cls(events_out=[e.model_dump() for e in events])
 
 
-# === Phase 3: Character ===
-class PCDecideResponse(BaseModel):
+# ============================================================
+# Phase 3: Character
+# ============================================================
+class PCDecideResponse(EngineResponse):
     character_id: str = ""
     type: str = ""
     description: str = ""
-    errors: list[str] = Field(default_factory=list)  # 降级/异常时写入 / written on fallback
 
     @classmethod
     def from_entity(cls, action: Action) -> PCDecideResponse:
@@ -69,11 +68,10 @@ class PCDecideResponse(BaseModel):
         )
 
 
-class ActorDecideResponse(BaseModel):
+class ActorDecideResponse(EngineResponse):
     character_id: str = ""
     type: str = ""
     description: str = ""
-    errors: list[str] = Field(default_factory=list)  # 降级/异常时写入 / written on fallback
 
     @classmethod
     def from_entity(cls, action: Action) -> ActorDecideResponse:
@@ -82,30 +80,55 @@ class ActorDecideResponse(BaseModel):
         )
 
 
-# === Phase 4: Engines ===
-class CombatResponse(BaseModel):
+# ============================================================
+# Phase 4: Engines
+# ============================================================
+class CombatResponse(EngineResponse):
     winner: str | None = None
     combat_log: list[dict[str, Any]] = []
 
 
-class DialogueResponse(BaseModel):
+class DialogueResponse(EngineResponse):
     success: bool | None = None
     content: str | None = None
 
 
-class ExplorationResponse(BaseModel):
+class ExplorationResponse(EngineResponse):
     success: bool | None = None
     result: dict[str, Any] | None = None
 
 
-# === Domain: Story (M4+) ===
-class StoryAdvanceResponse(BaseModel):
+# ============================================================
+# Phase 4 continued: Quest
+# ============================================================
+class QuestResponse(EngineResponse):
+    completed_ids: list[str] = []
+
+
+# ============================================================
+# Phase 7: Reflection + Summarizer
+# ============================================================
+class ReflectionResponse(EngineResponse):
+    insights_out: list[dict[str, Any]] = []
+
+
+class SummarizerResponse(EngineResponse):
+    compressed: bool = False
+    summary_text: str = ""
+
+
+# ============================================================
+# Domain: Story (M4+)
+# ============================================================
+class StoryAdvanceResponse(EngineResponse):
     arcs_updated: list[dict[str, Any]] = []
     hooks_resolved: list[str] = []
     quests_completed: list[dict[str, Any]] = []
 
 
-# === Domain: Item (M8+) ===
+# ============================================================
+# Domain: Item / SceneObject / Character (M8+)
+# ============================================================
 class ItemResponse(BaseModel):
     id: str = ""
     name: str = ""
@@ -114,13 +137,11 @@ class ItemResponse(BaseModel):
     description: str = ""
 
 
-# === Domain: SceneObject (M8+) ===
 class SceneObjectInteractResponse(BaseModel):
     success: bool | None = None
     result: dict[str, Any] | None = None
 
 
-# === Domain: Character (Phase 3+) ===
 class CharacterResponse(BaseModel):
     id: str = ""
     name: str = ""

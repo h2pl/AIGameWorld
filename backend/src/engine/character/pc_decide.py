@@ -31,7 +31,7 @@ async def pc_decide(req: PCDecideRequest, config: RunnableConfig = None) -> PCDe
         memory_repo = get_repo(config, "memory")
         pc = await char_repo.load_pc(req.pc_id) if char_repo else None
         query = req.plot_brief or "最近发生了什么"
-        memories = await memory_repo.retrieve(req.pc_id, query, top_k=5) if memory_repo else []
+        memories = memory_repo.retrieve(req.pc_id, query, top_k=5) if memory_repo else []
         ctx = {
             "name": pc.name if pc else req.pc_id,
             "character_type": "pc",

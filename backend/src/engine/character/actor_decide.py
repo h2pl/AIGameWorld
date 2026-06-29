@@ -37,7 +37,7 @@ async def actor_decide(
 
         actor = await char_repo.load_actor(req.actor_id) if char_repo else None
         query = req.plot_brief or "最近发生了什么"
-        memories = await memory_repo.retrieve(req.actor_id, query, top_k=3) if memory_repo else []
+        memories = memory_repo.retrieve(req.actor_id, query, top_k=3) if memory_repo else []
         ctx = {
             "name": actor.name if actor else req.actor_id,
             "character_type": "actor",
