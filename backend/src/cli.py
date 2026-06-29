@@ -12,6 +12,7 @@ from datetime import datetime
 from src.engine.orchestrator import Orchestrator
 from src.storage.sqlite_client import SQLiteClient
 from src.repository.character_repo import CharacterRepo
+from src.repository.story_repo import StoryRepo  # P2-4: DM 剧情线/伏笔仓储
 from src.domain import PlayerCharacter, Actor, Location, Attributes, CombatStats, CharacterArc
 
 
@@ -103,7 +104,8 @@ async def run_full(db_path: str, n: int) -> None:
     await db.commit()
 
     # 3. Tick 循环
-    orch = Orchestrator()
+    story_repo = StoryRepo(db)  # P2-4: DM 剧情线/伏笔仓储 / story arc & hook repo
+    orch = Orchestrator(story_repo=story_repo)
     for _ in range(n):
         loaded_pcs = await repo.load_pcs()
         loaded_actors = await repo.load_actors()

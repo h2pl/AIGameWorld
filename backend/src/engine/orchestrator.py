@@ -9,7 +9,7 @@ from ..graph.graph import build_tick_graph, OverallState
 
 
 class Orchestrator:
-    """TickGraph 编排器."""
+    """TickGraph 编排器 / TickGraph orchestrator."""
 
     def __init__(
         self,
@@ -17,6 +17,7 @@ class Orchestrator:
         checkpointer: BaseCheckpointSaver | None = None,
         llm: Any = None,
         reflection_interval: int = 5,
+        story_repo: Any = None,  # P2-4: StoryRepo 注入 / StoryRepo injection
     ):
         self._graph = build_tick_graph()
         self._checkpointer = checkpointer or checkpoints.create_dev_checkpointer()
@@ -25,13 +26,14 @@ class Orchestrator:
         self._config = {"configurable": {"thread_id": session_id}}
         self._llm = llm
         self._reflection_interval = reflection_interval
+        self._story_repo = story_repo
 
     @property
     def tick(self) -> int:
         return self._tick
 
     async def run_tick(self, initial_state: OverallState | None = None) -> dict:
-        """执行一个完整 Tick（7 Phase）."""
+        """执行一个完整 Tick（7 Phase） / Run one complete tick (7 phases)."""
         if initial_state is None:
             initial_state = OverallState(
                 tick=self._tick,
@@ -50,6 +52,12 @@ class Orchestrator:
                 errors=[],
                 needs_reflection=False,
             )
+            # P2-5: 非首轮从 checkpoint 恢复 plot_brief，保证 DM 剧情跨 tick 连续 /
+            #       non-first tick: restore plot_brief from checkpoint for continuity
+            if self._tick > 0:
+                prev = self._app.get_state(self._config)
+                if prev and prev.values:
+                    initial_state["plot_brief"] = prev.values.get("plot_brief", "")
 
         initial_state["tick"] = self._tick
 
@@ -57,6 +65,9 @@ class Orchestrator:
         if self._llm:
             config["configurable"]["llm"] = self._llm
             config["configurable"]["reflection_interval"] = self._reflection_interval
+        # P2-4: 注入 StoryRepo 供 service 层加载剧情线/伏笔 / inject StoryRepo for service
+        if self._story_repo:
+            config["configurable"]["story_repo"] = self._story_repo
 
         result = await self._app.ainvoke(initial_state, config)
         self._tick += 1
