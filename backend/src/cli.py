@@ -30,6 +30,7 @@ from src.repository.memory_repo import MemoryRepo
 from src.repository.story_repo import StoryRepo
 from src.storage.chroma_client import ChromaClient
 from src.storage.sqlite_client import SQLiteClient
+from src.utils.logging import setup_logging
 
 # ═══════════════════════════════════════════════════════════════
 # 种子数据 / Seed data
@@ -438,6 +439,7 @@ async def test(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    setup_logging()  # 最优先执行，确保后续所有日志使用 UTF-8 编码
     parser = argparse.ArgumentParser(description="AIGameWorld CLI")
     sub = parser.add_subparsers(dest="command")
 
