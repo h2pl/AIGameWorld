@@ -94,6 +94,8 @@ class TestFullTickRun:
             state_diff={},
             cast_changes=[],
             narrative="",
+            branch_points=[],
+            hooks_resolved=[],
             reflected_characters=[],
             summary_compressed=False,
             errors=[],

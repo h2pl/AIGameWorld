@@ -10,11 +10,29 @@ from src.schemas.request import CombatParticipant, CombatRequest
 
 
 def _party(name="hero", hp=20, ac=14, atk=5, dmg="1d8+3", dex=2):
-    return CombatParticipant(name=name, team="party", hp=hp, max_hp=hp, ac=ac, atk_bonus=atk, damage_dice=dmg, dex_mod=dex)
+    return CombatParticipant(
+        name=name,
+        team="party",
+        hp=hp,
+        max_hp=hp,
+        ac=ac,
+        atk_bonus=atk,
+        damage_dice=dmg,
+        dex_mod=dex,
+    )
 
 
 def _enemy(name="goblin", hp=7, ac=12, atk=3, dmg="1d6+1", dex=1):
-    return CombatParticipant(name=name, team="enemy", hp=hp, max_hp=hp, ac=ac, atk_bonus=atk, damage_dice=dmg, dex_mod=dex)
+    return CombatParticipant(
+        name=name,
+        team="enemy",
+        hp=hp,
+        max_hp=hp,
+        ac=ac,
+        atk_bonus=atk,
+        damage_dice=dmg,
+        dex_mod=dex,
+    )
 
 
 class TestCombatBasics:

@@ -201,7 +201,6 @@ class TestQuestService:
 # Reflection / Summarizer Service
 # ============================================================
 class TestReflectionService:
-
     @pytest.mark.asyncio
     async def test_reflection_returns_insights(self):
         state = {
@@ -217,7 +216,6 @@ class TestReflectionService:
 
 
 class TestSummarizerService:
-
     @pytest.mark.asyncio
     async def test_summarizer_returns_result(self):
         state = {

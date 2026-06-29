@@ -75,12 +75,14 @@ def _format_insight(req: ReflectionRequest, result: dict) -> dict:
 def _fallback(req: ReflectionRequest, errors: list[str] | None = None) -> ReflectionResponse:
     """降级输出 / Fallback output."""
     return ReflectionResponse(
-        insights_out=[{
-            "character_id": req.character_id,
-            "insight": f"{req.character_name}: 维持当前行为模式。",
-            "memory_type": "reflection",
-            "importance": 0,
-            "tick": req.tick,
-        }],
+        insights_out=[
+            {
+                "character_id": req.character_id,
+                "insight": f"{req.character_name}: 维持当前行为模式。",
+                "memory_type": "reflection",
+                "importance": 0,
+                "tick": req.tick,
+            }
+        ],
         errors=errors or ["LLM 不可用，使用降级输出"],
     )

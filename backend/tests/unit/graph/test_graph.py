@@ -1,12 +1,16 @@
-"""测试 TickGraph 7 Phase 主图。"""
+"""测试 TickGraph 7 Phase 主图 / TickGraph 7-phase main graph tests."""
 
 import pytest
 
 from src.graph.graph import OverallState, build_tick_graph
+
+# ── Fixtures / 测试夹具 ──
 from src.graph.subgraphs.character_subgraph import character_subgraph
 from src.graph.subgraphs.engine_subgraph import engine_subgraph
 from src.graph.subgraphs.reflection_subgraph import reflection_subgraph
 from src.services import dm_service, state_update_service, world_service
+
+# ── 图构建 / Graph build
 
 
 def test_build_graph_returns_state_graph():
@@ -19,6 +23,9 @@ def test_graph_can_compile():
     g = build_tick_graph()
     app = g.compile(checkpointer=MemorySaver())
     assert app is not None
+
+
+# ── State 验证 / State validation
 
 
 def test_overall_state_defaults():
@@ -34,6 +41,8 @@ def test_overall_state_defaults():
         state_diff={},
         cast_changes=[],
         narrative="",
+        branch_points=[],
+        hooks_resolved=[],
         reflected_characters=[],
         summary_compressed=False,
         errors=[],
@@ -56,11 +65,16 @@ def base_state() -> OverallState:
         state_diff={},
         cast_changes=[],
         narrative="",
+        branch_points=[],
+        hooks_resolved=[],
         reflected_characters=[],
         summary_compressed=False,
         errors=[],
         needs_reflection=False,
     )
+
+
+# ── Phase 1~6 节点 / Phase 1~6 nodes
 
 
 @pytest.mark.asyncio
@@ -96,6 +110,7 @@ def test_phase5_state_update(base_state):
 async def test_phase6_narrate(base_state):
     base_state["character_actions"] = [{"action": "test"}]
     r = await dm_service.dm_narrate(base_state)
+    # ── Phase 7 反思 / Phase 7 reflection
     assert "narrative" in r
     assert "needs_reflection" in r
 
@@ -114,6 +129,8 @@ async def test_phase6_reflection_trigger():
         state_diff={},
         cast_changes=[],
         narrative="",
+        branch_points=[],
+        hooks_resolved=[],
         reflected_characters=[],
         summary_compressed=False,
         errors=[],
@@ -137,6 +154,8 @@ async def test_phase6_no_reflection_low_tick():
         state_diff={},
         cast_changes=[],
         narrative="",
+        branch_points=[],
+        hooks_resolved=[],
         reflected_characters=[],
         summary_compressed=False,
         errors=[],
@@ -147,6 +166,7 @@ async def test_phase6_no_reflection_low_tick():
 
 
 @pytest.mark.asyncio
+# ── 全 Tick 流程 / Full tick flow
 async def test_phase7_reflect(base_state):
     r = await reflection_subgraph.ainvoke(base_state)
     assert "reflected_characters" in r
@@ -181,6 +201,8 @@ async def test_full_tick_cycle_with_custom_state():
         state_diff={},
         cast_changes=[],
         narrative="",
+        branch_points=[],
+        hooks_resolved=[],
         reflected_characters=[],
         summary_compressed=False,
         errors=[],
@@ -188,3 +210,7 @@ async def test_full_tick_cycle_with_custom_state():
     )
     result = await orch.run_tick(state)
     assert result["narrative"] is not None
+
+
+# ── DM 服务测试 / DM service tests
+# ── 完整 Tick 流程 / Full tick flow

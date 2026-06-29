@@ -22,7 +22,7 @@ class CheckResult:
     dc: int
     total: int
     is_critical: bool = False  # nat20
-    is_fumble: bool = False    # nat1
+    is_fumble: bool = False  # nat1
 
 
 @dataclass
@@ -81,8 +81,12 @@ def resolve_check(bonus: int, dc: int) -> CheckResult:
     total = roll + bonus
     return CheckResult(
         success=(total >= dc or roll == 20) and roll != 1,
-        roll=roll, bonus=bonus, dc=dc, total=total,
-        is_critical=(roll == 20), is_fumble=(roll == 1),
+        roll=roll,
+        bonus=bonus,
+        dc=dc,
+        total=total,
+        is_critical=(roll == 20),
+        is_fumble=(roll == 1),
     )
 
 
@@ -105,9 +109,15 @@ def attack_roll(atk_bonus: int, target_ac: int, damage_dice: str = "1d6") -> Att
             damage = roll_damage(damage_dice)
 
     return AttackResult(
-        success=hit, roll=roll, bonus=atk_bonus, dc=target_ac, total=total,
-        is_critical=(roll == 20), is_fumble=(roll == 1),
-        damage=damage, damage_dice=damage_dice,
+        success=hit,
+        roll=roll,
+        bonus=atk_bonus,
+        dc=target_ac,
+        total=total,
+        is_critical=(roll == 20),
+        is_fumble=(roll == 1),
+        damage=damage,
+        damage_dice=damage_dice,
     )
 
 
@@ -138,13 +148,15 @@ def saving_throw(attr_mod: int, proficiency_bonus: int = 0, dc: int = 10) -> Che
 
 _AC_DEX_CAP: dict[str, int | None] = {
     "unarmored": None,  # 无限制，负敏捷也会降 AC
-    "light": None,       # 全额敏捷
-    "medium": 2,         # 敏捷最多 +2
-    "heavy": 0,          # 敏捷不参与（不会降 AC）
+    "light": None,  # 全额敏捷
+    "medium": 2,  # 敏捷最多 +2
+    "heavy": 0,  # 敏捷不参与（不会降 AC）
 }
 
 
-def calculate_ac(base_ac: int, dex_mod: int, shield_bonus: int = 0, armor_type: str = "light") -> int:
+def calculate_ac(
+    base_ac: int, dex_mod: int, shield_bonus: int = 0, armor_type: str = "light"
+) -> int:
     """计算护甲等级 / Calculate Armor Class."""
     cap = _AC_DEX_CAP.get(armor_type)
     if cap is not None:

@@ -48,7 +48,7 @@ class TestDMCreate:
         llm = AsyncMock()
         llm.call_structured = AsyncMock(
             return_value=DMOutput(
-# ── 叙事测试 / Narrative tests ──
+                # ── 叙事测试 / Narrative tests ──
                 plot_brief="arc-aware plot",
                 scene_direction=SceneDirectionOutput(),
                 instructions=["行动"],
@@ -98,7 +98,7 @@ class TestDMNarrate:
 
 class TestDMGuardrails:
     def test_validate_dm_output_fixes_invalid_mood(self):
-# ── 护栏测试 / Guardrail tests ──
+        # ── 护栏测试 / Guardrail tests ──
         from src.engine.dm.dm import _validate_dm_output
 
         result = DMOutput(
@@ -154,5 +154,7 @@ class TestDMGuardrails:
         result = DMNarrativeSchema(narrative="雾气弥漫，远处传来钟声。")
         fixed = _validate_narrate_output(result)
         assert fixed.narrative == "雾气弥漫，远处传来钟声。"
+
+
 # ── END / 结束 ──
 # ──

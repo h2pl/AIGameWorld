@@ -102,4 +102,6 @@ class TestActorDecide:
             ActorDecideRequest(actor_id="innkeeper", plot_brief="", tick=0), None
         )
         assert result.type == "idle"
+
+
 # ── END / 结束 ──

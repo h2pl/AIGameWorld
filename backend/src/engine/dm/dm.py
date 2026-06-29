@@ -33,7 +33,7 @@ async def dm_create(
     req: DMCreateRequest,
     config: RunnableConfig = None,
 ) -> DMCreateResponse:
-# ── 护栏校验 / Guardrails ──
+    # ── 护栏校验 / Guardrails ──
     """Phase 1: DM 创造情境 / DM creates the scene."""
     llm = get_llm(config)
 

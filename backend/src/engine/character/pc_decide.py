@@ -1,6 +1,7 @@
 """PC Decide Engine——LLM 驱动的深层决策 / PC deep decision with LLM."""
 
 # ── 依赖 / Dependencies ──
+# ── 核心逻辑 / Core Logic
 import logging
 from pathlib import Path
 
@@ -25,7 +26,12 @@ _VALID_ACTIONS = {"move", "talk", "attack", "interact", "wait"}
 async def pc_decide(req: PCDecideRequest, config: RunnableConfig = None) -> PCDecideResponse:
     llm = get_llm(config)
     if llm is None:
-        return PCDecideResponse(character_id=req.pc_id, type="wait", description="等待时机。", errors=["LLM 不可用，使用降级输出 / LLM unavailable, fallback used"])
+        return PCDecideResponse(
+            character_id=req.pc_id,
+            type="wait",
+            description="等待时机。",
+            errors=["LLM 不可用，使用降级输出 / LLM unavailable, fallback used"],
+        )
     try:
         char_repo = get_repo(config, "char")
         memory_repo = get_repo(config, "memory")
@@ -57,7 +63,12 @@ async def pc_decide(req: PCDecideRequest, config: RunnableConfig = None) -> PCDe
         )
     except Exception:
         logger.exception("pc_decide LLM failed for %s", req.pc_id)
-        return PCDecideResponse(character_id=req.pc_id, type="wait", description="等待时机。", errors=["pc_decide LLM 调用失败，使用降级输出"])
+        return PCDecideResponse(
+            character_id=req.pc_id,
+            type="wait",
+            description="等待时机。",
+            errors=["pc_decide LLM 调用失败，使用降级输出"],
+        )
 
 
 def _validate(result: CharacterActionSchema) -> CharacterActionSchema:
@@ -66,4 +77,3 @@ def _validate(result: CharacterActionSchema) -> CharacterActionSchema:
     if not result.reasoning or not result.reasoning.strip():
         result.reasoning = "等待时机。"
     return result
-

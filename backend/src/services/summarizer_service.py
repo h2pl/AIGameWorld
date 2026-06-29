@@ -16,11 +16,14 @@ async def summarize(state: ReflectionSubState, config: RunnableConfig = None) ->
     events = state.get("events", [])
     char_count = len(state.get("reflected_characters", []))
 
-    result = await summarizer_engine.summarize(SummarizerRequest(
-        events=events,
-        character_count=max(char_count, 1),
-        tick=state.get("tick", 0),
-    ), config)
+    result = await summarizer_engine.summarize(
+        SummarizerRequest(
+            events=events,
+            character_count=max(char_count, 1),
+            tick=state.get("tick", 0),
+        ),
+        config,
+    )
 
     return {
         "summary_compressed": result.compressed,

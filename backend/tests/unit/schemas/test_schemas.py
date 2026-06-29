@@ -76,10 +76,14 @@ class TestRequestSchemas:
 
     def test_combat_request(self):
         from src.schemas.request import CombatParticipant
-        r = CombatRequest(participants=[
-            CombatParticipant(name="a", team="party"),
-            CombatParticipant(name="b", team="enemy"),
-        ], round=2)
+
+        r = CombatRequest(
+            participants=[
+                CombatParticipant(name="a", team="party"),
+                CombatParticipant(name="b", team="enemy"),
+            ],
+            round=2,
+        )
         assert len(r.participants) == 2
 
     def test_dialogue_request(self):

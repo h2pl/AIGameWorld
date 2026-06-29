@@ -17,7 +17,7 @@ echo "=== Pre-commit: Ruff Format ==="
 uv run ruff format --check . || { echo "FAIL: Python Format"; exit 1; }
 
 echo "=== Pre-commit: Pyright ==="
-uv run pyright src/ || { echo "FAIL: Pyright Type Check"; exit 1; }
+uv run pyright src/ tests/ || { echo "FAIL: Pyright Type Check"; exit 1; }
 
 echo ""
 echo "OK: 所有检查通过 / All checks passed"

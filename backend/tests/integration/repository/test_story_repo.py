@@ -101,6 +101,8 @@ class TestNarrative:
         rows = await db.fetch_all("SELECT * FROM narratives")
         assert len(rows) == 1
         assert rows[0]["tick"] == 0
+
+
 # ── END / 结束 ──
 # ──
 # ──

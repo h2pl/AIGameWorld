@@ -40,10 +40,7 @@ def resolve_combat(req: CombatRequest) -> CombatResponse:
                 continue
 
             # 找活着的对方
-            targets = [
-                p for p in order
-                if p.team != attacker.team and p.hp > 0
-            ]
+            targets = [p for p in order if p.team != attacker.team and p.hp > 0]
             if not targets:
                 break
             target = random.choice(targets)
@@ -78,12 +75,21 @@ def resolve_combat(req: CombatRequest) -> CombatResponse:
 
         if not enemy_alive:
             survivors = [p.model_dump() for p in order if p.hp > 0]
-            return CombatResponse(winner="party", rounds=rounds, survivors=survivors, combat_log=combat_log)
+            return CombatResponse(
+                winner="party", rounds=rounds, survivors=survivors, combat_log=combat_log
+            )
         if not party_alive:
             survivors = [p.model_dump() for p in order if p.hp > 0]
-            return CombatResponse(winner="enemy", rounds=rounds, survivors=survivors, combat_log=combat_log)
+            return CombatResponse(
+                winner="enemy", rounds=rounds, survivors=survivors, combat_log=combat_log
+            )
 
     # 超时 / Timeout
     survivors = [p.model_dump() for p in order if p.hp > 0]
-    return CombatResponse(winner=None, rounds=rounds, survivors=survivors, combat_log=combat_log,
-                          errors=["战斗达到最大回合数，强制结束 / Combat reached max rounds, forced end"])
+    return CombatResponse(
+        winner=None,
+        rounds=rounds,
+        survivors=survivors,
+        combat_log=combat_log,
+        errors=["战斗达到最大回合数，强制结束 / Combat reached max rounds, forced end"],
+    )

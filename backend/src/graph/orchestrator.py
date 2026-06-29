@@ -75,7 +75,12 @@ class Orchestrator:
 
         t_start = time.monotonic()
         result = await self._app.ainvoke(initial_state, config)
-        log_phase("tick", self._tick, elapsed=time.monotonic() - t_start, errors=len(result.get("errors", [])))
+        log_phase(
+            "tick",
+            self._tick,
+            elapsed=time.monotonic() - t_start,
+            errors=len(result.get("errors", [])),
+        )
         self._tick += 1
 
         return {

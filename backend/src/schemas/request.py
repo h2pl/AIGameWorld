@@ -47,6 +47,7 @@ class ActorDecideRequest(BaseModel):
 # === Phase 4: Engines ===
 class CombatParticipant(BaseModel):
     """战斗参与者 / Combat participant."""
+
     name: str = ""
     team: str = "enemy"  # "party" | "enemy"
     hp: int = 0
@@ -92,7 +93,9 @@ class ReflectionRequest(BaseModel):
     arc_stage: str = ""
     arc_description: str = ""
     memories: list[dict[str, Any]] = []
-    recent_reflections: list[str] = []  # 历史反思洞见，防重复 / previous insights to avoid duplicates
+    recent_reflections: list[
+        str
+    ] = []  # 历史反思洞见，防重复 / previous insights to avoid duplicates
     tick: int = 0
 
 

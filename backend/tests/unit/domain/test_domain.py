@@ -107,8 +107,8 @@ class TestCharacterDomain:
         assert pc.roster_status == "member"
 
     def test_player_character_requires_id(self):
-        with pytest.raises(ValidationError):
-            PlayerCharacter()  # id is required
+        with pytest.raises(ValidationError):  # noqa: F821
+            PlayerCharacter()  # pyright: ignore[reportCallIssue]
 
 
 # ============================================================

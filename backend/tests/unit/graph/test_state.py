@@ -2,6 +2,8 @@
 
 from src.graph.state import CharacterSubState, EngineSubState, OverallState, ReflectionSubState
 
+# ── OverallState 测试 / Main state tests ──
+
 
 class TestOverallState:
     def test_minimal_state(self):
@@ -17,6 +19,8 @@ class TestOverallState:
             "state_diff": {},
             "cast_changes": [],
             "narrative": "",
+            "branch_points": [],
+            "hooks_resolved": [],
             "reflected_characters": [],
             "summary_compressed": False,
             "errors": [],
@@ -38,6 +42,8 @@ class TestOverallState:
             "state_diff": {},
             "cast_changes": [],
             "narrative": "",
+            "branch_points": [],
+            "hooks_resolved": [],
             "reflected_characters": [],
             "summary_compressed": False,
             "errors": [],
@@ -60,6 +66,8 @@ class TestOverallState:
             "state_diff": {},
             "cast_changes": [],
             "narrative": "",
+            "branch_points": [],
+            "hooks_resolved": [],
             "reflected_characters": [],
             "summary_compressed": False,
             "errors": [],
@@ -80,6 +88,8 @@ class TestOverallState:
             "state_diff": {},
             "cast_changes": [],
             "narrative": "",
+            "branch_points": [],
+            "hooks_resolved": [],
             "reflected_characters": [],
             "summary_compressed": False,
             "errors": ["error1", "error2"],
@@ -88,6 +98,7 @@ class TestOverallState:
         assert len(s["errors"]) == 2
 
 
+# ── CharacterSubState 测试 ──
 class TestCharacterSubState:
     def test_character_substate(self):
         s: CharacterSubState = {
@@ -100,6 +111,7 @@ class TestCharacterSubState:
         assert s["scene_direction"]["featured_pcs"] == ["pc1"]
 
 
+# ── EngineSubState 测试 ──
 class TestEngineSubState:
     def test_engine_substate(self):
         s: EngineSubState = {
@@ -130,3 +142,6 @@ class TestReflectionSubState:
         }
         assert s["tick"] == 5
         assert len(s["memories"]) == 1
+
+
+# ── END / 结束

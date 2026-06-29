@@ -115,8 +115,14 @@ class TestSummarizer:
         result = await summarize(
             SummarizerRequest(
                 events=[
-                    {"type": "character_action", "description": "alex(talk): 向 Greta 打探失踪商队情报"},
-                    {"type": "character_action", "description": "cole(talk): 提醒新兵注意广场可疑动静"},
+                    {
+                        "type": "character_action",
+                        "description": "alex(talk): 向 Greta 打探失踪商队情报",
+                    },
+                    {
+                        "type": "character_action",
+                        "description": "cole(talk): 提醒新兵注意广场可疑动静",
+                    },
                 ],
                 character_count=3,
                 tick=1,

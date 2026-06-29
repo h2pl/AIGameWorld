@@ -20,7 +20,9 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
         DMCreateRequest(tick=state.get("tick", 0), plot_brief=state.get("plot_brief", "")),
         config=config,
     )
-    log_phase("dm_create", state.get("tick", 0), elapsed=time.monotonic() - t0, errors=len(result.errors))
+    log_phase(
+        "dm_create", state.get("tick", 0), elapsed=time.monotonic() - t0, errors=len(result.errors)
+    )
     return {
         "dm_instructions": result.instructions_out,
         "plot_brief": result.plot_brief,
@@ -43,7 +45,9 @@ async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict
         ),
         config=config,
     )
-    log_phase("dm_narrate", state.get("tick", 0), elapsed=time.monotonic() - t0, errors=len(result.errors))
+    log_phase(
+        "dm_narrate", state.get("tick", 0), elapsed=time.monotonic() - t0, errors=len(result.errors)
+    )
     return {
         "narrative": result.narrative_out,
         "branch_points": result.branch_points,

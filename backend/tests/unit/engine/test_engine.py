@@ -28,15 +28,20 @@ class TestCombatEngine:
 
     def test_party_auto_wins_against_nothing(self):
         from src.schemas.request import CombatParticipant
-        r = resolve_combat(CombatRequest(
-            participants=[CombatParticipant(name="hero", team="party", hp=10, max_hp=10)]
-        ))
+
+        r = resolve_combat(
+            CombatRequest(
+                participants=[CombatParticipant(name="hero", team="party", hp=10, max_hp=10)]
+            )
+        )
         assert r.winner == "party"
 
 
 class TestDialogueEngine:
     def test_persuasion_success(self):
-        r = resolve_persuasion(DialogueRequest(speaker="pc1", target="npc1", intent="persuade", attribute_mod=3, dc=12))
+        r = resolve_persuasion(
+            DialogueRequest(speaker="pc1", target="npc1", intent="persuade", attribute_mod=3, dc=12)
+        )
         assert isinstance(r.success, bool)
 
     def test_empty_speaker(self):
@@ -46,7 +51,9 @@ class TestDialogueEngine:
 
 class TestExplorationEngine:
     def test_perception_check(self):
-        r = resolve_exploration(ExplorationRequest(character_id="pc1", action_type="search", attribute_mod=2, dc=10))
+        r = resolve_exploration(
+            ExplorationRequest(character_id="pc1", action_type="search", attribute_mod=2, dc=10)
+        )
         assert isinstance(r.success, bool)
         assert r.result is not None
         assert r.result["character_id"] == "pc1"
@@ -57,7 +64,16 @@ class TestInteractEngine:
     def test_pick_lock(self):
         from src.engine.exploration.interact import resolve_interact
         from src.schemas.request import SceneObjectInteractRequest
-        r = resolve_interact(SceneObjectInteractRequest(object_id="chest1", character_id="pc1", action_type="pick_lock", attribute_mod=3, dc=12))
+
+        r = resolve_interact(
+            SceneObjectInteractRequest(
+                object_id="chest1",
+                character_id="pc1",
+                action_type="pick_lock",
+                attribute_mod=3,
+                dc=12,
+            )
+        )
         assert isinstance(r.success, bool)
         assert r.result is not None
         assert r.result["action_cn"] == "开锁"
@@ -66,7 +82,16 @@ class TestInteractEngine:
     def test_break_door(self):
         from src.engine.exploration.interact import resolve_interact
         from src.schemas.request import SceneObjectInteractRequest
-        r = resolve_interact(SceneObjectInteractRequest(object_id="door1", character_id="pc1", action_type="break_door", attribute_mod=4, dc=15))
+
+        r = resolve_interact(
+            SceneObjectInteractRequest(
+                object_id="door1",
+                character_id="pc1",
+                action_type="break_door",
+                attribute_mod=4,
+                dc=15,
+            )
+        )
         assert isinstance(r.success, bool)
         assert r.result is not None
         assert r.result["action_cn"] == "破门"
@@ -116,7 +141,9 @@ class TestSummarizerEngine:
     @pytest.mark.asyncio
     async def test_many_events_compressed(self):
         r = await summarize(
-            SummarizerRequest(events=[{"type": "e", "description": f"e{i}"} for i in range(5)], tick=10),
+            SummarizerRequest(
+                events=[{"type": "e", "description": f"e{i}"} for i in range(5)], tick=10
+            ),
             None,
         )
         assert not r.compressed  # fallback（无 LLM）不压缩
@@ -128,4 +155,9 @@ class TestWorldEngine:
         assert len(r.events_out) == 2
         assert r.events_out[0]["type"] == "dm_instruction"
         assert r.events_out[0]["tick"] == 1
+
+
 # ── END / 结束 ──
+# ── 组件测试 / Component test
+# ──
+# ──

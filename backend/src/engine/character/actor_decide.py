@@ -28,7 +28,9 @@ async def actor_decide(
     llm = get_llm(config)
     if llm is None:
         return ActorDecideResponse(
-            character_id=req.actor_id, type="idle", description=f"{req.actor_id} goes about their business.",
+            character_id=req.actor_id,
+            type="idle",
+            description=f"{req.actor_id} goes about their business.",
             errors=["LLM 不可用，使用降级输出 / LLM unavailable, fallback used"],
         )
     try:
@@ -65,7 +67,9 @@ async def actor_decide(
     except Exception:
         logger.exception("actor_decide LLM failed for %s", req.actor_id)
         return ActorDecideResponse(
-            character_id=req.actor_id, type="idle", description=f"{req.actor_id} goes about their business.",
+            character_id=req.actor_id,
+            type="idle",
+            description=f"{req.actor_id} goes about their business.",
             errors=["actor_decide LLM 调用失败，使用降级输出"],
         )
 

@@ -22,14 +22,24 @@ def setup_logging(level: int = logging.INFO) -> None:
     if not any(isinstance(h, logging.StreamHandler) for h in root.handlers):
         h = logging.StreamHandler(sys.stderr)
         h.setLevel(level)
-        h.setFormatter(logging.Formatter(
-            fmt="%(asctime)s | %(name)-24s | %(levelname)-8s | %(message)s",
-            datefmt="%H:%M:%S",
-        ))
+        h.setFormatter(
+            logging.Formatter(
+                fmt="%(asctime)s | %(name)-24s | %(levelname)-8s | %(message)s",
+                datefmt="%H:%M:%S",
+            )
+        )
         root.addHandler(h)
 
     # 降噪——第三方库日志只显示 WARNING+
-    for noisy in ("httpx", "httpcore", "chromadb", "urllib3", "openai", "langchain", "langchain_openai"):
+    for noisy in (
+        "httpx",
+        "httpcore",
+        "chromadb",
+        "urllib3",
+        "openai",
+        "langchain",
+        "langchain_openai",
+    ):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
