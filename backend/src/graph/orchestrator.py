@@ -5,8 +5,8 @@ from typing import Any
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.types import StateSnapshot
 
-from ..graph import checkpoints
-from ..graph.graph import OverallState, build_tick_graph
+from . import checkpoints
+from .graph import OverallState, build_tick_graph
 
 
 class Orchestrator:
@@ -18,7 +18,7 @@ class Orchestrator:
         checkpointer: BaseCheckpointSaver | None = None,
         llm: Any = None,
         reflection_interval: int = 5,
-        story_repo: Any = None,  # P2-4: StoryRepo 注入 / StoryRepo injection
+        repos: Any = None,
     ):
         self._graph = build_tick_graph()
         self._checkpointer = checkpointer or checkpoints.create_dev_checkpointer()
@@ -27,7 +27,7 @@ class Orchestrator:
         self._config = {"configurable": {"thread_id": session_id}}
         self._llm = llm
         self._reflection_interval = reflection_interval
-        self._story_repo = story_repo
+        self._repos = repos
 
     @property
     def tick(self) -> int:
@@ -68,9 +68,8 @@ class Orchestrator:
         if self._llm:
             config["configurable"]["llm"] = self._llm
             config["configurable"]["reflection_interval"] = self._reflection_interval
-        # P2-4: 注入 StoryRepo 供 service 层加载剧情线/伏笔 / inject StoryRepo for service
-        if self._story_repo:
-            config["configurable"]["story_repo"] = self._story_repo
+        if self._repos:
+            config["configurable"]["repos"] = self._repos
 
         result = await self._app.ainvoke(initial_state, config)
         self._tick += 1

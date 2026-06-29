@@ -75,8 +75,9 @@ def test_phase2_world(base_state):
     assert r["world_events"] == []
 
 
-def test_phase3_char_decide(base_state):
-    r = character_subgraph.invoke(base_state)
+@pytest.mark.asyncio
+async def test_phase3_char_decide(base_state):
+    r = await character_subgraph.ainvoke(base_state)
     assert r["character_actions"] == []
 
 
@@ -152,7 +153,7 @@ def test_phase7_reflect(base_state):
 
 @pytest.mark.asyncio
 async def test_full_tick_cycle():
-    from src.engine.orchestrator import Orchestrator
+    from src.graph.orchestrator import Orchestrator
 
     orch = Orchestrator()
     for i in range(10):
@@ -164,7 +165,7 @@ async def test_full_tick_cycle():
 
 @pytest.mark.asyncio
 async def test_full_tick_cycle_with_custom_state():
-    from src.engine.orchestrator import Orchestrator
+    from src.graph.orchestrator import Orchestrator
 
     orch = Orchestrator()
     state = OverallState(
