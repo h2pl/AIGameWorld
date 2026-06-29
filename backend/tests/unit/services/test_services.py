@@ -1,9 +1,14 @@
 """Services 测试——State ↔ Engine adapter 层."""
 
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from src.services import (
     character_service,
     combat_service,
     dialogue_service,
+    dm_service,
     exploration_service,
     quest_service,
     reflection_service,
@@ -26,6 +31,8 @@ def _base_state(**overrides):
         "state_diff": {},
         "cast_changes": [],
         "narrative": "",
+        "branch_points": [],
+        "hooks_resolved": [],
         "reflected_characters": [],
         "summary_compressed": False,
         "errors": [],
@@ -200,3 +207,97 @@ class TestSummarizerService:
         }
         result = summarizer_service.summarize(state)
         assert "summary_compressed" in result
+
+
+# ============================================================
+# DM Service（P0: 集成测试补充 / DM service integration tests）
+# ============================================================
+class TestDMService:
+    """DM Service: State ↔ Engine 适配验证 / Verify State↔Engine adapter."""
+
+    def _config(self, llm=None):
+        """构建 mock RunnableConfig / Build mock RunnableConfig."""
+        return {"configurable": {"llm": llm or AsyncMock()}}
+
+    @pytest.mark.asyncio
+    async def test_dm_create_returns_instructions(self):
+        """dm_create → State 写入 dm_instructions/plot_brief/scene_direction."""
+        mock_llm = AsyncMock()
+        mock_llm.call_structured = AsyncMock(return_value=None)
+        state = _base_state(tick=0, plot_brief="")
+
+        from src.schemas.response import DMCreateResponse
+        with patch("src.services.dm_service.dm_engine.dm_create") as mock_create:
+            mock_create.return_value = DMCreateResponse(
+                instructions_out=["探索"],
+                plot_brief="剧情",
+                scene_direction={"mood": "tense"},
+            )
+            result = await dm_service.dm_create(state, self._config(mock_llm))
+
+        assert result["dm_instructions"] == ["探索"]
+        assert result["plot_brief"] == "剧情"
+        assert result["scene_direction"]["mood"] == "tense"
+        assert result["errors"] == []
+
+    @pytest.mark.asyncio
+    async def test_dm_create_propagates_errors(self):
+        """dm_create 异常 → errors 透传 / Errors propagated to State."""
+        state = _base_state()
+
+        from src.schemas.response import DMCreateResponse
+        with patch("src.services.dm_service.dm_engine.dm_create") as mock_create:
+            mock_create.return_value = DMCreateResponse(
+                errors=["LLM 调用失败"],
+            )
+            result = await dm_service.dm_create(state, self._config())
+
+        assert "LLM" in result["errors"][0]
+
+    @pytest.mark.asyncio
+    async def test_dm_narrate_returns_narrative(self):
+        """dm_narrate → State 写入 narrative + branch_points + hooks_resolved."""
+        state = _base_state(tick=0, character_actions=[])
+
+        from src.schemas.response import DMNarrateResponse
+        with patch("src.services.dm_service.dm_engine.dm_narrate") as mock_narrate:
+            mock_narrate.return_value = DMNarrateResponse(
+                narrative_out="战斗开始！",
+                branch_points=[{"decision_maker": "alex", "decision": "攻击"}],
+                hooks_resolved=["hook_01"],
+            )
+            result = await dm_service.dm_narrate(state, self._config())
+
+        assert result["narrative"] == "战斗开始！"
+        assert len(result["branch_points"]) == 1
+        assert result["hooks_resolved"] == ["hook_01"]
+
+    @pytest.mark.asyncio
+    async def test_dm_narrate_sets_needs_reflection(self):
+        """tick=5, interval=5 → needs_reflection=True."""
+        state = _base_state(tick=5, character_actions=[])
+
+        from src.schemas.response import DMNarrateResponse
+        with patch("src.services.dm_service.dm_engine.dm_narrate") as mock_narrate:
+            mock_narrate.return_value = DMNarrateResponse(narrative_out="反思时刻")
+            result = await dm_service.dm_narrate(
+                state,
+                {"configurable": {"llm": AsyncMock(), "reflection_interval": 5}},
+            )
+
+        assert result["needs_reflection"] is True
+
+    @pytest.mark.asyncio
+    async def test_dm_narrate_skips_reflection_on_interval_2(self):
+        """tick=3, interval=5 → needs_reflection=False."""
+        state = _base_state(tick=3, character_actions=[])
+
+        from src.schemas.response import DMNarrateResponse
+        with patch("src.services.dm_service.dm_engine.dm_narrate") as mock_narrate:
+            mock_narrate.return_value = DMNarrateResponse(narrative_out="普通步")
+            result = await dm_service.dm_narrate(
+                state,
+                {"configurable": {"llm": AsyncMock(), "reflection_interval": 5}},
+            )
+
+        assert result["needs_reflection"] is False

@@ -36,6 +36,7 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
         "dm_instructions": result.instructions_out,
         "plot_brief": result.plot_brief,
         "scene_direction": result.scene_direction,
+        "errors": result.errors,
     }
 
 
@@ -55,5 +56,8 @@ async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict
     )
     return {
         "narrative": result.narrative_out,
+        "branch_points": result.branch_points,
+        "hooks_resolved": result.hooks_resolved,
+        "errors": result.errors,
         "needs_reflection": state.get("tick", 0) % interval == 0 and state.get("tick", 0) > 0,
     }

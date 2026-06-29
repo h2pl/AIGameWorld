@@ -38,7 +38,10 @@ async def dm_create(
     Engine 直接从 StoryRepo 加载剧情线和伏笔（Service→Engine→Repository 分层）。
     """
     if llm is None:
-        return _fallback_create()
+        return DMCreateResponse(
+            instructions_out=[],
+            plot_brief="平静的一天，没有特别事件。",
+        )
     try:
         # 从 Repository 加载上下文 / load context from Repository
         story_arcs = await story_repo.load_arcs() if story_repo else []
@@ -66,6 +69,7 @@ async def dm_create(
             type="scene_direction",
             featured_pcs=result.scene_direction.featured_pcs,
             featured_actors=result.scene_direction.featured_actors,
+            actor_motivations=result.scene_direction.actor_motivations,
         )
         return DMCreateResponse(
             instructions_out=result.instructions,
@@ -74,7 +78,12 @@ async def dm_create(
         )
     except Exception:
         logger.exception("dm_create failed, using fallback")
-        return _fallback_create()
+        return DMCreateResponse(
+            instructions_out=[],
+            plot_brief="平静的一天，没有特别事件。",
+            scene_direction={},
+            errors=["dm_create LLM 调用失败，使用降级输出"],
+        )
 
 
 # ============================================================
@@ -92,7 +101,7 @@ async def dm_narrate(
     Engine 自己把 branch_points/hooks_resolved 写回 StoryRepo（Service→Engine→Repository）。
     """
     if llm is None:
-        return _fallback_narrate()
+        return DMNarrateResponse(narrative_out="（DM 沉默了...）")
     try:
         prompt = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
             plot_brief=req.plot_brief,
@@ -119,7 +128,12 @@ async def dm_narrate(
         return response
     except Exception:
         logger.exception("dm_narrate failed, using fallback")
-        return _fallback_narrate()
+        return DMNarrateResponse(
+            narrative_out="（DM 沉默了...）",
+            branch_points=[],
+            hooks_resolved=[],
+            errors=["dm_narrate LLM 调用失败，使用降级输出"],
+        )
 
 
 # ============================================================
@@ -188,18 +202,4 @@ async def _persist_narrate_results(
             await story_repo.save_arc(active_main)
 
 
-# ============================================================
-# Fallback 降级输出 / Fallback degraded output
-# ============================================================
 
-
-def _fallback_create() -> DMCreateResponse:
-    return DMCreateResponse(
-        instructions_out=[],
-        plot_brief="平静的一天，没有特别事件。",
-        scene_direction={"mood": "neutral"},
-    )
-
-
-def _fallback_narrate() -> DMNarrateResponse:
-    return DMNarrateResponse(narrative_out="（DM 沉默了...）", branch_points=[], hooks_resolved=[])

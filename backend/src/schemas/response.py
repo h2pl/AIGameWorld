@@ -32,6 +32,7 @@ class DMCreateResponse(BaseModel):
     instructions_out: list[str] = Field(default_factory=list)
     plot_brief: str = ""
     scene_direction: dict[str, Any] = {}
+    errors: list[str] = Field(default_factory=list)  # 降级/异常时写入 / written on fallback
 
     @classmethod
     def from_entity(cls, dm: DMInstruction) -> DMCreateResponse:
@@ -42,6 +43,7 @@ class DMNarrateResponse(BaseModel):
     narrative_out: str = ""
     branch_points: list[dict[str, Any]] = Field(default_factory=list)
     hooks_resolved: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)  # 降级/异常时写入 / written on fallback
 
 
 # === Phase 2: World ===

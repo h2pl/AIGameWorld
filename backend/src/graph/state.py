@@ -36,6 +36,8 @@ class OverallState(TypedDict):
 
     # Phase 6: DM 叙事 / DM narration
     narrative: str
+    branch_points: list[dict[str, Any]]  # 本 tick 产生的分支点 / branch points from this tick
+    hooks_resolved: list[str]  # 本 tick 回收的伏笔 / hooks resolved this tick
 
     # Phase 7: 反思 + 摘要 / Reflection + summary
     reflected_characters: list[str]
