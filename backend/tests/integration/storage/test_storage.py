@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -18,7 +19,7 @@ async def db():
     await client.init_schema()
     yield client
     await client.close()
-    os.unlink(path)
+    Path(path).unlink()
 
 
 class TestSQLiteClient:

@@ -7,4 +7,4 @@ from .memory_repo import MemoryRepo
 from .scene_repo import SceneRepo
 from .story_repo import StoryRepo
 
-__all__ = ["CharacterRepo", "EventRepo", "StoryRepo", "ItemRepo", "SceneRepo", "MemoryRepo"]
+__all__ = ["CharacterRepo", "EventRepo", "ItemRepo", "MemoryRepo", "SceneRepo", "StoryRepo"]

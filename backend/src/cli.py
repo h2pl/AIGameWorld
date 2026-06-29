@@ -302,7 +302,7 @@ async def _test_engine() -> None:
         SystemMessage(content=system_prompt),
         HumanMessage(content=prompt),
     ]
-    result_raw = await client.call_structured("dm_create", None, msgs, fallback=lambda: {})
+    result_raw = await client.call_structured("dm_create", None, msgs, fallback=dict)
     print(f"  [OUTPUT] {json.dumps(result_raw, ensure_ascii=False, default=str)[:500] if result_raw else 'None'}")
     print(_SUB)
 
@@ -329,7 +329,7 @@ async def _test_engine() -> None:
         SystemMessage(content=system_prompt),
         HumanMessage(content=prompt_n),
     ]
-    result2_raw = await client.call_structured("dm_narrate", None, msgs_n, fallback=lambda: {})
+    result2_raw = await client.call_structured("dm_narrate", None, msgs_n, fallback=dict)
     print(f"  [OUTPUT] {json.dumps(result2_raw, ensure_ascii=False, default=str)[:500] if result2_raw else 'None'}")
     print(_SUB)
     print("  DM Engine OK")

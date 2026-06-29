@@ -47,8 +47,37 @@ target-version = "py314"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
-ignore = ["E501"]  # 行长度在种子数据/LLM 输出打印等场景无法合理断行
+select = [
+    # 基础（必须）
+    "E", "W",       # pycodestyle 风格 / style
+    "F",            # Pyflakes 逻辑错误（引用未定义变量等）/ logic errors
+    "I",            # isort import 排序 / import ordering
+    "UP",           # pyupgrade 语法升级 / syntax upgrades
+    "B",            # flake8-bugbear Bug 防御 / bug prevention
+    "SIM",          # flake8-simplify 简化建议 / simplification
+    # 安全 — 本项目有 LLM prompt/DB/密钥 / our project has LLM+DB+secrets
+    "S",            # bandit 安全扫描 / security scan
+    # 质量提升 — 防常见反模式 / prevent common anti-patterns
+    "PERF",         # 性能反模式 / performance anti-patterns
+    "PIE",          # 无用代码 / unnecessary code
+    "PTH",          # pathlib 一致使用 / consistent pathlib usage
+    "PL",           # Pylint 深度分析 / deep static analysis (0 误报)
+    "C4",           # 推导复杂度 / comprehension complexity (2 处可修)
+]
+ignore = [
+    # 风格
+    "E501",         # 行长度（种子数据/LLM 输出无法合理断行）
+    # 安全误报
+    "S101",         # pytest assert（测试标准范式）
+    "S104",         # 0.0.0.0 bind（config 默认值，非漏洞）
+    "S311",         # random.randint（DND 骰子，非密码学用途）
+    "S701",         # jinja2 autoescape（本项目只渲染 LLM prompt，非 HTML）
+    # 质量误报
+    "PLC0415",      # import 不在顶部（按需延迟导入，避免循环依赖）
+    "PLR0911", "PLR0912", "PLR0913", "PLR0915",  # 复杂度（Phase 3 小步任务）
+    "PLR2004",      # 魔法数字（测试/种子数据中的字面量是必要可读性）
+    "RUF001", "RUF002", "RUF003",  # 中文全角标点（中英双语项目）
+]
 
 [tool.ruff.format]
 quote-style = "double"

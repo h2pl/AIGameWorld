@@ -5,4 +5,3 @@
 class WorldLoader:
     """Pack 加载占位，Phase 2 实现."""
 
-    pass

@@ -3,4 +3,4 @@
 from .chroma_client import ChromaClient
 from .sqlite_client import SQLiteClient
 
-__all__ = ["SQLiteClient", "ChromaClient"]
+__all__ = ["ChromaClient", "SQLiteClient"]

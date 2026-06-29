@@ -24,22 +24,15 @@ def dispatch_characters(state: OverallState) -> list[Send]:
     tick = state.get("tick", 0)
     sends: list[Send] = []
 
-    for pc_id in direction.get("featured_pcs", []):
-        sends.append(Send("character_agent", {
-            "character_id": pc_id,
-            "character_type": "pc",
-            "plot_brief": plot_brief,
-            "tick": tick,
-        }))
-
-    for actor_id in direction.get("featured_actors", []):
-        sends.append(Send("character_agent", {
-            "character_id": actor_id,
-            "character_type": "actor",
-            "plot_brief": plot_brief,
-            "tick": tick,
-        }))
-
+    _send_args = {"plot_brief": plot_brief, "tick": tick}
+    sends.extend(
+        Send("character_agent", {"character_id": pc_id, "character_type": "pc", **_send_args})
+        for pc_id in direction.get("featured_pcs", [])
+    )
+    sends.extend(
+        Send("character_agent", {"character_id": actor_id, "character_type": "actor", **_send_args})
+        for actor_id in direction.get("featured_actors", [])
+    )
     return sends
 
 

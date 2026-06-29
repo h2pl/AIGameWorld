@@ -110,7 +110,7 @@ class Config(BaseSettings):
         config_path = Path(path)
         if not config_path.exists():
             raise FileNotFoundError(f"Config file not found: {path}")
-        with open(config_path, encoding="utf-8") as f:
+        with config_path.open(encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         # 选择 provider（环境变量 LLM_PROVIDER > yaml llm_provider）
