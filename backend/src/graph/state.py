@@ -60,6 +60,16 @@ class CharacterSubState(TypedDict):
     character_actions: Annotated[list[dict[str, Any]], add]
 
 
+class CharacterAgentState(TypedDict):
+    """P3-3: 单角色决策 agent（Send fan-out 并行）/ Per-character decision agent."""
+
+    character_id: str
+    character_type: str  # "pc" | "actor"
+    plot_brief: str
+    tick: int
+    character_actions: Annotated[list[dict[str, Any]], add]
+
+
 class EngineSubState(TypedDict):
     """Phase 4: Engine 裁决子图 / Engine resolution subgraph."""
 
