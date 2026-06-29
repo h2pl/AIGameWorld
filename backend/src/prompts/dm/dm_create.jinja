@@ -1,12 +1,14 @@
-{# Phase 1: DM 创造情境 #}
-{% include '_persona_dm.jinja' %}
+{# Phase 1: DM 创造情境 / DM creates the scene #}
+{# system prompt 已由 SystemMessage 承载，此处不重复 include / system prompt is sent via SystemMessage, not repeated here #}
 
-{# === CONTEXT: 上下文注入 === #}
+{# === 上下文注入 / Context injection === #}
 {% if story_arcs %}
 当前剧情线：
 {% for arc in story_arcs %}
 - {{ arc.title }}（{{ arc.stage }}）
 {% endfor %}
+{% else %}
+{# TODO: story_arcs 待 Phase 2 Story 域接通后启用 / enabled after Story domain wiring #}
 {% endif %}
 
 {% if active_hooks %}
@@ -14,6 +16,8 @@
 {% for hook in active_hooks %}
 - {{ hook.description }}
 {% endfor %}
+{% else %}
+{# TODO: active_hooks 待 Memory 域接通后启用 / enabled after Memory domain wiring #}
 {% endif %}
 
 {% if recent_summary %}
@@ -29,14 +33,37 @@
 {% if pacing.needs_conflict %}（需要注入冲突）{% endif %}
 {% endif %}
 
-{# === OUTPUT: 输出格式约束 === #}
-创造情境输出 JSON：
+{# === 输出约束 / Output spec === #}
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
+
+字段说明：
+- instructions: 2-4 条，每条是玩家可尝试的具体行动（中文祈使句，要具体可执行，不要泛泛的"探索周围"）
+- plot_brief: 2-3 句，描述角色行动"之前"发生的场景设置，不要写角色已做的事
+- scene_direction.featured_pcs: 本步重点 PC 的 id 列表（1-2 个）
+- scene_direction.featured_actors: 本步参演 NPC 的 id 列表
+- scene_direction.actor_motivations: {actor_id: 该 NPC 本步的即时动机（中文一句话）}
+- scene_direction.mood: neutral / tense / hopeful / ominous / mysterious 之一
+
+输出格式：
 {
-  "instructions": ["玩家可以做什么的建议（中文句子）", "..."],
-  "plot_brief": "本步剧情梗概（2-3句，角色行动前发生的事）",
+  "instructions": ["...", "..."],
+  "plot_brief": "...",
   "scene_direction": {
-    "featured_pcs": ["pc_id", ...],
-    "featured_actors": ["actor_id", ...],
-    "actor_motivations": {"actor_id": "动机描述"}
+    "featured_pcs": ["pc_id"],
+    "featured_actors": ["actor_id"],
+    "actor_motivations": {"actor_id": "动机"},
+    "mood": "tense"
+  }
+}
+
+示例：
+{
+  "instructions": ["检查祭坛上的刻文", "询问旅人来自何方", "绕到石塔后方侦察"],
+  "plot_brief": "雾气在十字路口聚拢，一座布满苔藓的祭坛立在路中央，旅人倚着祭坛擦拭长刀。",
+  "scene_direction": {
+    "featured_pcs": ["alex"],
+    "featured_actors": ["traveler_01"],
+    "actor_motivations": {"traveler_01": "想引开队伍注意好独自触碰祭坛"},
+    "mood": "mysterious"
   }
 }

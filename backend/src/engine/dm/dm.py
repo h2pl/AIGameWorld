@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
 
-# system prompt 从 jinja 模板加载，不再硬编码
-_DM_SYSTEM_PROMPT = _PROMPTS.get_template("_persona_dm.jinja").render()
+# system prompt 从 jinja 模板加载，不再硬编码 / system prompt loaded from jinja template
+_DM_SYSTEM_PROMPT = _PROMPTS.get_template("_dm_system.jinja").render()
 
 
 async def dm_create(req: DMCreateRequest, llm) -> DMCreateResponse:

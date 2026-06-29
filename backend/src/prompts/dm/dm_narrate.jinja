@@ -1,19 +1,20 @@
-{# Phase 6: DM 叙事渲染 #}
-{% include '_persona_dm.jinja' %}
+{# Phase 6: DM 叙事渲染 / DM narrates the scene #}
+{# system prompt 已由 SystemMessage 承载，此处不重复 include / system prompt is sent via SystemMessage, not repeated here #}
 
-{# === CONTEXT: 上下文注入 === #}
+{# === 上下文注入 / Context injection === #}
 剧情梗概：{{ plot_brief }}
 
 角色行动：
 {% for action in character_actions %}
-- {{ action.get("character_id", "?") }} ({{ action.get("type", "?") }}): {{ action.get("description", "") }}
+- {{ action.get("character_id", "?") }}（{{ action.get("type", "?") }}）：{{ action.get("description", "") }}
 {% else %}
 - 无角色行动
 {% endfor %}
 
 {% if events %}
 发生的事件：
-{% for ev in events %}- {{ ev.get("description", ev) }}
+{% for ev in events %}
+- {{ ev.get("description", ev) }}
 {% endfor %}
 {% endif %}
 
@@ -21,10 +22,39 @@
 战斗结果：{{ combat_result }}
 {% endif %}
 
-{# === OUTPUT: 输出格式约束 === #}
-请用中文叙事，输出 JSON：
+{% if cast_changes %}
+角色变动：
+{% for c in cast_changes %}
+- {{ c }}
+{% endfor %}
+{% endif %}
+
+{# === 叙事风格 / Narration style === #}
+叙事要求：
+- 第三人称 DND DM 口吻，简体中文
+- 3-5 句，调动至少一种感官（视觉/听觉/嗅觉/触觉）
+- 把战斗结果和事件自然融入叙事，不要复述数据
+- 结尾留一个钩子或悬念，不要把话说满
+- hooks_resolved：仅当本步叙事确实回收了某个伏笔时才填其 id，否则留空数组
+
+{# === 输出约束 / Output spec === #}
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
+
+字段说明：
+- narrative: 3-5 句中文叙事文本
+- branch_points: 本步产生的关键分支点；无则空数组
+- hooks_resolved: 本步回收的伏笔 id 列表；无则空数组
+
+输出格式：
 {
-  "narrative": "中文故事文本（3-5句，第三人称 DND DM 口吻）",
+  "narrative": "...",
   "branch_points": [{"decision_maker": "pc_id", "decision": "...", "consequence": "..."}],
-  "hooks_resolved": ["hook_id", ...]
+  "hooks_resolved": ["hook_id"]
+}
+
+示例：
+{
+  "narrative": "雾气在 Alex 脚边盘旋，祭坛的刻文在月光下泛着冷光。旅人收刀入鞘，嘴角扬起一个意味不明的笑。远处石塔传来一声沉闷的钟响，惊起一群乌鸦。",
+  "branch_points": [{"decision_maker": "alex", "decision": "检查祭坛刻文", "consequence": "触发了隐藏的守护机关"}],
+  "hooks_resolved": []
 }
