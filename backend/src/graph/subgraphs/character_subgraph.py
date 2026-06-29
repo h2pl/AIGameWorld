@@ -1,13 +1,15 @@
 """Phase 3 子图: 唤醒 PC + Actor 决策。
 
- ┌─ entry ──┐
- │ pc_decide │  遍历 featured_pcs → character_actions (add)
- │actor_decid│  遍历 featured_actors → character_actions (add)
- └─── END ───┘
+┌─ entry ──┐
+│ pc_decide │  遍历 featured_pcs → character_actions (add)
+│actor_decid│  遍历 featured_actors → character_actions (add)
+└─── END ───┘
 """
-from langgraph.graph import StateGraph, END
-from ..state import CharacterSubState
+
+from langgraph.graph import END, StateGraph
+
 from ...services import character_service
+from ..state import CharacterSubState
 
 
 def build_character_subgraph() -> StateGraph:
@@ -21,4 +23,3 @@ def build_character_subgraph() -> StateGraph:
 
 
 character_subgraph = build_character_subgraph().compile()
-

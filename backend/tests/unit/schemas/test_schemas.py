@@ -1,29 +1,49 @@
 """Schema 验证测试—— request / response / llm_output 全部 DTO."""
+
 import pytest
 from pydantic import ValidationError
 
-from src.schemas.request import (
-    DMCreateRequest, DMNarrateRequest, WorldUpdateRequest,
-    PCDecideRequest, ActorDecideRequest,
-    CombatRequest, DialogueRequest, ExplorationRequest, QuestRequest,
-    ReflectionRequest, SummarizerRequest,
-    StoryAdvanceRequest, ItemQueryRequest, SceneObjectInteractRequest,
-    CharacterLoadRequest,
-)
-from src.schemas.response import (
-    QuestResponse, ReflectionResponse, SummarizerResponse,
-    DMCreateResponse, DMNarrateResponse, WorldUpdateResponse,
-    PCDecideResponse, ActorDecideResponse,
-    CombatResponse, DialogueResponse, ExplorationResponse,
-    StoryAdvanceResponse, ItemResponse, SceneObjectInteractResponse,
-    CharacterResponse,
-)
-from src.schemas.llm_output import (
-    SceneDirectionOutput, BranchPoint, DMOutput, DMNarrativeSchema,
-)
-from src.domain.instruction import DMInstruction, SceneDirection
 from src.domain.action import Action
 from src.domain.event import Event
+from src.domain.instruction import SceneDirection
+from src.schemas.llm_output import (
+    BranchPoint,
+    DMNarrativeSchema,
+    DMOutput,
+    SceneDirectionOutput,
+)
+from src.schemas.request import (
+    ActorDecideRequest,
+    CharacterLoadRequest,
+    CombatRequest,
+    DialogueRequest,
+    DMCreateRequest,
+    DMNarrateRequest,
+    ExplorationRequest,
+    ItemQueryRequest,
+    PCDecideRequest,
+    QuestRequest,
+    ReflectionRequest,
+    SceneObjectInteractRequest,
+    StoryAdvanceRequest,
+    SummarizerRequest,
+    WorldUpdateRequest,
+)
+from src.schemas.response import (
+    ActorDecideResponse,
+    CharacterResponse,
+    CombatResponse,
+    DialogueResponse,
+    DMCreateResponse,
+    DMNarrateResponse,
+    ExplorationResponse,
+    ItemResponse,
+    PCDecideResponse,
+    QuestResponse,
+    ReflectionResponse,
+    SummarizerResponse,
+    WorldUpdateResponse,
+)
 
 
 # ============================================================
@@ -100,7 +120,9 @@ class TestRequestSchemas:
 # ============================================================
 class TestResponseSchemas:
     def test_dm_create_response(self):
-        r = DMCreateResponse(instructions_out=["探索"], plot_brief="故事", scene_direction={"mood": "dark"})
+        r = DMCreateResponse(
+            instructions_out=["探索"], plot_brief="故事", scene_direction={"mood": "dark"}
+        )
         assert r.instructions_out == ["探索"]
         assert r.scene_direction["mood"] == "dark"
 
@@ -182,17 +204,18 @@ class TestLLMOutputSchemas:
         assert isinstance(o.instructions[0], str)
 
     def test_dm_output_json_roundtrip(self):
-        import json
-        o = DMOutput(plot_brief="测试", instructions=["action1"],
-                      scene_direction=SceneDirectionOutput(featured_pcs=["pc1"], mood="tense"))
+        o = DMOutput(
+            plot_brief="测试",
+            instructions=["action1"],
+            scene_direction=SceneDirectionOutput(featured_pcs=["pc1"], mood="tense"),
+        )
         dumped = o.model_dump_json()
         loaded = DMOutput.model_validate_json(dumped)
         assert loaded.plot_brief == "测试"
         assert loaded.scene_direction.mood == "tense"
 
     def test_dm_narrative_schema(self):
-        n = DMNarrativeSchema(narrative="冒险开始了。", branch_points=[],
-                               hooks_resolved=["hook1"])
+        n = DMNarrativeSchema(narrative="冒险开始了。", branch_points=[], hooks_resolved=["hook1"])
         assert n.narrative == "冒险开始了。"
         assert len(n.hooks_resolved) == 1
 

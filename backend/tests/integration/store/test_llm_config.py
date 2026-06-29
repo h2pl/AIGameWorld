@@ -7,9 +7,7 @@ provider 的 model/client_backend 是否正确注入 purpose。
 import os
 from pathlib import Path
 
-import pytest
-
-from src.config import load_config, LLMModelConfig, ProviderConfig, ProvidersConfig, LLMConfig
+from src.config import load_config
 from src.llm.llm_client import LLMClient, _extract_json
 
 CONFIG_PATH = str(Path(__file__).resolve().parents[4] / "config.yaml")
@@ -22,6 +20,7 @@ class TestEnvLoading:
     def test_dotenv_loaded(self):
         """config import 时 load_dotenv 应已执行，环境变量可读."""
         from dotenv import load_dotenv
+
         path = Path(__file__).resolve().parents[4] / ".env"
         assert path.exists(), f".env not found at {path}"
         loaded = load_dotenv(path, override=True)
@@ -77,7 +76,9 @@ class TestProviderPurposeMerge:
             assert pur.temperature > 0, f"{name}.temperature is zero"
             assert pur.timeout > 0, f"{name}.timeout is zero"
             assert pur.retries >= 0, f"{name}.retries is negative"
-            assert pur.client_backend in ("langchain", "requests"), f"{name}.client_backend={pur.client_backend}"
+            assert pur.client_backend in ("langchain", "requests"), (
+                f"{name}.client_backend={pur.client_backend}"
+            )
 
 
 class TestLLMClientInit:
@@ -91,7 +92,11 @@ class TestLLMClientInit:
         client = LLMClient(config.llm)
         assert len(client._models) == 5
         assert set(client._models.keys()) == {
-            "dm_create", "dm_narrate", "pc_decision", "actor_decision", "reflection"
+            "dm_create",
+            "dm_narrate",
+            "pc_decision",
+            "actor_decision",
+            "reflection",
         }
 
     def test_timeouts_loaded_correctly(self, monkeypatch):

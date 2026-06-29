@@ -31,12 +31,11 @@ START
  END
 """
 
-from langgraph.graph import StateGraph, END
-
-from .state import OverallState
+from langgraph.graph import END, StateGraph
 
 # service（状态适配层）— 模块级导入，方便 key = 文件名.函数名
-from ..services import dm_service, world_service, state_update_service
+from ..services import dm_service, state_update_service, world_service
+from .state import OverallState
 
 # subgraph（多 node 协调）
 from .subgraphs.character_subgraph import character_subgraph
@@ -69,6 +68,3 @@ def build_tick_graph() -> StateGraph:
     graph.add_edge("reflection_subgraph", END)
 
     return graph
-
-
-graph = build_tick_graph().compile()

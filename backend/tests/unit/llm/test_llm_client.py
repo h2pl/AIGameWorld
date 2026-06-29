@@ -1,8 +1,6 @@
 """LLM Schema 单元测试。per design/04-agent-layer.md §13 + 06-llm-dev-guide.md."""
 
-import pytest
-
-from src.schemas.llm_output import DMOutput, DMNarrativeSchema, SceneDirectionOutput, BranchPoint
+from src.schemas.llm_output import BranchPoint, DMNarrativeSchema, DMOutput, SceneDirectionOutput
 
 
 class TestLLMOutputSchemas:
@@ -29,7 +27,11 @@ class TestLLMOutputSchemas:
     def test_dm_narrative_schema(self):
         n = DMNarrativeSchema(
             narrative="The party ventures forth into the dark forest.",
-            branch_points=[BranchPoint(decision_maker="alex", decision="Enter forest", consequence="Unknown danger")],
+            branch_points=[
+                BranchPoint(
+                    decision_maker="alex", decision="Enter forest", consequence="Unknown danger"
+                )
+            ],
             hooks_resolved=["hook_001"],
         )
         assert n.narrative.startswith("The party")

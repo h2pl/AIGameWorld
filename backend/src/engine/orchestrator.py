@@ -3,9 +3,10 @@
 from typing import Any
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.types import StateSnapshot
 
 from ..graph import checkpoints
-from ..graph.graph import build_tick_graph, OverallState
+from ..graph.graph import OverallState, build_tick_graph
 
 
 class Orchestrator:
@@ -80,13 +81,15 @@ class Orchestrator:
             "errors": result.get("errors", []),
         }
 
-    def get_state(self) -> OverallState:
+    def get_state(self) -> StateSnapshot:
+        """返回当前 tick 的 checkpoint 快照 / Return current tick checkpoint snapshot."""
         return self._app.get_state(self._config)
 
-    def get_history(self) -> list[OverallState]:
+    def get_history(self) -> list[StateSnapshot]:
+        """返回所有历史 checkpoint 快照 / Return all historical checkpoint snapshots."""
         return list(self._app.get_state_history(self._config))
 
-    def rollback(self, tick: int) -> OverallState:
+    def rollback(self, tick: int) -> dict:
         for state in self.get_history():
             if state.metadata.get("tick") == tick:
                 self._app.update_state(self._config, state.values)

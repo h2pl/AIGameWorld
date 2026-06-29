@@ -1,11 +1,12 @@
 """Repository 集成测试——真实 SQLite DB 读写."""
+
 import pytest
 
-from src.storage.sqlite_client import SQLiteClient
+from src.domain.character import Actor, Location, PlayerCharacter
+from src.domain.event import Event
 from src.repository.character_repo import CharacterRepo
 from src.repository.event_repo import EventRepo
-from src.domain.character import PlayerCharacter, Actor, Location
-from src.domain.event import Event
+from src.storage.sqlite_client import SQLiteClient
 
 
 @pytest.fixture

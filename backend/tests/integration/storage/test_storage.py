@@ -1,9 +1,9 @@
 """storage + repository 集成测试——真实 SQLite."""
+
 import os
 import tempfile
 
 import pytest
-import asyncio
 
 from src.storage.sqlite_client import SQLiteClient
 
@@ -71,12 +71,20 @@ class TestSQLiteClient:
 
 class TestCharacterRepo:
     async def test_save_and_load_pc(self, db):
-        from src.domain import PlayerCharacter, Location, Attributes, CombatStats, Equipment, CharacterArc
+        from src.domain import (
+            Attributes,
+            CharacterArc,
+            CombatStats,
+            Location,
+            PlayerCharacter,
+        )
         from src.repository.character_repo import CharacterRepo
 
         repo = CharacterRepo(db)
         pc = PlayerCharacter(
-            id="test_pc", name="TestHero", role="fighter",
+            id="test_pc",
+            name="TestHero",
+            role="fighter",
             location=Location(scene_id="tavern"),
             attributes=Attributes(),
             combat=CombatStats(hp=20, max_hp=20),
@@ -91,12 +99,14 @@ class TestCharacterRepo:
         assert pcs[0].name == "TestHero"
 
     async def test_save_and_load_actor(self, db):
-        from src.domain import Actor, Location, Attributes
+        from src.domain import Actor, Attributes, Location
         from src.repository.character_repo import CharacterRepo
 
         repo = CharacterRepo(db)
         actor = Actor(
-            id="test_actor", name="Greta", role="innkeeper",
+            id="test_actor",
+            name="Greta",
+            role="innkeeper",
             location=Location(scene_id="tavern"),
             attributes=Attributes(),
         )

@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from src.engine.rules.dnd_rules import roll_d20, resolve_check, roll_damage, calculate_ac
+from src.engine.rules.dnd_rules import calculate_ac, resolve_check, roll_d20, roll_damage
 
 
 class TestRollD20:
@@ -40,7 +40,9 @@ class TestResolveCheck:
 
     def test_nat20_autopass(self):
         with patch("src.engine.rules.dnd_rules.roll_d20", return_value=20):
-            result = resolve_check(bonus=-5, dc=20)  # total=15 < DC but nat20 still passes? No in current impl
+            result = resolve_check(
+                bonus=-5, dc=20
+            )  # total=15 < DC but nat20 still passes? No in current impl
             assert result["roll"] == 20
 
     def test_negative_bonus(self):

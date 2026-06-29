@@ -3,8 +3,8 @@
 基于 design/03-orchestration-layer.md / Based on orchestration layer design.
 """
 
-from typing import TypedDict, Annotated, Any
 from operator import add
+from typing import Annotated, Any, TypedDict
 
 
 # ============================================================
@@ -51,6 +51,7 @@ class OverallState(TypedDict):
 # ============================================================
 class CharacterSubState(TypedDict):
     """Phase 3: 角色决策子图 / Character decision subgraph."""
+
     tick: int
     plot_brief: str
     scene_direction: dict[str, Any]
@@ -59,6 +60,7 @@ class CharacterSubState(TypedDict):
 
 class EngineSubState(TypedDict):
     """Phase 4: Engine 裁决子图 / Engine resolution subgraph."""
+
     participants: list[str]
     round: int
     speaker: str
@@ -74,6 +76,7 @@ class EngineSubState(TypedDict):
 
 class ReflectionSubState(TypedDict):
     """Phase 7: 反思 + 摘要子图 / Reflection + summary subgraph."""
+
     tick: int
     character_id: str
     memories: list[dict[str, Any]]

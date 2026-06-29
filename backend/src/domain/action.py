@@ -1,4 +1,5 @@
 """角色行动领域模型."""
+
 from pydantic import BaseModel, Field
 
 

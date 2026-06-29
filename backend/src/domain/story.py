@@ -1,4 +1,5 @@
 """故事领域模型 / Story Domain Models."""
+
 from pydantic import BaseModel, Field
 
 

@@ -2,9 +2,9 @@
 
 from .character_repo import CharacterRepo
 from .event_repo import EventRepo
-from .story_repo import StoryRepo
 from .item_repo import ItemRepo
-from .scene_repo import SceneRepo
 from .memory_repo import MemoryRepo
+from .scene_repo import SceneRepo
+from .story_repo import StoryRepo
 
 __all__ = ["CharacterRepo", "EventRepo", "StoryRepo", "ItemRepo", "SceneRepo", "MemoryRepo"]

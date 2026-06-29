@@ -1,13 +1,15 @@
 """Phase 7 子图: Reflection + Summarizer。
 
- ┌── entry ──┐
- │  reflect   │  角色反思 → reflected_characters
- │ summarize  │  事件压缩 → summary_compressed
- └─── END ────┘
+┌── entry ──┐
+│  reflect   │  角色反思 → reflected_characters
+│ summarize  │  事件压缩 → summary_compressed
+└─── END ────┘
 """
-from langgraph.graph import StateGraph, END
-from ..state import ReflectionSubState
+
+from langgraph.graph import END, StateGraph
+
 from ...services import reflection_service, summarizer_service
+from ..state import ReflectionSubState
 
 
 def build_reflection_subgraph() -> StateGraph:
@@ -21,4 +23,3 @@ def build_reflection_subgraph() -> StateGraph:
 
 
 reflection_subgraph = build_reflection_subgraph().compile()
-

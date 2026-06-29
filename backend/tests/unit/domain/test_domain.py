@@ -1,20 +1,37 @@
 """Domain 模型测试——7 个领域模型验证."""
+
 import pytest
 from pydantic import ValidationError
 
 from src.domain.action import Action
 from src.domain.character import (
-    Location, CombatStats, Attributes, Equipment, InventorySlot,
-    Relationship, CharacterArc, Actor, PlayerCharacter,
+    Actor,
+    Attributes,
+    CharacterArc,
+    CombatStats,
+    Equipment,
+    InventorySlot,
+    Location,
+    PlayerCharacter,
+    Relationship,
 )
 from src.domain.event import Event
 from src.domain.instruction import (
-    DMInstruction, PlotEvent, ActorMotivation, SceneChange, SceneDirection,
+    ActorMotivation,
+    DMInstruction,
+    PlotEvent,
+    SceneChange,
+    SceneDirection,
 )
 from src.domain.item import Item, ItemType
 from src.domain.scene_object import SceneObject, SceneObjectType
 from src.domain.story import (
-    BranchPoint, StoryArc, StoryHook, Quest, CastChangeEvent, MainCastRoster,
+    BranchPoint,
+    CastChangeEvent,
+    MainCastRoster,
+    Quest,
+    StoryArc,
+    StoryHook,
 )
 
 
@@ -117,24 +134,27 @@ class TestInstruction:
         assert inst.priority == 0
 
     def test_plot_event(self):
-        pe = PlotEvent(type="plot_event", event_subtype="monster_attack",
-                       description="Goblins attack!")
+        pe = PlotEvent(
+            type="plot_event", event_subtype="monster_attack", description="Goblins attack!"
+        )
         assert pe.event_subtype == "monster_attack"
 
     def test_actor_motivation(self):
-        am = ActorMotivation(type="actor_motivation", target_actor_id="npc1",
-                             new_goal="protect the village")
+        am = ActorMotivation(
+            type="actor_motivation", target_actor_id="npc1", new_goal="protect the village"
+        )
         assert am.target_actor_id == "npc1"
 
     def test_scene_change(self):
-        sc = SceneChange(type="scene_change", scene_id="forest_01",
-                         weather="rainy", time_of_day="night")
+        sc = SceneChange(
+            type="scene_change", scene_id="forest_01", weather="rainy", time_of_day="night"
+        )
         assert sc.weather == "rainy"
 
     def test_scene_direction(self):
-        sd = SceneDirection(type="scene_direction",
-                            featured_pcs=["pc1", "pc2"],
-                            featured_actors=["npc_guard"])
+        sd = SceneDirection(
+            type="scene_direction", featured_pcs=["pc1", "pc2"], featured_actors=["npc_guard"]
+        )
         assert len(sd.featured_pcs) == 2
 
     def test_instruction_type_literal(self):
@@ -174,8 +194,9 @@ class TestSceneObject:
 # ============================================================
 class TestStory:
     def test_branch_point(self):
-        bp = BranchPoint(tick=5, decision_maker="pc1",
-                         decision="enter cave", consequence="found treasure")
+        bp = BranchPoint(
+            tick=5, decision_maker="pc1", decision="enter cave", consequence="found treasure"
+        )
         assert bp.tick == 5
 
     def test_story_arc_minimal(self):
@@ -184,8 +205,9 @@ class TestStory:
         assert arc.status == "setup"
 
     def test_story_hook(self):
-        hook = StoryHook(id="hook1", description="mysterious stranger",
-                         intended_payoff="reveal identity")
+        hook = StoryHook(
+            id="hook1", description="mysterious stranger", intended_payoff="reveal identity"
+        )
         assert hook.status == "planted"
 
     def test_quest(self):

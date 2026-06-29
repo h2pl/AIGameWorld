@@ -1,9 +1,11 @@
 """DM Engine 集成测试——dm_create/narrate + LLMClient + P2-4/P2-6."""
-import pytest
+
 from unittest.mock import AsyncMock
 
+import pytest
+
+from src.schemas.llm_output import DMNarrativeSchema, DMOutput, SceneDirectionOutput
 from src.schemas.request import DMCreateRequest, DMNarrateRequest
-from src.schemas.llm_output import DMOutput, DMNarrativeSchema, SceneDirectionOutput, BranchPoint
 
 
 class TestDMCreate:
@@ -12,11 +14,13 @@ class TestDMCreate:
         from src.engine.dm import dm as dm_engine
 
         llm = AsyncMock()
-        llm.call_structured = AsyncMock(return_value=DMOutput(
-            plot_brief="LLM plot",
-            scene_direction=SceneDirectionOutput(featured_pcs=["garret"], featured_actors=[]),
-            instructions=["测试指令"],
-        ))
+        llm.call_structured = AsyncMock(
+            return_value=DMOutput(
+                plot_brief="LLM plot",
+                scene_direction=SceneDirectionOutput(featured_pcs=["garret"], featured_actors=[]),
+                instructions=["测试指令"],
+            )
+        )
         result = await dm_engine.dm_create(DMCreateRequest(tick=1, plot_brief=""), llm)
         assert result.plot_brief == "LLM plot"
         assert "garret" in result.scene_direction["featured_pcs"]
@@ -31,26 +35,29 @@ class TestDMCreate:
         assert "平静" in result.plot_brief
 
     @pytest.mark.asyncio
-    async def test_passes_story_arcs_and_hooks(self):
-        """P2-4: story_arcs/active_hooks 参数被接收并传入模板渲染."""
+    async def test_engine_loads_story_arcs_from_repo(self):
+        """P2-4: dm_create 从 story_repo 加载 arcs/hooks（Service→Engine→Repository）."""
         from src.engine.dm import dm as dm_engine
 
         llm = AsyncMock()
-        llm.call_structured = AsyncMock(return_value=DMOutput(
-            plot_brief="arc-aware plot",
-            scene_direction=SceneDirectionOutput(),
-            instructions=["行动"],
-        ))
-        arcs = [{"id": "arc1", "title": "主线", "stage": "铺陈"}]
-        hooks = [{"id": "h1", "description": "神秘信物"}]
+        llm.call_structured = AsyncMock(
+            return_value=DMOutput(
+                plot_brief="arc-aware plot",
+                scene_direction=SceneDirectionOutput(),
+                instructions=["行动"],
+            )
+        )
+        story_repo = AsyncMock()
+        story_repo.load_arcs = AsyncMock(return_value=[])
+        story_repo.load_hooks = AsyncMock(return_value=[])
         result = await dm_engine.dm_create(
             DMCreateRequest(tick=2, plot_brief="prev"),
             llm,
-            story_arcs=arcs,
-            active_hooks=hooks,
+            story_repo=story_repo,
         )
         assert result.plot_brief == "arc-aware plot"
-        # 验证 call_structured 被调用（模板渲染成功即说明参数被接收）
+        story_repo.load_arcs.assert_called_once()
+        story_repo.load_hooks.assert_called_once()
         llm.call_structured.assert_called_once()
 
 
@@ -60,11 +67,14 @@ class TestDMNarrate:
         from src.engine.dm import dm as dm_engine
 
         llm = AsyncMock()
-        llm.call_structured = AsyncMock(return_value=DMNarrativeSchema(
-            narrative="LLM narrative text",
-        ))
-        req = DMNarrateRequest(tick=0, plot_brief="Story", dm_instructions=[],
-                               scene_direction={}, character_actions=[])
+        llm.call_structured = AsyncMock(
+            return_value=DMNarrativeSchema(
+                narrative="LLM narrative text",
+            )
+        )
+        req = DMNarrateRequest(
+            tick=0, plot_brief="Story", dm_instructions=[], scene_direction={}, character_actions=[]
+        )
         result = await dm_engine.dm_narrate(req, llm)
         assert result.narrative_out == "LLM narrative text"
 
@@ -74,8 +84,9 @@ class TestDMNarrate:
 
         llm = AsyncMock()
         llm.call_structured = AsyncMock(side_effect=Exception("LLM down"))
-        req = DMNarrateRequest(tick=0, plot_brief="Test", dm_instructions=[],
-                               scene_direction={}, character_actions=[])
+        req = DMNarrateRequest(
+            tick=0, plot_brief="Test", dm_instructions=[], scene_direction={}, character_actions=[]
+        )
         result = await dm_engine.dm_narrate(req, llm)
         assert "DM" in result.narrative_out
 

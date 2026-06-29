@@ -3,7 +3,6 @@
 from ...schemas.request import ActorDecideRequest
 from ...schemas.response import ActorDecideResponse
 
-
 _DEMO_ACTIONS = {
     "innkeeper": ("social", "The innkeeper wipes a mug and nods."),
     "guard": ("idle", "The guard stands watch at the door."),

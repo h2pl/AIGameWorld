@@ -20,13 +20,13 @@ Engine      | Business logic, LLM, prompts (engine/)
 Tool/Repo   | Database, vectors, external APIs (storage/, pack/)
 """
 
-from .dm_service import dm_create, dm_narrate
-from .world_service import world_update
-from .character_service import pc_decide, actor_decide
-from .combat_service import combat
-from .dialogue_service import dialogue
-from .exploration_service import exploration
-from .quest_service import quest
-from .state_update_service import state_update
-from .reflection_service import reflect
-from .summarizer_service import summarize
+from .character_service import actor_decide, pc_decide  # noqa: F401
+from .combat_service import combat  # noqa: F401
+from .dialogue_service import dialogue  # noqa: F401
+from .dm_service import dm_create, dm_narrate  # noqa: F401
+from .exploration_service import exploration  # noqa: F401
+from .quest_service import quest  # noqa: F401
+from .reflection_service import reflect  # noqa: F401
+from .state_update_service import state_update  # noqa: F401
+from .summarizer_service import summarize  # noqa: F401
+from .world_service import world_update  # noqa: F401

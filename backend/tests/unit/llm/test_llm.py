@@ -1,8 +1,10 @@
 """DM Engine LLM 测试——mock LLMClient."""
-import pytest
+
 from unittest.mock import AsyncMock
 
-from src.schemas.llm_output import DMOutput, DMNarrativeSchema, SceneDirectionOutput
+import pytest
+
+from src.schemas.llm_output import DMNarrativeSchema, DMOutput, SceneDirectionOutput
 
 
 class TestDMCreate:
@@ -12,10 +14,14 @@ class TestDMCreate:
         from src.schemas.request import DMCreateRequest
 
         llm = AsyncMock()
-        llm.call_structured = AsyncMock(return_value=DMOutput(
-            plot_brief="A dragon appears.",
-            scene_direction=SceneDirectionOutput(featured_pcs=["alex"], featured_actors=["dragon"]),
-        ))
+        llm.call_structured = AsyncMock(
+            return_value=DMOutput(
+                plot_brief="A dragon appears.",
+                scene_direction=SceneDirectionOutput(
+                    featured_pcs=["alex"], featured_actors=["dragon"]
+                ),
+            )
+        )
         result = await dm_create(DMCreateRequest(tick=0, plot_brief=""), llm)
         assert result.plot_brief == "A dragon appears."
         assert "alex" in result.scene_direction["featured_pcs"]
@@ -39,11 +45,18 @@ class TestDMNarrate:
         from src.schemas.request import DMNarrateRequest
 
         llm = AsyncMock()
-        llm.call_structured = AsyncMock(return_value=DMNarrativeSchema(
-            narrative="The party fights bravely.",
-        ))
-        req = DMNarrateRequest(tick=0, plot_brief="Fight!", dm_instructions=[],
-                               scene_direction={}, character_actions=[])
+        llm.call_structured = AsyncMock(
+            return_value=DMNarrativeSchema(
+                narrative="The party fights bravely.",
+            )
+        )
+        req = DMNarrateRequest(
+            tick=0,
+            plot_brief="Fight!",
+            dm_instructions=[],
+            scene_direction={},
+            character_actions=[],
+        )
         result = await dm_narrate(req, llm)
         assert result.narrative_out == "The party fights bravely."
 
@@ -54,8 +67,9 @@ class TestDMNarrate:
 
         llm = AsyncMock()
         llm.call_structured = AsyncMock(side_effect=RuntimeError("boom"))
-        req = DMNarrateRequest(tick=0, plot_brief="Test", dm_instructions=[],
-                               scene_direction={}, character_actions=[])
+        req = DMNarrateRequest(
+            tick=0, plot_brief="Test", dm_instructions=[], scene_direction={}, character_actions=[]
+        )
         result = await dm_narrate(req, llm)
         assert "DM" in result.narrative_out
 
@@ -65,11 +79,13 @@ class TestDMSafety:
 
     def test_system_prompt_loaded(self):
         from src.engine.dm.dm import _DM_SYSTEM_PROMPT
+
         assert "Dungeon Master" in _DM_SYSTEM_PROMPT
         assert "不扮演任何角色" in _DM_SYSTEM_PROMPT
 
     def test_system_prompt_no_dialogue(self):
         from src.engine.dm.dm import _DM_SYSTEM_PROMPT
+
         assert "不写角色的对话内容" in _DM_SYSTEM_PROMPT
         assert "不替任何角色做决策" in _DM_SYSTEM_PROMPT
 

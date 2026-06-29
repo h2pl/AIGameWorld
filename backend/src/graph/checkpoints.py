@@ -76,5 +76,3 @@ def create_postgres_checkpointer(conn_string: str) -> BaseCheckpointSaver:
 def create_redis_checkpointer(redis_url: str) -> BaseCheckpointSaver:
     """Redis 持久化 Checkpointer。"""
     return create_checkpointer("redis", redis_url=redis_url)
-
-

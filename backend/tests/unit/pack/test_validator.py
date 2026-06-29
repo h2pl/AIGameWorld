@@ -1,12 +1,18 @@
 """Pack 测试——validator schema / loader."""
+
 import pytest
 from pydantic import ValidationError
 
-from src.pack.validator import (
-    SpriteConfig, FilesManifest, StartingPc, StartingActor,
-    StartingSceneObject, MetaYaml, PackValidator,
-)
 from src.pack.loader import WorldLoader
+from src.pack.validator import (
+    FilesManifest,
+    MetaYaml,
+    PackValidator,
+    SpriteConfig,
+    StartingActor,
+    StartingPc,
+    StartingSceneObject,
+)
 
 
 class TestSpriteConfig:

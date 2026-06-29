@@ -5,13 +5,13 @@ import logging
 import os
 import re
 import time
-import traceback
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import requests
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
-from langchain_core.outputs import ChatResult, ChatGeneration
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, ValidationError
 
@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # 企业级日志辅助
 # ============================================================
 
+
 def _log_ctx(purpose: str, attempt: int, max_attempts: int, **kwargs: Any) -> dict[str, Any]:
     """构建结构化日志上下文."""
     ctx: dict[str, Any] = {
@@ -32,9 +33,11 @@ def _log_ctx(purpose: str, attempt: int, max_attempts: int, **kwargs: Any) -> di
     }
     return ctx
 
+
 # ============================================================
 # RequestsChatModel —— 解决 Zen Proxy 502
 # ============================================================
+
 
 class RequestsChatModel(BaseChatModel):
     """用 requests 替代 httpx 的 ChatModel——解决 Zen Proxy 502 问题."""
@@ -52,7 +55,9 @@ class RequestsChatModel(BaseChatModel):
         msg_count = len(messages)
         payload = {
             "model": self.model,
-            "messages": [{"role": _role_map.get(m.type, m.type), "content": m.content} for m in messages],
+            "messages": [
+                {"role": _role_map.get(m.type, m.type), "content": m.content} for m in messages
+            ],
             "temperature": self.temperature,
         }
         if "response_format" in kwargs:
@@ -72,37 +77,59 @@ class RequestsChatModel(BaseChatModel):
                 lambda: requests.post(url, json=payload, timeout=self.timeout),
             )
             elapsed = time.monotonic() - t_start
-            logger.debug("LLM 收到响应", extra={"model": self.model, "status": resp.status_code, "elapsed": f"{elapsed:.1f}s"})
+            logger.debug(
+                "LLM 收到响应",
+                extra={
+                    "model": self.model,
+                    "status": resp.status_code,
+                    "elapsed": f"{elapsed:.1f}s",
+                },
+            )
             resp.raise_for_status()
-        except requests.Timeout:
+        except requests.Timeout as e:
             elapsed = time.monotonic() - t_start
             logger.error(
                 "LLM HTTP 超时——服务端在超时窗口内未返回任何数据",
-                extra={"model": self.model, "url": url, "http_timeout": f"{self.timeout}s", "elapsed": f"{elapsed:.1f}s"},
+                extra={
+                    "model": self.model,
+                    "url": url,
+                    "http_timeout": f"{self.timeout}s",
+                    "elapsed": f"{elapsed:.1f}s",
+                },
             )
             raise RuntimeError(
                 f"HTTP 请求超时：{url} 在 {self.timeout}s 内无响应（已等待 {elapsed:.1f}s）"
-            )
+            ) from e
         except requests.ConnectionError as e:
             logger.error(
                 "LLM 连接失败——代理或服务端不可达",
                 extra={"model": self.model, "url": url, "error": str(e)},
             )
-            raise RuntimeError(f"连接失败：{url} — {e}")
+            raise RuntimeError(f"连接失败：{url} — {e}") from e
         except requests.HTTPError as e:
             body = e.response.text[:500] if e.response is not None else "(无响应体)"
             logger.error(
                 "LLM HTTP 错误",
-                extra={"model": self.model, "url": url, "status": e.response.status_code if e.response else "?", "body": body},
+                extra={
+                    "model": self.model,
+                    "url": url,
+                    "status": e.response.status_code if e.response else "?",
+                    "body": body,
+                },
             )
-            raise RuntimeError(f"HTTP {e.response.status_code}：{body}")
+            raise RuntimeError(f"HTTP {e.response.status_code}：{body}") from e
 
         data = resp.json()
         finish_reason = data["choices"][0].get("finish_reason", "?")
         content: str = data["choices"][0]["message"]["content"]
         logger.debug(
             "LLM 响应内容",
-            extra={"model": self.model, "finish_reason": finish_reason, "content_len": len(content), "content_preview": content[:120]},
+            extra={
+                "model": self.model,
+                "finish_reason": finish_reason,
+                "content_len": len(content),
+                "content_preview": content[:120],
+            },
         )
         return ChatResult(generations=[ChatGeneration(message=AIMessage(content=content))])
 
@@ -110,9 +137,11 @@ class RequestsChatModel(BaseChatModel):
     def _llm_type(self) -> str:
         return "requests-chat"
 
+
 # ============================================================
 # JSON 提取
 # ============================================================
+
 
 def _extract_json(text: str) -> str:
     """从 LLM 回复中提取 JSON——兼容 markdown code block 包裹."""
@@ -124,14 +153,18 @@ def _extract_json(text: str) -> str:
     start = text.find("{")
     end = text.rfind("}")
     if start != -1 and end > start:
-        return text[start:end + 1]
+        return text[start : end + 1]
     return text
+
 
 # ============================================================
 # Langchain Model 构建
 # ============================================================
 
-def _build_model_langchain(cfg: LLMModelConfig, base_url: str | None, api_key: str | None = None) -> BaseChatModel:
+
+def _build_model_langchain(
+    cfg: LLMModelConfig, base_url: str | None, api_key: str | None = None
+) -> BaseChatModel:
     """使用 LangChain ChatOpenAI（标准 OpenAI 兼容 API）."""
     return ChatOpenAI(
         model=cfg.model,
@@ -143,7 +176,9 @@ def _build_model_langchain(cfg: LLMModelConfig, base_url: str | None, api_key: s
     )
 
 
-def _build_model_requests(cfg: LLMModelConfig, base_url: str | None, api_key: str | None = None) -> BaseChatModel:
+def _build_model_requests(
+    cfg: LLMModelConfig, base_url: str | None, api_key: str | None = None
+) -> BaseChatModel:
     """使用 requests 直连（Zen Proxy / Node.js 代理兼容）."""
     return RequestsChatModel(
         model=cfg.model,
@@ -152,7 +187,9 @@ def _build_model_requests(cfg: LLMModelConfig, base_url: str | None, api_key: st
     )
 
 
-def _build_model(cfg: LLMModelConfig, base_url: str | None, api_key: str | None = None) -> BaseChatModel:
+def _build_model(
+    cfg: LLMModelConfig, base_url: str | None, api_key: str | None = None
+) -> BaseChatModel:
     """根据 client_backend 选择后端构建 ChatModel."""
     backend = cfg.client_backend or "langchain"
     if backend == "requests":
@@ -160,7 +197,9 @@ def _build_model(cfg: LLMModelConfig, base_url: str | None, api_key: str | None 
     return _build_model_langchain(cfg, base_url, api_key)
 
 
-def _build_fallback_model(cfg: LLMModelConfig, fallback_base_url: str | None, api_key: str | None = None) -> BaseChatModel | None:
+def _build_fallback_model(
+    cfg: LLMModelConfig, fallback_base_url: str | None, api_key: str | None = None
+) -> BaseChatModel | None:
     """构建降级模型（与主模型使用相同 backend）."""
     if not cfg.fallback_model:
         return None
@@ -180,9 +219,11 @@ def _build_fallback_model(cfg: LLMModelConfig, fallback_base_url: str | None, ap
         max_retries=cfg.retries,
     )
 
+
 # ============================================================
 # LLMClient —— 重试 + 结构化调用
 # ============================================================
+
 
 class LLMClient:
     """多模型 LLM 客户端."""
@@ -222,7 +263,9 @@ class LLMClient:
 
         logger.info(
             f"[{purpose}] 开始调用",
-            extra=_log_ctx(purpose, -1, max_attempts, model_name=str(model), timeout=timeout, mode="text"),
+            extra=_log_ctx(
+                purpose, -1, max_attempts, model_name=str(model), timeout=timeout, mode="text"
+            ),
         )
 
         for attempt in range(max_attempts):
@@ -236,16 +279,28 @@ class LLMClient:
                 content = result.generations[0].message.content
                 logger.info(
                     f"[{purpose}] 调用成功",
-                    extra=_log_ctx(purpose, attempt, max_attempts, elapsed=f"{elapsed:.1f}s", content_len=len(str(content))),
+                    extra=_log_ctx(
+                        purpose,
+                        attempt,
+                        max_attempts,
+                        elapsed=f"{elapsed:.1f}s",
+                        content_len=len(str(content)),
+                    ),
                 )
                 return content
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 elapsed = time.monotonic() - t_start
                 logger.warning(
                     f"[{purpose}] 应用层超时——等待 {timeout}s 后取消（实际已等 {elapsed:.1f}s），LLM 未在时限内返回完整响应",
-                    extra=_log_ctx(purpose, attempt, max_attempts, timeout=f"{timeout}s", elapsed=f"{elapsed:.1f}s",
-                                   hint="如需更长等待时间，请增加 config.yaml 中该 purpose 的 timeout 值"),
+                    extra=_log_ctx(
+                        purpose,
+                        attempt,
+                        max_attempts,
+                        timeout=f"{timeout}s",
+                        elapsed=f"{elapsed:.1f}s",
+                        hint="如需更长等待时间，请增加 config.yaml 中该 purpose 的 timeout 值",
+                    ),
                 )
 
             except asyncio.CancelledError:
@@ -279,8 +334,11 @@ class LLMClient:
     # --------------------------------------------------------
 
     async def call_structured(
-        self, purpose: str, schema: type[BaseModel],
-        messages: list[BaseMessage], fallback: Callable[[], BaseModel],
+        self,
+        purpose: str,
+        schema: type[BaseModel],
+        messages: list[BaseMessage],
+        fallback: Callable[[], BaseModel],
     ) -> BaseModel:
         """结构化调用——纯文本请求 + 手动解析 JSON（兼容 Zen Proxy 免费模型）."""
         model = self._models[purpose]
@@ -298,7 +356,15 @@ class LLMClient:
 
         logger.info(
             f"[{purpose}] 开始结构化调用",
-            extra=_log_ctx(purpose, -1, max_attempts, model_name=str(model), timeout=timeout, schema=schema.__name__, mode="structured"),
+            extra=_log_ctx(
+                purpose,
+                -1,
+                max_attempts,
+                model_name=str(model),
+                timeout=timeout,
+                schema=schema.__name__,
+                mode="structured",
+            ),
         )
 
         last_content: str | None = None
@@ -319,7 +385,14 @@ class LLMClient:
                 parsed = schema.model_validate_json(json_str)
                 logger.info(
                     f"[{purpose}] 结构化调用成功",
-                    extra=_log_ctx(purpose, attempt, max_attempts, elapsed=f"{elapsed:.1f}s", raw_len=len(content), json_len=len(json_str)),
+                    extra=_log_ctx(
+                        purpose,
+                        attempt,
+                        max_attempts,
+                        elapsed=f"{elapsed:.1f}s",
+                        raw_len=len(content),
+                        json_len=len(json_str),
+                    ),
                 )
                 return parsed
 
@@ -332,17 +405,30 @@ class LLMClient:
                     f"  → 解析错误: {e}\n"
                     f"  → 原始响应（前 500 字符）: {raw[:500]}\n"
                     f"  → 提取的 JSON 片段: {_extract_json(raw)[:200] if raw else '(空)'}",
-                    extra=_log_ctx(purpose, attempt, max_attempts, error_type="ValidationError", elapsed=f"{elapsed:.1f}s",
-                                   raw_preview=raw[:200], json_extract=_extract_json(raw)[:200] if raw else ""),
+                    extra=_log_ctx(
+                        purpose,
+                        attempt,
+                        max_attempts,
+                        error_type="ValidationError",
+                        elapsed=f"{elapsed:.1f}s",
+                        raw_preview=raw[:200],
+                        json_extract=_extract_json(raw)[:200] if raw else "",
+                    ),
                 )
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 elapsed = time.monotonic() - t_start
                 logger.warning(
                     f"[{purpose}] 应用层超时——等待 {timeout}s 后取消（实际已等 {elapsed:.1f}s），免费模型生成结构化 JSON 较慢\n"
                     f"  → 建议：增加 config.yaml 中 {purpose}.timeout 或换用付费模型",
-                    extra=_log_ctx(purpose, attempt, max_attempts, timeout=f"{timeout}s", elapsed=f"{elapsed:.1f}s",
-                                   hint="免费模型生成 JSON 通常需要更长时间"),
+                    extra=_log_ctx(
+                        purpose,
+                        attempt,
+                        max_attempts,
+                        timeout=f"{timeout}s",
+                        elapsed=f"{elapsed:.1f}s",
+                        hint="免费模型生成 JSON 通常需要更长时间",
+                    ),
                 )
 
             except asyncio.CancelledError:

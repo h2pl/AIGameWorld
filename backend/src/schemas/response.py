@@ -1,12 +1,15 @@
 """Engine 输出 Schema / Response DTO"""
+
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+
+from typing import TYPE_CHECKING, Any
+
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
-    from ..domain.instruction import DMInstruction
     from ..domain.action import Action
     from ..domain.event import Event
+    from ..domain.instruction import DMInstruction
 
 
 # === Phase 4: Quest ===
@@ -58,7 +61,9 @@ class PCDecideResponse(BaseModel):
 
     @classmethod
     def from_entity(cls, action: Action) -> PCDecideResponse:
-        return cls(character_id=action.character_id, type=action.action_type, description=action.reasoning)
+        return cls(
+            character_id=action.character_id, type=action.action_type, description=action.reasoning
+        )
 
 
 class ActorDecideResponse(BaseModel):
@@ -68,7 +73,9 @@ class ActorDecideResponse(BaseModel):
 
     @classmethod
     def from_entity(cls, action: Action) -> ActorDecideResponse:
-        return cls(character_id=action.character_id, type=action.action_type, description=action.reasoning)
+        return cls(
+            character_id=action.character_id, type=action.action_type, description=action.reasoning
+        )
 
 
 # === Phase 4: Engines ===

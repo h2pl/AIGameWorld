@@ -1,4 +1,5 @@
 """事件领域模型."""
+
 from pydantic import BaseModel, Field
 
 

@@ -12,10 +12,10 @@ from pathlib import Path
 
 # 密钥检测模式 / Secret detection patterns
 PATTERNS = [
-    (r'sk-[a-zA-Z0-9]{32,}', "OpenAI/DeepSeek API Key"),
-    (r'sk-ant-[a-zA-Z0-9_-]{32,}', "Anthropic API Key"),
-    (r'AIza[0-9A-Za-z_-]{35}', "Google API Key"),
-    (r'gh[pousr]_[A-Za-z0-9_]{36,}', "GitHub Token"),
+    (r"sk-[a-zA-Z0-9]{32,}", "OpenAI/DeepSeek API Key"),
+    (r"sk-ant-[a-zA-Z0-9_-]{32,}", "Anthropic API Key"),
+    (r"AIza[0-9A-Za-z_-]{35}", "Google API Key"),
+    (r"gh[pousr]_[A-Za-z0-9_]{36,}", "GitHub Token"),
     (r'DEEPSEEK_API_KEY\s*=\s*["\']?\S+', "DeepSeek Key (env)"),
     (r'ANTHROPIC_API_KEY\s*=\s*["\']?\S+', "Anthropic Key (env)"),
     (r'OPENAI_API_KEY\s*=\s*["\']?\S+', "OpenAI Key (env)"),
@@ -38,7 +38,11 @@ def check_file(filepath: Path) -> list[str]:
             if re.search(pattern, line):
                 # 跳过注释行中的示例 / Skip comment lines with examples
                 stripped = line.strip()
-                if stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("--"):
+                if (
+                    stripped.startswith("#")
+                    or stripped.startswith("//")
+                    or stripped.startswith("--")
+                ):
                     continue
                 issues.append(f"  {filepath}:{line_no}: 疑似 {name} / Potential {name}")
                 break
@@ -51,7 +55,9 @@ def main():
     # 获取暂存区文件列表 / Get staged files
     result = subprocess.run(
         ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
-        capture_output=True, text=True, cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        cwd=str(repo_root),
     )
     files = [repo_root / f for f in result.stdout.strip().split("\n") if f]
 
@@ -73,8 +79,12 @@ def main():
         print("\nSECURITY: 检测到可能泄露的密钥 / Potential secret leak detected!\n")
         for issue in all_issues:
             print(issue)
-        print("\n请从代码中移除密钥，使用环境变量代替 / Remove keys, use env vars instead")
-        print("如果这是误报，用 # no-secrets 注释该行 / If false alarm, add # no-secrets")
+        print(
+            "\n请从代码中移除密钥，使用环境变量代替 / Remove keys, use env vars instead"
+        )
+        print(
+            "如果这是误报，用 # no-secrets 注释该行 / If false alarm, add # no-secrets"
+        )
         return 1
 
     return 0

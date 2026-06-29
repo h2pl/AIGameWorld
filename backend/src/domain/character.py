@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 # ============================================================
 class Location(BaseModel):
     """位置 / Location."""
+
     scene_id: str = ""
     position_x: int = 0
     position_y: int = 0
@@ -15,6 +16,7 @@ class Location(BaseModel):
 
 class CombatStats(BaseModel):
     """战斗属性（DND-style stats）/ Combat stats (DND-style)."""
+
     hp: int = 10
     max_hp: int = 10
     ac: int = 10
@@ -26,6 +28,7 @@ class CombatStats(BaseModel):
 
 class Attributes(BaseModel):
     """六维属性 / Six core attributes."""
+
     model_config = {"populate_by_name": True}
 
     strength: int = 10
@@ -38,6 +41,7 @@ class Attributes(BaseModel):
 
 class Equipment(BaseModel):
     """装备 / Equipment."""
+
     weapon_id: str | None = None
     armor_id: str | None = None
     shield_id: str | None = None
@@ -46,19 +50,22 @@ class Equipment(BaseModel):
 
 class InventorySlot(BaseModel):
     """背包槽位 / Inventory slot."""
+
     item_id: str = ""
     quantity: int = 1
 
 
 class Relationship(BaseModel):
     """角色关系 / Character relationship."""
-    attitude: str = "neutral"       # friendly / neutral / hostile
+
+    attitude: str = "neutral"  # friendly / neutral / hostile
     description: str = ""
 
 
 class CharacterArc(BaseModel):
     """角色弧 / Character arc."""
-    stage: str = "setup"            # setup / growth / crisis / resolution
+
+    stage: str = "setup"  # setup / growth / crisis / resolution
     progress: float = 0.0
     description: str = ""
 
@@ -71,7 +78,7 @@ class Actor(BaseModel):
 
     id: str
     name: str = ""
-    role: str = ""                   # merchant / guard / quest_giver / villager
+    role: str = ""  # merchant / guard / quest_giver / villager
     race: str | None = None
     status: str = "active"
     location: Location = Field(default_factory=Location)

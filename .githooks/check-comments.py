@@ -17,8 +17,15 @@ import sys
 from pathlib import Path
 
 # 白名单目录/文件模式 / Whitelist patterns
-SKIP_GLOBS = ["*.lock", "*.egg-info/*", "node_modules/*", "__pycache__/*",
-              ".pytest_cache/*", ".ruff_cache/*", ".mypy_cache/*"]
+SKIP_GLOBS = [
+    "*.lock",
+    "*.egg-info/*",
+    "node_modules/*",
+    "__pycache__/*",
+    ".pytest_cache/*",
+    ".ruff_cache/*",
+    ".mypy_cache/*",
+]
 # 白名单确切文件名（不含路径）/ Whitelist exact filenames
 SKIP_FILES = {".gitkeep", "package-lock.json", ".prettierrc"}
 
@@ -35,7 +42,11 @@ def is_skipped(filepath: Path, repo_root: Path) -> bool:
     if filepath.name in SKIP_FILES:
         return True
     for pattern in SKIP_GLOBS:
-        if any(part in rel_str.split("/") for part in pattern.replace("*", "").split("/") if part):
+        if any(
+            part in rel_str.split("/")
+            for part in pattern.replace("*", "").split("/")
+            if part
+        ):
             if pattern.endswith("*"):
                 prefix = pattern[:-1]
                 if rel_str.startswith(prefix) or ("/" + prefix) in rel_str:
@@ -54,7 +65,12 @@ def has_comment(line: str) -> bool:
     if stripped.startswith("#") or "  # " in stripped:
         return True
     # JS/TS/CSS 注释
-    if stripped.startswith("//") or stripped.startswith("/*") or stripped.startswith("*") or " // " in stripped:
+    if (
+        stripped.startswith("//")
+        or stripped.startswith("/*")
+        or stripped.startswith("*")
+        or " // " in stripped
+    ):
         return True
     # HTML 注释
     if "<!--" in stripped:
@@ -70,7 +86,7 @@ def has_comment(line: str) -> bool:
 
 def check_file(filepath: Path, repo_root: Path) -> tuple[bool, int, int]:
     """检查单个文件 / Check a single file.
-    
+
     Returns: (pass, total_lines, comment_lines)
     """
     if is_skipped(filepath, repo_root):
@@ -81,14 +97,14 @@ def check_file(filepath: Path, repo_root: Path) -> tuple[bool, int, int]:
     except Exception:
         return True, 0, 0  # 二进制文件跳过 / Skip binary files
 
-    lines = [l for l in text.split("\n")]
-    non_empty = [l for l in lines if l.strip()]
+    lines = [line for line in text.split("\n")]
+    non_empty = [line for line in lines if line.strip()]
     total = len(non_empty)
 
     if total < 3:  # 过小的文件不检查 / Skip tiny files
         return True, total, 0
 
-    comments = sum(1 for l in non_empty if has_comment(l))
+    comments = sum(1 for line in non_empty if has_comment(line))
     ratio = comments / total if total > 0 else 0
     passed = comments >= MIN_COMMENT_LINES and ratio >= MIN_COMMENT_RATIO
     return passed, total, comments
@@ -101,14 +117,15 @@ def main():
     all_files = "--all" in sys.argv
     if all_files:
         result = subprocess.run(
-            ["git", "ls-files"],
-            capture_output=True, text=True, cwd=str(repo_root)
+            ["git", "ls-files"], capture_output=True, text=True, cwd=str(repo_root)
         )
         files = [repo_root / f for f in result.stdout.strip().split("\n") if f]
     else:
         result = subprocess.run(
             ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
-            capture_output=True, text=True, cwd=str(repo_root)
+            capture_output=True,
+            text=True,
+            cwd=str(repo_root),
         )
         files = [repo_root / f for f in result.stdout.strip().split("\n") if f]
 
@@ -127,10 +144,12 @@ def main():
             failed.append((str(rel), total, comments, ratio))
 
     if failed:
-        print(f"\nFAIL: {len(failed)} 个文件注释不足 / files lack comments (min {MIN_COMMENT_RATIO:.0%}):\n")
+        print(
+            f"\nFAIL: {len(failed)} 个文件注释不足 / files lack comments (min {MIN_COMMENT_RATIO:.0%}):\n"
+        )
         for fname, total, comments, ratio in failed:
             print(f"  {fname:<55}  {comments}/{total}  ({ratio:.1%})")
-        print(f"\n规则: 所有文件必须有中英双语注释 / All files must have comments")
+        print("\n规则: 所有文件必须有中英双语注释 / All files must have comments")
         print(f"最低注释率: {MIN_COMMENT_RATIO:.0%} (至少 {MIN_COMMENT_LINES} 行)")
         return 1
 

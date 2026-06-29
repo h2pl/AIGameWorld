@@ -3,7 +3,6 @@
 from ...schemas.request import PCDecideRequest
 from ...schemas.response import PCDecideResponse
 
-
 _DEMO_ACTIONS = {
     "alex": ("explore", "Alex scans the room for clues."),
     "maya": ("social", "Maya attempts to charm the innkeeper."),

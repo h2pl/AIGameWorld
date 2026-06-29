@@ -47,6 +47,7 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+ignore = ["E501"]  # 行长度在种子数据/LLM 输出打印等场景无法合理断行
 
 [tool.ruff.format]
 quote-style = "double"

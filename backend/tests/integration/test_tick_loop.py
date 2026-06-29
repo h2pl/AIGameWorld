@@ -25,7 +25,7 @@ async def test_ten_ticks_no_crash():
 @pytest.mark.asyncio
 async def test_tick_has_character_actions():
     orch = Orchestrator()
-    state = orch.get_state()
+    _ = orch.get_state()
     result = await orch.run_tick()
     # mock 引擎下，如果没有 featured chars，actions 为空
     assert isinstance(result.get("events", []), list)

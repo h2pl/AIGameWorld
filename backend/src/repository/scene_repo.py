@@ -16,10 +16,12 @@ class SceneRepo:
         for r in rows:
             idata = r.get("interact_data_json")
             result[r["id"]] = SceneObject(
-                id=r["id"], name=r["name"],
+                id=r["id"],
+                name=r["name"],
                 object_type=SceneObjectType(r["object_type"]),
                 scene_id=r["scene_id"],
-                position_x=r.get("position_x", 0), position_y=r.get("position_y", 0),
+                position_x=r.get("position_x", 0),
+                position_y=r.get("position_y", 0),
                 interactable=bool(r.get("interactable", 1)),
                 interact_data=json.loads(idata) if idata else None,
             )

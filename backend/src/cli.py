@@ -5,31 +5,50 @@
   python -m src.cli run --ticks 3 --db     # 全链路：DB 读写
 """
 
-import asyncio
 import argparse
+import asyncio
 from datetime import datetime
 
+from src.domain import (  # P2-4: 初始剧情线种子
+    Actor,
+    Attributes,
+    CharacterArc,
+    CombatStats,
+    Location,
+    PlayerCharacter,
+    StoryArc,
+    StoryHook,
+)
 from src.engine.orchestrator import Orchestrator
-from src.storage.sqlite_client import SQLiteClient
 from src.repository.character_repo import CharacterRepo
 from src.repository.story_repo import StoryRepo  # P2-4: DM 剧情线/伏笔仓储
-from src.domain import PlayerCharacter, Actor, Location, Attributes, CombatStats, CharacterArc
+from src.storage.sqlite_client import SQLiteClient
 
 
 # ── 种子数据 ──
 def _seed_pcs() -> list[PlayerCharacter]:
     return [
         PlayerCharacter(
-            id="alex", name="Alex", role="fighter", race="human",
+            id="alex",
+            name="Alex",
+            role="fighter",
+            race="human",
             location=Location(scene_id="tavern"),
-            attributes=Attributes(strength=16, dexterity=12, constitution=14, intelligence=10, wisdom=10, charisma=12),
+            attributes=Attributes(
+                strength=16, dexterity=12, constitution=14, intelligence=10, wisdom=10, charisma=12
+            ),
             combat=CombatStats(hp=28, max_hp=28, ac=16, initiative=2, attack_bonus=5),
             character_arc=CharacterArc(stage="growth", description="Prove his worth as a warrior"),
         ),
         PlayerCharacter(
-            id="maya", name="Maya", role="rogue", race="elf",
+            id="maya",
+            name="Maya",
+            role="rogue",
+            race="elf",
             location=Location(scene_id="tavern"),
-            attributes=Attributes(strength=10, dexterity=18, constitution=12, intelligence=14, wisdom=12, charisma=14),
+            attributes=Attributes(
+                strength=10, dexterity=18, constitution=12, intelligence=14, wisdom=12, charisma=14
+            ),
             combat=CombatStats(hp=20, max_hp=20, ac=14, initiative=4, attack_bonus=6),
             character_arc=CharacterArc(stage="crisis", description="Struggling with trust issues"),
         ),
@@ -39,16 +58,26 @@ def _seed_pcs() -> list[PlayerCharacter]:
 def _seed_actors() -> list[Actor]:
     return [
         Actor(
-            id="innkeeper", name="Greta", role="innkeeper", race="dwarf",
+            id="innkeeper",
+            name="Greta",
+            role="innkeeper",
+            race="dwarf",
             location=Location(scene_id="tavern"),
-            attributes=Attributes(strength=12, dexterity=8, constitution=14, intelligence=10, wisdom=14, charisma=16),
+            attributes=Attributes(
+                strength=12, dexterity=8, constitution=14, intelligence=10, wisdom=14, charisma=16
+            ),
             personality="Warm but sharp-eyed. Knows everyone's secrets.",
             functions=["dialogue", "merchant"],
         ),
         Actor(
-            id="guard", name="Sergeant Cole", role="town_guard", race="human",
+            id="guard",
+            name="Sergeant Cole",
+            role="town_guard",
+            race="human",
             location=Location(scene_id="town_square"),
-            attributes=Attributes(strength=14, dexterity=10, constitution=14, intelligence=10, wisdom=12, charisma=10),
+            attributes=Attributes(
+                strength=14, dexterity=10, constitution=14, intelligence=10, wisdom=12, charisma=10
+            ),
             combat=CombatStats(hp=22, max_hp=22, ac=15, initiative=1, attack_bonus=4),
             personality="Stern but fair. Served the town for 20 years.",
             functions=["guard", "dialogue"],
@@ -56,10 +85,48 @@ def _seed_actors() -> list[Actor]:
     ]
 
 
+def _seed_story() -> tuple[list[StoryArc], list[StoryHook]]:
+    """P2-4: 初始剧情线与伏笔种子 / Initial story arcs & hooks seed."""
+    arcs = [
+        StoryArc(
+            id="main_01",
+            type="main",
+            title="酒馆的密信",
+            stage="铺陈",
+            main_cast=["alex", "maya"],
+            supporting_actors=["innkeeper"],
+        ),
+        StoryArc(
+            id="side_01",
+            type="side",
+            title="失踪的商队",
+            stage="铺陈",
+            main_cast=["alex"],
+            supporting_actors=["guard"],
+        ),
+    ]
+    hooks = [
+        StoryHook(
+            id="hook_01",
+            planted_tick=0,
+            description="旅店老板娘 Greta 似乎知道一些不为人知的秘密",
+            intended_payoff="Greta 在关键时刻揭露真相",
+        ),
+        StoryHook(
+            id="hook_02",
+            planted_tick=0,
+            description="镇广场巡逻队长 Cole 最近增派了人手，似乎在警戒什么",
+            intended_payoff="发现商队失踪的真凶",
+        ),
+    ]
+    return arcs, hooks
+
+
 # ── 输出 ──
-def _print_tick(tick: int, narrative: str, actions: list, events: list, errors: list,
-                db_info: str = "") -> None:
-    print(f"{'='*60}")
+def _print_tick(
+    tick: int, narrative: str, actions: list, events: list, errors: list, db_info: str = ""
+) -> None:
+    print(f"{'=' * 60}")
     header = f"[Tick {tick}]" + (f"  {db_info}" if db_info else "")
     print(header)
     if narrative:
@@ -70,7 +137,7 @@ def _print_tick(tick: int, narrative: str, actions: list, events: list, errors: 
         desc = a.get("description", "")
         print(f"  [Act] {cid}({atype}): {desc}")
     for ev in events[:3]:
-        print(f"  [Evt] {ev.get('type','?')}: {ev.get('description','')[:80]}")
+        print(f"  [Evt] {ev.get('type', '?')}: {ev.get('description', '')[:80]}")
     if errors:
         print(f"  [Err] {[e[:60] for e in errors]}")
 
@@ -101,10 +168,18 @@ async def run_full(db_path: str, n: int) -> None:
     for a in actors:
         await repo.save_actor(a)
     print(f"  [DB] Seeded {len(actors)} Actors: {[a.name for a in actors]}")
+
+    # 2.5. 种子初始剧情线 / seed initial story arcs & hooks
+    story_repo = StoryRepo(db)  # P2-4: DM 剧情线/伏笔仓储 / story arc & hook repo
+    arcs, hooks = _seed_story()
+    for arc in arcs:
+        await story_repo.save_arc(arc)
+    for hook in hooks:
+        await story_repo.save_hook(hook)
     await db.commit()
+    print(f"  [DB] Seeded {len(arcs)} story arcs + {len(hooks)} hooks")
 
     # 3. Tick 循环
-    story_repo = StoryRepo(db)  # P2-4: DM 剧情线/伏笔仓储 / story arc & hook repo
     orch = Orchestrator(story_repo=story_repo)
     for _ in range(n):
         loaded_pcs = await repo.load_pcs()
@@ -135,15 +210,23 @@ async def run_full(db_path: str, n: int) -> None:
         )
         await db.commit()
 
-        _print_tick(tick, narrative, actions, events, errors,
-                    db_info=f"[DB] {len(loaded_pcs)} PCs + {len(loaded_actors)} Actors loaded")
+        _print_tick(
+            tick,
+            narrative,
+            actions,
+            events,
+            errors,
+            db_info=f"[DB] {len(loaded_pcs)} PCs + {len(loaded_actors)} Actors loaded",
+        )
 
     # 5. 验证
     tick_row = await db.fetch_one("SELECT value FROM world_meta WHERE key = 'current_tick'")
     narrative_count = len(await db.fetch_all("SELECT id FROM narratives"))
-    print(f"{'='*60}")
-    print(f"Done. DB state: tick={tick_row['value'] if tick_row else '?'}, "
-          f"narratives={narrative_count}, PCs={len(pcs)}, Actors={len(actors)}")
+    print(f"{'=' * 60}")
+    print(
+        f"Done. DB state: tick={tick_row['value'] if tick_row else '?'}, "
+        f"narratives={narrative_count}, PCs={len(pcs)}, Actors={len(actors)}"
+    )
     await db.close()
 
 
@@ -156,13 +239,15 @@ async def run_mock(n: int) -> None:
 
     for _ in range(n):
         result = await orch.run_tick()
-        _print_tick(result["tick"],
-                    result.get("narrative", ""),
-                    result.get("character_actions", []),
-                    result.get("events", []),
-                    result.get("errors", []))
+        _print_tick(
+            result["tick"],
+            result.get("narrative", ""),
+            result.get("character_actions", []),
+            result.get("events", []),
+            result.get("errors", []),
+        )
 
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Done. {n} tick(s) completed.")
 
 
@@ -172,8 +257,7 @@ def main() -> None:
 
     run_parser = sub.add_parser("run", help="Run N ticks")
     run_parser.add_argument("--ticks", type=int, default=5)
-    run_parser.add_argument("--db", action="store_true",
-                            help="Enable full DB read/write loop")
+    run_parser.add_argument("--db", action="store_true", help="Enable full DB read/write loop")
 
     args = parser.parse_args()
 

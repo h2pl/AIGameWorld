@@ -1,5 +1,7 @@
 """DM 指令领域模型."""
+
 from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -15,8 +17,9 @@ class PlotEvent(DMInstruction):
     """情节事件."""
 
     type: Literal["plot_event"] = "plot_event"
-    event_subtype: Literal["actor_arrival", "monster_attack", "faction_conflict",
-                           "quest_issue", "discovery"] = "discovery"
+    event_subtype: Literal[
+        "actor_arrival", "monster_attack", "faction_conflict", "quest_issue", "discovery"
+    ] = "discovery"
     spawn_actors: list[dict] = Field(default_factory=list)
     spawn_scene: str | None = None
     affect_scene: str | None = None

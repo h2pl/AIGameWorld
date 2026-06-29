@@ -1,4 +1,7 @@
 """Engine 单元测试——combat/dialogue/exploration/quest/reflection/summarizer/world."""
+
+from src.engine.character.actor_decide import actor_decide as actor_decide_engine
+from src.engine.character.pc_decide import pc_decide as pc_decide_engine
 from src.engine.combat.combat import resolve_combat
 from src.engine.dialogue.dialogue import resolve_dialogue
 from src.engine.exploration.exploration import resolve_exploration
@@ -6,12 +9,16 @@ from src.engine.quest.quest import check_quests
 from src.engine.reflection.reflection import reflect
 from src.engine.summarizer.summarizer import summarize
 from src.engine.world.world import execute_instructions
-from src.engine.character.pc_decide import pc_decide as pc_decide_engine
-from src.engine.character.actor_decide import actor_decide as actor_decide_engine
 from src.schemas.request import (
-    CombatRequest, DialogueRequest, ExplorationRequest, QuestRequest,
-    ReflectionRequest, SummarizerRequest, WorldUpdateRequest,
-    PCDecideRequest, ActorDecideRequest,
+    ActorDecideRequest,
+    CombatRequest,
+    DialogueRequest,
+    ExplorationRequest,
+    PCDecideRequest,
+    QuestRequest,
+    ReflectionRequest,
+    SummarizerRequest,
+    WorldUpdateRequest,
 )
 
 
@@ -50,9 +57,9 @@ class TestQuestEngine:
         assert r.completed_ids == ["q1"]
 
     def test_only_uncompleted(self):
-        r = check_quests(QuestRequest(quests=[
-            {"id": "q1", "completed": False}, {"id": "q2", "completed": True}
-        ]))
+        r = check_quests(
+            QuestRequest(quests=[{"id": "q1", "completed": False}, {"id": "q2", "completed": True}])
+        )
         assert r.completed_ids == ["q2"]
 
 

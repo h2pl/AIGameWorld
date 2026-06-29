@@ -11,7 +11,7 @@ from typing import Any
 
 def roll_d20() -> int:
     """掷 D20 / Roll a d20.
-    
+
     Returns:
         int: 1-20 的随机数 / Random number 1-20
     """
@@ -20,11 +20,11 @@ def roll_d20() -> int:
 
 def resolve_check(bonus: int, dc: int) -> dict[str, Any]:
     """D20 检定（d20 + bonus vs DC）/ D20 check (d20 + bonus vs DC).
-    
+
     Args:
         bonus: 加值（属性修正+熟练）/ Bonus (ability mod + proficiency)
         dc: 难度等级 / Difficulty Class
-        
+
     Returns:
         dict: {success: bool, roll: int, total: int}
     """
@@ -35,10 +35,10 @@ def resolve_check(bonus: int, dc: int) -> dict[str, Any]:
 
 def roll_damage(dice_str: str) -> int:
     """掷伤害骰 / Roll damage dice.
-    
+
     Args:
         dice_str: 骰子描述如 "1d8" 或 "2d6+3" / Dice description e.g. "1d8" or "2d6+3"
-        
+
     Returns:
         int: 总伤害 / Total damage
     """
@@ -56,12 +56,12 @@ def roll_damage(dice_str: str) -> int:
 
 def calculate_ac(base_ac: int, dex_mod: int, shield_bonus: int = 0) -> int:
     """计算护甲等级 / Calculate Armor Class.
-    
+
     Args:
         base_ac: 护甲基础 AC（或 10 如无护甲）/ Base armor AC (or 10 if none)
         dex_mod: 敏捷修正 / Dexterity modifier
         shield_bonus: 盾牌加值 / Shield bonus
-        
+
     Returns:
         int: 最终 AC / Final AC
     """

@@ -1,9 +1,11 @@
 """物品领域模型 / Item Domain Model."""
-from enum import Enum
+
+from enum import StrEnum
+
 from pydantic import BaseModel, Field
 
 
-class ItemType(str, Enum):
+class ItemType(StrEnum):
     WEAPON = "weapon"
     ARMOR = "armor"
     SHIELD = "shield"

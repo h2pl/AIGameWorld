@@ -1,9 +1,9 @@
 """Character Service: State ↔ Engine adapter."""
 
-from ..schemas.request import PCDecideRequest, ActorDecideRequest
-from ..engine.character import pc_decide as pc_engine
 from ..engine.character import actor_decide as actor_engine
+from ..engine.character import pc_decide as pc_engine
 from ..graph.state import CharacterSubState
+from ..schemas.request import ActorDecideRequest, PCDecideRequest
 
 
 def pc_decide(state: CharacterSubState) -> dict:
@@ -26,7 +26,9 @@ def actor_decide(state: CharacterSubState) -> dict:
     tick = state.get("tick", 0)
     actions = []
     for actor_id in direction.get("featured_actors", []):
-        action = actor_engine.actor_decide(ActorDecideRequest(actor_id=actor_id, plot_brief=plot_brief, tick=tick))
+        action = actor_engine.actor_decide(
+            ActorDecideRequest(actor_id=actor_id, plot_brief=plot_brief, tick=tick)
+        )
         if action:
             actions.append(action.model_dump())
     return {"character_actions": actions}

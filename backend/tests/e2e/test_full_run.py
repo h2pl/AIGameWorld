@@ -1,7 +1,8 @@
 """E2E 测试——完整 TickGraph 模拟。per 11-testing-strategy.md §1."""
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from src.engine.orchestrator import Orchestrator
 
@@ -22,14 +23,13 @@ class TestFullTickRun:
     @pytest.mark.asyncio
     async def test_5_ticks_with_llm_mock(self):
         """5 步 + mock LLM——验证 LLM 链路不崩溃."""
-        from src.schemas.llm_output import DMOutput, DMNarrativeSchema
+        from src.schemas.llm_output import DMNarrativeSchema, DMOutput
 
         llm = AsyncMock()
-        llm.call_structured = AsyncMock(side_effect=[
-            DMOutput(plot_brief=f"Plot {i}") for i in range(10)
-        ] + [
-            DMNarrativeSchema(narrative=f"Narrative {i}") for i in range(10)
-        ])
+        llm.call_structured = AsyncMock(
+            side_effect=[DMOutput(plot_brief=f"Plot {i}") for i in range(10)]
+            + [DMNarrativeSchema(narrative=f"Narrative {i}") for i in range(10)]
+        )
         orch = Orchestrator(llm=llm)
 
         for i in range(5):
@@ -84,11 +84,20 @@ class TestFullTickRun:
         orch = Orchestrator()
         state = OverallState(
             tick=0,
-            dm_instructions=[], plot_brief="Custom start", scene_direction={},
-            world_events=[], character_actions=[], engine_results=[],
-            combat_result=None, state_diff={}, cast_changes=[],
-            narrative="", reflected_characters=[], summary_compressed=False,
-            errors=[], needs_reflection=False,
+            dm_instructions=[],
+            plot_brief="Custom start",
+            scene_direction={},
+            world_events=[],
+            character_actions=[],
+            engine_results=[],
+            combat_result=None,
+            state_diff={},
+            cast_changes=[],
+            narrative="",
+            reflected_characters=[],
+            summary_compressed=False,
+            errors=[],
+            needs_reflection=False,
         )
         result = await orch.run_tick(state)
         assert result["tick"] == 0

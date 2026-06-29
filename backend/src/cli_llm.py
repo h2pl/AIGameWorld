@@ -1,14 +1,15 @@
 """LLM 集成测试 CLI。用法: python -m src.cli_llm --all"""
+
 import asyncio
 import json
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.config import load_config
-from src.llm.llm_client import LLMClient
 from src.engine.orchestrator import Orchestrator
+from src.llm.llm_client import LLMClient
 
 _PROMPTS = Environment(loader=FileSystemLoader(Path(__file__).parent / "prompts"))
 
@@ -22,8 +23,10 @@ async def test_llm_client() -> None:
     client = LLMClient(config.llm)
 
     print(f"\n{_SEP}")
-    print(f"  LLMClient 基础调用测试")
-    print(f"  models: {len(client._models)} configured, provider: {config.llm.providers.primary.base_url}")
+    print("  LLMClient 基础调用测试")
+    print(
+        f"  models: {len(client._models)} configured, provider: {config.llm.providers.primary.base_url}"
+    )
     print(_SEP)
 
     msgs = [SystemMessage(content="Reply in one word."), HumanMessage(content="Hello")]
@@ -46,13 +49,16 @@ async def test_dm_engine() -> None:
 
     # ── dm_create ──
     print(f"\n{_SEP}")
-    print(f"  DM Engine: dm_create (Phase 1)")
+    print("  DM Engine: dm_create (Phase 1)")
     print(_SEP)
 
     create_req = DMCreateRequest(tick=0, plot_brief="")
     prompt = _PROMPTS.get_template("dm/dm_create.jinja").render(
-        story_arcs=[], active_hooks=[], recent_summary="",
-        plot_brief_prev=create_req.plot_brief, pacing={},
+        story_arcs=[],
+        active_hooks=[],
+        recent_summary="",
+        plot_brief_prev=create_req.plot_brief,
+        pacing={},
     )
     print(f"  [INPUT]  tick={create_req.tick}, plot_brief_prev='{create_req.plot_brief}'")
     print(f"  [INPUT]  rendered prompt:\n{prompt}")
@@ -67,7 +73,7 @@ async def test_dm_engine() -> None:
 
     # ── dm_narrate ──
     print(f"\n{_SEP}")
-    print(f"  DM Engine: dm_narrate (Phase 6)")
+    print("  DM Engine: dm_narrate (Phase 6)")
     print(_SEP)
 
     narrate_req = DMNarrateRequest(
@@ -80,7 +86,9 @@ async def test_dm_engine() -> None:
     prompt_n = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
         plot_brief=narrate_req.plot_brief,
         character_actions=narrate_req.character_actions,
-        events=[], combat_result=None, cast_changes=[],
+        events=[],
+        combat_result=None,
+        cast_changes=[],
     )
     print(f"  [INPUT]  tick={narrate_req.tick}")
     print(f"  [INPUT]  plot_brief: {narrate_req.plot_brief}")
@@ -103,7 +111,7 @@ async def test_full_tick_with_llm() -> None:
     orch = Orchestrator(llm=client)
 
     print(f"\n{_SEP}")
-    print(f"  Full Tick: Orchestrator + Graph + LLM")
+    print("  Full Tick: Orchestrator + Graph + LLM")
     print(f"  provider: {config.llm.providers.primary.base_url}")
     print(_SEP)
 
@@ -114,7 +122,9 @@ async def test_full_tick_with_llm() -> None:
     print(f"  [OUTPUT] Tick {result['tick']}")
     print(f"  [OUTPUT] DM narrative: {result.get('narrative', '')}")
     for a in result.get("character_actions", [])[:5]:
-        print(f"  [OUTPUT] Act: {a.get('character_id','?')}({a.get('type','?')}): {a.get('description','')}")
+        print(
+            f"  [OUTPUT] Act: {a.get('character_id', '?')}({a.get('type', '?')}): {a.get('description', '')}"
+        )
     errs = result.get("errors", [])
     if errs:
         print(f"  [OUTPUT] errors: {errs}")
@@ -124,6 +134,7 @@ async def test_full_tick_with_llm() -> None:
 
 def main() -> None:
     import argparse
+
     parser = argparse.ArgumentParser(description="LLM 集成测试")
     parser.add_argument("--client", action="store_true", help="Test LLMClient only")
     parser.add_argument("--engine", action="store_true", help="Test DM engine")

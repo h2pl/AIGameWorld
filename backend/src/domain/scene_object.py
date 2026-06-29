@@ -1,9 +1,11 @@
 """场景物体领域模型 / SceneObject Domain Model."""
-from enum import Enum
-from pydantic import BaseModel, Field
+
+from enum import StrEnum
+
+from pydantic import BaseModel
 
 
-class SceneObjectType(str, Enum):
+class SceneObjectType(StrEnum):
     CONTAINER = "container"
     DOOR = "door"
     TRAP = "trap"

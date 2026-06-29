@@ -32,8 +32,14 @@ def test_model_can_override_base_url():
     assert config.llm.dm_create.base_url is None
 
     from src.config import LLMModelConfig
-    cfg = LLMModelConfig(model="glm-4-plus", temperature=0.7, timeout=10, retries=1,
-                         base_url="https://open.bigmodel.cn/api/paas/v4")
+
+    cfg = LLMModelConfig(
+        model="glm-4-plus",
+        temperature=0.7,
+        timeout=10,
+        retries=1,
+        base_url="https://open.bigmodel.cn/api/paas/v4",
+    )
     assert cfg.base_url == "https://open.bigmodel.cn/api/paas/v4"
 
 

@@ -1,15 +1,17 @@
 """Phase 4 子图: 路由到各 Engine。
 
- ┌── entry ──┐
- │  combat    │  战斗裁决 → engine_results + combat_result
- │  dialogue  │  对话检定 → engine_results (add)
- │exploration │  探索检定 → engine_results (add)
- │   quest    │  任务检查 → engine_results (add)
- └─── END ────┘
+┌── entry ──┐
+│  combat    │  战斗裁决 → engine_results + combat_result
+│  dialogue  │  对话检定 → engine_results (add)
+│exploration │  探索检定 → engine_results (add)
+│   quest    │  任务检查 → engine_results (add)
+└─── END ────┘
 """
-from langgraph.graph import StateGraph, END
-from ..state import EngineSubState
+
+from langgraph.graph import END, StateGraph
+
 from ...services import combat_service, dialogue_service, exploration_service, quest_service
+from ..state import EngineSubState
 
 
 def build_engine_subgraph() -> StateGraph:
@@ -27,4 +29,3 @@ def build_engine_subgraph() -> StateGraph:
 
 
 engine_subgraph = build_engine_subgraph().compile()
-

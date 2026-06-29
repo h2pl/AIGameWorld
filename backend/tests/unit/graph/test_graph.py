@@ -1,13 +1,12 @@
 """测试 TickGraph 7 Phase 主图。"""
-import asyncio
+
 import pytest
 
-from src.graph.graph import build_tick_graph, OverallState
-from src.services import world_service, state_update_service
-from src.services import dm_service
+from src.graph.graph import OverallState, build_tick_graph
 from src.graph.subgraphs.character_subgraph import character_subgraph
 from src.graph.subgraphs.engine_subgraph import engine_subgraph
 from src.graph.subgraphs.reflection_subgraph import reflection_subgraph
+from src.services import dm_service, state_update_service, world_service
 
 
 def test_build_graph_returns_state_graph():
@@ -16,6 +15,7 @@ def test_build_graph_returns_state_graph():
 
 def test_graph_can_compile():
     from langgraph.checkpoint.memory import MemorySaver
+
     g = build_tick_graph()
     app = g.compile(checkpointer=MemorySaver())
     assert app is not None
@@ -24,11 +24,20 @@ def test_graph_can_compile():
 def test_overall_state_defaults():
     state = OverallState(
         tick=0,
-        dm_instructions=[], plot_brief="", scene_direction={},
-        world_events=[], character_actions=[], engine_results=[],
-        combat_result=None, state_diff={}, cast_changes=[],
-        narrative="", reflected_characters=[], summary_compressed=False,
-        errors=[], needs_reflection=False,
+        dm_instructions=[],
+        plot_brief="",
+        scene_direction={},
+        world_events=[],
+        character_actions=[],
+        engine_results=[],
+        combat_result=None,
+        state_diff={},
+        cast_changes=[],
+        narrative="",
+        reflected_characters=[],
+        summary_compressed=False,
+        errors=[],
+        needs_reflection=False,
     )
     assert state["tick"] == 0
 
@@ -37,11 +46,20 @@ def test_overall_state_defaults():
 def base_state() -> OverallState:
     return OverallState(
         tick=0,
-        dm_instructions=[], plot_brief="", scene_direction={},
-        world_events=[], character_actions=[], engine_results=[],
-        combat_result=None, state_diff={}, cast_changes=[],
-        narrative="", reflected_characters=[], summary_compressed=False,
-        errors=[], needs_reflection=False,
+        dm_instructions=[],
+        plot_brief="",
+        scene_direction={},
+        world_events=[],
+        character_actions=[],
+        engine_results=[],
+        combat_result=None,
+        state_diff={},
+        cast_changes=[],
+        narrative="",
+        reflected_characters=[],
+        summary_compressed=False,
+        errors=[],
+        needs_reflection=False,
     )
 
 
@@ -85,11 +103,20 @@ async def test_phase6_narrate(base_state):
 async def test_phase6_reflection_trigger():
     state = OverallState(
         tick=5,
-        dm_instructions=[], plot_brief="Test", scene_direction={},
-        world_events=[], character_actions=[], engine_results=[],
-        combat_result=None, state_diff={}, cast_changes=[],
-        narrative="", reflected_characters=[], summary_compressed=False,
-        errors=[], needs_reflection=False,
+        dm_instructions=[],
+        plot_brief="Test",
+        scene_direction={},
+        world_events=[],
+        character_actions=[],
+        engine_results=[],
+        combat_result=None,
+        state_diff={},
+        cast_changes=[],
+        narrative="",
+        reflected_characters=[],
+        summary_compressed=False,
+        errors=[],
+        needs_reflection=False,
     )
     r = await dm_service.dm_narrate(state)
     assert r["needs_reflection"] is True
@@ -99,11 +126,20 @@ async def test_phase6_reflection_trigger():
 async def test_phase6_no_reflection_low_tick():
     state = OverallState(
         tick=1,
-        dm_instructions=[], plot_brief="Test", scene_direction={},
-        world_events=[], character_actions=[], engine_results=[],
-        combat_result=None, state_diff={}, cast_changes=[],
-        narrative="", reflected_characters=[], summary_compressed=False,
-        errors=[], needs_reflection=False,
+        dm_instructions=[],
+        plot_brief="Test",
+        scene_direction={},
+        world_events=[],
+        character_actions=[],
+        engine_results=[],
+        combat_result=None,
+        state_diff={},
+        cast_changes=[],
+        narrative="",
+        reflected_characters=[],
+        summary_compressed=False,
+        errors=[],
+        needs_reflection=False,
     )
     r = await dm_service.dm_narrate(state)
     assert r["needs_reflection"] is False
@@ -117,6 +153,7 @@ def test_phase7_reflect(base_state):
 @pytest.mark.asyncio
 async def test_full_tick_cycle():
     from src.engine.orchestrator import Orchestrator
+
     orch = Orchestrator()
     for i in range(10):
         result = await orch.run_tick()
@@ -128,15 +165,24 @@ async def test_full_tick_cycle():
 @pytest.mark.asyncio
 async def test_full_tick_cycle_with_custom_state():
     from src.engine.orchestrator import Orchestrator
+
     orch = Orchestrator()
     state = OverallState(
         tick=0,
-        dm_instructions=[], plot_brief="Custom",
+        dm_instructions=[],
+        plot_brief="Custom",
         scene_direction={"featured_pcs": [], "featured_actors": []},
-        world_events=[], character_actions=[], engine_results=[],
-        combat_result=None, state_diff={}, cast_changes=[],
-        narrative="", reflected_characters=[], summary_compressed=False,
-        errors=[], needs_reflection=False,
+        world_events=[],
+        character_actions=[],
+        engine_results=[],
+        combat_result=None,
+        state_diff={},
+        cast_changes=[],
+        narrative="",
+        reflected_characters=[],
+        summary_compressed=False,
+        errors=[],
+        needs_reflection=False,
     )
     result = await orch.run_tick(state)
     assert result["narrative"] is not None
