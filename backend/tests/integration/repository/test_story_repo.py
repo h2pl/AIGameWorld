@@ -1,4 +1,6 @@
 """StoryRepo 集成测试——真实 SQLite DB 读写 / Integration tests for StoryRepo with real SQLite."""
+
+# ── Fixtures / 测试夹具 ──
 import pytest
 
 from src.domain import StoryArc, StoryHook
@@ -99,3 +101,6 @@ class TestNarrative:
         rows = await db.fetch_all("SELECT * FROM narratives")
         assert len(rows) == 1
         assert rows[0]["tick"] == 0
+# ── END / 结束 ──
+# ──
+# ──

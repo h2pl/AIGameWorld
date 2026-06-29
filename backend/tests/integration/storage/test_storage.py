@@ -1,4 +1,4 @@
-"""storage + repository 集成测试——真实 SQLite."""
+"""storage + repository 集成测试——真实 SQLite / Integration tests with real SQLite."""
 
 import os
 import tempfile
@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 
 from src.storage.sqlite_client import SQLiteClient
+
+# ── Fixtures / 测试夹具 ──
 
 
 @pytest.fixture
@@ -23,6 +25,7 @@ async def db():
 
 
 class TestSQLiteClient:
+    # ── Schema / 数据库结构 ──
     async def test_init_schema_creates_tables(self, db):
         tables = await db.fetch_all(
             "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
@@ -57,6 +60,7 @@ class TestSQLiteClient:
         rows = await db.fetch_all("SELECT * FROM narratives WHERE tick = 1")
         assert len(rows) == 1
 
+    # ── 事务回滚 / Transaction rollback ──
     async def test_transaction_rollback(self, db):
         try:
             async with db.transaction():
@@ -70,6 +74,7 @@ class TestSQLiteClient:
         assert len(rows) == 0
 
 
+# ── Character Repo 集成测试 / Character Repository integration tests ──
 class TestCharacterRepo:
     async def test_save_and_load_pc(self, db):
         from src.domain import (

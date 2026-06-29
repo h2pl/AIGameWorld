@@ -1,4 +1,6 @@
 """MemoryRepo 集成测试——真实 ChromaDB 读写."""
+
+# ── Fixtures / 测试夹具 ──
 import tempfile
 from pathlib import Path
 

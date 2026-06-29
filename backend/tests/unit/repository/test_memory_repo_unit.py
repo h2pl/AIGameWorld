@@ -1,4 +1,7 @@
 """MemoryRepo 单元测试——Mock ChromaClient."""
+
+# ── 依赖 / Dependencies ──
+
 from unittest.mock import Mock
 
 from src.domain.memory import importance_of

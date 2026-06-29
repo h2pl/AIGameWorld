@@ -1,5 +1,8 @@
 """Engine 单元测试——combat/dialogue/exploration/quest/reflection/summarizer/world."""
 
+# ── Engine imports / 引擎导入 ──
+
+# ── Imports / 导入 ──
 from src.engine.combat.combat import resolve_combat
 from src.engine.dialogue.dialogue import resolve_dialogue
 from src.engine.exploration.exploration import resolve_exploration
@@ -86,4 +89,4 @@ class TestWorldEngine:
         assert len(r.events_out) == 2
         assert r.events_out[0]["type"] == "dm_instruction"
         assert r.events_out[0]["tick"] == 1
-
+# ── END / 结束 ──

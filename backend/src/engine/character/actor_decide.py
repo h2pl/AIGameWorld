@@ -1,4 +1,6 @@
 """Actor Decide Engine——LLM 驱动的浅层决策 / Actor shallow decision with LLM."""
+
+# ── 依赖 / Dependencies ──
 import logging
 from pathlib import Path
 
@@ -16,6 +18,8 @@ _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
 _VALID_ACTIONS = {"move", "talk", "attack", "interact", "wait"}
 
+# ── Helpers / 辅助函数 ──
+
 
 def _get_repos(config: RunnableConfig | None):
     if config and "configurable" in config:
@@ -23,7 +27,12 @@ def _get_repos(config: RunnableConfig | None):
     return None
 
 
-async def actor_decide(req: ActorDecideRequest, config: RunnableConfig = None) -> ActorDecideResponse:
+# ── 主决策入口 / Main decision entry ──
+
+
+async def actor_decide(
+    req: ActorDecideRequest, config: RunnableConfig = None
+) -> ActorDecideResponse:
     _cfg = config.get("configurable", {}) if config else {}
     llm = _cfg.get("llm")
     if llm is None:
@@ -37,27 +46,35 @@ async def actor_decide(req: ActorDecideRequest, config: RunnableConfig = None) -
         query = req.plot_brief or "最近发生了什么"
         memories = await memory_repo.retrieve(req.actor_id, query, top_k=3) if memory_repo else []
         ctx = {
-            "name": actor.name if actor else req.actor_id, "character_type": "actor",
+            "name": actor.name if actor else req.actor_id,
+            "character_type": "actor",
             "role": actor.role if actor else "",
             "personality": actor.personality if actor else "",
             "functions": actor.functions if actor else [],
-            "plot_brief": req.plot_brief, "equipment": {},
+            "plot_brief": req.plot_brief,
+            "equipment": {},
             "memories": [{"content": m.content} for m in memories],
         }
 
         system = _PROMPTS.get_template("_character_system.jinja").render(**ctx)
         prompt = _PROMPTS.get_template("character/actor_decide.jinja").render(**ctx)
         result = await llm.call_structured(
-            "actor_decision", CharacterActionSchema,
+            "actor_decision",
+            CharacterActionSchema,
             [SystemMessage(content=system), HumanMessage(content=prompt)],
             fallback=lambda: CharacterActionSchema(action_type="wait", reasoning="LLM 降级。"),
         )
 
         result = _validate(result)
-        return ActorDecideResponse(character_id=req.actor_id, type=result.action_type, description=result.reasoning)
+        return ActorDecideResponse(
+            character_id=req.actor_id, type=result.action_type, description=result.reasoning
+        )
     except Exception:
         logger.exception("actor_decide LLM failed for %s", req.actor_id)
         return _fallback(req)
+
+
+# ── 护栏 + 降级 / Guardrails + fallback ──
 
 
 def _validate(result: CharacterActionSchema) -> CharacterActionSchema:
@@ -69,4 +86,8 @@ def _validate(result: CharacterActionSchema) -> CharacterActionSchema:
 
 
 def _fallback(req: ActorDecideRequest) -> ActorDecideResponse:
-    return ActorDecideResponse(character_id=req.actor_id, type="idle", description=f"{req.actor_id} goes about their business.")
+    return ActorDecideResponse(
+        character_id=req.actor_id,
+        type="idle",
+        description=f"{req.actor_id} goes about their business.",
+    )

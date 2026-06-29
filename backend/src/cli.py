@@ -35,19 +35,30 @@ from src.storage.sqlite_client import SQLiteClient
 # 种子数据 / Seed data
 # ═══════════════════════════════════════════════════════════════
 
+
 def _seed_pcs() -> list[PlayerCharacter]:
     return [
         PlayerCharacter(
-            id="alex", name="Alex", role="fighter", race="human",
+            id="alex",
+            name="Alex",
+            role="fighter",
+            race="human",
             location=Location(scene_id="tavern"),
-            attributes=Attributes(strength=16, dexterity=12, constitution=14, intelligence=10, wisdom=10, charisma=12),
+            attributes=Attributes(
+                strength=16, dexterity=12, constitution=14, intelligence=10, wisdom=10, charisma=12
+            ),
             combat=CombatStats(hp=28, max_hp=28, ac=16, initiative=2, attack_bonus=5),
             character_arc=CharacterArc(stage="growth", description="Prove his worth as a warrior"),
         ),
         PlayerCharacter(
-            id="maya", name="Maya", role="rogue", race="elf",
+            id="maya",
+            name="Maya",
+            role="rogue",
+            race="elf",
             location=Location(scene_id="tavern"),
-            attributes=Attributes(strength=10, dexterity=18, constitution=12, intelligence=14, wisdom=12, charisma=14),
+            attributes=Attributes(
+                strength=10, dexterity=18, constitution=12, intelligence=14, wisdom=12, charisma=14
+            ),
             combat=CombatStats(hp=20, max_hp=20, ac=14, initiative=4, attack_bonus=6),
             character_arc=CharacterArc(stage="crisis", description="Struggling with trust issues"),
         ),
@@ -57,16 +68,26 @@ def _seed_pcs() -> list[PlayerCharacter]:
 def _seed_actors() -> list[Actor]:
     return [
         Actor(
-            id="innkeeper", name="Greta", role="innkeeper", race="dwarf",
+            id="innkeeper",
+            name="Greta",
+            role="innkeeper",
+            race="dwarf",
             location=Location(scene_id="tavern"),
-            attributes=Attributes(strength=12, dexterity=8, constitution=14, intelligence=10, wisdom=14, charisma=16),
+            attributes=Attributes(
+                strength=12, dexterity=8, constitution=14, intelligence=10, wisdom=14, charisma=16
+            ),
             personality="Warm but sharp-eyed. Knows everyone's secrets.",
             functions=["dialogue", "merchant"],
         ),
         Actor(
-            id="guard", name="Sergeant Cole", role="town_guard", race="human",
+            id="guard",
+            name="Sergeant Cole",
+            role="town_guard",
+            race="human",
             location=Location(scene_id="town_square"),
-            attributes=Attributes(strength=14, dexterity=10, constitution=14, intelligence=10, wisdom=12, charisma=10),
+            attributes=Attributes(
+                strength=14, dexterity=10, constitution=14, intelligence=10, wisdom=12, charisma=10
+            ),
             combat=CombatStats(hp=22, max_hp=22, ac=15, initiative=1, attack_bonus=4),
             personality="Stern but fair. Served the town for 20 years.",
             functions=["guard", "dialogue"],
@@ -77,18 +98,36 @@ def _seed_actors() -> list[Actor]:
 def _seed_story() -> tuple[list[StoryArc], list[StoryHook]]:
     """初始剧情线与伏笔种子 / Initial story arcs & hooks seed."""
     arcs = [
-        StoryArc(id="main_01", type="main", title="酒馆的密信", stage="铺陈",
-                 main_cast=["alex", "maya"], supporting_actors=["innkeeper"]),
-        StoryArc(id="side_01", type="side", title="失踪的商队", stage="铺陈",
-                 main_cast=["alex"], supporting_actors=["guard"]),
+        StoryArc(
+            id="main_01",
+            type="main",
+            title="酒馆的密信",
+            stage="铺陈",
+            main_cast=["alex", "maya"],
+            supporting_actors=["innkeeper"],
+        ),
+        StoryArc(
+            id="side_01",
+            type="side",
+            title="失踪的商队",
+            stage="铺陈",
+            main_cast=["alex"],
+            supporting_actors=["guard"],
+        ),
     ]
     hooks = [
-        StoryHook(id="hook_01", planted_tick=0,
-                  description="旅店老板娘 Greta 似乎知道一些不为人知的秘密",
-                  intended_payoff="Greta 在关键时刻揭露真相"),
-        StoryHook(id="hook_02", planted_tick=0,
-                  description="镇广场巡逻队长 Cole 最近增派了人手，似乎在警戒什么",
-                  intended_payoff="发现商队失踪的真凶"),
+        StoryHook(
+            id="hook_01",
+            planted_tick=0,
+            description="旅店老板娘 Greta 似乎知道一些不为人知的秘密",
+            intended_payoff="Greta 在关键时刻揭露真相",
+        ),
+        StoryHook(
+            id="hook_02",
+            planted_tick=0,
+            description="镇广场巡逻队长 Cole 最近增派了人手，似乎在警戒什么",
+            intended_payoff="发现商队失踪的真凶",
+        ),
     ]
     return arcs, hooks
 
@@ -97,8 +136,14 @@ def _seed_story() -> tuple[list[StoryArc], list[StoryHook]]:
 # 输出 / Output
 # ═══════════════════════════════════════════════════════════════
 
+
 def _print_tick(
-    tick: int, narrative: str, actions: list, events: list, errors: list, db_info: str = "",
+    tick: int,
+    narrative: str,
+    actions: list,
+    events: list,
+    errors: list,
+    db_info: str = "",
 ) -> None:
     print(f"{'=' * 60}")
     header = f"[Tick {tick}]" + (f"  {db_info}" if db_info else "")
@@ -119,6 +164,7 @@ def _print_tick(
 # ═══════════════════════════════════════════════════════════════
 # run 命令 / run command
 # ═══════════════════════════════════════════════════════════════
+
 
 async def run(args: argparse.Namespace) -> None:
     """统一入口：mock / LLM / DB 组合 / Unified entry: mock/LLM/DB combo."""
@@ -229,7 +275,9 @@ async def run(args: argparse.Namespace) -> None:
     if db:
         tick_row = await db.fetch_one("SELECT value FROM world_meta WHERE key = 'current_tick'")
         narrative_count = len(await db.fetch_all("SELECT id FROM narratives"))
-        print(f"Done. DB: tick={tick_row['value'] if tick_row else '?'}, narratives={narrative_count}")
+        print(
+            f"Done. DB: tick={tick_row['value'] if tick_row else '?'}, narratives={narrative_count}"
+        )
         await db.close()
     else:
         print(f"Done. {n} tick(s) completed.")
@@ -289,8 +337,11 @@ async def _test_engine() -> None:
     create_req = DMCreateRequest(tick=0, plot_brief="")
     system_prompt = prompts.get_template("_dm_system.jinja").render()
     prompt = prompts.get_template("dm/dm_create.jinja").render(
-        story_arcs=[], active_hooks=[], recent_summary="",
-        plot_brief_prev=create_req.plot_brief, pacing={},
+        story_arcs=[],
+        active_hooks=[],
+        recent_summary="",
+        plot_brief_prev=create_req.plot_brief,
+        pacing={},
     )
     print(f"  [INPUT]  tick={create_req.tick}")
     print(f"  [INPUT]  system:\n{system_prompt[:200]}...")
@@ -303,7 +354,9 @@ async def _test_engine() -> None:
         HumanMessage(content=prompt),
     ]
     result_raw = await client.call_structured("dm_create", None, msgs, fallback=dict)
-    print(f"  [OUTPUT] {json.dumps(result_raw, ensure_ascii=False, default=str)[:500] if result_raw else 'None'}")
+    print(
+        f"  [OUTPUT] {json.dumps(result_raw, ensure_ascii=False, default=str)[:500] if result_raw else 'None'}"
+    )
     print(_SUB)
 
     # ── dm_narrate ──
@@ -312,14 +365,18 @@ async def _test_engine() -> None:
     print(_SEP)
 
     narrate_req = DMNarrateRequest(
-        tick=0, plot_brief="The party encounters a strange traveler.",
-        dm_instructions=[], scene_direction={},
+        tick=0,
+        plot_brief="The party encounters a strange traveler.",
+        dm_instructions=[],
+        scene_direction={},
         character_actions=[{"character_id": "alex", "action_type": "explore"}],
     )
     prompt_n = prompts.get_template("dm/dm_narrate.jinja").render(
         plot_brief=narrate_req.plot_brief,
         character_actions=narrate_req.character_actions,
-        events=[], combat_result=None, cast_changes=[],
+        events=[],
+        combat_result=None,
+        cast_changes=[],
     )
     print(f"  [INPUT]  plot_brief: {narrate_req.plot_brief}")
     print(f"  [INPUT]  prompt:\n{prompt_n[:300]}...")
@@ -330,7 +387,9 @@ async def _test_engine() -> None:
         HumanMessage(content=prompt_n),
     ]
     result2_raw = await client.call_structured("dm_narrate", None, msgs_n, fallback=dict)
-    print(f"  [OUTPUT] {json.dumps(result2_raw, ensure_ascii=False, default=str)[:500] if result2_raw else 'None'}")
+    print(
+        f"  [OUTPUT] {json.dumps(result2_raw, ensure_ascii=False, default=str)[:500] if result2_raw else 'None'}"
+    )
     print(_SUB)
     print("  DM Engine OK")
 
@@ -377,6 +436,7 @@ async def test(args: argparse.Namespace) -> None:
 # main
 # ═══════════════════════════════════════════════════════════════
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="AIGameWorld CLI")
     sub = parser.add_subparsers(dest="command")
@@ -384,16 +444,26 @@ def main() -> None:
     # run 子命令 / run subcommand
     run_parser = sub.add_parser("run", help="Run N ticks")
     run_parser.add_argument("--ticks", type=int, default=5, help="Number of ticks (default: 5)")
-    run_parser.add_argument("--db", action="store_true", help="Enable full DB read/write + seed data")
+    run_parser.add_argument(
+        "--db", action="store_true", help="Enable full DB read/write + seed data"
+    )
     run_parser.add_argument("--db-path", default="data/world_state.db", help="DB file path")
     run_parser.add_argument("--llm", action="store_true", help="Use real LLM instead of mock")
 
     # test 子命令（诊断）/ test subcommand (diagnostic)
     test_parser = sub.add_parser("test", help="LLM component diagnostics")
-    test_parser.add_argument("--client", dest="test_client", action="store_true", help="Test LLMClient only")
-    test_parser.add_argument("--engine", dest="test_engine", action="store_true", help="Test DM engine")
-    test_parser.add_argument("--tick", dest="test_tick", action="store_true", help="Test full tick with LLM")
-    test_parser.add_argument("--all", dest="test_all", action="store_true", help="Test everything (default)")
+    test_parser.add_argument(
+        "--client", dest="test_client", action="store_true", help="Test LLMClient only"
+    )
+    test_parser.add_argument(
+        "--engine", dest="test_engine", action="store_true", help="Test DM engine"
+    )
+    test_parser.add_argument(
+        "--tick", dest="test_tick", action="store_true", help="Test full tick with LLM"
+    )
+    test_parser.add_argument(
+        "--all", dest="test_all", action="store_true", help="Test everything (default)"
+    )
 
     args = parser.parse_args()
 

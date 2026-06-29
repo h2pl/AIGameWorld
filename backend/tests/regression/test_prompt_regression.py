@@ -2,6 +2,7 @@
 
 验证 DM / Character 的 System Prompt 和 Jinja 模板在变更后仍满足安全铁律和结构要求。
 """
+
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -43,8 +44,11 @@ class TestDMCreatePrompt:
     def test_renders_with_empty_context(self):
         """空上下文不崩溃 / Renders with empty context."""
         rendered = _PROMPTS.get_template("dm/dm_create.jinja").render(
-            story_arcs=[], active_hooks=[], recent_summary="",
-            plot_brief_prev="", pacing={},
+            story_arcs=[],
+            active_hooks=[],
+            recent_summary="",
+            plot_brief_prev="",
+            pacing={},
         )
         assert len(rendered) > 0
 
@@ -52,16 +56,21 @@ class TestDMCreatePrompt:
         """有剧情线时注入 / Injects story arcs when present."""
         rendered = _PROMPTS.get_template("dm/dm_create.jinja").render(
             story_arcs=[{"title": "Test", "stage": "铺陈"}],
-            active_hooks=[], recent_summary="",
-            plot_brief_prev="plot", pacing={},
+            active_hooks=[],
+            recent_summary="",
+            plot_brief_prev="plot",
+            pacing={},
         )
         assert "Test" in rendered
 
     def test_output_schema_contains_mood(self):
         """输出 schema 含 mood 字段 / Output schema includes mood field."""
         rendered = _PROMPTS.get_template("dm/dm_create.jinja").render(
-            story_arcs=[], active_hooks=[], recent_summary="",
-            plot_brief_prev="", pacing={},
+            story_arcs=[],
+            active_hooks=[],
+            recent_summary="",
+            plot_brief_prev="",
+            pacing={},
         )
         assert '"mood"' in rendered
 
@@ -72,8 +81,11 @@ class TestDMNarratePrompt:
     def test_renders_with_empty_context(self):
         """空上下文不崩溃 / Renders with empty context."""
         rendered = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
-            plot_brief="", character_actions=[], events=[],
-            combat_result=None, cast_changes=[],
+            plot_brief="",
+            character_actions=[],
+            events=[],
+            combat_result=None,
+            cast_changes=[],
         )
         assert len(rendered) > 0
 
@@ -81,15 +93,22 @@ class TestDMNarratePrompt:
         """注入角色行动 / Injects character actions."""
         rendered = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
             plot_brief="Story",
-            character_actions=[{"character_id": "alex", "type": "explore", "description": "scanning"}],
-            events=[], combat_result=None, cast_changes=[],
+            character_actions=[
+                {"character_id": "alex", "type": "explore", "description": "scanning"}
+            ],
+            events=[],
+            combat_result=None,
+            cast_changes=[],
         )
         assert "alex" in rendered
 
     def test_requires_sensory_detail(self):
         """要求感官细节 / Requires sensory detail."""
         rendered = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
-            plot_brief="", character_actions=[], events=[],
-            combat_result=None, cast_changes=[],
+            plot_brief="",
+            character_actions=[],
+            events=[],
+            combat_result=None,
+            cast_changes=[],
         )
         assert "感官" in rendered

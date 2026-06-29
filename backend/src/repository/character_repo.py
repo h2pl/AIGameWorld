@@ -16,6 +16,8 @@ from ..domain import (
 )
 from ..storage.sqlite_client import SQLiteClient
 
+# ── 辅助函数 / Helpers ──
+
 
 def _val(data: dict[str, Any], key: str, default: Any = None) -> Any:
     v = data.get(key)

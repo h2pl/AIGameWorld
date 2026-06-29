@@ -2,6 +2,7 @@
 
 验证 PC/Actor 的 System Prompt 和 Jinja 模板在变更后仍满足安全铁律和结构要求。
 """
+
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -12,9 +13,12 @@ _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
 
 def _pc_context():
     return {
-        "name": "Alex", "character_type": "pc", "role": "fighter",
+        "name": "Alex",
+        "character_type": "pc",
+        "role": "fighter",
         "character_arc": {"stage": "growth", "description": "Prove his worth"},
-        "values": ["honor", "justice"], "long_term_goal": "Find his lost sister",
+        "values": ["honor", "justice"],
+        "long_term_goal": "Find his lost sister",
         "plot_brief": "雾气在十字路口聚拢。",
         "equipment": {"weapon_id": "longsword", "armor_id": "chain_mail"},
         "memories": [{"content": "昨天在酒馆遇到了一个可疑旅人。"}],
@@ -24,11 +28,15 @@ def _pc_context():
 
 def _actor_context():
     return {
-        "name": "Greta", "character_type": "actor", "role": "innkeeper",
-        "personality": "Warm but sharp-eyed.", "functions": ["dialogue", "merchant"],
+        "name": "Greta",
+        "character_type": "actor",
+        "role": "innkeeper",
+        "personality": "Warm but sharp-eyed.",
+        "functions": ["dialogue", "merchant"],
         "dm_motivation": "想打听失踪商队的消息",
         "plot_brief": "酒馆里来了几个冒险者。",
-        "equipment": {}, "memories": [],
+        "equipment": {},
+        "memories": [],
     }
 
 

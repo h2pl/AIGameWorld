@@ -1,4 +1,6 @@
 """PC Decide Engine——LLM 驱动的深层决策 / PC deep decision with LLM."""
+
+# ── 依赖 / Dependencies ──
 import logging
 from pathlib import Path
 
@@ -16,11 +18,16 @@ _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
 _VALID_ACTIONS = {"move", "talk", "attack", "interact", "wait"}
 
+# ── Helpers / 辅助函数 ──
+
 
 def _get_repos(config: RunnableConfig | None):
     if config and "configurable" in config:
         return config["configurable"].get("repos")
     return None
+
+
+# ── 主决策入口 / Main decision entry ──
 
 
 async def pc_decide(req: PCDecideRequest, config: RunnableConfig = None) -> PCDecideResponse:
@@ -36,23 +43,29 @@ async def pc_decide(req: PCDecideRequest, config: RunnableConfig = None) -> PCDe
         query = req.plot_brief or "最近发生了什么"
         memories = await memory_repo.retrieve(req.pc_id, query, top_k=5) if memory_repo else []
         ctx = {
-            "name": pc.name if pc else req.pc_id, "character_type": "pc",
+            "name": pc.name if pc else req.pc_id,
+            "character_type": "pc",
             "role": pc.role if pc else "",
             "character_arc": pc.character_arc.model_dump() if pc and pc.character_arc else {},
-            "values": pc.values if pc else [], "long_term_goal": pc.long_term_goal if pc else "",
+            "values": pc.values if pc else [],
+            "long_term_goal": pc.long_term_goal if pc else "",
             "plot_brief": req.plot_brief,
             "equipment": pc.equipment.model_dump() if pc and pc.equipment else {},
-            "memories": [{"content": m.content} for m in memories], "visible_characters": [],
+            "memories": [{"content": m.content} for m in memories],
+            "visible_characters": [],
         }
         system = _PROMPTS.get_template("_character_system.jinja").render(**ctx)
         prompt = _PROMPTS.get_template("character/pc_decide.jinja").render(**ctx)
         result = await llm.call_structured(
-            "pc_decision", CharacterActionSchema,
+            "pc_decision",
+            CharacterActionSchema,
             [SystemMessage(content=system), HumanMessage(content=prompt)],
             fallback=lambda: CharacterActionSchema(action_type="wait", reasoning="LLM 降级。"),
         )
         result = _validate(result)
-        return PCDecideResponse(character_id=req.pc_id, type=result.action_type, description=result.reasoning)
+        return PCDecideResponse(
+            character_id=req.pc_id, type=result.action_type, description=result.reasoning
+        )
     except Exception:
         logger.exception("pc_decide LLM failed for %s", req.pc_id)
         return _fallback(req)
@@ -67,4 +80,6 @@ def _validate(result: CharacterActionSchema) -> CharacterActionSchema:
 
 
 def _fallback(req: PCDecideRequest) -> PCDecideResponse:
-    return PCDecideResponse(character_id=req.pc_id, type="wait", description=f"{req.pc_id} observes.")
+    return PCDecideResponse(
+        character_id=req.pc_id, type="wait", description=f"{req.pc_id} observes."
+    )

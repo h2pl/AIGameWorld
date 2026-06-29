@@ -1,5 +1,6 @@
-"""AIGameWorld 领域模型层."""
+"""AIGameWorld 领域模型层 / Domain model layer."""
 
+# ── 角色、物品、场景、故事 / Characters, Items, Scenes, Stories ──
 from .action import Action
 from .character import (
     Actor,
@@ -18,6 +19,7 @@ from .item import Item, ItemType
 from .scene_object import SceneObject, SceneObjectType
 from .story import BranchPoint, CastChangeEvent, MainCastRoster, Quest, StoryArc, StoryHook
 
+# 公共 API / Public API
 __all__ = [
     "Action",
     "Actor",

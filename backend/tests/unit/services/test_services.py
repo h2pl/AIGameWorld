@@ -83,12 +83,16 @@ class TestCharacterService:
         from src.schemas.response import PCDecideResponse
 
         state = {
-            "tick": 0, "plot_brief": "战斗", "character_actions": [],
+            "tick": 0,
+            "plot_brief": "战斗",
+            "character_actions": [],
             "scene_direction": {"featured_pcs": ["alex"]},
         }
         with patch("src.services.character_service.pc_engine.pc_decide") as mock:
             mock.return_value = PCDecideResponse(
-                character_id="alex", type="attack", description="攻击敌人！",
+                character_id="alex",
+                type="attack",
+                description="攻击敌人！",
             )
             result = await character_service.pc_decide(state)
         assert len(result["character_actions"]) == 1
@@ -99,12 +103,16 @@ class TestCharacterService:
         from src.schemas.response import ActorDecideResponse
 
         state = {
-            "tick": 0, "plot_brief": "", "character_actions": [],
+            "tick": 0,
+            "plot_brief": "",
+            "character_actions": [],
             "scene_direction": {"featured_actors": ["innkeeper"]},
         }
         with patch("src.services.character_service.actor_engine.actor_decide") as mock:
             mock.return_value = ActorDecideResponse(
-                character_id="innkeeper", type="talk", description="推销货物",
+                character_id="innkeeper",
+                type="talk",
+                description="推销货物",
             )
             result = await character_service.actor_decide(state)
         assert len(result["character_actions"]) == 1
@@ -115,36 +123,76 @@ class TestCharacterService:
 # ============================================================
 class TestCombatService:
     def test_combat_returns_result(self):
-        state = {"participants": [], "round": 1, "speaker": "", "target": "",
-                 "intent": "", "character_id": "", "action_type": "", "quests": [],
-                 "event_log": [], "engine_results": [], "combat_result": None}
+        state = {
+            "participants": [],
+            "round": 1,
+            "speaker": "",
+            "target": "",
+            "intent": "",
+            "character_id": "",
+            "action_type": "",
+            "quests": [],
+            "event_log": [],
+            "engine_results": [],
+            "combat_result": None,
+        }
         result = combat_service.combat(state)
         assert "engine_results" in result
 
 
 class TestDialogueService:
     def test_dialogue_returns_result(self):
-        state = {"participants": [], "round": 1, "speaker": "pc1", "target": "npc1",
-                 "intent": "persuade", "character_id": "", "action_type": "",
-                 "quests": [], "event_log": [], "engine_results": [], "combat_result": None}
+        state = {
+            "participants": [],
+            "round": 1,
+            "speaker": "pc1",
+            "target": "npc1",
+            "intent": "persuade",
+            "character_id": "",
+            "action_type": "",
+            "quests": [],
+            "event_log": [],
+            "engine_results": [],
+            "combat_result": None,
+        }
         result = dialogue_service.dialogue(state)
         assert "engine_results" in result
 
 
 class TestExplorationService:
     def test_exploration_returns_result(self):
-        state = {"participants": [], "round": 1, "speaker": "", "target": "",
-                 "intent": "", "character_id": "pc1", "action_type": "search",
-                 "quests": [], "event_log": [], "engine_results": [], "combat_result": None}
+        state = {
+            "participants": [],
+            "round": 1,
+            "speaker": "",
+            "target": "",
+            "intent": "",
+            "character_id": "pc1",
+            "action_type": "search",
+            "quests": [],
+            "event_log": [],
+            "engine_results": [],
+            "combat_result": None,
+        }
         result = exploration_service.exploration(state)
         assert "engine_results" in result
 
 
 class TestQuestService:
     def test_quest_returns_result(self):
-        state = {"participants": [], "round": 1, "speaker": "", "target": "",
-                 "intent": "", "character_id": "", "action_type": "",
-                 "quests": [{"id": "q1"}], "event_log": [], "engine_results": [], "combat_result": None}
+        state = {
+            "participants": [],
+            "round": 1,
+            "speaker": "",
+            "target": "",
+            "intent": "",
+            "character_id": "",
+            "action_type": "",
+            "quests": [{"id": "q1"}],
+            "event_log": [],
+            "engine_results": [],
+            "combat_result": None,
+        }
         result = quest_service.quest(state)
         assert "engine_results" in result
 
@@ -154,16 +202,28 @@ class TestQuestService:
 # ============================================================
 class TestReflectionService:
     def test_reflection_returns_insights(self):
-        state = {"tick": 5, "character_id": "pc1", "memories": [], "events": [],
-                 "reflected_characters": [], "summary_compressed": False}
+        state = {
+            "tick": 5,
+            "character_id": "pc1",
+            "memories": [],
+            "events": [],
+            "reflected_characters": [],
+            "summary_compressed": False,
+        }
         result = reflection_service.reflect(state)
         assert "reflected_characters" in result
 
 
 class TestSummarizerService:
     def test_summarizer_returns_result(self):
-        state = {"tick": 10, "character_id": "", "memories": [],
-                 "events": [{"id": "e1"}], "reflected_characters": [], "summary_compressed": False}
+        state = {
+            "tick": 10,
+            "character_id": "",
+            "memories": [],
+            "events": [{"id": "e1"}],
+            "reflected_characters": [],
+            "summary_compressed": False,
+        }
         result = summarizer_service.summarize(state)
         assert "summary_compressed" in result
 
@@ -182,9 +242,12 @@ class TestDMService:
         state = _base_state(tick=0, plot_brief="")
 
         from src.schemas.response import DMCreateResponse
+
         with patch("src.services.dm_service.dm_engine.dm_create") as mock_create:
             mock_create.return_value = DMCreateResponse(
-                instructions_out=["探索"], plot_brief="剧情", scene_direction={"mood": "tense"},
+                instructions_out=["探索"],
+                plot_brief="剧情",
+                scene_direction={"mood": "tense"},
             )
             result = await dm_service.dm_create(state, self._config(mock_llm))
         assert result["dm_instructions"] == ["探索"]
@@ -194,6 +257,7 @@ class TestDMService:
     async def test_dm_create_propagates_errors(self):
         state = _base_state()
         from src.schemas.response import DMCreateResponse
+
         with patch("src.services.dm_service.dm_engine.dm_create") as mock_create:
             mock_create.return_value = DMCreateResponse(errors=["LLM 调用失败"])
             result = await dm_service.dm_create(state, self._config())
@@ -203,9 +267,11 @@ class TestDMService:
     async def test_dm_narrate_returns_narrative(self):
         state = _base_state(tick=0, character_actions=[])
         from src.schemas.response import DMNarrateResponse
+
         with patch("src.services.dm_service.dm_engine.dm_narrate") as mock_narrate:
             mock_narrate.return_value = DMNarrateResponse(
-                narrative_out="战斗开始！", branch_points=[{"decision_maker": "alex"}],
+                narrative_out="战斗开始！",
+                branch_points=[{"decision_maker": "alex"}],
                 hooks_resolved=["hook_01"],
             )
             result = await dm_service.dm_narrate(state, self._config())
@@ -215,9 +281,11 @@ class TestDMService:
     async def test_dm_narrate_sets_needs_reflection(self):
         state = _base_state(tick=5, character_actions=[])
         from src.schemas.response import DMNarrateResponse
+
         with patch("src.services.dm_service.dm_engine.dm_narrate") as mock_narrate:
             mock_narrate.return_value = DMNarrateResponse(narrative_out="反思时刻")
             result = await dm_service.dm_narrate(
-                state, {"configurable": {"llm": AsyncMock(), "reflection_interval": 5}},
+                state,
+                {"configurable": {"llm": AsyncMock(), "reflection_interval": 5}},
             )
         assert result["needs_reflection"] is True

@@ -29,7 +29,8 @@ async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict
     interval = (config or {}).get("configurable", {}).get("reflection_interval", 5)
     result = await dm_engine.dm_narrate(
         DMNarrateRequest(
-            tick=state.get("tick", 0), plot_brief=state.get("plot_brief", ""),
+            tick=state.get("tick", 0),
+            plot_brief=state.get("plot_brief", ""),
             dm_instructions=state.get("dm_instructions", []),
             scene_direction=state.get("scene_direction", {}),
             character_actions=state.get("character_actions", []),

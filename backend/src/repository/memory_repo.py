@@ -58,9 +58,12 @@ class MemoryRepo:
             metadatas=[{"tick": tick, "importance": 10, "type": "reflection"}],
         )
         return Memory(
-            id=mem_id, character_id=character_id,
-            content=insight, tick=tick,
-            importance=10, memory_type="reflection",
+            id=mem_id,
+            character_id=character_id,
+            content=insight,
+            tick=tick,
+            importance=10,
+            memory_type="reflection",
         )
 
     # ── 检索 / Retrieve ──
@@ -115,7 +118,9 @@ class MemoryRepo:
             self._chroma.delete_collection(prefix.format(character_id=character_id))
 
     def importance_should_reflect(
-        self, character_id: str, threshold: int = 100,
+        self,
+        character_id: str,
+        threshold: int = 100,
     ) -> bool:
         """检查重要性累计是否超阈值."""
         recent = list(self._short_queue(character_id))
