@@ -48,6 +48,7 @@ class TestExplorationEngine:
     def test_perception_check(self):
         r = resolve_exploration(ExplorationRequest(character_id="pc1", action_type="search", attribute_mod=2, dc=10))
         assert isinstance(r.success, bool)
+        assert r.result is not None
         assert r.result["character_id"] == "pc1"
         assert "roll" in r.result
 
@@ -58,6 +59,7 @@ class TestInteractEngine:
         from src.schemas.request import SceneObjectInteractRequest
         r = resolve_interact(SceneObjectInteractRequest(object_id="chest1", character_id="pc1", action_type="pick_lock", attribute_mod=3, dc=12))
         assert isinstance(r.success, bool)
+        assert r.result is not None
         assert r.result["action_cn"] == "开锁"
         assert "roll" in r.result
 
@@ -66,6 +68,7 @@ class TestInteractEngine:
         from src.schemas.request import SceneObjectInteractRequest
         r = resolve_interact(SceneObjectInteractRequest(object_id="door1", character_id="pc1", action_type="break_door", attribute_mod=4, dc=15))
         assert isinstance(r.success, bool)
+        assert r.result is not None
         assert r.result["action_cn"] == "破门"
 
 
