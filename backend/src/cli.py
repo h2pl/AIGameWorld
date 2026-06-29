@@ -193,7 +193,7 @@ async def run(args: argparse.Namespace) -> None:
 
     # -- DB 模式：初始化 + 种子 / DB mode: init + seed
     if use_db:
-        db_path = args.db_path or "data/world_state.db"
+        db_path = args.db_path or "data/world_db.db"
         db = SQLiteClient(db_path)
         await db.connect()
         await db.init_schema()
@@ -449,7 +449,7 @@ def main() -> None:
     run_parser.add_argument(
         "--db", action="store_true", help="Enable full DB read/write + seed data"
     )
-    run_parser.add_argument("--db-path", default="data/world_state.db", help="DB file path")
+    run_parser.add_argument("--db-path", default="data/world_db.db", help="DB file path")
     run_parser.add_argument("--llm", action="store_true", help="Use real LLM instead of mock")
 
     # test 子命令（诊断）/ test subcommand (diagnostic)

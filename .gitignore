@@ -21,6 +21,7 @@ data/
 *.db
 *.db-journal
 *.log
+!backend/data/world_db.db
 
 # Environment
 .env

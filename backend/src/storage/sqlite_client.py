@@ -10,7 +10,7 @@ import aiosqlite
 class SQLiteClient:
     """SQLite 连接管理 + 裸 SQL 执行."""
 
-    def __init__(self, db_path: str | Path = "data/world_state.db"):
+    def __init__(self, db_path: str | Path = "data/world_db.db"):
         self._db_path = Path(db_path)
         self._db: aiosqlite.Connection | None = None
 
