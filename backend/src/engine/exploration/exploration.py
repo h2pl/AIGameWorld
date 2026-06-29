@@ -1,16 +1,23 @@
-"""Exploration Engine: 纯业务逻辑."""
+"""Exploration Engine——D20 探索检定 / D20 exploration check."""
 
+from ...rules.dnd_rules import resolve_check
 from ...schemas.request import ExplorationRequest
 from ...schemas.response import ExplorationResponse
 
 
 def resolve_exploration(req: ExplorationRequest) -> ExplorationResponse:
-    """探索检定. Mock. Phase 5 接入 D20 规则."""
+    """探索检定——感知察觉 / Wisdom (Perception) check."""
+    result = resolve_check(bonus=req.attribute_mod, dc=req.dc)
     return ExplorationResponse(
-        success=True,
+        success=result.success,
         result={
             "character_id": req.character_id,
             "action_type": req.action_type,
-            "description": "mock perception check: passed",
+            "roll": result.roll,
+            "bonus": req.attribute_mod,
+            "dc": req.dc,
+            "total": result.total,
+            "critical": result.is_critical,
+            "fumble": result.is_fumble,
         },
     )

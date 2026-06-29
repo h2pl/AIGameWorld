@@ -66,11 +66,15 @@ class DialogueRequest(BaseModel):
     speaker: str = ""
     target: str = ""
     intent: str = ""
+    attribute_mod: int = 0  # 通常魅力修正 / typically charisma modifier
+    dc: int = 10  # 难度等级 / difficulty class
 
 
 class ExplorationRequest(BaseModel):
     character_id: str = ""
     action_type: str = ""
+    attribute_mod: int = 0  # 通常感知修正 / typically wisdom modifier
+    dc: int = 10
 
 
 class QuestRequest(BaseModel):

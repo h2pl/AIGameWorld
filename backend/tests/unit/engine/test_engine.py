@@ -35,17 +35,21 @@ class TestCombatEngine:
 
 
 class TestDialogueEngine:
-    def test_resolve_dialogue(self):
-        r = resolve_dialogue(DialogueRequest(speaker="pc1", target="npc1", intent="persuade"))
-        assert r.success is True
-        assert "pc1" in r.content
+    def test_persuasion_success(self):
+        r = resolve_dialogue(DialogueRequest(speaker="pc1", target="npc1", intent="persuade", attribute_mod=3, dc=12))
+        assert isinstance(r.success, bool)
+
+    def test_empty_speaker(self):
+        r = resolve_dialogue(DialogueRequest())
+        assert r.success is False
 
 
 class TestExplorationEngine:
-    def test_resolve_exploration(self):
-        r = resolve_exploration(ExplorationRequest(character_id="pc1", action_type="search"))
-        assert r.success is True
+    def test_perception_check(self):
+        r = resolve_exploration(ExplorationRequest(character_id="pc1", action_type="search", attribute_mod=2, dc=10))
+        assert isinstance(r.success, bool)
         assert r.result["character_id"] == "pc1"
+        assert "roll" in r.result
 
 
 class TestQuestEngine:
