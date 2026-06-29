@@ -17,11 +17,9 @@ dist/
 .vite/
 
 # Runtime data
-data/
-*.db
 *.db-journal
 *.log
-!backend/data/world_db.db
+!backend/data/
 
 # Environment
 .env
