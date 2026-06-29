@@ -19,7 +19,6 @@ dist/
 # Runtime data
 *.db-journal
 *.log
-!backend/data/
 
 # Environment
 .env
