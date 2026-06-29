@@ -201,7 +201,9 @@ class TestQuestService:
 # Reflection / Summarizer Service
 # ============================================================
 class TestReflectionService:
-    def test_reflection_returns_insights(self):
+
+    @pytest.mark.asyncio
+    async def test_reflection_returns_insights(self):
         state = {
             "tick": 5,
             "character_id": "pc1",
@@ -210,12 +212,14 @@ class TestReflectionService:
             "reflected_characters": [],
             "summary_compressed": False,
         }
-        result = reflection_service.reflect(state)
+        result = await reflection_service.reflect(state, None)
         assert "reflected_characters" in result
 
 
 class TestSummarizerService:
-    def test_summarizer_returns_result(self):
+
+    @pytest.mark.asyncio
+    async def test_summarizer_returns_result(self):
         state = {
             "tick": 10,
             "character_id": "",
@@ -224,7 +228,7 @@ class TestSummarizerService:
             "reflected_characters": [],
             "summary_compressed": False,
         }
-        result = summarizer_service.summarize(state)
+        result = await summarizer_service.summarize(state)
         assert "summary_compressed" in result
 
 

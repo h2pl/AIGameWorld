@@ -1,0 +1,32 @@
+{% include "_reflect_system.jinja" %}
+
+## PC 深度学习反思 / PC Deep Reflection — {{ character_name }}
+
+### 角色弧线 / Character Arc
+当前阶段: {{ arc_stage }}
+描述: {{ arc_description }}
+
+### 近期记忆 / Recent Memories（最近 5 条）
+{% for mem in memories %}
+- [重要性 {{ mem.importance }}] {{ mem.content }}
+{% endfor %}
+
+### 已有反思 / Past Reflections（避免重复）
+{% for r in recent_reflections %}
+- {{ r }}
+{% endfor %}
+
+根据以上信息，分析角色行为与弧线进展：
+
+1. **弧线进展**——当前行为与角色弧线目标是否一致？是否有转折迹象？
+2. **性格洞察**——从近期行为中提炼角色核心品质或矛盾。
+3. **下一步方向**——为角色弧线推进提出 1 条具体建议。
+
+输出格式（严格 JSON）：
+```json
+{
+  "arc_analysis": "弧线分析（2-3 句）",
+  "personality_insight": "性格洞察（1-2 句）",
+  "next_direction": "下一步方向（1 句）"
+}
+```

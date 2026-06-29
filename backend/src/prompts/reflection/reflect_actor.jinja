@@ -1,0 +1,27 @@
+{% include "_reflect_system.jinja" %}
+
+## Actor 行为总结 / Actor Behavior Summary — {{ character_name }}
+
+### 角色定位
+类型: Actor
+当前阶段: {{ arc_stage }}
+描述: {{ arc_description }}
+
+### 近期记忆 / Recent Memories（最近 3 条）
+{% for mem in memories %}
+- [重要性 {{ mem.importance }}] {{ mem.content }}
+{% endfor %}
+
+### 已有反思 / Past Reflections（避免重复）
+{% for r in recent_reflections %}
+- {{ r }}
+{% endfor %}
+
+根据以上信息，用 1 句话总结该角色的近期行为模式。
+
+输出格式（严格 JSON）：
+```json
+{
+  "behavior_summary": "1 句行为模式总结"
+}
+```

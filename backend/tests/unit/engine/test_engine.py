@@ -1,8 +1,8 @@
 """Engine 单元测试——combat/dialogue/exploration/quest/reflection/summarizer/world."""
 
-# ── Engine imports / 引擎导入 ──
+import pytest
 
-# ── Imports / 导入 ──
+# ── Engine imports / 引擎导入 ──
 from src.engine.combat.combat import resolve_combat
 from src.engine.dialogue.dialogue import resolve_dialogue
 from src.engine.exploration.exploration import resolve_exploration
@@ -63,24 +63,37 @@ class TestQuestEngine:
 
 
 class TestReflectionEngine:
-    def test_reflect(self):
-        r = reflect(ReflectionRequest(character_id="pc1", memories=[{"text": "a"}, {"text": "b"}]))
+    @pytest.mark.asyncio
+    async def test_reflect(self):
+        r = await reflect(
+            ReflectionRequest(character_id="pc1", character_name="P1", character_type="pc"),
+            None,
+        )
         assert len(r.insights_out) == 1
-        assert r.insights_out[0]["memories_count"] == 2
+        assert r.insights_out[0]["character_id"] == "pc1"
 
-    def test_reflect_unknown_character(self):
-        r = reflect(ReflectionRequest())
-        assert r.insights_out[0]["character_id"] == "unknown"
+    @pytest.mark.asyncio
+    async def test_reflect_unknown_character(self):
+        r = await reflect(
+            ReflectionRequest(character_id="", character_name="Unknown", character_type="pc"),
+            None,
+        )
+        assert len(r.insights_out) == 1
 
 
 class TestSummarizerEngine:
-    def test_few_events_not_compressed(self):
-        r = summarize(SummarizerRequest(events=[{"id": "e1"}], tick=5))
+    @pytest.mark.asyncio
+    async def test_few_events_not_compressed(self):
+        r = await summarize(SummarizerRequest(events=[], tick=5), None)
         assert r.compressed is False
 
-    def test_many_events_compressed(self):
-        r = summarize(SummarizerRequest(events=[{"id": f"e{i}"} for i in range(5)], tick=10))
-        assert r.compressed is True
+    @pytest.mark.asyncio
+    async def test_many_events_compressed(self):
+        r = await summarize(
+            SummarizerRequest(events=[{"type": "e", "description": f"e{i}"} for i in range(5)], tick=10),
+            None,
+        )
+        assert not r.compressed  # fallback（无 LLM）不压缩
 
 
 class TestWorldEngine:

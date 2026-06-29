@@ -68,12 +68,23 @@ class QuestRequest(BaseModel):
 
 # === Phase 7: Reflection ===
 class ReflectionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     character_id: str = ""
+    character_name: str = ""
+    character_type: str = "pc"  # "pc" | "actor"
+    arc_stage: str = ""
+    arc_description: str = ""
     memories: list[dict[str, Any]] = []
+    recent_reflections: list[str] = []  # 历史反思洞见，防重复 / previous insights to avoid duplicates
+    tick: int = 0
 
 
 class SummarizerRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     events: list[dict[str, Any]] = []
+    character_count: int = 0
     tick: int = 0
 
 

@@ -146,8 +146,9 @@ async def test_phase6_no_reflection_low_tick():
     assert r["needs_reflection"] is False
 
 
-def test_phase7_reflect(base_state):
-    r = reflection_subgraph.invoke(base_state)
+@pytest.mark.asyncio
+async def test_phase7_reflect(base_state):
+    r = await reflection_subgraph.ainvoke(base_state)
     assert "reflected_characters" in r
 
 
