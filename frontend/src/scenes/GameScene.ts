@@ -75,17 +75,22 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.scrollX = Math.max(0, mapW / 2 - CONFIG.CANVAS.width / 2);
     this.cameras.main.scrollY = 50;
 
-    const spawnObjs = map.getObjectLayer(TILEMAP.LAYERS.OBJECTS);
-    // 从 spawn 附近找可走格子放角色 / Place chars on walkable tiles near spawn
-    const spawn = spawnObjs?.objects.find(o => o.name === "Spawn Point");
-    const startTx = Math.floor((spawn?.x || 384) / 32);
-    const startTy = Math.floor((spawn?.y || 320) / 32);
+    // 角色放在 spawn 附近空地 / Place chars on walkable ground near spawn
+    const spawnObj = map.findObject(TILEMAP.LAYERS.OBJECTS, o => o.name === "Spawn Point");
+    const spawnTx = Math.floor((spawnObj?.x || 384) / 32);
+    const spawnTy = Math.floor((spawnObj?.y || 320) / 32);
     const st2 = gameStore.getState();
-    let charIdx = 0;
+    let idx = 0;
     for (const ch of st2.characters) {
-      const pos = this.findWalkableTile(world, startTx, startTy, charIdx);
-      st2.character_positions[ch.id] = pos;
-      charIdx++;
+      // 每偏移 2 格排开，检查碰撞 / offset 2 tiles each, check collision
+      let tx = spawnTx + idx * 2; const ty = spawnTy;
+      while (tx < 38) {
+        const tile = world.getTileAt(tx, ty);
+        if (!tile || !tile.properties?.collides) break;
+        tx++;
+      }
+      st2.character_positions[ch.id] = { x: tx, y: ty };
+      idx++;
     }
 
     this.updateSprites();
@@ -108,24 +113,6 @@ export class GameScene extends Phaser.Scene {
       const t2 = this.add.text(ox, oy, icons[obj.object_type] || "❓", { fontSize: "14px" }).setOrigin(0.5).setDepth(25);
       this.iconTexts.push(t2);
     }
-  }
-
-  /** 螺旋搜索可走格子 / Spiral search for walkable tile */
-  private findWalkableTile(worldLayer: Phaser.Tilemaps.TilemapLayer, cx: number, cy: number, offset: number): { x: number; y: number } {
-    let ring = 0;
-    while (ring < 50) {
-      for (let dx = -ring; dx <= ring; dx++) {
-        for (let dy = -ring; dy <= ring; dy++) {
-          if (Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue;
-          const tx = cx + dx + offset * 2, ty = cy + dy;
-          if (tx < 0 || ty < 0 || tx >= 40 || ty >= 30) continue;
-          const tile = worldLayer.getTileAt(tx, ty);
-          if (!tile?.properties?.collides) return { x: tx, y: ty };
-        }
-      }
-      ring++;
-    }
-    return { x: cx + offset * 2, y: cy }; // fallback
   }
 
   /* ═══ Update ═══ */
