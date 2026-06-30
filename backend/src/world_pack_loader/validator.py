@@ -148,6 +148,8 @@ def validate_pack_relations(data: dict) -> list[str]:
     ]:
         for entity in entity_list:
             for slot in entity.get("inventory") or []:
+                if not isinstance(slot, dict):
+                    continue
                 item_id = slot.get("item") or slot.get("item_id")
                 if item_id and item_id not in item_ids:
                     warnings.append(

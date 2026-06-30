@@ -8,8 +8,8 @@ uv run python .githooks/no-secrets.py || { echo "FAIL: 疑似密钥泄露 / Pote
 echo "=== Pre-commit: 注释检查 / Comment Check ==="
 uv run python .githooks/check-comments.py || { echo "FAIL: 注释不足 / Insufficient comments"; exit 1; }
 
-# 获取后端变更文件 / Get changed backend files
-backend_files=$(git diff --cached --name-only --diff-filter=ACM | grep "^backend/" | grep "\.py$" || true)
+# 获取后端变更文件（去掉 backend/ 前缀 / strip backend/ prefix）
+backend_files=$(git diff --cached --name-only --diff-filter=ACM | grep "^backend/" | grep "\.py$" | sed 's|^backend/||' || true)
 
 if [ -n "$backend_files" ]; then
     echo "=== Pre-commit: Ruff Lint ==="

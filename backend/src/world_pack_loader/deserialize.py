@@ -169,13 +169,17 @@ def equip_from_yaml(data: dict | None) -> Equipment:
 def inventory_from_yaml(data: list | None) -> list[InventorySlot]:
     if not data:
         return []
-    return [
-        InventorySlot(
-            item_id=i.get("item", i.get("item_id", "")),
-            quantity=i.get("qty", i.get("quantity", 1)),
+    result: list[InventorySlot] = []
+    for i in data:
+        if not isinstance(i, dict):
+            continue  # 跳过字符串等非 dict 项 / Skip non-dict entries
+        result.append(
+            InventorySlot(
+                item_id=i.get("item", i.get("item_id", "")),
+                quantity=i.get("qty", i.get("quantity", 1)),
+            )
         )
-        for i in data
-    ]
+    return result
 
 
 def _urgency(text: str) -> int:
