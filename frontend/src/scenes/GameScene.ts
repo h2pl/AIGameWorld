@@ -67,12 +67,13 @@ export class GameScene extends Phaser.Scene {
     const below = map.createLayer("Below Player", tileset, 0, 0);
     if (!below) return;
 
-    // World 层（玩家站上面）
+    // World 层（玩家站上面，有碰撞）
     const world = map.createLayer("World", tileset, 0, 0)!;
+    world.setCollisionByProperty({ collides: true });  // 和 phaser-rpg 一样：建筑/树不可穿越
 
-    // Above Player 层（树冠等，遮挡玩家）
+    // Above Player 层（树冠等，遮挡角色）
     const above = map.createLayer("Above Player", tileset, 0, 0)!;
-    above.setDepth(20); // 角色在中间 / chars between world and above
+    above.setDepth(20);
 
     // 设置摄像机 / Set camera
     const mapW = map.widthInPixels;
