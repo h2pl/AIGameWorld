@@ -136,7 +136,8 @@ CREATE TABLE IF NOT EXISTS scenes (
     exits_json      TEXT NOT NULL DEFAULT '[]',             -- [{direction,target_scene}] 出口
     landmarks_json  TEXT NOT NULL DEFAULT '[]',             -- [{id,name,position}] 地标
     environment_json TEXT NOT NULL DEFAULT '{}',            -- {weather,time_of_day} 环境
-    pack_name       TEXT NOT NULL                           -- 所属 Pack / Source pack
+    pack_id         TEXT NOT NULL,                          -- 所属 Pack ID（关联键）/ Source pack ID (FK key)
+    pack_name       TEXT NOT NULL                           -- 所属 Pack 名称 / Source pack name
 );
 
 -- ============================================================
@@ -151,7 +152,8 @@ CREATE TABLE IF NOT EXISTS items (
     value       INTEGER NOT NULL DEFAULT 0,                 -- 基础价格（金币）/ Base value (gold)
     description TEXT,                                       -- 描述 / Description
     data_json   TEXT NOT NULL DEFAULT '{}',                 -- 按 type 存不同结构 / Type-specific data
-    pack_name   TEXT NOT NULL                               -- 所属 Pack / Source pack
+    pack_id     TEXT NOT NULL,                              -- 所属 Pack ID（关联键）/ Source pack ID (FK key)
+    pack_name   TEXT NOT NULL                               -- 所属 Pack 名称 / Source pack name
 );
 
 -- ============================================================

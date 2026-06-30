@@ -27,4 +27,5 @@ class Item(BaseModel):
     value: int = 0
     description: str = ""
     data: dict = Field(default_factory=dict)
+    pack_id: str = ""
     pack_name: str = ""

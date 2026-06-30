@@ -41,24 +41,26 @@ class WorldLoader:
         self._char_repo = CharacterRepo(db)
         self._story_repo = StoryRepo(db)
 
-    async def load(self, pack_dir: Path, pack_name: str = "") -> dict[str, int]:
+    async def load(self, pack_dir: Path) -> dict[str, int]:
         """加载 world-pack 到数据库。
 
         world-pack = aw-studio generate 输出的实例 YAML 合集
 
         Args:
             pack_dir: world-pack 目录 (如 worlds/custom/my_world)
-            pack_name: Pack 名称 (默认取目录名)
 
         Returns:
             {entity_type: count} 写入计数
         """
         if not pack_dir.exists():
             raise FileNotFoundError(f"Pack directory not found: {pack_dir}")
-        if not pack_name:
-            pack_name = pack_dir.name
 
         data = read_pack(pack_dir)
+
+        # ── Pack 标识：pack_id 来自 meta.id，唯一关联字段 / pack_id from meta.id ──
+        pack_id = data["meta"].get("id", pack_dir.name)
+        pack_name = data["meta"].get("name", pack_dir.name)
+        logger.info("[WorldLoader] pack_id=%s pack_name=%s", pack_id, pack_name)
 
         # ── 关联关系校验 / FK validation ──
         warnings = validate_pack_relations(data)
@@ -68,33 +70,33 @@ class WorldLoader:
         counts: dict[str, int] = {}
 
         # 按 FK 依赖顺序写入 / Write in FK dependency order
-        counts["scenes"] = await self._write_scenes(data.get("scenes", []), pack_name)
-        counts["items"] = await self._write_items(data.get("items", []), pack_name)
+        counts["scenes"] = await self._write_scenes(data.get("scenes", []), pack_id, pack_name)
+        counts["items"] = await self._write_items(data.get("items", []), pack_id, pack_name)
         counts["scene_objects"] = await self._write_scene_objects(data.get("scene_objects", []))
         counts["pcs"] = await self._write_pcs(data)
         counts["actors"] = await self._write_actors(data)
         counts["story_arcs"] = await self._write_story_arcs(data)
         counts["story_hooks"] = await self._write_story_hooks(data)
 
-        # ChromaDB (可选 / optional)
+        # ChromaDB (可选 / optional) — collection 用 pack_id 标识
         if self._chroma:
-            self._write_lore_chroma(data.get("lore", []), pack_name)
-            self._write_scenes_chroma(data.get("scenes", []), pack_name)
+            self._write_lore_chroma(data.get("lore", []), pack_id)
+            self._write_scenes_chroma(data.get("scenes", []), pack_id)
 
         return counts
 
     # ── Scenes (SceneRepo) ──
 
-    async def _write_scenes(self, scenes: list[dict], pack_name: str) -> int:
+    async def _write_scenes(self, scenes: list[dict], pack_id: str, pack_name: str) -> int:
         for s in scenes:
-            await self._scene_repo.save_scene(s, pack_name)
+            await self._scene_repo.save_scene(s, pack_id, pack_name)
         return len(scenes)
 
     # ── Items (ItemRepo) ──
 
-    async def _write_items(self, items: list[dict], pack_name: str) -> int:
+    async def _write_items(self, items: list[dict], pack_id: str, pack_name: str) -> int:
         for i in items:
-            await self._item_repo.save(item_from_yaml(i, pack_name))
+            await self._item_repo.save(item_from_yaml(i, pack_id, pack_name))
         return len(items)
 
     # ── Scene Objects (SceneRepo) ──
@@ -138,11 +140,11 @@ class WorldLoader:
 
     # ── ChromaDB ──
 
-    def _write_lore_chroma(self, lore_items: list[dict], pack_name: str) -> None:
+    def _write_lore_chroma(self, lore_items: list[dict], pack_id: str) -> None:
         """灌入 lore 到 ChromaDB / Load lore into ChromaDB."""
         if not lore_items or not self._chroma:
             return
-        collection = f"lore_{pack_name}"
+        collection = f"lore_{pack_id}"
         for lore in lore_items:
             content = lore.get("content", "")
             chunks = _chunk_text(content)
@@ -160,11 +162,11 @@ class WorldLoader:
                     ],
                 )
 
-    def _write_scenes_chroma(self, scenes: list[dict], pack_name: str) -> None:
+    def _write_scenes_chroma(self, scenes: list[dict], pack_id: str) -> None:
         """灌入场景描述到 ChromaDB / Load scene descriptions into ChromaDB."""
         if not scenes or not self._chroma:
             return
-        collection = f"scene_{pack_name}"
+        collection = f"scene_{pack_id}"
         for s in scenes:
             self._chroma.add(
                 collection=collection,

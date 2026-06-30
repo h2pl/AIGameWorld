@@ -449,8 +449,7 @@ async def import_world(args: argparse.Namespace) -> None:
         print(f"Error: world-pack directory not found: {pack_dir}")
         return
 
-    pack_name = pack_dir.name
-    print(f"Importing world-pack '{pack_name}' from {pack_dir} ...")
+    print(f"Importing world-pack from {pack_dir} ...")
 
     # 初始化数据库 / Init database
     db = SQLiteClient(str(args.db))
@@ -464,7 +463,7 @@ async def import_world(args: argparse.Namespace) -> None:
 
     # 加载 world-pack / Load world-pack
     loader = WorldLoader(db, chroma)
-    counts = await loader.load(pack_dir, pack_name=pack_name)
+    counts = await loader.load(pack_dir)
     await db.commit()
 
     print(f"[OK] Imported: {counts}")

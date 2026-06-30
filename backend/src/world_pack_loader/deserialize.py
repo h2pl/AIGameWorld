@@ -61,7 +61,7 @@ def actor_from_yaml(data: dict, starting_scene: str = "") -> Actor:
     )
 
 
-def item_from_yaml(data: dict, pack_name: str) -> Item:
+def item_from_yaml(data: dict, pack_id: str, pack_name: str) -> Item:
     """YAML dict → Item."""
     return Item(
         id=data.get("id", ""),
@@ -72,6 +72,7 @@ def item_from_yaml(data: dict, pack_name: str) -> Item:
         value=data.get("value", 0),
         description=data.get("description", ""),
         data=data.get("data", {}),
+        pack_id=pack_id,
         pack_name=pack_name,
     )
 

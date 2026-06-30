@@ -12,12 +12,12 @@ class SceneRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
-    async def save_scene(self, scene: dict, pack_name: str) -> None:
+    async def save_scene(self, scene: dict, pack_id: str, pack_name: str) -> None:
         """写入单条场景 / Save single scene."""
         await self._db.execute(
             "INSERT OR REPLACE INTO scenes "
-            "(id, name, type, description, exits_json, landmarks_json, pack_name) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "(id, name, type, description, exits_json, landmarks_json, pack_id, pack_name) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 scene.get("id", ""),
                 scene.get("name", ""),
@@ -25,6 +25,7 @@ class SceneRepo:
                 scene.get("description", ""),
                 json.dumps(scene.get("exits", []), ensure_ascii=False),
                 json.dumps(scene.get("landmarks", []), ensure_ascii=False),
+                pack_id,
                 pack_name,
             ),
         )
