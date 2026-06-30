@@ -75,21 +75,17 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.scrollX = Math.max(0, mapW / 2 - CONFIG.CANVAS.width / 2);
     this.cameras.main.scrollY = 50;
 
-    // 角色放在 spawn 附近空地 / Place chars on walkable ground near spawn
-    const spawnObj = map.findObject(TILEMAP.LAYERS.OBJECTS, o => o.name === "Spawn Point");
-    const spawnTx = Math.floor((spawnObj?.x || 384) / 32);
-    const spawnTy = Math.floor((spawnObj?.y || 320) / 32);
+    // 角色放 spawn 点附近 / Place chars near spawn point (和 phaser-rpg 一样用像素坐标)
+    const spawnPoint = map.findObject(TILEMAP.LAYERS.OBJECTS, ({ name }) => name === "Spawn Point");
+    const spawnX = spawnPoint?.x || 384;
+    const spawnY = spawnPoint?.y || 320;
     const st2 = gameStore.getState();
     let idx = 0;
     for (const ch of st2.characters) {
-      // 每偏移 2 格排开，检查碰撞 / offset 2 tiles each, check collision
-      let tx = spawnTx + idx * 2; const ty = spawnTy;
-      while (tx < 38) {
-        const tile = world.getTileAt(tx, ty);
-        if (!tile || !tile.properties?.collides) break;
-        tx++;
-      }
-      st2.character_positions[ch.id] = { x: tx, y: ty };
+      // 像素坐标，每角色偏移48px / Pixel coords, 48px apart
+      const wx = spawnX + idx * 48;
+      const wy = spawnY;
+      st2.character_positions[ch.id] = { x: Math.floor(wx / 32), y: Math.floor(wy / 32) };
       idx++;
     }
 
