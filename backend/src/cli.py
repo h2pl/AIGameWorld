@@ -621,22 +621,54 @@ async def _shell_clear() -> None:
     print("  [OK] Cleared events, narratives, world_meta")
 
 
+def _show_current(state: ShellState) -> None:
+    """显示当前关键参数 / Show current key parameters."""
+    print(
+        f"  pack_id={state.pack_id or '(none)'}  db={'ON' if state.use_db else 'OFF'}  llm={'ON' if state.use_llm else 'OFF'}  path={state.db_path}"
+    )
+
+
 async def shell(args: argparse.Namespace) -> None:
-    """交互式 REPL / Interactive REPL — 逐参数提示 / parameter-by-parameter prompts."""
+    """交互式 REPL / Interactive REPL — 分步引导参数输入 / wizard-style parameter prompts."""
     state = ShellState(
         pack_id=args.pack_id or "",
         db_path=args.db_path or "data/world_db.db",
     )
     print(_SHELL_HELP)
-    print(
-        f"  pack_id={state.pack_id or '(none)'}  db={state.db_path}  llm={'ON' if state.use_llm else 'OFF'}"
-    )
+    _show_current(state)
     print()
 
-    async def _prompt_run() -> None:
-        ticks = input("    ticks (5): ").strip()
+    def _ask(prompt: str, default: str = "") -> str | None:
+        """单步输入，返回 None 表示取消 / single input, None = cancel."""
+        try:
+            v = input(f"    {prompt} [{default}]: ").strip()
+        except EOFError, KeyboardInterrupt:
+            return None
+        return v if v else default
+
+    async def _wizard_run() -> None:
+        """分步引导 run 参数 / guided run wizard."""
+        print("  --- Run Wizard ---")
+        pack = _ask("pack_id", state.pack_id or "")
+        if pack is None:
+            return
+        if pack:
+            state.pack_id = pack
+        t = _ask("ticks", "5")
+        if t is None:
+            return
+        llm_mode = _ask("LLM (on/off)", "on" if state.use_llm else "off")
+        if llm_mode is None:
+            return
+        state.use_llm = llm_mode.lower() in ("on", "1", "yes", "y")
+        db_mode = _ask("DB (on/off)", "on" if state.use_db else "off")
+        if db_mode is None:
+            return
+        state.use_db = db_mode.lower() in ("on", "1", "yes", "y")
+        print()
+
         await _do_run(
-            ticks=int(ticks) if ticks else 5,
+            ticks=int(t) if t else 5,
             use_db=state.use_db,
             db_path=state.db_path,
             pack_id=state.pack_id or None,
@@ -654,7 +686,6 @@ async def shell(args: argparse.Namespace) -> None:
 
         parts = shlex.split(raw)
         cmd = parts[0].lower()
-        # 支持行内参数，也支持逐项提示 / inline args + fallback to prompts
         inline_arg = parts[1] if len(parts) > 1 else None
 
         try:
@@ -663,11 +694,12 @@ async def shell(args: argparse.Namespace) -> None:
             elif cmd in ("help", "?"):
                 print(_SHELL_HELP)
             elif cmd == "import":
-                arg = inline_arg or input("    pack_dir: ").strip()
+                arg = inline_arg or _ask("pack_dir", "")
                 if arg:
                     await _shell_import(state, arg)
             elif cmd == "run":
                 if inline_arg:
+                    # 行内快捷模式 / inline shortcut
                     await _do_run(
                         ticks=int(inline_arg),
                         use_db=state.use_db,
@@ -676,33 +708,25 @@ async def shell(args: argparse.Namespace) -> None:
                         use_llm=state.use_llm,
                     )
                 else:
-                    await _prompt_run()
+                    await _wizard_run()
             elif cmd == "pack":
                 if inline_arg:
                     state.pack_id = inline_arg
                 else:
-                    state.pack_id = (
-                        input(f"    pack_id ({state.pack_id or 'none'}): ").strip() or state.pack_id
-                    )
+                    state.pack_id = _ask("pack_id", state.pack_id) or state.pack_id
                 print(f"  pack_id = '{state.pack_id or '(not set)'}'")
             elif cmd == "llm":
-                if not inline_arg:
-                    inline_arg = input("    on|off: ").strip().lower()
-                if inline_arg == "on":
-                    state.use_llm = True
-                elif inline_arg == "off":
-                    state.use_llm = False
+                v = (inline_arg or _ask("on/off", "on" if state.use_llm else "off") or "").lower()
+                if v in ("on", "off"):
+                    state.use_llm = v == "on"
                 print(f"  LLM = {'ON' if state.use_llm else 'OFF'}")
             elif cmd == "db":
-                if not inline_arg:
-                    inline_arg = input("    on|off: ").strip().lower()
-                if inline_arg == "on":
-                    state.use_db = True
-                elif inline_arg == "off":
-                    state.use_db = False
+                v = (inline_arg or _ask("on/off", "on" if state.use_db else "off") or "").lower()
+                if v in ("on", "off"):
+                    state.use_db = v == "on"
                 print(f"  DB = {'ON' if state.use_db else 'OFF'}")
             elif cmd == "db-path":
-                arg = inline_arg or input(f"    path ({state.db_path}): ").strip()
+                arg = inline_arg or _ask("path", state.db_path)
                 if arg:
                     state.db_path = arg
                 print(f"  db_path = '{state.db_path}'")
