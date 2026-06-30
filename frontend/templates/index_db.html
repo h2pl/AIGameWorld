@@ -41,7 +41,7 @@ header p { color: #94a3b8; font-size: .9rem; }
   <div class="card">
     <a href="/view/pack/{{ p.id }}">{{ p.name }}</a>
     <div class="desc">{{ p.desc or '' }}</div>
-    <div class="meta">{{ p.total }} entities · {{ p.version }}{% if p.theme %} · {{ p.theme }}{% endif %} · {{ p.id }}</div>
+    <div class="meta">{{ p.total }} entities · {{ p.version }} · {{ p.id }}</div>
   </div>
   {% endfor %}
   {% if not packs %}
@@ -54,9 +54,9 @@ header p { color: #94a3b8; font-size: .9rem; }
 <div class="section">
   <div class="section-title">🌐 Global Data (Pack-independent)</div>
   <div class="container">
-    <div class="card global"><a href="/view/global/items">All Items</a><div class="meta">ItemRepo.load_all()</div></div>
-    <div class="card global"><a href="/view/global/scene-objects">All Scene Objects</a><div class="meta">SceneRepo.load_all()</div></div>
-    <div class="card global"><a href="/view/global/events">All Events</a><div class="meta">EventRepo.load_all()</div></div>
+    <div class="card global"><a href="/view/global/events">All Events</a><div class="meta">EventRepo · event_log 表</div></div>
+    <div class="card global"><a href="/view/global/narratives">Narrative Log</a><div class="meta">narratives 表</div></div>
+    <div class="card global"><a href="/view/global/meta">World Meta</a><div class="meta">world_pack 表</div></div>
   </div>
 </div>
 

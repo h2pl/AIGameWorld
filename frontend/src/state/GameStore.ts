@@ -68,12 +68,21 @@ class GameStore {
     for (const ch of characters) {
       this.state.character_positions[ch.id] = { x: ch.position_x, y: ch.position_y };
     }
+    console.log(
+      "[Store] setWorldState pack=%s chars=%d scenes=%d items=%d objs=%d",
+      pack_id, characters.length, scenes.length, items.length, scene_objects.length,
+    );
+    for (const ch of characters) {
+      const p = this.state.character_positions[ch.id];
+      console.log("[Store]   %s (%s) pos=(%d,%d) pc=%s", ch.id, ch.name, p.x, p.y, ch.is_pc);
+    }
     this.notify();
   }
 
   /** 应用 tick 更新 / Apply tick update */
   applyTickUpdate(update: TickUpdate): void {
     const d = update.data;
+    console.log("[Store] applyTickUpdate type=%s tick=%d", update.type, d.tick);
     if (d.tick) {
       this.state.current_tick = d.tick;
     }
@@ -81,7 +90,11 @@ class GameStore {
       this.state.narrative = d.narrative;
       this.state.events = d.events || [];
     } else if (update.type === "tick_complete" && d.state_snapshot) {
-      this.state.character_positions = d.state_snapshot.character_positions || {};
+      const snap = d.state_snapshot;
+      this.state.character_positions = snap.character_positions || {};
+      Object.entries(this.state.character_positions).forEach(([id, p]) => {
+        console.log("[Store]   tick=%d %s → (%d,%d)", d.tick, id, p.x, p.y);
+      });
       if (d.actions) this.state.actions = d.actions;
       if (d.events) this.state.events = d.events;
     } else if (update.type === "phase_update" && d.events) {
@@ -98,6 +111,7 @@ class GameStore {
     for (const [id, p] of Object.entries(pos)) {
       this.state.character_positions[id] = p;
     }
+    console.log("[Store] updatePositions %d chars: %s", Object.keys(pos).length, Object.keys(pos).join(","));
     this.notify();
   }
 

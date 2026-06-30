@@ -16,8 +16,8 @@ from src.repository.story_repo import StoryRepo
 from src.repository.world_pack_repo import WorldPackRepo
 from src.storage.sqlite_client import SQLiteClient
 
-_PROJECT_ROOT = Path(__file__).parent.parent
-_TEMPLATES_DIR = _PROJECT_ROOT / "templates" / "serve"
+_PROJECT_ROOT = Path(__file__).parent.parent  # backend/
+_TEMPLATES_DIR = _PROJECT_ROOT.parent / "frontend" / "templates"  # frontend/templates/
 _JINJA = Environment(loader=FileSystemLoader(str(_TEMPLATES_DIR)))
 
 RARITY_COLORS = {
@@ -74,7 +74,7 @@ async def render_index(db_path: str) -> HTMLResponse:
                     "name": wp.name or wp.id,
                     "desc": wp.description,
                     "total": total,
-                    "theme": wp.theme,
+                    "theme": getattr(wp, "theme", ""),
                     "version": wp.version,
                 }
             )
@@ -217,6 +217,64 @@ async def render_global_events(db_path: str) -> HTMLResponse:
                 }
                 for e in events
             ],
+        )
+    finally:
+        await client.close()
+    return HTMLResponse(html)
+
+
+async def render_global_narratives(db_path: str) -> HTMLResponse:
+    """Narrative Log — narratives 表数据 / narratives table data."""
+    client = await _get_client(db_path)
+    try:
+        rows = await client.fetch_all(
+            "SELECT id, tick, content, created_at FROM narratives ORDER BY tick, id"
+        )
+        html = _JINJA.get_template("pack.html").render(
+            pack_id="narratives",
+            meta={
+                "id": "narratives",
+                "name": "Narrative Log",
+                "description": "narratives 表 · 无 pack_id",
+            },
+            lore=[
+                {
+                    "category": f"Tick {r['tick']}",
+                    "id": f"#{r['id']}",
+                    "content": r["content"] or "",
+                }
+                for r in rows
+            ],
+            pcs=[],
+            actors=[],
+            items=[],
+            scenes=[],
+            objects=[],
+            story=None,
+            rarity_colors=RARITY_COLORS,
+        )
+    finally:
+        await client.close()
+    return HTMLResponse(html)
+
+
+async def render_global_meta(db_path: str) -> HTMLResponse:
+    """World Meta — world_meta 表 key-value / world_meta table key-value."""
+    client = await _get_client(db_path)
+    try:
+        rows = await client.fetch_all("SELECT key, value FROM world_meta ORDER BY key")
+        kv = {r["key"]: r["value"] or "" for r in rows}
+        html = _JINJA.get_template("pack.html").render(
+            pack_id="meta",
+            meta={"id": "meta", "name": "World Meta", "description": "world_meta 运行时状态", **kv},
+            lore=[],
+            pcs=[],
+            actors=[],
+            items=[],
+            scenes=[],
+            objects=[],
+            story=None,
+            rarity_colors=RARITY_COLORS,
         )
     finally:
         await client.close()

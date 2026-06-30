@@ -16,14 +16,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 from src.storage.sqlite_client import SQLiteClient
+from src.utils.logging import setup_logging
 from src.viewer import (
     render_global_events,
     render_global_items,
+    render_global_meta,
+    render_global_narratives,
     render_global_objects,
     render_index,
     render_pack,
 )
 from src.ws import handle_ws
+
+# 终端可见日志 / Terminal-visible logging
+setup_logging()
 
 
 @asynccontextmanager
@@ -177,6 +183,18 @@ async def view_global_objects(db: str = Query(default="data/world_db.db")):
 async def view_global_events(db: str = Query(default="data/world_db.db")):
     """全部 Events（pack 无关）."""
     return await render_global_events(db_path=db)
+
+
+@app.get("/view/global/narratives", response_class=HTMLResponse)
+async def view_global_narratives(db: str = Query(default="data/world_db.db")):
+    """叙事日志 — narratives 表."""
+    return await render_global_narratives(db_path=db)
+
+
+@app.get("/view/global/meta", response_class=HTMLResponse)
+async def view_global_meta(db: str = Query(default="data/world_db.db")):
+    """World Meta — world_meta 表."""
+    return await render_global_meta(db_path=db)
 
 
 @app.get("/view/pack/{pack_id}", response_class=HTMLResponse)

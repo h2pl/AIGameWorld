@@ -35,7 +35,6 @@ CREATE TABLE IF NOT EXISTS world_pack (
     rule_set        TEXT NOT NULL DEFAULT 'dnd_5e_srd',  -- 规则集 / Rule set
     author          TEXT NOT NULL DEFAULT '',   -- 作者 / Author
     license         TEXT NOT NULL DEFAULT 'MIT',  -- 许可证 / License
-    theme           TEXT NOT NULL DEFAULT '',   -- 主题/世界观主题 / Theme
     starting_scene  TEXT NOT NULL DEFAULT ''    -- 默认起始场景 / Default starting scene
 );
 

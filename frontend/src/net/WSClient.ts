@@ -1,8 +1,6 @@
 /** WebSocket 客户端 / WebSocket Client — 连接后端驱动 tick 实时更新 */
-
 import { gameStore } from "../state/GameStore";
 import { CONFIG } from "../config";
-import type { TickUpdate } from "../types";
 
 type WSMessage = {
   type: "init_ok" | "tick" | "done" | "pong" | "error";

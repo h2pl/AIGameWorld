@@ -8,6 +8,8 @@
   aw import worlds/forgotten_realms --db data/world_db.db    # 导入 pack / import pack
   aw serve                                       # 一键启动前后端 / Start backend + frontend
   aw serve --port 8000 --frontend-port 5173      # 指定端口 / custom ports
+  aw view                                        # 启动 DB 查看器 / Start DB viewer
+  aw view --port 8080                            # 指定端口 / custom port
   aw test --all                                  # LLM 诊断 / diagnostics
 """
 
@@ -889,12 +891,63 @@ async def serve(args: argparse.Namespace) -> None:
         cleanup()
 
 
+# ═══════════════════════════════════════════════════════════════
+# view — 启动 DB 查看器 / Start DB viewer server
+# ═══════════════════════════════════════════════════════════════
+
+
+async def view_server(args: argparse.Namespace) -> None:
+    """启动 DB 查看器 Web 服务 / Start DB viewer web server."""
+    project_root = Path(__file__).parent.parent  # backend/
+    print(f"[view] Starting DB viewer on http://localhost:{args.port}")
+    print(f"[view]   DB: {args.db}")
+    print(f"[view]   Home:    http://localhost:{args.port}/view")
+    print(f"[view]   Events:  http://localhost:{args.port}/view/global/events")
+    print(f"[view]   Items:   http://localhost:{args.port}/view/global/items")
+    print()
+    print("   按 Ctrl+C 停止 / Press Ctrl+C to stop")
+
+    def signal_handler(_sig: int, _frame: object) -> None:
+        print("\n[view] Shutting down...")
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "src.main:app",
+        "--host",
+        args.host,
+        "--port",
+        str(args.port),
+        "--log-level",
+        "info",
+    ]
+    proc = subprocess.Popen(  # noqa: S603
+        cmd, cwd=str(project_root), env={**os.environ, "PYTHONPATH": str(project_root)}
+    )
+    try:
+        while True:
+            await asyncio.sleep(1)
+            if proc.poll() is not None:
+                print("[view] Server stopped.")
+                break
+    except KeyboardInterrupt:
+        pass
+    finally:
+        with contextlib.suppress(Exception):
+            proc.terminate()
+
+
 def main() -> None:
     setup_logging()
     parser = argparse.ArgumentParser(
         prog="aw",
         description="AIGameWorld CLI — DM-driven DND world simulation",
-        epilog="示例: aw -i  |  aw run --ticks 5 --db --pack-id forgotten_realms --llm  |  aw serve",
+        epilog="示例: aw -i  |  aw run --ticks 5 --db --pack-id forgotten_realms --llm  |  aw serve  |  aw view",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -949,6 +1002,14 @@ def main() -> None:
     serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host (default: 0.0.0.0)")
     serve_parser.add_argument("--no-frontend", action="store_true", help="Backend only")
 
+    # view — 启动 DB 查看器 / Start DB viewer
+    view_parser = sub.add_parser("view", help="Start DB viewer server")
+    view_parser.add_argument("--port", type=int, default=8080, help="Viewer port (default: 8080)")
+    view_parser.add_argument("--host", default="0.0.0.0", help="Bind host (default: 0.0.0.0)")
+    view_parser.add_argument(
+        "--db", default="data/world_db.db", help="DB path (default: data/world_db.db)"
+    )
+
     args = parser.parse_args()
 
     if args.interactive:
@@ -961,6 +1022,8 @@ def main() -> None:
         asyncio.run(import_world(args))
     elif args.command == "serve":
         asyncio.run(serve(args))
+    elif args.command == "view":
+        asyncio.run(view_server(args))
     else:
         parser.print_help()
 

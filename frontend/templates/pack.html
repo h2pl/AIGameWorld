@@ -66,13 +66,13 @@ nav a .badge { background: #334155; padding: 2px 6px; border-radius: 4px; font-s
 
 <nav>
   <a href="#meta" class="active">Meta</a>
-  <a href="#lore">Lore<span class="badge">{{ lore|length }}</span></a>
-  <a href="#pcs">PCs<span class="badge">{{ pcs|length }}</span></a>
-  <a href="#actors">NPCs<span class="badge">{{ actors|length }}</span></a>
-  <a href="#items">Items<span class="badge">{{ items|length }}</span></a>
-  <a href="#scenes">Scenes<span class="badge">{{ scenes|length }}</span></a>
-  <a href="#objects">Objects<span class="badge">{{ objects|length }}</span></a>
-  <a href="#story">Story</a>
+  {% if lore %}<a href="#lore">Lore<span class="badge">{{ lore|length }}</span></a>{% endif %}
+  {% if pcs %}<a href="#pcs">PCs<span class="badge">{{ pcs|length }}</span></a>{% endif %}
+  {% if actors %}<a href="#actors">NPCs<span class="badge">{{ actors|length }}</span></a>{% endif %}
+  {% if items %}<a href="#items">Items<span class="badge">{{ items|length }}</span></a>{% endif %}
+  {% if scenes %}<a href="#scenes">Scenes<span class="badge">{{ scenes|length }}</span></a>{% endif %}
+  {% if objects %}<a href="#objects">Objects<span class="badge">{{ objects|length }}</span></a>{% endif %}
+  {% if story %}<a href="#story">Story</a>{% endif %}
 </nav>
 
 <!-- Meta -->

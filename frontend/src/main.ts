@@ -1,9 +1,10 @@
-/** AIGameWorld 前端入口 / Frontend entry point
+/** AIGameWorld 前端入口 / Frontend entry point — 全链路日志
  *
  * 流程 / Flow:
  *   1. 读取 URL ?pack=xxx 参数 → 2. 调后端 API 获取世界状态
  *   3. API 不可用时用 mock 数据 → 4. 写入 GameStore → 5. 启动 Phaser
  */
+const L = "[Main]"; // 日志前缀 / Log prefix
 import Phaser from "phaser";
 import { Boot } from "./scenes/Boot";
 import { GameScene } from "./scenes/GameScene";
@@ -13,16 +14,18 @@ import type { InitialWorldState } from "./types";
 
 /** 从后端加载初始世界状态 / Load initial world state from backend */
 async function loadWorldState(packId: string): Promise<InitialWorldState | null> {
+  console.log(`${L} loadWorldState: fetching ${CONFIG.API.base}${CONFIG.API.worldState}/${packId}/state`);
   try {
-    const url = `${CONFIG.API.base}${CONFIG.API.worldState}/${packId}/state`;
-    const resp = await fetch(url);
+    const resp = await fetch(`${CONFIG.API.base}${CONFIG.API.worldState}/${packId}/state`);
     if (!resp.ok) {
-      console.warn(`World state API not available (${resp.status}), using placeholder`);
+      console.warn(`${L} API not available (${resp.status}), using mock`);
       return null;
     }
-    return (await resp.json()) as InitialWorldState;
-  } catch {
-    console.warn("Backend not reachable, showing placeholder");
+    const data = await resp.json() as InitialWorldState;
+    console.log(`${L} API OK: pack=${data.pack_id} chars=${data.characters?.length || 0}`);
+    return data;
+  } catch (e) {
+    console.warn(`${L} Backend unreachable, using mock`, e instanceof Error ? e.message : e);
     return null;
   }
 }
@@ -126,12 +129,14 @@ function loadMockState(): InitialWorldState {
 
 /** 主入口 / Main entry */
 async function main(): Promise<void> {
-  // 尝试从 URL 参数读取 pack_id / Try reading pack_id from URL query
+  console.log(`${L} === main() START ===`);
   const params = new URLSearchParams(window.location.search);
   const packId = params.get("pack") || "forgotten_realms";
+  console.log(`${L} pack_id=${packId}`);
 
   // 加载世界数据 / Load world data
   const world = (await loadWorldState(packId)) || loadMockState();
+  console.log(`${L} world loaded: ${world.scenes.length} scenes, ${world.characters.length} chars, mock=${!world.pack_id || world.pack_id === "forgotten_realms"}`);
   gameStore.setWorldState(
     world.pack_id,
     world.scenes,
@@ -139,6 +144,7 @@ async function main(): Promise<void> {
     world.items,
     world.scene_objects,
   );
+  console.log(`${L} store initialized`);
 
   // 启动 Phaser 游戏引擎 / Start Phaser game engine
   const game = new Phaser.Game({
@@ -147,8 +153,8 @@ async function main(): Promise<void> {
     height: CONFIG.CANVAS.height,
     autoFocus: true,
     backgroundColor: CONFIG.COLOR.background,
-    pixelArt: true,           // 像素风 / Pixel art
-    roundPixels: true,        // 像素对齐 / Round pixels
+    pixelArt: true,
+    roundPixels: true,
     physics: {
       default: "arcade",
       arcade: {
@@ -162,6 +168,7 @@ async function main(): Promise<void> {
     },
     scene: [Boot, GameScene],
   });
+  console.log(`${L} Phaser.Game created, scenes: Boot → Game`);
 
   // ── 控制面板 / Control Panel ──
   const bar = document.createElement("div");
@@ -187,26 +194,32 @@ async function main(): Promise<void> {
   const { WSClient } = await import("./net/WSClient");
   const ws = new WSClient("aw");
 
+  // 只注册一次叙事监听 / Register narrative listener once
+  let narrativeUnsub: (() => void) | null = null;
+  gameStore.subscribe((s) => {
+    const gs = game.scene.getScene("Game") as import("./scenes/GameScene").GameScene;
+    if (gs?.setNarrative && s.narrative) gs.setNarrative(s.narrative);
+  });
+
   btnRun.onclick = async () => {
     const n = parseInt(tInput.value) || 1;
+    console.log(`${L} ▶ Run clicked: ticks=${n}`);
     try {
       status.textContent = "Connecting...";
       await ws.connect(world.pack_id);
+      console.log(`${L} WS connected, sending run ${n} ticks`);
       status.textContent = "Connected";
       ws.runTicks(n);
-      // 监听叙事更新 / Watch for narrative updates
-      gameStore.subscribe((s) => {
-        const gs = game.scene.getScene("Game") as import("./scenes/GameScene").GameScene;
-        if (gs?.setNarrative) gs.setNarrative(s.narrative);
-      });
       status.textContent = `Running ${n} tick(s)...`;
       await new Promise(r => setTimeout(r, n * 1000 + 500));
       status.textContent = `Connected (tick: ${gameStore.getState().current_tick})`;
+      console.log(`${L} Run complete: tick=${gameStore.getState().current_tick}`);
     } catch (e) {
       status.textContent = "Error: backend not running";
-      console.error(e);
+      console.error(`${L} Run failed:`, e instanceof Error ? e.message : e);
     }
   };
+  console.log(`${L} === main() DONE ===`);
 }
 
 main();
