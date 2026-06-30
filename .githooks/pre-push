@@ -1,17 +1,17 @@
 #!/bin/bash
 # AIGameWorld Pre-push Hook — 仅对变更模块跑测试 / Only run tests for changed modules
-# pre-push 传入: <local-ref> <local-sha1> <remote-ref> <remote-sha1>
-# 我们取当前分支 vs 远程分支的差异文件
+# stdin 每行: <local-ref> <local-sha1> <remote-ref> <remote-sha1>
 set -e
 
-# 获取将要推送的变更文件 / Get files to be pushed
-remote_sha=$(git rev-parse "$2" 2>/dev/null || echo "")
-if [ -z "$remote_sha" ] || [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
-    # 新分支或首次推送 → 比较 main/develop
-    changed_files=$(git diff --name-only origin/develop..HEAD 2>/dev/null || git diff --name-only HEAD~10..HEAD 2>/dev/null || echo "")
-else
-    changed_files=$(git diff --name-only "$remote_sha..HEAD")
-fi
+changed_files=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ -z "$remote_sha" ] || [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    # 新分支 → 对比 origin/develop
+    changed_files=$(git diff --name-only origin/develop.."$local_sha" 2>/dev/null || echo "")
+  else
+    changed_files=$(git diff --name-only "$remote_sha..$local_sha")
+  fi
+done
 
 # 判断是否有后端/前端变更 / Check if backend or frontend changed
 backend_changed=$(echo "$changed_files" | grep -c "^backend/src/\|^backend/tests/" || true)
@@ -26,22 +26,22 @@ if [ "$backend_changed" -gt 0 ]; then
     echo "=== Pre-push: 运行后端测试 / Running backend tests ==="
     (cd backend && uv run python -m pytest) || { echo "FAIL: 后端测试不通过 / Backend tests failed"; exit 1; }
 else
-    echo "  (backend 无变更，跳过测试 / no backend changes, skip tests)"
+    echo "  (backend 无变更，跳过 / no backend changes, skip)"
 fi
 
 # 前端测试 / Frontend tests
 if [ "$frontend_changed" -gt 0 ]; then
     echo ""
     echo "=== Pre-push: 运行前端测试 / Running frontend tests ==="
-    (cd frontend && npm test 2>/dev/null) || { echo "WARN: 前端测试不存在或失败 / Frontend tests unavailable or failed (non-blocking)"; }
+    (cd frontend && npm test 2>/dev/null) || { echo "WARN: 前端测试不可用 (非阻塞) / Frontend tests unavailable (non-blocking)"; }
 else
-    echo "  (frontend 无变更，跳过测试 / no frontend changes, skip tests)"
+    echo "  (frontend 无变更，跳过 / no frontend changes, skip)"
 fi
 
-# 全部无变更 / No code changes at all
+# 全部无变更 / No code changes
 if [ "$backend_changed" -eq 0 ] && [ "$frontend_changed" -eq 0 ]; then
     echo ""
-    echo "OK: 无代码变更，跳过测试 / No source changes, tests skipped"
+    echo "OK: 无代码变更，跳过测试 / No source changes, skip tests"
 else
     echo ""
     echo "OK: 测试通过，允许推送 / Tests passed, pushing allowed"
