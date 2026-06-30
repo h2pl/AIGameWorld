@@ -1,4 +1,9 @@
-"""故事仓储."""
+"""故事仓储 / Story Repository.
+├── StoryArc/save/load: 剧情线 / Story arcs
+├── StoryHook/save/load: 伏笔 / Hooks
+├── MainCastRoster: 主角团花名册 / Roster
+└── Narrative: 叙事日志 / Narrative log
+"""
 
 import json
 
@@ -10,8 +15,13 @@ class StoryRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
-    async def load_arcs(self) -> list[StoryArc]:
-        rows = await self._db.fetch_all("SELECT * FROM story_arcs")
+    async def load_arcs(self, pack_id: str | None = None) -> list[StoryArc]:
+        if pack_id:
+            rows = await self._db.fetch_all(
+                "SELECT * FROM story_arcs WHERE pack_id = ?", (pack_id,)
+            )
+        else:
+            rows = await self._db.fetch_all("SELECT * FROM story_arcs")
         return [
             StoryArc(
                 id=r["id"],
@@ -50,8 +60,13 @@ class StoryRepo:
             ),
         )
 
-    async def load_hooks(self) -> list[StoryHook]:
-        rows = await self._db.fetch_all("SELECT * FROM story_hooks")
+    async def load_hooks(self, pack_id: str | None = None) -> list[StoryHook]:
+        if pack_id:
+            rows = await self._db.fetch_all(
+                "SELECT * FROM story_hooks WHERE pack_id = ?", (pack_id,)
+            )
+        else:
+            rows = await self._db.fetch_all("SELECT * FROM story_hooks")
         return [
             StoryHook(
                 id=r["id"],

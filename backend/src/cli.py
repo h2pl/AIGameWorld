@@ -1,11 +1,11 @@
 """CLI 入口 / CLI entry point.
 
 用法:
-  python -m src.cli run --ticks 5              # 纯 mock，不写 DB
-  python -m src.cli run --ticks 3 --db         # 全链路：DB 读写
-  python -m src.cli run --ticks 3 --llm         # 真实 LLM，不写 DB
-  python -m src.cli run --ticks 3 --db --llm   # 真实 LLM + DB 读写 + 种子数据
-  python -m src.cli test all                    # LLM 诊断：测试所有组件
+  python -m src.cli run --ticks 5                              # 纯 mock，不写 DB
+  python -m src.cli run --ticks 3 --db                         # 全链路：DB 读写 + 种子数据
+  python -m src.cli run --ticks 3 --db --pack-id forgotten_realms  # 从 DB 加载 pack 数据
+  python -m src.cli run --ticks 3 --db --pack-id forgotten_realms --llm  # LLM + pack 数据
+  python -m src.cli import worlds/forgotten_realms --db data/world_db.db  # 导入 pack
 """
 
 import argparse
@@ -191,35 +191,48 @@ async def run(args: argparse.Namespace) -> None:
     repos = None
     llm = None
 
-    # -- DB 模式：初始化 + 种子 / DB mode: init + seed
+    # -- DB 模式：从 DB 加载 pack 数据 / DB mode: load pack data from DB
     if use_db:
         db_path = args.db_path or "data/world_db.db"
+        pack_id = args.pack_id
+
         db = SQLiteClient(db_path)
         await db.connect()
         await db.init_schema()
-        print("  [DB] initialized (15 tables)")
+        print("  [DB] initialized")
 
-        repo = CharacterRepo(db)
-        pcs = _seed_pcs()
-        for pc in pcs:
-            await repo.save_pc(pc)
-        print(f"  [DB] Seeded {len(pcs)} PCs: {[p.name for p in pcs]}")
-
-        actors = _seed_actors()
-        for a in actors:
-            await repo.save_actor(a)
-        print(f"  [DB] Seeded {len(actors)} Actors: {[a.name for a in actors]}")
-
+        char_repo = CharacterRepo(db)
         story_repo = StoryRepo(db)
-        arcs, hooks = _seed_story()
-        for arc in arcs:
-            await story_repo.save_arc(arc)
-        for hook in hooks:
-            await story_repo.save_hook(hook)
-        await db.commit()
-        print(f"  [DB] Seeded {len(arcs)} story arcs + {len(hooks)} hooks")
 
-        repos = {"story": story_repo, "char": repo}
+        if pack_id:
+            # 从 DB 加载指定 pack / Load specified pack from DB
+            pcs = await char_repo.load_pcs(pack_id)
+            actors = await char_repo.load_actors(pack_id)
+            arcs = await story_repo.load_arcs(pack_id)
+            hooks = await story_repo.load_hooks(pack_id)
+            print(f"  [DB] pack_id={pack_id}")
+            print(
+                f"  [DB] Loaded {len(pcs)} PCs, {len(actors)} Actors, {len(arcs)} arcs, {len(hooks)} hooks"
+            )
+        else:
+            # 无 pack_id：写种子数据 / No pack_id: write seed data
+            pcs = _seed_pcs()
+            actors = _seed_actors()
+            arcs, hooks = _seed_story()
+            for pc in pcs:
+                await char_repo.save_pc(pc)
+            for a in actors:
+                await char_repo.save_actor(a)
+            for arc in arcs:
+                await story_repo.save_arc(arc)
+            for hook in hooks:
+                await story_repo.save_hook(hook)
+            await db.commit()
+            print(
+                f"  [DB] Seeded {len(pcs)} PCs, {len(actors)} Actors, {len(arcs)} arcs, {len(hooks)} hooks"
+            )
+
+        repos = {"story": story_repo, "char": char_repo}
 
     # -- LLM 模式：创建客户端 / LLM mode: create client
     if use_llm:
@@ -491,6 +504,9 @@ def main() -> None:
         "--db", action="store_true", help="Enable full DB read/write + seed data"
     )
     run_parser.add_argument("--db-path", default="data/world_db.db", help="DB file path")
+    run_parser.add_argument(
+        "--pack-id", default="", help="Load pack data from DB (e.g. forgotten_realms)"
+    )
     run_parser.add_argument("--llm", action="store_true", help="Use real LLM instead of mock")
 
     # test 子命令（诊断）/ test subcommand (diagnostic)
