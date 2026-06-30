@@ -6,13 +6,20 @@
   aw run --ticks 5                               # 纯 mock，不写 DB / mock only
   aw run --ticks 3 --db --pack-id forgotten_realms --llm  # LLM + pack
   aw import worlds/forgotten_realms --db data/world_db.db    # 导入 pack / import pack
+  aw serve                                       # 一键启动前后端 / Start backend + frontend
+  aw serve --port 8000 --frontend-port 5173      # 指定端口 / custom ports
   aw test --all                                  # LLM 诊断 / diagnostics
 """
 
 import argparse
 import asyncio
+import contextlib
 import json
+import os
 import shlex
+import signal
+import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -750,12 +757,144 @@ async def shell(args: argparse.Namespace) -> None:
 # ═══════════════════════════════════════════════════════════════
 
 
+# ═══════════════════════════════════════════════════════════════
+# serve — 一键启动前后端 / Start backend + frontend dev servers
+# ═══════════════════════════════════════════════════════════════
+
+
+async def serve(args: argparse.Namespace) -> None:
+    """启动后端 FastAPI + 前端 Vite 开发服务器 / Start backend FastAPI + frontend Vite dev server."""
+    project_root = Path(__file__).parent.parent  # backend/
+    frontend_dir = project_root.parent / "frontend"  # AIGameWorld/frontend/
+
+    processes: list[subprocess.Popen] = []
+
+    def cleanup() -> None:
+        """关闭所有子进程 / Terminate all child processes."""
+        print("\n[serve] Shutting down...")
+        for p in processes:
+            with contextlib.suppress(Exception):
+                p.terminate()
+        print("[serve] All servers stopped. Goodbye!")
+
+    # 信号处理 / Signal handling — Ctrl+C 时清理子进程
+    def signal_handler(_sig: int, _frame: object) -> None:
+        cleanup()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    try:
+        # ── 1. 启动后端 / Start backend ──
+        backend_cmd = [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "src.main:app",
+            "--host",
+            args.host,
+            "--port",
+            str(args.port),
+            "--log-level",
+            "info",
+        ]
+        print(
+            f"[serve] Starting backend: uvicorn src.main:app --host {args.host} --port {args.port}"
+        )
+        backend_proc = subprocess.Popen(  # noqa: S603
+            backend_cmd,
+            cwd=str(project_root),
+            env={**os.environ, "PYTHONPATH": str(project_root)},
+        )
+        processes.append(backend_proc)
+        await asyncio.sleep(2)  # 等后端启动 / Wait for backend
+
+        # 检查后端是否启动成功 / Check backend health
+        if backend_proc.poll() is not None:
+            print("[serve] ERROR: Backend failed to start!")
+            cleanup()
+            return
+
+        print(f"[serve] ✓ Backend running at http://localhost:{args.port}")
+        print(f"[serve]   API: http://localhost:{args.port}/api/pack/forgotten_realms/state")
+        print(f"[serve]   WS:  ws://localhost:{args.port}/ws/aw")
+        print(f"[serve]   Viewer: http://localhost:{args.port}/view")
+
+        # ── 2. 启动前端 / Start frontend ──
+        if not args.no_frontend and frontend_dir.exists():
+            print(f"[serve] Starting frontend: vite --port {args.frontend_port}")
+            frontend_cmd = [
+                "npx",
+                "vite",
+                "--port",
+                str(args.frontend_port),
+                "--host",
+                args.host,
+            ]
+            # Windows 下需要 shell=True / Need shell on Windows
+            frontend_proc = subprocess.Popen(  # noqa: S603
+                frontend_cmd,
+                cwd=str(frontend_dir),
+                shell=(os.name == "nt"),
+            )
+            processes.append(frontend_proc)
+            await asyncio.sleep(1)
+
+            if frontend_proc.poll() is not None:
+                print("[serve] WARNING: Frontend may have failed to start. Check Node.js/npm.")
+                print("[serve]   Run manually: cd frontend && npx vite --port 5173")
+            else:
+                print(f"[serve] ✓ Frontend running at http://localhost:{args.frontend_port}")
+                print(
+                    f"[serve]   Game page: http://localhost:{args.frontend_port}/?pack=forgotten_realms"
+                )
+        elif not frontend_dir.exists():
+            print(f"[serve] WARNING: Frontend dir not found at {frontend_dir}, skipping.")
+        else:
+            print("[serve] Backend only mode (--no-frontend)")
+
+        # ── 3. 打印汇总 / Print summary ──
+        print()
+        print("=" * 60)
+        print("  AIGameWorld 开发服务器已启动 / Dev servers running")
+        print("=" * 60)
+        print(f"  Backend:  http://localhost:{args.port}")
+        if not args.no_frontend and frontend_dir.exists():
+            print(f"  Frontend: http://localhost:{args.frontend_port}")
+            print(f"  Game:     http://localhost:{args.frontend_port}/?pack=forgotten_realms")
+        print(f"  Viewer:   http://localhost:{args.port}/view")
+        print()
+        print("  按 Ctrl+C 停止所有服务 / Press Ctrl+C to stop")
+        print("=" * 60)
+        print()
+
+        # ── 4. 保持运行 / Keep alive ──
+        while True:
+            await asyncio.sleep(1)
+            # 检查后端是否崩溃 / Check if backend crashed
+            if backend_proc.poll() is not None:
+                print("[serve] Backend process exited unexpectedly!")
+                cleanup()
+                break
+            # 检查前端 / Check frontend
+            if not args.no_frontend:
+                fp = processes[-1] if len(processes) > 1 else None
+                if fp and fp.poll() is not None:
+                    print("[serve] Frontend process exited. Backend still running.")
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        cleanup()
+
+
 def main() -> None:
     setup_logging()
     parser = argparse.ArgumentParser(
         prog="aw",
         description="AIGameWorld CLI — DM-driven DND world simulation",
-        epilog="示例: aw -i  |  aw run --ticks 5 --db --pack-id forgotten_realms --llm",
+        epilog="示例: aw -i  |  aw run --ticks 5 --db --pack-id forgotten_realms --llm  |  aw serve",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -801,6 +940,15 @@ def main() -> None:
         "--chroma", type=Path, default=None, help="ChromaDB persist path (optional)"
     )
 
+    # serve — 一键启动前后端 / Start backend + frontend
+    serve_parser = sub.add_parser("serve", help="Start backend + frontend dev servers")
+    serve_parser.add_argument("--port", type=int, default=8000, help="Backend port (default: 8000)")
+    serve_parser.add_argument(
+        "--frontend-port", type=int, default=5173, help="Frontend port (default: 5173)"
+    )
+    serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host (default: 0.0.0.0)")
+    serve_parser.add_argument("--no-frontend", action="store_true", help="Backend only")
+
     args = parser.parse_args()
 
     if args.interactive:
@@ -811,6 +959,8 @@ def main() -> None:
         asyncio.run(test(args))
     elif args.command == "import":
         asyncio.run(import_world(args))
+    elif args.command == "serve":
+        asyncio.run(serve(args))
     else:
         parser.print_help()
 
