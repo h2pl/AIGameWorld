@@ -1,10 +1,13 @@
 """World Pack 加载器 / World Pack Loader.
 
-从 Studio 生成的 YAML 模板加载数据到运行存储：
-  YAML → Pydantic 领域模型 → Repository / SQLiteClient → DB
+从 Studio 生成的 world-pack（实例 YAML 合集）加载到运行存储：
+  YAML → Pydantic 领域模型 → Repository → DB
+
+术语 / Terminology:
+  world-template = Studio 的 templates/ 下原始 YAML 蓝图（字段骨架）
+  world-pack     = aw-studio generate 输出的实例 YAML 合集（含填充值的完整世界包）
 """
 
-import json
 from pathlib import Path
 
 import yaml
@@ -26,6 +29,8 @@ from ..domain import (
     StoryHook,
 )
 from ..repository.character_repo import CharacterRepo
+from ..repository.item_repo import ItemRepo
+from ..repository.scene_repo import SceneRepo
 from ..repository.story_repo import StoryRepo
 from ..storage.chroma_client import ChromaClient
 from ..storage.sqlite_client import SQLiteClient
@@ -187,8 +192,8 @@ def _urgency(text: str) -> int:
 # ═══════════════════════════════════════════════════════════════
 
 
-def _read_template(template_dir: Path) -> dict:
-    """加载模板目录下所有 YAML → dict."""
+def _read_pack(pack_dir: Path) -> dict:
+    """读取 world-pack 目录下所有实例 YAML → dict."""
     result: dict = {
         "meta": {},
         "lore": [],
@@ -199,17 +204,17 @@ def _read_template(template_dir: Path) -> dict:
         "scene_objects": [],
         "story_setup": {"arcs": [], "hooks": []},
     }
-    if not template_dir.exists():
+    if not pack_dir.exists():
         return result
 
-    _read_single(template_dir / "meta.yaml", result, "meta")
-    _read_dir(template_dir / "lore", result, "lore")
-    _read_dir(template_dir / "scenes", result, "scenes")
-    _read_dir(template_dir / "player_characters", result, "player_characters")
-    _read_dir(template_dir / "actors", result, "actors")
-    _read_dir(template_dir / "items", result, "items")
-    _read_dir(template_dir / "scene_objects", result, "scene_objects")
-    _read_single(template_dir / "story_setup.yaml", result, "story_setup")
+    _read_single(pack_dir / "meta.yaml", result, "meta")
+    _read_dir(pack_dir / "lore", result, "lore")
+    _read_dir(pack_dir / "scenes", result, "scenes")
+    _read_dir(pack_dir / "player_characters", result, "player_characters")
+    _read_dir(pack_dir / "actors", result, "actors")
+    _read_dir(pack_dir / "items", result, "items")
+    _read_dir(pack_dir / "scene_objects", result, "scene_objects")
+    _read_single(pack_dir / "story_setup.yaml", result, "story_setup")
 
     return result
 
@@ -234,30 +239,33 @@ def _read_dir(dirpath: Path, result: dict, key: str) -> None:
 
 
 class WorldLoader:
-    """加载 Studio YAML 模板到 AIGameWorld 存储."""
+    """加载 world-pack → AIGameWorld 存储（全部通过 Repo 层）."""
 
     def __init__(self, db: SQLiteClient, chroma: ChromaClient | None = None):
-        self._db = db
         self._chroma = chroma
+        self._scene_repo = SceneRepo(db)
+        self._item_repo = ItemRepo(db)
         self._char_repo = CharacterRepo(db)
         self._story_repo = StoryRepo(db)
 
-    async def load(self, template_dir: Path, pack_name: str = "") -> dict[str, int]:
-        """加载模板目录到数据库。
+    async def load(self, pack_dir: Path, pack_name: str = "") -> dict[str, int]:
+        """加载 world-pack 到数据库。
+
+        world-pack = aw-studio generate 输出的实例 YAML 合集
 
         Args:
-            template_dir: YAML 模板目录 (如 worlds/custom/my_world)
+            pack_dir: world-pack 目录 (如 worlds/custom/my_world)
             pack_name: Pack 名称 (默认取目录名)
 
         Returns:
             {entity_type: count} 写入计数
         """
-        if not template_dir.exists():
-            raise FileNotFoundError(f"Template directory not found: {template_dir}")
+        if not pack_dir.exists():
+            raise FileNotFoundError(f"Pack directory not found: {pack_dir}")
         if not pack_name:
-            pack_name = template_dir.name
+            pack_name = pack_dir.name
 
-        data = _read_template(template_dir)
+        data = _read_pack(pack_dir)
         counts: dict[str, int] = {}
 
         # 按 FK 依赖顺序写入 / Write in FK dependency order
@@ -276,107 +284,55 @@ class WorldLoader:
 
         return counts
 
-    # ── Scenes ──
+    # ── Scenes (SceneRepo) ──
 
     async def _write_scenes(self, scenes: list[dict], pack_name: str) -> int:
         for s in scenes:
-            await self._db.execute(
-                "INSERT OR REPLACE INTO scenes "
-                "(id, name, type, description, exits_json, landmarks_json, pack_name) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (
-                    s.get("id", ""),
-                    s.get("name", ""),
-                    s.get("type", ""),
-                    s.get("description", ""),
-                    json.dumps(s.get("exits", []), ensure_ascii=False),
-                    json.dumps(s.get("landmarks", []), ensure_ascii=False),
-                    pack_name,
-                ),
-            )
+            await self._scene_repo.save_scene(s, pack_name)
         return len(scenes)
 
-    # ── Items ──
+    # ── Items (ItemRepo) ──
 
     async def _write_items(self, items: list[dict], pack_name: str) -> int:
         for i in items:
-            item = _item_from_yaml(i, pack_name)
-            await self._db.execute(
-                "INSERT OR REPLACE INTO items "
-                "(id, name, item_type, rarity, weight, value, description, data_json, pack_name) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    item.id,
-                    item.name,
-                    item.item_type.value,
-                    item.rarity,
-                    item.weight,
-                    item.value,
-                    item.description,
-                    json.dumps(item.data, ensure_ascii=False),
-                    item.pack_name,
-                ),
-            )
+            await self._item_repo.save(_item_from_yaml(i, pack_name))
         return len(items)
 
-    # ── Scene Objects ──
+    # ── Scene Objects (SceneRepo) ──
 
     async def _write_scene_objects(self, objects: list[dict]) -> int:
         for o in objects:
-            obj = _scene_obj_from_yaml(o)
-            await self._db.execute(
-                "INSERT OR REPLACE INTO scene_objects "
-                "(id, name, object_type, scene_id, position_x, position_y, interactable, interact_data_json) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    obj.id,
-                    obj.name,
-                    obj.object_type.value,
-                    obj.scene_id,
-                    0,
-                    0,
-                    int(obj.interactable),
-                    json.dumps(obj.interact_data, ensure_ascii=False)
-                    if obj.interact_data
-                    else None,
-                ),
-            )
+            await self._scene_repo.save_object(_scene_obj_from_yaml(o))
         return len(objects)
 
-    # ── PCs ──
+    # ── PCs (CharacterRepo) ──
 
     async def _write_pcs(self, data: dict) -> int:
         starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
         pcs = data.get("player_characters", [])
         for pc_data in pcs:
-            pc = _pc_from_yaml(pc_data, starting_scene)
-            await self._char_repo.save_pc(pc)
+            await self._char_repo.save_pc(_pc_from_yaml(pc_data, starting_scene))
         return len(pcs)
 
-    # ── Actors ──
+    # ── Actors (CharacterRepo) ──
 
     async def _write_actors(self, actors: list[dict]) -> int:
         for a_data in actors:
-            actor = _actor_from_yaml(a_data)
-            await self._char_repo.save_actor(actor)
+            await self._char_repo.save_actor(_actor_from_yaml(a_data))
         return len(actors)
 
-    # ── Story Arcs ──
+    # ── Story (StoryRepo) ──
 
     async def _write_story_arcs(self, data: dict) -> int:
         arcs = data.get("story_setup", {}).get("arcs", [])
         for arc_data in arcs:
-            arc = _story_arc_from_yaml(arc_data)
-            await self._story_repo.save_arc(arc)
+            await self._story_repo.save_arc(_story_arc_from_yaml(arc_data))
         return len(arcs)
-
-    # ── Story Hooks ──
 
     async def _write_story_hooks(self, data: dict) -> int:
         hooks = data.get("story_setup", {}).get("hooks", [])
         for h_data in hooks:
-            hook = _hook_from_yaml(h_data)
-            await self._story_repo.save_hook(hook)
+            await self._story_repo.save_hook(_hook_from_yaml(h_data))
         return len(hooks)
 
     # ── ChromaDB ──

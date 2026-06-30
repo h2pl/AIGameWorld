@@ -439,18 +439,18 @@ async def test(args: argparse.Namespace) -> None:
 
 
 async def import_world(args: argparse.Namespace) -> None:
-    """导入 Studio YAML 模板到 SQLite + (可选) ChromaDB."""
-    from src.pack.loader import WorldLoader
+    """导入 world-pack（实例 YAML 合集）到 SQLite + (可选) ChromaDB."""
     from src.storage.chroma_client import ChromaClient
     from src.storage.sqlite_client import SQLiteClient
+    from src.world_pack_loader.loader import WorldLoader
 
-    template_dir: Path = args.path
-    if not template_dir.exists():
-        print(f"Error: template directory not found: {template_dir}")
+    pack_dir: Path = args.path
+    if not pack_dir.exists():
+        print(f"Error: world-pack directory not found: {pack_dir}")
         return
 
-    pack_name = template_dir.name
-    print(f"Importing '{pack_name}' from {template_dir} ...")
+    pack_name = pack_dir.name
+    print(f"Importing world-pack '{pack_name}' from {pack_dir} ...")
 
     # 初始化数据库 / Init database
     db = SQLiteClient(str(args.db))
@@ -462,9 +462,9 @@ async def import_world(args: argparse.Namespace) -> None:
     if args.chroma:
         chroma = ChromaClient(str(args.chroma))
 
-    # 加载 / Load
+    # 加载 world-pack / Load world-pack
     loader = WorldLoader(db, chroma)
-    counts = await loader.load(template_dir, pack_name=pack_name)
+    counts = await loader.load(pack_dir, pack_name=pack_name)
     await db.commit()
 
     print(f"[OK] Imported: {counts}")
@@ -509,9 +509,11 @@ def main() -> None:
         "--all", dest="test_all", action="store_true", help="Test everything (default)"
     )
 
-    # import 子命令 / import subcommand — 加载 Studio YAML 模板到存储
-    imp_parser = sub.add_parser("import", help="Import Studio YAML template into DB")
-    imp_parser.add_argument("path", type=Path, help="Template directory path")
+    # import 子命令 — 导入 world-pack（实例 YAML 合集）到存储
+    imp_parser = sub.add_parser("import", help="Import world-pack into DB")
+    imp_parser.add_argument(
+        "path", type=Path, help="World-pack directory path (aw-studio generate output)"
+    )
     imp_parser.add_argument(
         "--db", type=Path, default=Path("data/world_db.db"), help="SQLite DB path"
     )

@@ -4,8 +4,8 @@
 import pytest  # 测试框架
 from pydantic import ValidationError  # 校验异常
 
-from src.pack.loader import WorldLoader
-from src.pack.validator import (
+from src.world_pack_loader.loader import WorldLoader
+from src.world_pack_loader.validator import (
     FilesManifest,
     MetaYaml,
     PackValidator,
