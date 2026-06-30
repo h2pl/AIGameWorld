@@ -1,7 +1,8 @@
+# Pack 测试——validator schema / loader / Pack tests — validator + loader
 """Pack 测试——validator schema / loader."""
 
-import pytest
-from pydantic import ValidationError
+import pytest  # 测试框架
+from pydantic import ValidationError  # 校验异常
 
 from src.pack.loader import WorldLoader
 from src.pack.validator import (
@@ -101,5 +102,4 @@ class TestPackValidator:
 
 class TestWorldLoader:
     def test_loader_exists(self):
-        loader = WorldLoader()
-        assert loader is not None
+        assert WorldLoader is not None

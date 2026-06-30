@@ -434,6 +434,48 @@ async def test(args: argparse.Namespace) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
+# import 命令 / import command — YAML → Domain Model → DB
+# ═══════════════════════════════════════════════════════════════
+
+
+async def import_world(args: argparse.Namespace) -> None:
+    """导入 Studio YAML 模板到 SQLite + (可选) ChromaDB."""
+    from src.pack.loader import WorldLoader
+    from src.storage.chroma_client import ChromaClient
+    from src.storage.sqlite_client import SQLiteClient
+
+    template_dir: Path = args.path
+    if not template_dir.exists():
+        print(f"Error: template directory not found: {template_dir}")
+        return
+
+    pack_name = template_dir.name
+    print(f"Importing '{pack_name}' from {template_dir} ...")
+
+    # 初始化数据库 / Init database
+    db = SQLiteClient(str(args.db))
+    await db.connect()
+    await db.init_schema()
+
+    # 可选 ChromaDB / Optional vector DB
+    chroma = None
+    if args.chroma:
+        chroma = ChromaClient(str(args.chroma))
+
+    # 加载 / Load
+    loader = WorldLoader(db, chroma)
+    counts = await loader.load(template_dir, pack_name=pack_name)
+    await db.commit()
+
+    print(f"[OK] Imported: {counts}")
+    print(f"     SQLite: {args.db}")
+    if args.chroma:
+        print(f"     ChromaDB: {args.chroma}")
+
+    await db.close()
+
+
+# ═══════════════════════════════════════════════════════════════
 # main
 # ═══════════════════════════════════════════════════════════════
 
@@ -467,12 +509,24 @@ def main() -> None:
         "--all", dest="test_all", action="store_true", help="Test everything (default)"
     )
 
+    # import 子命令 / import subcommand — 加载 Studio YAML 模板到存储
+    imp_parser = sub.add_parser("import", help="Import Studio YAML template into DB")
+    imp_parser.add_argument("path", type=Path, help="Template directory path")
+    imp_parser.add_argument(
+        "--db", type=Path, default=Path("data/world_db.db"), help="SQLite DB path"
+    )
+    imp_parser.add_argument(
+        "--chroma", type=Path, default=None, help="ChromaDB persist path (optional)"
+    )
+
     args = parser.parse_args()
 
     if args.command == "run":
         asyncio.run(run(args))
     elif args.command == "test":
         asyncio.run(test(args))
+    elif args.command == "import":
+        asyncio.run(import_world(args))
     else:
         parser.print_help()
 

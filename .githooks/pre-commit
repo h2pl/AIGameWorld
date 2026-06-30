@@ -5,10 +5,10 @@
 set -e
 
 echo "=== Pre-commit: 密钥检查 / Secret Check ==="
-python .githooks/no-secrets.py || { echo "FAIL: 疑似密钥泄露 / Potential secret leak"; exit 1; }
+uv run python .githooks/no-secrets.py || { echo "FAIL: 疑似密钥泄露 / Potential secret leak"; exit 1; }
 
 echo "=== Pre-commit: 注释检查 / Comment Check ==="
-python .githooks/check-comments.py || { echo "FAIL: 注释不足 / Insufficient comments"; exit 1; }
+uv run python .githooks/check-comments.py || { echo "FAIL: 注释不足 / Insufficient comments"; exit 1; }
 
 echo "=== Pre-commit: Ruff Lint ==="
 cd backend && uv run ruff check . || { echo "FAIL: Python Lint"; exit 1; }
