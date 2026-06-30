@@ -16,7 +16,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 from src.storage.sqlite_client import SQLiteClient
-from src.viewer import render_index, render_pack
+from src.viewer import (
+    render_global_events,
+    render_global_items,
+    render_global_objects,
+    render_index,
+    render_pack,
+)
 from src.ws import handle_ws
 
 
@@ -150,14 +156,30 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
 
 
 @app.get("/view", response_class=HTMLResponse)
-async def view_index(db: str = Query(default="data/world_db.db", description="SQLite 路径")):
-    """DB World Pack 查看器首页."""
-    return render_index(db_path=db)
+async def view_index(db: str = Query(default="data/world_db.db")):
+    """DB 查看器首页 — pack 列表 + 全局入口."""
+    return await render_index(db_path=db)
 
 
-@app.get("/view/{pack_id}", response_class=HTMLResponse)
-async def view_pack(
-    pack_id: str, db: str = Query(default="data/world_db.db", description="SQLite 路径")
-):
-    """DB Pack 详情页."""
-    return render_pack(pack_id, db_path=db)
+@app.get("/view/global/items", response_class=HTMLResponse)
+async def view_global_items(db: str = Query(default="data/world_db.db")):
+    """全部 Items（pack 无关）."""
+    return await render_global_items(db_path=db)
+
+
+@app.get("/view/global/scene-objects", response_class=HTMLResponse)
+async def view_global_objects(db: str = Query(default="data/world_db.db")):
+    """全部 Scene Objects（pack 无关）."""
+    return await render_global_objects(db_path=db)
+
+
+@app.get("/view/global/events", response_class=HTMLResponse)
+async def view_global_events(db: str = Query(default="data/world_db.db")):
+    """全部 Events（pack 无关）."""
+    return await render_global_events(db_path=db)
+
+
+@app.get("/view/pack/{pack_id}", response_class=HTMLResponse)
+async def view_pack(pack_id: str, db: str = Query(default="data/world_db.db")):
+    """Pack 详情页."""
+    return await render_pack(pack_id, db_path=db)

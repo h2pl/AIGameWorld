@@ -11,10 +11,12 @@
 import logging
 from pathlib import Path
 
+from ..domain.world_pack import WorldPack
 from ..repository.character_repo import CharacterRepo
 from ..repository.item_repo import ItemRepo
 from ..repository.scene_repo import SceneRepo
 from ..repository.story_repo import StoryRepo
+from ..repository.world_pack_repo import WorldPackRepo
 from ..storage.chroma_client import ChromaClient
 from ..storage.sqlite_client import SQLiteClient
 from .deserialize import (
@@ -36,6 +38,7 @@ class WorldLoader:
 
     def __init__(self, db: SQLiteClient, chroma: ChromaClient | None = None):
         self._chroma = chroma
+        self._pack_repo = WorldPackRepo(db)
         self._scene_repo = SceneRepo(db)
         self._item_repo = ItemRepo(db)
         self._char_repo = CharacterRepo(db)
@@ -61,6 +64,22 @@ class WorldLoader:
         pack_id = data["meta"].get("id", pack_dir.name)
         pack_name = data["meta"].get("name", pack_dir.name)
         logger.info("[WorldLoader] pack_id=%s pack_name=%s", pack_id, pack_name)
+
+        # ── 写入 world_pack 元信息 / Save world_pack metadata ──
+        meta = data["meta"]
+        await self._pack_repo.save(
+            WorldPack(
+                id=pack_id,
+                name=pack_name,
+                description=meta.get("description", ""),
+                version=meta.get("version", "1.0.0"),
+                rule_set=meta.get("rule_set", "dnd_5e_srd"),
+                author=meta.get("author", ""),
+                license=meta.get("license", "MIT"),
+                theme=meta.get("theme", ""),
+                starting_scene=meta.get("starting_scene", ""),
+            )
+        )
 
         # ── 关联关系校验 / FK validation ──
         warnings = validate_pack_relations(data)

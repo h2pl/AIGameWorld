@@ -10,12 +10,11 @@ export class CharacterSprite {
   private sprite: Phaser.GameObjects.Sprite;           // 主精灵 / Main sprite
   private nameTag: Phaser.GameObjects.Text;             // 名字标签 / Name label
   private hpBar: Phaser.GameObjects.Graphics;           // 血条 / HP bar
-  private worldX = 0;                                   // 世界坐标 / World X
-  private worldY = 0;                                   // 世界坐标 / World Y
+  private ring: Phaser.GameObjects.Graphics | null = null; // PC 金环 / Gold ring
+  private tileSize = 32;
 
   constructor(scene: Phaser.Scene, data: CharacterData, wx: number, wy: number, tileSize: number) {
-    this.scene = scene; this.data = data; this.id = data.id; // 初始化 / Init
-    this.worldX = wx; this.worldY = wy;
+    this.scene = scene; this.data = data; this.id = data.id; this.tileSize = tileSize;
 
     // 纹理 / Texture
     const key = scene.textures.exists(data.id) ? data.id : (data.is_pc ? "pc_fighter" : "actor_default");
@@ -23,8 +22,8 @@ export class CharacterSprite {
 
     // PC 金环 / Gold ring for PC
     if (data.is_pc) {
-      const ring = scene.add.graphics(); ring.lineStyle(2, 0xffd700, 0.8);
-      ring.strokeCircle(wx, wy, tileSize * 0.35);
+      this.ring = scene.add.graphics(); this.ring.lineStyle(2, 0xffd700, 0.8);
+      this.ring.strokeCircle(wx, wy, tileSize * 0.35);
     }
 
     // 名字 / Name
@@ -41,33 +40,55 @@ export class CharacterSprite {
   }
 
   /** 设置深度 / Set depth */
-  setDepth(d: number): void { this.sprite.setDepth(d); }
+  setDepth(d: number): void {
+    this.sprite.setDepth(d);
+    if (this.ring) this.ring.setDepth(d + 5);
+  }
 
-  /** 世界坐标移动 / Move in world coords */
+  /** 世界坐标移动 + 关联对象跟随 / Move in world coords, followers follow */
   moveToWorld(wx: number, wy: number, duration = 300): Promise<void> {
     return new Promise(resolve => {
-      this.worldX = wx; this.worldY = wy;
       this.scene.tweens.add({
         targets: this.sprite, x: wx, y: wy, duration, ease: "Sine.easeInOut",
-        onComplete: () => { this.nameTag.setPosition(wx, wy + 14); resolve(); }, // 更新名字位置
+        onUpdate: () => {
+          // 让名字标签跟随精灵当前位置 / Let name tag follow sprite's current position
+          this.nameTag.setPosition(this.sprite.x, this.sprite.y + this.tileSize * 0.4);
+          // 金环跟随 / Ring follows
+          if (this.ring) {
+            this.ring.clear(); this.ring.lineStyle(2, 0xffd700, 0.8);
+            this.ring.strokeCircle(this.sprite.x, this.sprite.y, this.tileSize * 0.35);
+          }
+          // 血条跟随 / HP bar follows
+          if (this.data.combat) {
+            this.hpBar.clear();
+            this.drawHpBar(this.sprite.x, this.sprite.y, this.data.combat.hp, this.data.combat.max_hp, this.tileSize);
+          }
+        },
+        onComplete: () => resolve(),
       });
     });
   }
 
   /** 更新血条 / Update HP */
   updateHp(hp: number, maxHp: number): void {
-    this.hpBar.clear(); this.drawHpBar(this.worldX, this.worldY, hp, maxHp, 32);
+    this.data.combat = { ...this.data.combat!, hp, max_hp: maxHp };
+    this.hpBar.clear(); this.drawHpBar(this.sprite.x, this.sprite.y, hp, maxHp, this.tileSize);
   }
 
-  /** 销毁 / Destroy */
-  destroy(): void { this.sprite.destroy(); this.nameTag.destroy(); this.hpBar.destroy(); }
+  /** 销毁所有 / Destroy all */
+  destroy(): void {
+    this.sprite.destroy();
+    this.nameTag.destroy();
+    this.hpBar.destroy();
+    this.ring?.destroy();
+  }
 
   /** 画血条 / Draw HP bar */
   private drawHpBar(wx: number, wy: number, hp: number, maxHp: number, ts: number): void {
-    const bw = 20, bh = 3, bx = wx - bw / 2, by = wy - ts * 0.4 - 6; // 位置计算 / Position calc
-    const ratio = Math.max(hp / maxHp, 0);                              // 血量比例 / HP ratio
-    this.hpBar.fillStyle(0x333333); this.hpBar.fillRect(bx, by, bw, bh); // 背景 / Background
+    const bw = 20, bh = 3, bx = wx - bw / 2, by = wy - ts * 0.4 - 6;
+    const ratio = Math.max(hp / maxHp, 0);
+    this.hpBar.fillStyle(0x333333); this.hpBar.fillRect(bx, by, bw, bh);  // 背景 / Background
     this.hpBar.fillStyle(ratio > 0.5 ? 0x2ecc71 : ratio > 0.25 ? 0xf39c12 : 0xe74c3c); // 绿/黄/红
-    this.hpBar.fillRect(bx, by, bw * ratio, bh);                        // 血量填充 / HP fill
+    this.hpBar.fillRect(bx, by, bw * ratio, bh);                           // 血量填充 / HP fill
   }
 }

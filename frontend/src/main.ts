@@ -149,6 +149,13 @@ async function main(): Promise<void> {
     backgroundColor: CONFIG.COLOR.background,
     pixelArt: true,           // 像素风 / Pixel art
     roundPixels: true,        // 像素对齐 / Round pixels
+    physics: {
+      default: "arcade",
+      arcade: {
+        gravity: { x: 0, y: 0 },
+        debug: false,
+      },
+    },
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,

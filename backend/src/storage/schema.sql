@@ -25,6 +25,21 @@ CREATE TABLE IF NOT EXISTS world_meta (
 );
 
 -- ============================================================
+--  world_pack: World Pack 元信息 / World pack metadata
+-- ============================================================
+CREATE TABLE IF NOT EXISTS world_pack (
+    id              TEXT PRIMARY KEY,       -- pack ID (e.g. forgotten_realms)
+    name            TEXT NOT NULL DEFAULT '',   -- 显示名 / Display name
+    description     TEXT NOT NULL DEFAULT '',   -- 描述 / Description
+    version         TEXT NOT NULL DEFAULT '1.0.0',  -- Pack 版本
+    rule_set        TEXT NOT NULL DEFAULT 'dnd_5e_srd',  -- 规则集 / Rule set
+    author          TEXT NOT NULL DEFAULT '',   -- 作者 / Author
+    license         TEXT NOT NULL DEFAULT 'MIT',  -- 许可证 / License
+    theme           TEXT NOT NULL DEFAULT '',   -- 主题/世界观主题 / Theme
+    starting_scene  TEXT NOT NULL DEFAULT ''    -- 默认起始场景 / Default starting scene
+);
+
+-- ============================================================
 --  player_characters: 主角团 / Main cast (Player Characters)
 --  4 个 PC：战士/盗贼/牧师/法师 / 4 PCs: fighter/rogue/cleric/wizard
 -- ============================================================
