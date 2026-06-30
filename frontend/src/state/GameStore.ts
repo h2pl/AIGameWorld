@@ -93,6 +93,14 @@ class GameStore {
     this.notify();
   }
 
+  /** 批量更新角色位置 / Batch update character positions */
+  updatePositions(pos: Record<string, { x: number; y: number }>): void {
+    for (const [id, p] of Object.entries(pos)) {
+      this.state.character_positions[id] = p;
+    }
+    this.notify();
+  }
+
   /** 添加叙事 / Add narrative */
   addNarrative(text: string): void {
     this.state.narrative = text;

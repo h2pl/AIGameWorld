@@ -150,14 +150,14 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
 
 
 @app.get("/view", response_class=HTMLResponse)
-async def view_index(db: str | None = Query(default="data/world_db.db", description="SQLite 路径")):
-    """World Pack 查看器首页 / Viewer index — YAML + DB 双入口."""
+async def view_index(db: str = Query(default="data/world_db.db", description="SQLite 路径")):
+    """DB World Pack 查看器首页."""
     return render_index(db_path=db)
 
 
 @app.get("/view/{pack_id}", response_class=HTMLResponse)
 async def view_pack(
-    pack_id: str, db: str | None = Query(default="data/world_db.db", description="SQLite 路径")
+    pack_id: str, db: str = Query(default="data/world_db.db", description="SQLite 路径")
 ):
-    """Pack 详情页 / Pack detail."""
+    """DB Pack 详情页."""
     return render_pack(pack_id, db_path=db)

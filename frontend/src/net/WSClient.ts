@@ -50,8 +50,16 @@ export class WSClient {
             resolve();
           } else if (msg.type === "tick") {
             const d = msg.data as Record<string, unknown>;
-            console.log("[WS] tick %d: narrative=%s actions=%d errors=%d",
-              d.tick, (d.narrative as string || "").slice(0, 40), (d.character_actions as unknown[] || []).length, (d.errors as unknown[] || []).length);
+            const moves = d.character_moves as Array<{ character_id: string; x: number; y: number }> | undefined;
+            console.log("[WS] tick %d: narrative=%s moves=%d",
+              d.tick, (d.narrative as string || "").slice(0, 40), moves?.length || 0);
+
+            // 更新角色位置 / Update character positions
+            if (moves) {
+              const pos: Record<string, { x: number; y: number }> = {};
+              for (const m of moves) pos[m.character_id] = { x: m.x, y: m.y };
+              gameStore.updatePositions(pos);
+            }
             gameStore.applyTickUpdate({ type: "tick_complete", data: d as never });
           } else if (msg.type === "done") {
             console.log("[WS] done: final tick=%d", (msg.data as Record<string, unknown>).tick);

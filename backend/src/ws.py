@@ -1,6 +1,10 @@
 """WebSocket 实时推送 / WebSocket real-time push.
 
 前端连 ws://localhost:8000/ws/{session_id}，发送命令驱动 tick。
+
+协议 / Protocol:
+  init → init_ok(返回角色列表)
+  run N → tick × N → done
 """
 
 import json
@@ -26,9 +30,9 @@ async def handle_ws(ws: WebSocket, session_id: str) -> None:
 
     try:
         while True:
-            raw = await ws.receive_text()
-            msg = json.loads(raw)
-            cmd = msg.get("cmd", "")
+            raw = await ws.receive_text()  # 接收消息 / Receive message
+            msg = json.loads(raw)  # 解析 JSON / Parse JSON
+            cmd = msg.get("cmd", "")  # 命令 / Command
             logger.debug("[WS] %s recv: cmd=%s", session_id, cmd)
 
             if cmd == "init":
@@ -74,8 +78,8 @@ async def handle_ws(ws: WebSocket, session_id: str) -> None:
                     result = await orch.run_tick()
                     t = result["tick"]
                     narrative = result.get("narrative", "")
-                    actions = result.get("character_actions", [])  # 角色行动
-                    errors = result.get("errors", [])  # 错误列表
+                    actions = result.get("character_actions", [])
+                    errors = result.get("errors", [])
                     logger.info(
                         "[WS] %s tick=%d narrative=%r actions=%d errors=%d",
                         session_id,
@@ -87,6 +91,21 @@ async def handle_ws(ws: WebSocket, session_id: str) -> None:
                     if errors:
                         logger.warning("[WS] %s tick=%d errors: %s", session_id, t, errors)
 
+                    # Mock 角色移动：每 tick 随机走 1-2 格 / Random 1-2 tile move per tick
+                    char_repo = CharacterRepo(db)  # 角色仓库 / Character repo
+                    pcs = await char_repo.load_pcs()  # 主角团 / PCs
+                    actors = await char_repo.load_actors()  # 配角 / Actors
+                    char_moves: list[dict] = []  # 移动列表 / Move list
+                    for ch in pcs + actors:  # 遍历所有角色 / Iterate all chars
+                        px = getattr(ch.location, "position_x", 0) if hasattr(ch, "location") else 0
+                        py = getattr(ch.location, "position_y", 0) if hasattr(ch, "location") else 0
+                        dx = (hash(ch.id + str(t)) % 5) - 2  # 随机 -2..2 / Random offset
+                        dy = (hash(ch.id + str(t) + "y") % 5) - 2
+                        nx = max(0, min(39, px + dx))  # 限制在地图内 / Clamp to map
+                        ny = max(0, min(29, py + dy))
+                        char_moves.append({"character_id": ch.id, "x": nx, "y": ny})
+                    logger.info("[WS] %s tick=%d moves=%d", session_id, t, len(char_moves))
+
                     await ws.send_json(
                         {
                             "type": "tick",
@@ -94,6 +113,7 @@ async def handle_ws(ws: WebSocket, session_id: str) -> None:
                                 "tick": t,
                                 "narrative": narrative,
                                 "character_actions": actions,
+                                "character_moves": char_moves,
                                 "events": result.get("events", []),
                                 "errors": errors,
                             },
