@@ -146,6 +146,8 @@ async function main(): Promise<void> {
     height: CONFIG.CANVAS.height,
     parent: "game",
     backgroundColor: CONFIG.COLOR.background,
+    pixelArt: true,           // 像素风：关闭抗锯齿 / Pixel art: disable anti-aliasing
+    roundPixels: true,        // 像素对齐 / Align to whole pixels
     scene: [GameScene],
   });
 }

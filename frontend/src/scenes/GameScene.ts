@@ -10,23 +10,23 @@ const RACE_SKIN: Record<string, string> = { human: "#f5cba7", elf: "#fdebd0", dw
 const RACE_HAIR: Record<string, string> = { human: "#4a2c0a", elf: "#d4c0a0", dwarf: "#8b4513", halfling: "#6b3a1f", orc: "#1a1a1a", tiefling: "#2c0033", dragonborn: "#3c1a00" };
 const ROLE_COLOR: Record<string, string> = { fighter: "#c0392b", rogue: "#2c3e50", cleric: "#f0f0f0", wizard: "#5b2c6f", ranger: "#27ae60", paladin: "#f1c40f", blacksmith: "#a0522d", guard: "#2980b9", merchant: "#16a085", innkeeper: "#d35400", boss: "#e74c3c", enemy: "#c0392b", villager: "#95a5a6" };
 
-/* Tuxemon tileset 常用瓦片 GID / Common tile GIDs (0-indexed for our data array) */
+/* Tuxemon tileset 常用瓦片索引 (0-indexed) / Common tile indices */
 const TG: Record<string, number[]> = {
-  GRASS: [1, 2, 3, 4, 25, 26, 27, 28],
-  DIRT: [49, 50, 51, 52, 73, 74, 75, 76],
-  WATER: [193, 194, 195, 196, 217, 218, 219, 220],
-  PATH: [145, 146, 147, 148],
-  TREE: [149, 150, 151],
-  BUSH: [173, 174],
-  FENCE: [169, 170, 171, 172],
-  HOUSE_WALL: [241, 242, 265, 266],
-  HOUSE_ROOF: [337, 338, 361, 362],
-  DOOR: [313, 314, 337, 338],
-  CHEST: [385], BARREL: [386], SIGN: [387],
-  FLOWER: [97, 98, 121, 122],
-  ROCK: [99, 100, 123, 124],
-  SAND: [55, 56, 79, 80],
-  BRIDGE: [457, 458, 481, 482],
+  GRASS: [0, 1, 2, 3, 24, 25, 26, 27],
+  DIRT: [48, 49, 50, 51, 72, 73, 74, 75],
+  WATER: [192, 193, 194, 195, 216, 217, 218, 219],
+  PATH: [144, 145, 146, 147],
+  TREE: [148, 149, 150],
+  BUSH: [172, 173],
+  FENCE: [168, 169, 170, 171],
+  HOUSE_WALL: [240, 241, 264, 265],
+  HOUSE_ROOF: [336, 337, 360, 361],
+  DOOR: [312, 313, 336, 337],
+  CHEST: [384], BARREL: [385], SIGN: [386],
+  FLOWER: [96, 97, 120, 121],
+  ROCK: [98, 99, 122, 123],
+  SAND: [54, 55, 78, 79],
+  BRIDGE: [456, 457, 480, 481],
 };
 
 export class GameScene extends Phaser.Scene {
@@ -126,15 +126,20 @@ export class GameScene extends Phaser.Scene {
       else if (lm.id.includes("market")) { map[lr]![lc] = pick(g.SIGN); map[lr]![lc + 1] = pick(g.CHEST); }
     }
 
-    // Tuxemon tileset 参数：816x1020, margin=1, spacing=2, 32x32 tiles
+    // Tuxemon tileset: 816x1020, 24列, margin=1, spacing=2, 32x32 tiles
     const tilemap = this.make.tilemap({
       data: map, tileWidth: s, tileHeight: s,
       width: C, height: R,
     });
-    // tileset: 24 columns, margin 1px, spacing 2px → 实际步进 = 32+2=34, 从(1,1)开始
-    const tileset = tilemap.addTilesetImage("tuxemon", "rpg_tileset", s, s, 1, 2);
+    // 第1个瓦片在图片中偏移(1,1)，瓦片间隔=34px(32+2)
+    const tileset = tilemap.addTilesetImage(
+      "tuxemon-sample-32px-extruded",  // tileset 名称（和 Tiled 里一致）
+      "rpg_tileset",                    // Phaser 缓存 key
+      s, s,                              // 瓦片尺寸
+      1, 2,                              // margin=1px, spacing=2px
+    );
     if (!tileset) return;
-    tilemap.createLayer(0, tileset, 0, 0);
+    const layer = tilemap.createLayer(0, tileset!, 0, 0);
 
     // HUD
     const labels: Record<string, string> = { village: "村庄", indoor: "室内", outdoor: "野外", underground: "地下" };
