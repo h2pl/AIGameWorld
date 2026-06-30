@@ -1,13 +1,12 @@
 """CLI 入口 / CLI entry point.
 
 用法 / Usage:
-  uv run aw shell                                # 交互式模式 / Interactive REPL
-  uv run aw run --ticks 5                        # 纯 mock，不写 DB / mock only
-  uv run aw run --ticks 3 --db                   # DB 读写 + 种子数据 / DB + seed
-  uv run aw run --ticks 3 --db --pack-id forgotten_realms       # 从 DB 加载 pack / load pack
-  uv run aw run --ticks 3 --db --pack-id forgotten_realms --llm  # LLM + pack
-  uv run aw import worlds/forgotten_realms --db data/world_db.db  # 导入 pack / import pack
-  uv run aw test --all                           # LLM 诊断 / diagnostics
+  aw -i                                          # 交互式模式 / Interactive REPL
+  aw -i --pack-id forgotten_realms               # 交互式 + 指定 pack
+  aw run --ticks 5                               # 纯 mock，不写 DB / mock only
+  aw run --ticks 3 --db --pack-id forgotten_realms --llm  # LLM + pack
+  aw import worlds/forgotten_realms --db data/world_db.db    # 导入 pack / import pack
+  aw test --all                                  # LLM 诊断 / diagnostics
 """
 
 import argparse
@@ -176,7 +175,7 @@ async def run(args: argparse.Namespace) -> None:
     await _do_run(
         ticks=args.ticks,
         use_db=args.db,
-        db_path=args.db_path or "data/world_db.db",
+        db_path="data/world_db.db",
         pack_id=args.pack_id or None,
         use_llm=args.llm,
     )
@@ -753,23 +752,27 @@ async def shell(args: argparse.Namespace) -> None:
 
 def main() -> None:
     setup_logging()
-    parser = argparse.ArgumentParser(description="AIGameWorld CLI — DM-driven DND world simulation")
+    parser = argparse.ArgumentParser(
+        prog="aw",
+        description="AIGameWorld CLI — DM-driven DND world simulation",
+        epilog="示例: aw -i  |  aw run --ticks 5 --db --pack-id forgotten_realms --llm",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "-i", "--interactive", action="store_true", help="交互式 REPL / Interactive REPL"
+    )
+    parser.add_argument("--pack-id", default="", help="Initial pack_id for interactive mode")
+    parser.add_argument("--db-path", default="data/world_db.db", help="DB file path")
     sub = parser.add_subparsers(dest="command")
 
     # run — 单次运行 / one-shot run
     run_parser = sub.add_parser("run", help="Run N ticks")
     run_parser.add_argument("--ticks", type=int, default=5, help="Number of ticks (default: 5)")
     run_parser.add_argument("--db", action="store_true", help="Enable DB read/write + seed data")
-    run_parser.add_argument("--db-path", default="data/world_db.db", help="DB file path")
     run_parser.add_argument(
         "--pack-id", default="", help="Load pack data from DB (e.g. forgotten_realms)"
     )
     run_parser.add_argument("--llm", action="store_true", help="Use real LLM instead of mock")
-
-    # shell — 交互式 REPL / interactive REPL
-    shell_parser = sub.add_parser("shell", help="Interactive REPL (parameter prompts)")
-    shell_parser.add_argument("--db-path", default="data/world_db.db", help="DB file path")
-    shell_parser.add_argument("--pack-id", default="", help="Initial pack_id")
 
     # test — LLM 诊断 / LLM diagnostics
     test_parser = sub.add_parser("test", help="LLM component diagnostics")
@@ -800,10 +803,10 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if args.command == "run":
-        asyncio.run(run(args))
-    elif args.command == "shell":
+    if args.interactive:
         asyncio.run(shell(args))
+    elif args.command == "run":
+        asyncio.run(run(args))
     elif args.command == "test":
         asyncio.run(test(args))
     elif args.command == "import":
