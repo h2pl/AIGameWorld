@@ -3,16 +3,20 @@
 端点 / Endpoints:
   GET /health                   — 健康检查 / Health check
   GET /api/pack/{id}/state       — 返回 pack 世界状态 / World state for frontend
-  (future) WS /ws/{session_id}  — WebSocket 实时推送 / Real-time push
+  GET /view                      — World Pack 查看器首页 / Viewer index (YAML + DB)
+  GET /view/{pack_id}            — Pack 详情 / Pack detail
+  WS /ws/{session_id}           — WebSocket 实时推送 / Real-time push
 """
 
 import json
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, WebSocket
+from fastapi import FastAPI, HTTPException, Query, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 
 from src.storage.sqlite_client import SQLiteClient
+from src.viewer import render_index, render_pack
 from src.ws import handle_ws
 
 
@@ -143,3 +147,17 @@ async def get_pack_state(pack_id: str):
 async def websocket_endpoint(ws: WebSocket, session_id: str):
     """WebSocket 端点 / WebSocket endpoint — 前端驱动 tick 运行."""
     await handle_ws(ws, session_id)
+
+
+@app.get("/view", response_class=HTMLResponse)
+async def view_index(db: str | None = Query(default="data/world_db.db", description="SQLite 路径")):
+    """World Pack 查看器首页 / Viewer index — YAML + DB 双入口."""
+    return render_index(db_path=db)
+
+
+@app.get("/view/{pack_id}", response_class=HTMLResponse)
+async def view_pack(
+    pack_id: str, db: str | None = Query(default="data/world_db.db", description="SQLite 路径")
+):
+    """Pack 详情页 / Pack detail."""
+    return render_pack(pack_id, db_path=db)
