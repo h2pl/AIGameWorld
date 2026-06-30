@@ -1,9 +1,10 @@
-/** 主游戏场景 / Main Game Scene — 使用 Tuxemon Tiled 地图，和 phaser-rpg 完全一样 */
+/** 主游戏场景 / Main Game Scene — 和 phaser-rpg 一致的标准写法 */
 
 import Phaser from "phaser";
 import { gameStore } from "../state/GameStore";
 import { CharacterSprite } from "../objects/CharacterSprite";
 import { CONFIG } from "../config";
+import { KEY, DEPTH, TILEMAP } from "../constants";
 import type { SceneData } from "../types";
 
 const RACE_SKIN: Record<string, string> = { human: "#f5cba7", elf: "#fdebd0", dwarf: "#d4a574", halfling: "#f5c6a0", orc: "#6b8e5a", tiefling: "#c48b9d", dragonborn: "#8b5e3c" };
@@ -16,16 +17,10 @@ export class GameScene extends Phaser.Scene {
   private iconTexts: Phaser.GameObjects.Text[] = [];
   private hudTexts: Phaser.GameObjects.Text[] = [];
 
-  constructor() { super({ key: "GameScene" }); }
-
-  preload(): void {
-    // 和 phaser-rpg 一样的加载方式
-    this.load.image("tuxemon", "/assets/rpg_tileset.png");
-    this.load.tilemapTiledJSON("tuxemon-map", "/assets/tuxemon-town.json");
-  }
+  constructor() { super({ key: "Game" }); }
 
   create(): void {
-    this.ts = 32;
+    this.ts = TILEMAP.TILE_SIZE;
     const st = gameStore.getState();
     this.genSprites(st.characters);
     gameStore.subscribe(s => this.onUpdate(s));
@@ -60,20 +55,17 @@ export class GameScene extends Phaser.Scene {
   private buildMap(scene: SceneData, objs: Array<{ id: string; name: string; object_type: string; scene_id: string; position_x: number; position_y: number }>): void {
     // 用 Tiled JSON 创建地图 / Create tilemap from Tiled JSON
     const map = this.make.tilemap({ key: "tuxemon-map" });
-    const tileset = map.addTilesetImage("tuxemon-sample-32px-extruded", "tuxemon", 32, 32, 1, 2);
+    const tileset = map.addTilesetImage(TILEMAP.TILESET_NAME, KEY.IMAGE.TUXEMON, 32, 32, TILEMAP.MARGIN, TILEMAP.SPACING);
     if (!tileset) return;
 
-    // Below Player 层
-    const below = map.createLayer("Below Player", tileset, 0, 0);
+    const below = map.createLayer(TILEMAP.LAYERS.BELOW, tileset, 0, 0);
     if (!below) return;
 
-    // World 层（玩家站上面，有碰撞）
-    const world = map.createLayer("World", tileset, 0, 0)!;
-    world.setCollisionByProperty({ collides: true });  // 和 phaser-rpg 一样：建筑/树不可穿越
+    const world = map.createLayer(TILEMAP.LAYERS.WORLD, tileset, 0, 0)!;
+    world.setCollisionByProperty({ collides: true });
 
-    // Above Player 层（树冠等，遮挡角色）
-    const above = map.createLayer("Above Player", tileset, 0, 0)!;
-    above.setDepth(20);
+    const above = map.createLayer(TILEMAP.LAYERS.ABOVE, tileset, 0, 0)!;
+    above.setDepth(DEPTH.ABOVE_PLAYER);
 
     // 设置摄像机 / Set camera
     const mapW = map.widthInPixels;
@@ -83,8 +75,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.scrollX = Math.max(0, mapW / 2 - CONFIG.CANVAS.width / 2);
     this.cameras.main.scrollY = 50;
 
-    // 放置角色在地图上 / Place characters on map
-    const spawnObjs = map.getObjectLayer("Objects");
+    const spawnObjs = map.getObjectLayer(TILEMAP.LAYERS.OBJECTS);
     if (spawnObjs) {
       let pcIdx = 0; let actorIdx = 0;
       const st = gameStore.getState();

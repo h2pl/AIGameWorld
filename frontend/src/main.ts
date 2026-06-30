@@ -5,6 +5,7 @@
  *   3. API 不可用时用 mock 数据 → 4. 写入 GameStore → 5. 启动 Phaser
  */
 import Phaser from "phaser";
+import { Boot } from "./scenes/Boot";
 import { GameScene } from "./scenes/GameScene";
 import { gameStore } from "./state/GameStore";
 import { CONFIG } from "./config";
@@ -152,7 +153,7 @@ async function main(): Promise<void> {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [GameScene],
+    scene: [Boot, GameScene],
   });
 }
 
