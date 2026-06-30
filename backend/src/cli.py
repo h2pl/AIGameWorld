@@ -622,7 +622,7 @@ async def _shell_clear() -> None:
 
 
 async def shell(args: argparse.Namespace) -> None:
-    """交互式 REPL / Interactive REPL."""
+    """交互式 REPL / Interactive REPL — 逐参数提示 / parameter-by-parameter prompts."""
     state = ShellState(
         pack_id=args.pack_id or "",
         db_path=args.db_path or "data/world_db.db",
@@ -632,6 +632,16 @@ async def shell(args: argparse.Namespace) -> None:
         f"  pack_id={state.pack_id or '(none)'}  db={state.db_path}  llm={'ON' if state.use_llm else 'OFF'}"
     )
     print()
+
+    async def _prompt_run() -> None:
+        ticks = input("    ticks (5): ").strip()
+        await _do_run(
+            ticks=int(ticks) if ticks else 5,
+            use_db=state.use_db,
+            db_path=state.db_path,
+            pack_id=state.pack_id or None,
+            use_llm=state.use_llm,
+        )
 
     while True:
         try:
@@ -644,7 +654,8 @@ async def shell(args: argparse.Namespace) -> None:
 
         parts = shlex.split(raw)
         cmd = parts[0].lower()
-        arg = parts[1] if len(parts) > 1 else ""
+        # 支持行内参数，也支持逐项提示 / inline args + fallback to prompts
+        inline_arg = parts[1] if len(parts) > 1 else None
 
         try:
             if cmd in ("exit", "quit"):
@@ -652,38 +663,46 @@ async def shell(args: argparse.Namespace) -> None:
             elif cmd in ("help", "?"):
                 print(_SHELL_HELP)
             elif cmd == "import":
-                if not arg:
-                    print("  Usage: import <pack_dir>")
-                else:
+                arg = inline_arg or input("    pack_dir: ").strip()
+                if arg:
                     await _shell_import(state, arg)
             elif cmd == "run":
-                n = int(arg) if arg else 5
-                await _do_run(
-                    ticks=n,
-                    use_db=state.use_db,
-                    db_path=state.db_path,
-                    pack_id=state.pack_id or None,
-                    use_llm=state.use_llm,
-                )
-            elif cmd == "pack":
-                if arg:
-                    state.pack_id = arg
-                    print(f"  pack_id = '{arg}'")
+                if inline_arg:
+                    await _do_run(
+                        ticks=int(inline_arg),
+                        use_db=state.use_db,
+                        db_path=state.db_path,
+                        pack_id=state.pack_id or None,
+                        use_llm=state.use_llm,
+                    )
                 else:
-                    print(f"  pack_id = '{state.pack_id or '(not set)'}'")
+                    await _prompt_run()
+            elif cmd == "pack":
+                if inline_arg:
+                    state.pack_id = inline_arg
+                else:
+                    state.pack_id = (
+                        input(f"    pack_id ({state.pack_id or 'none'}): ").strip() or state.pack_id
+                    )
+                print(f"  pack_id = '{state.pack_id or '(not set)'}'")
             elif cmd == "llm":
-                if arg == "on":
+                if not inline_arg:
+                    inline_arg = input("    on|off: ").strip().lower()
+                if inline_arg == "on":
                     state.use_llm = True
-                elif arg == "off":
+                elif inline_arg == "off":
                     state.use_llm = False
                 print(f"  LLM = {'ON' if state.use_llm else 'OFF'}")
             elif cmd == "db":
-                if arg == "on":
+                if not inline_arg:
+                    inline_arg = input("    on|off: ").strip().lower()
+                if inline_arg == "on":
                     state.use_db = True
-                elif arg == "off":
+                elif inline_arg == "off":
                     state.use_db = False
                 print(f"  DB = {'ON' if state.use_db else 'OFF'}")
             elif cmd == "db-path":
+                arg = inline_arg or input(f"    path ({state.db_path}): ").strip()
                 if arg:
                     state.db_path = arg
                 print(f"  db_path = '{state.db_path}'")
@@ -696,7 +715,7 @@ async def shell(args: argparse.Namespace) -> None:
             else:
                 print(f"  Unknown: {cmd}  (type 'help' for commands)")
         except ValueError:
-            print(f"  Invalid argument: {arg}")
+            print("  Invalid value")
         except Exception as e:
             print(f"  Error: {e}")
 

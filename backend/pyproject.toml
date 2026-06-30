@@ -100,3 +100,19 @@ addopts = "-v --tb=short"           # 详细输出 + 短回溯 / Verbose + short
 source = ["src"]
 
 # Pyright 配置已统一到项目根 pyrightconfig.json
+
+# === 开发工具 / Dev Tools ===
+[tool.uv]
+package = true
+
+# === CLI 脚本入口 / CLI Script Entry Points ===
+[project.scripts]
+aw = "src.cli:main"
+
+# === 构建系统 / Build System ===
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
