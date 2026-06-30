@@ -1,0 +1,125 @@
+/** 前端状态管理 / Frontend State Store — 简单的发布-订阅模式 */
+
+import type {
+  SceneData,
+  CharacterData,
+  ItemData,
+  SceneObjectData,
+  TickUpdate,
+  ActionData,
+  EventData,
+} from "../types";
+
+export interface GameState {
+  pack_id: string;
+  scenes: SceneData[];
+  characters: CharacterData[];
+  items: ItemData[];
+  scene_objects: SceneObjectData[];
+  current_tick: number;
+  narrative: string;
+  actions: ActionData[];
+  events: EventData[];
+  errors: string[];
+  character_positions: Record<string, { x: number; y: number }>;
+}
+
+type Listener = (state: GameState) => void;
+
+class GameStore {
+  private state: GameState;
+  private listeners: Set<Listener> = new Set();
+
+  constructor() {
+    this.state = {
+      pack_id: "",
+      scenes: [],
+      characters: [],
+      items: [],
+      scene_objects: [],
+      current_tick: 0,
+      narrative: "",
+      actions: [],
+      events: [],
+      errors: [],
+      character_positions: {},
+    };
+  }
+
+  /** 获取只读状态 / Get read-only state */
+  getState(): Readonly<GameState> {
+    return this.state;
+  }
+
+  /** 设置初始世界状态 / Set initial world state */
+  setWorldState(
+    pack_id: string,
+    scenes: SceneData[],
+    characters: CharacterData[],
+    items: ItemData[],
+    scene_objects: SceneObjectData[],
+  ): void {
+    this.state.pack_id = pack_id;
+    this.state.scenes = scenes;
+    this.state.characters = characters;
+    this.state.items = items;
+    this.state.scene_objects = scene_objects;
+    // 初始化角色位置 / Init character positions
+    for (const ch of characters) {
+      this.state.character_positions[ch.id] = { x: ch.position_x, y: ch.position_y };
+    }
+    this.notify();
+  }
+
+  /** 应用 tick 更新 / Apply tick update */
+  applyTickUpdate(update: TickUpdate): void {
+    const d = update.data;
+    if (d.tick) {
+      this.state.current_tick = d.tick;
+    }
+    if (update.type === "dm_narrative" && d.narrative) {
+      this.state.narrative = d.narrative;
+      this.state.events = d.events || [];
+    } else if (update.type === "tick_complete" && d.state_snapshot) {
+      this.state.character_positions = d.state_snapshot.character_positions || {};
+      if (d.actions) this.state.actions = d.actions;
+      if (d.events) this.state.events = d.events;
+    } else if (update.type === "phase_update" && d.events) {
+      this.state.events = d.events;
+    }
+    if (d.errors?.length) {
+      this.state.errors = d.errors;
+    }
+    this.notify();
+  }
+
+  /** 添加叙事 / Add narrative */
+  addNarrative(text: string): void {
+    this.state.narrative = text;
+    this.notify();
+  }
+
+  /** 清空运行时数据 / Clear runtime data */
+  clear(): void {
+    this.state.current_tick = 0;
+    this.state.narrative = "";
+    this.state.actions = [];
+    this.state.events = [];
+    this.state.errors = [];
+    this.notify();
+  }
+
+  subscribe(listener: Listener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  private notify(): void {
+    for (const l of this.listeners) {
+      l(this.state);
+    }
+  }
+}
+
+/** 全局单例 / Global singleton */
+export const gameStore = new GameStore();
