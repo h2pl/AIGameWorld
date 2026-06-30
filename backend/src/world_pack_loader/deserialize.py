@@ -140,6 +140,8 @@ def combat_from_yaml(data: dict | None) -> CombatStats | None:
         hp=data.get("hp", 10),
         max_hp=data.get("max_hp", data.get("hp", 10)),
         ac=data.get("ac", 10),
+        initiative=data.get("initiative", 0),
+        speed=data.get("speed", 30),
         attack_bonus=data.get("attack_bonus", 0),
         damage_dice=data.get("damage_dice", "1d4"),
     )
