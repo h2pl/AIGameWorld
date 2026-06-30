@@ -92,11 +92,11 @@ export class GameScene extends Phaser.Scene {
     const spawnX = spawnPoint?.x || 384;
     const spawnY = spawnPoint?.y || 320;
 
-    // 摄像机对准 spawn 区域 / Center camera on spawn
+    // 摄像机: 确保角色在视野中央 / Center on spawn
     const camW = CONFIG.CANVAS.width;
     const camH = CONFIG.CANVAS.height;
-    this.cameras.main.scrollX = Math.max(0, spawnX - camW / 2);
-    this.cameras.main.scrollY = Math.max(0, spawnY - camH / 2 + 32);
+    this.cameras.main.scrollX = Math.max(0, spawnX - camW / 3);       // 偏左留空间给其他角色
+    this.cameras.main.scrollY = Math.max(0, spawnY - camH * 0.6);     // spawn在上半部
     const st2 = gameStore.getState();
     let idx = 0;
     for (const ch of st2.characters) {
