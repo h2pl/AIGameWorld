@@ -1,12 +1,13 @@
 """CLI 入口 / CLI entry point.
 
-用法:
-  python -m src.cli run --ticks 5                              # 纯 mock，不写 DB
-  python -m src.cli run --ticks 3 --db                         # 全链路：DB 读写 + 种子数据
-  python -m src.cli run --ticks 3 --db --pack-id forgotten_realms  # 从 DB 加载 pack 数据
-  python -m src.cli run --ticks 3 --db --pack-id forgotten_realms --llm  # LLM + pack 数据
-  python -m src.cli import worlds/forgotten_realms --db data/world_db.db  # 导入 pack
-  python -m src.cli shell                                       # 交互式模式
+用法 / Usage:
+  uv run aw shell                                # 交互式模式 / Interactive REPL
+  uv run aw run --ticks 5                        # 纯 mock，不写 DB / mock only
+  uv run aw run --ticks 3 --db                   # DB 读写 + 种子数据 / DB + seed
+  uv run aw run --ticks 3 --db --pack-id forgotten_realms       # 从 DB 加载 pack / load pack
+  uv run aw run --ticks 3 --db --pack-id forgotten_realms --llm  # LLM + pack
+  uv run aw import worlds/forgotten_realms --db data/world_db.db  # 导入 pack / import pack
+  uv run aw test --all                           # LLM 诊断 / diagnostics
 """
 
 import argparse
@@ -166,12 +167,12 @@ def _print_tick(
 
 
 # ═══════════════════════════════════════════════════════════════
-# run 命令 / run command
+# run — 单次运行 / one-shot run
 # ═══════════════════════════════════════════════════════════════
 
 
 async def run(args: argparse.Namespace) -> None:
-    """统一入口 / Unified entry."""
+    """CLI 参数 → _do_run / CLI args → _do_run."""
     await _do_run(
         ticks=args.ticks,
         use_db=args.db,
@@ -188,22 +189,21 @@ async def _do_run(
     pack_id: str | None = None,
     use_llm: bool = False,
 ) -> None:
-    """核心运行逻辑 / Core run logic — 同时供 shell 和 cli args 调用."""
+    """核心运行逻辑 / Core run logic — 同时供 shell 和 CLI 参数调用."""
     n = ticks
-    mode_parts = []
-    mode_parts.append("LLM" if use_llm else "Mock")
+    mode_parts = ["LLM" if use_llm else "Mock"]
     mode_parts.append("+DB" if use_db else "(no DB)")
     if pack_id:
         mode_parts.append(f"[{pack_id}]")
 
-    print(f"Phase 1 -- {' '.join(mode_parts)}")
+    print(f"AIGameWorld -- {' '.join(mode_parts)}")
     print(f"Running {n} tick(s)...\n")
 
     db = None
     repos = None
     llm = None
 
-    # -- DB 模式 / DB mode
+    # -- DB：初始化 + 加载 pack 或种子 / DB: init + load pack or seed
     if use_db:
         db = SQLiteClient(db_path)
         await db.connect()
@@ -241,7 +241,7 @@ async def _do_run(
 
         repos = {"story": story_repo, "char": char_repo}
 
-    # -- LLM 模式 / LLM mode
+    # -- LLM：创建客户端 + MemoryRepo / LLM: create client + MemoryRepo
     if use_llm:
         from src.config import load_config
         from src.llm.llm_client import LLMClient
@@ -257,7 +257,7 @@ async def _do_run(
         else:
             repos = {"memory": MemoryRepo(chroma=chroma)}
 
-    # -- Tick 循环 / Tick loop
+    # -- Tick 循环 + DB 写入 / Tick loop + DB write
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     orch = Orchestrator(llm=llm, repos=repos)
 
@@ -289,7 +289,7 @@ async def _do_run(
         db_label = f"[DB] ticks {tick}" if use_db else ""
         _print_tick(tick, narrative, actions, events, errors, db_info=db_label)
 
-    # 收尾 / cleanup
+    # -- 收尾：统计 + 关闭 DB / cleanup: stats + close DB
     print(f"{'=' * 60}")
     if db:
         tick_row = await db.fetch_one("SELECT value FROM world_meta WHERE key = 'current_tick'")
@@ -303,7 +303,7 @@ async def _do_run(
 
 
 # ═══════════════════════════════════════════════════════════════
-# test 命令（诊断用 / diagnostic commands）
+# test — LLM 诊断 / LLM diagnostics
 # ═══════════════════════════════════════════════════════════════
 
 _SEP = "=" * 60
@@ -452,7 +452,7 @@ async def test(args: argparse.Namespace) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
-# import 命令 / import command — YAML → Domain Model → DB
+# import — world-pack → DB / YAML → Domain Model → DB
 # ═══════════════════════════════════════════════════════════════
 
 
@@ -493,7 +493,7 @@ async def import_world(args: argparse.Namespace) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
-# 交互式 shell / Interactive shell
+# shell — 交互式 REPL / interactive REPL（逐参数提示）
 # ═══════════════════════════════════════════════════════════════
 
 
@@ -723,33 +723,31 @@ async def shell(args: argparse.Namespace) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
-# main
+# main — CLI 入口 / CLI entry
 # ═══════════════════════════════════════════════════════════════
 
 
 def main() -> None:
-    setup_logging()  # 最优先执行，确保后续所有日志使用 UTF-8 编码
-    parser = argparse.ArgumentParser(description="AIGameWorld CLI")
+    setup_logging()
+    parser = argparse.ArgumentParser(description="AIGameWorld CLI — DM-driven DND world simulation")
     sub = parser.add_subparsers(dest="command")
 
-    # run 子命令 / run subcommand
+    # run — 单次运行 / one-shot run
     run_parser = sub.add_parser("run", help="Run N ticks")
     run_parser.add_argument("--ticks", type=int, default=5, help="Number of ticks (default: 5)")
-    run_parser.add_argument(
-        "--db", action="store_true", help="Enable full DB read/write + seed data"
-    )
+    run_parser.add_argument("--db", action="store_true", help="Enable DB read/write + seed data")
     run_parser.add_argument("--db-path", default="data/world_db.db", help="DB file path")
     run_parser.add_argument(
         "--pack-id", default="", help="Load pack data from DB (e.g. forgotten_realms)"
     )
     run_parser.add_argument("--llm", action="store_true", help="Use real LLM instead of mock")
 
-    # shell 子命令 / shell subcommand
-    shell_parser = sub.add_parser("shell", help="Interactive REPL")
+    # shell — 交互式 REPL / interactive REPL
+    shell_parser = sub.add_parser("shell", help="Interactive REPL (parameter prompts)")
     shell_parser.add_argument("--db-path", default="data/world_db.db", help="DB file path")
     shell_parser.add_argument("--pack-id", default="", help="Initial pack_id")
 
-    # test 子命令（诊断）/ test subcommand (diagnostic)
+    # test — LLM 诊断 / LLM diagnostics
     test_parser = sub.add_parser("test", help="LLM component diagnostics")
     test_parser.add_argument(
         "--client", dest="test_client", action="store_true", help="Test LLMClient only"
@@ -764,7 +762,7 @@ def main() -> None:
         "--all", dest="test_all", action="store_true", help="Test everything (default)"
     )
 
-    # import 子命令 — 导入 world-pack（实例 YAML 合集）到存储
+    # import — world-pack → DB
     imp_parser = sub.add_parser("import", help="Import world-pack into DB")
     imp_parser.add_argument(
         "path", type=Path, help="World-pack directory path (aw-studio generate output)"
