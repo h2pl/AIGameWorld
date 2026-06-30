@@ -63,6 +63,9 @@ CREATE TABLE IF NOT EXISTS player_characters (
     joined_tick     INTEGER NOT NULL DEFAULT 0,                 -- 加入时的 tick
     roster_status   TEXT NOT NULL DEFAULT 'member',             -- member/departed
 
+    -- Pack / 所属 Pack --
+    pack_id         TEXT NOT NULL DEFAULT '',                   -- 所属 Pack ID（关联键）/ Source pack ID (FK key)
+
     -- Timestamps / 时间戳 --
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
@@ -106,6 +109,9 @@ CREATE TABLE IF NOT EXISTS actors (
     dm_assigned         INTEGER NOT NULL DEFAULT 0,         -- DM 本步是否指定出场 / DM-assigned for this tick
     motivation_injected TEXT,                               -- DM 注入的动机 / DM-injected motivation
     service_arcs_json   TEXT NOT NULL DEFAULT '[]',         -- 服务于哪些 StoryArc
+
+    -- Pack / 所属 Pack --
+    pack_id             TEXT NOT NULL DEFAULT '',            -- 所属 Pack ID（关联键）/ Source pack ID (FK key)
 
     -- Timestamps / 时间戳 --
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
@@ -169,6 +175,7 @@ CREATE TABLE IF NOT EXISTS scene_objects (
     position_y          INTEGER NOT NULL DEFAULT 0,
     interactable        INTEGER NOT NULL DEFAULT 1,         -- 是否可交互 / Interactable
     interact_data_json  TEXT,                               -- {locked,lock_dc,items,leads_to,...}
+    pack_id             TEXT NOT NULL DEFAULT '',            -- 所属 Pack ID（关联键）/ Source pack ID (FK key)
     created_at          TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (scene_id) REFERENCES scenes(id)
 );
@@ -186,7 +193,8 @@ CREATE TABLE IF NOT EXISTS story_arcs (
     supporting_actors_json  TEXT NOT NULL DEFAULT '[]',     -- 涉及的配角 / Involved actors
     key_event_ticks_json    TEXT NOT NULL DEFAULT '[]',     -- 关键事件 tick / Key event ticks
     branching_points_json   TEXT NOT NULL DEFAULT '[]',     -- 分支点记录 / Branching points
-    status                  TEXT NOT NULL DEFAULT 'setup'   -- setup/active/climax/resolved/abandoned
+    status                  TEXT NOT NULL DEFAULT 'setup',  -- setup/active/climax/resolved/abandoned
+    pack_id                 TEXT NOT NULL DEFAULT ''         -- 所属 Pack ID（关联键）/ Source pack ID (FK key)
 );
 
 -- ============================================================
@@ -198,7 +206,8 @@ CREATE TABLE IF NOT EXISTS story_hooks (
     description     TEXT NOT NULL,                          -- 伏笔描述 / Hook description
     intended_payoff TEXT,                                   -- 预期回收方式 / Intended payoff
     urgency         INTEGER,                                -- 紧迫度（多久内回收）/ Urgency
-    status          TEXT NOT NULL DEFAULT 'planted'         -- planted/escalated/paid_off/abandoned
+    status          TEXT NOT NULL DEFAULT 'planted',        -- planted/escalated/paid_off/abandoned
+    pack_id         TEXT NOT NULL DEFAULT ''                 -- 所属 Pack ID（关联键）/ Source pack ID (FK key)
 );
 
 -- ============================================================

@@ -39,8 +39,8 @@ class CharacterRepo:
             character_arc_json, long_term_goal, values_json,
             personality, equipment_json, inventory_json,
             memory_count, importance_accumulator, relationships_json,
-            joined_tick, roster_status, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            joined_tick, roster_status, pack_id, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
             status=excluded.status, scene_id=excluded.scene_id,
             position_x=excluded.position_x, position_y=excluded.position_y,
@@ -49,6 +49,7 @@ class CharacterRepo:
             memory_count=excluded.memory_count,
             importance_accumulator=excluded.importance_accumulator,
             relationships_json=excluded.relationships_json,
+            pack_id=excluded.pack_id,
             updated_at=datetime('now')
         """,
             (
@@ -73,6 +74,7 @@ class CharacterRepo:
                 json.dumps({k: v.model_dump() for k, v in pc.relationships.items()}),
                 pc.joined_tick,
                 pc.roster_status,
+                pc.pack_id,
             ),
         )
 
@@ -84,8 +86,8 @@ class CharacterRepo:
             personality, functions_json, function_data_json,
             equipment_json, inventory_json,
             memory_count, importance_accumulator, relationships_json,
-            dm_assigned, motivation_injected, service_arcs_json, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            dm_assigned, motivation_injected, service_arcs_json, pack_id, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
             status=excluded.status, scene_id=excluded.scene_id,
             position_x=excluded.position_x, position_y=excluded.position_y,
@@ -96,6 +98,7 @@ class CharacterRepo:
             relationships_json=excluded.relationships_json,
             dm_assigned=excluded.dm_assigned,
             motivation_injected=excluded.motivation_injected,
+            pack_id=excluded.pack_id,
             updated_at=datetime('now')
         """,
             (
@@ -120,6 +123,7 @@ class CharacterRepo:
                 int(actor.dm_assigned),
                 actor.motivation_injected,
                 json.dumps(actor.service_arcs),
+                actor.pack_id,
             ),
         )
 
@@ -174,6 +178,7 @@ def _pc_from_row(row: dict) -> PlayerCharacter:
         },
         joined_tick=_val(row, "joined_tick", 0),
         roster_status=_val(row, "roster_status", "member"),
+        pack_id=_val(row, "pack_id", ""),
     )
 
 
@@ -207,4 +212,5 @@ def _actor_from_row(row: dict) -> Actor:
         dm_assigned=bool(_val(row, "dm_assigned", 0)),
         motivation_injected=_val(row, "motivation_injected"),
         service_arcs=json.loads(_val(row, "service_arcs_json", "[]")),
+        pack_id=_val(row, "pack_id", ""),
     )

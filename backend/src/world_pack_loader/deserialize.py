@@ -25,7 +25,7 @@ from ..domain import (
 # ═══════════════════════════════════════════════════════════════
 
 
-def pc_from_yaml(data: dict, starting_scene: str) -> PlayerCharacter:
+def pc_from_yaml(data: dict, starting_scene: str, pack_id: str) -> PlayerCharacter:
     """YAML dict → PlayerCharacter."""
     return PlayerCharacter(
         id=data.get("id", ""),
@@ -40,10 +40,11 @@ def pc_from_yaml(data: dict, starting_scene: str) -> PlayerCharacter:
         long_term_goal=(data.get("character_arc") or {}).get("goal", ""),
         equipment=equip_from_yaml(data.get("equipment")),
         inventory=inventory_from_yaml(data.get("inventory")),
+        pack_id=pack_id,
     )
 
 
-def actor_from_yaml(data: dict, starting_scene: str = "") -> Actor:
+def actor_from_yaml(data: dict, starting_scene: str = "", pack_id: str = "") -> Actor:
     """YAML dict → Actor."""
     return Actor(
         id=data.get("id", ""),
@@ -58,6 +59,7 @@ def actor_from_yaml(data: dict, starting_scene: str = "") -> Actor:
         function_data=data.get("function_data", {}),
         equipment=equip_from_yaml(data.get("equipment")),
         inventory=inventory_from_yaml(data.get("inventory")),
+        pack_id=pack_id,
     )
 
 
@@ -77,7 +79,7 @@ def item_from_yaml(data: dict, pack_id: str, pack_name: str) -> Item:
     )
 
 
-def scene_obj_from_yaml(data: dict) -> SceneObject:
+def scene_obj_from_yaml(data: dict, pack_id: str = "") -> SceneObject:
     """YAML dict → SceneObject."""
     return SceneObject(
         id=data.get("id", ""),
@@ -86,10 +88,11 @@ def scene_obj_from_yaml(data: dict) -> SceneObject:
         scene_id=data.get("scene_id", ""),
         interactable=data.get("interactable", True),
         interact_data=data.get("interact_data"),
+        pack_id=pack_id,
     )
 
 
-def story_arc_from_yaml(data: dict) -> StoryArc:
+def story_arc_from_yaml(data: dict, pack_id: str = "") -> StoryArc:
     """YAML dict → StoryArc."""
     return StoryArc(
         id=data.get("id", f"arc_{data.get('title', '')}"),
@@ -98,15 +101,17 @@ def story_arc_from_yaml(data: dict) -> StoryArc:
         stage=data.get("stage", "hook"),
         main_cast=data.get("main_cast", []),
         status="setup",
+        pack_id=pack_id,
     )
 
 
-def hook_from_yaml(data: dict) -> StoryHook:
+def hook_from_yaml(data: dict, pack_id: str = "") -> StoryHook:
     """YAML dict → StoryHook."""
     return StoryHook(
         id=data.get("id", f"hook_{hash(data.get('description', ''))}"),
         description=data.get("description", ""),
         urgency=_urgency(data.get("urgency", "medium")),
+        pack_id=pack_id,
     )
 
 

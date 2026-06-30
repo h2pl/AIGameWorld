@@ -23,6 +23,7 @@ class StoryRepo:
                 key_event_ticks=json.loads(r.get("key_event_ticks_json", "[]")),
                 branching_points=json.loads(r.get("branching_points_json", "[]")),
                 status=r.get("status", "setup"),
+                pack_id=r.get("pack_id", ""),
             )
             for r in rows
         ]
@@ -32,8 +33,8 @@ class StoryRepo:
             """
             INSERT OR REPLACE INTO story_arcs
             (id, type, title, stage, main_cast_json, supporting_actors_json,
-             key_event_ticks_json, branching_points_json, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             key_event_ticks_json, branching_points_json, status, pack_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 arc.id,
@@ -45,6 +46,7 @@ class StoryRepo:
                 json.dumps(arc.key_event_ticks),
                 json.dumps([bp.model_dump() for bp in arc.branching_points]),
                 arc.status,
+                arc.pack_id,
             ),
         )
 
@@ -58,6 +60,7 @@ class StoryRepo:
                 intended_payoff=r.get("intended_payoff", ""),
                 urgency=r.get("urgency", 10),
                 status=r.get("status", "planted"),
+                pack_id=r.get("pack_id", ""),
             )
             for r in rows
         ]
@@ -66,8 +69,8 @@ class StoryRepo:
         await self._db.execute(
             """
             INSERT OR REPLACE INTO story_hooks
-            (id, planted_tick, description, intended_payoff, urgency, status)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (id, planted_tick, description, intended_payoff, urgency, status, pack_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 hook.id,
@@ -76,6 +79,7 @@ class StoryRepo:
                 hook.intended_payoff,
                 hook.urgency,
                 hook.status,
+                hook.pack_id,
             ),
         )
 

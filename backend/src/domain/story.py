@@ -25,6 +25,7 @@ class StoryArc(BaseModel):
     key_event_ticks: list[int] = Field(default_factory=list)
     branching_points: list[BranchPoint] = Field(default_factory=list)
     status: str = "setup"
+    pack_id: str = ""
 
 
 class StoryHook(BaseModel):
@@ -36,6 +37,7 @@ class StoryHook(BaseModel):
     intended_payoff: str = ""
     urgency: int = 10
     status: str = "planted"
+    pack_id: str = ""
 
 
 class Quest(BaseModel):

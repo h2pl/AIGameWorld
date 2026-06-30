@@ -34,8 +34,8 @@ class SceneRepo:
         """写入单条场景对象 / Save single scene object."""
         await self._db.execute(
             "INSERT OR REPLACE INTO scene_objects "
-            "(id, name, object_type, scene_id, position_x, position_y, interactable, interact_data_json) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "(id, name, object_type, scene_id, position_x, position_y, interactable, interact_data_json, pack_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 obj.id,
                 obj.name,
@@ -45,6 +45,7 @@ class SceneRepo:
                 0,
                 int(obj.interactable),
                 json.dumps(obj.interact_data, ensure_ascii=False) if obj.interact_data else None,
+                obj.pack_id,
             ),
         )
 
@@ -63,5 +64,6 @@ class SceneRepo:
                 position_y=r.get("position_y", 0),
                 interactable=bool(r.get("interactable", 1)),
                 interact_data=json.loads(idata) if idata else None,
+                pack_id=r.get("pack_id", ""),
             )
         return result

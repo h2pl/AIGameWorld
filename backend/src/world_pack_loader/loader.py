@@ -72,11 +72,13 @@ class WorldLoader:
         # 按 FK 依赖顺序写入 / Write in FK dependency order
         counts["scenes"] = await self._write_scenes(data.get("scenes", []), pack_id, pack_name)
         counts["items"] = await self._write_items(data.get("items", []), pack_id, pack_name)
-        counts["scene_objects"] = await self._write_scene_objects(data.get("scene_objects", []))
-        counts["pcs"] = await self._write_pcs(data)
-        counts["actors"] = await self._write_actors(data)
-        counts["story_arcs"] = await self._write_story_arcs(data)
-        counts["story_hooks"] = await self._write_story_hooks(data)
+        counts["scene_objects"] = await self._write_scene_objects(
+            data.get("scene_objects", []), pack_id
+        )
+        counts["pcs"] = await self._write_pcs(data, pack_id)
+        counts["actors"] = await self._write_actors(data, pack_id)
+        counts["story_arcs"] = await self._write_story_arcs(data, pack_id)
+        counts["story_hooks"] = await self._write_story_hooks(data, pack_id)
 
         # ChromaDB (可选 / optional) — collection 用 pack_id 标识
         if self._chroma:
@@ -101,41 +103,41 @@ class WorldLoader:
 
     # ── Scene Objects (SceneRepo) ──
 
-    async def _write_scene_objects(self, objects: list[dict]) -> int:
+    async def _write_scene_objects(self, objects: list[dict], pack_id: str) -> int:
         for o in objects:
-            await self._scene_repo.save_object(scene_obj_from_yaml(o))
+            await self._scene_repo.save_object(scene_obj_from_yaml(o, pack_id))
         return len(objects)
 
     # ── PCs (CharacterRepo) ──
 
-    async def _write_pcs(self, data: dict) -> int:
+    async def _write_pcs(self, data: dict, pack_id: str) -> int:
         starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
         pcs = data.get("player_characters", [])
         for pc_data in pcs:
-            await self._char_repo.save_pc(pc_from_yaml(pc_data, starting_scene))
+            await self._char_repo.save_pc(pc_from_yaml(pc_data, starting_scene, pack_id))
         return len(pcs)
 
     # ── Actors (CharacterRepo) ──
 
-    async def _write_actors(self, data: dict) -> int:
+    async def _write_actors(self, data: dict, pack_id: str) -> int:
         starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
         actors = data.get("actors", [])
         for a_data in actors:
-            await self._char_repo.save_actor(actor_from_yaml(a_data, starting_scene))
+            await self._char_repo.save_actor(actor_from_yaml(a_data, starting_scene, pack_id))
         return len(actors)
 
     # ── Story (StoryRepo) ──
 
-    async def _write_story_arcs(self, data: dict) -> int:
+    async def _write_story_arcs(self, data: dict, pack_id: str) -> int:
         arcs = data.get("story_setup", {}).get("story_arcs", [])
         for arc_data in arcs:
-            await self._story_repo.save_arc(story_arc_from_yaml(arc_data))
+            await self._story_repo.save_arc(story_arc_from_yaml(arc_data, pack_id))
         return len(arcs)
 
-    async def _write_story_hooks(self, data: dict) -> int:
+    async def _write_story_hooks(self, data: dict, pack_id: str) -> int:
         hooks = data.get("story_setup", {}).get("story_hooks", [])
         for h_data in hooks:
-            await self._story_repo.save_hook(hook_from_yaml(h_data))
+            await self._story_repo.save_hook(hook_from_yaml(h_data, pack_id))
         return len(hooks)
 
     # ── ChromaDB ──

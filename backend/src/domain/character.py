@@ -95,6 +95,7 @@ class Actor(BaseModel):
     dm_assigned: bool = False
     motivation_injected: str | None = None
     service_arcs: list[str] = Field(default_factory=list)
+    pack_id: str = ""
 
 
 class PlayerCharacter(BaseModel):
@@ -119,3 +120,4 @@ class PlayerCharacter(BaseModel):
     relationships: dict[str, Relationship] = Field(default_factory=dict)
     joined_tick: int = 0
     roster_status: str = "member"
+    pack_id: str = ""
