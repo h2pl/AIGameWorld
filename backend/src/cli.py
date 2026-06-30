@@ -6,11 +6,14 @@
   python -m src.cli run --ticks 3 --db --pack-id forgotten_realms  # 从 DB 加载 pack 数据
   python -m src.cli run --ticks 3 --db --pack-id forgotten_realms --llm  # LLM + pack 数据
   python -m src.cli import worlds/forgotten_realms --db data/world_db.db  # 导入 pack
+  python -m src.cli shell                                       # 交互式模式
 """
 
 import argparse
 import asyncio
 import json
+import shlex
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -168,21 +171,30 @@ def _print_tick(
 
 
 async def run(args: argparse.Namespace) -> None:
-    """统一入口：mock / LLM / DB 组合 / Unified entry: mock/LLM/DB combo."""
-    n = args.ticks
-    use_db = args.db
-    use_llm = args.llm
+    """统一入口 / Unified entry."""
+    await _do_run(
+        ticks=args.ticks,
+        use_db=args.db,
+        db_path=args.db_path or "data/world_db.db",
+        pack_id=args.pack_id or None,
+        use_llm=args.llm,
+    )
 
-    # 模式标签 / mode label
+
+async def _do_run(
+    ticks: int = 5,
+    use_db: bool = False,
+    db_path: str = "data/world_db.db",
+    pack_id: str | None = None,
+    use_llm: bool = False,
+) -> None:
+    """核心运行逻辑 / Core run logic — 同时供 shell 和 cli args 调用."""
+    n = ticks
     mode_parts = []
-    if use_llm:
-        mode_parts.append("LLM")
-    else:
-        mode_parts.append("Mock")
-    if use_db:
-        mode_parts.append("+DB")
-    else:
-        mode_parts.append("(no DB)")
+    mode_parts.append("LLM" if use_llm else "Mock")
+    mode_parts.append("+DB" if use_db else "(no DB)")
+    if pack_id:
+        mode_parts.append(f"[{pack_id}]")
 
     print(f"Phase 1 -- {' '.join(mode_parts)}")
     print(f"Running {n} tick(s)...\n")
@@ -191,11 +203,8 @@ async def run(args: argparse.Namespace) -> None:
     repos = None
     llm = None
 
-    # -- DB 模式：从 DB 加载 pack 数据 / DB mode: load pack data from DB
+    # -- DB 模式 / DB mode
     if use_db:
-        db_path = args.db_path or "data/world_db.db"
-        pack_id = args.pack_id
-
         db = SQLiteClient(db_path)
         await db.connect()
         await db.init_schema()
@@ -205,7 +214,6 @@ async def run(args: argparse.Namespace) -> None:
         story_repo = StoryRepo(db)
 
         if pack_id:
-            # 从 DB 加载指定 pack / Load specified pack from DB
             pcs = await char_repo.load_pcs(pack_id)
             actors = await char_repo.load_actors(pack_id)
             arcs = await story_repo.load_arcs(pack_id)
@@ -215,7 +223,6 @@ async def run(args: argparse.Namespace) -> None:
                 f"  [DB] Loaded {len(pcs)} PCs, {len(actors)} Actors, {len(arcs)} arcs, {len(hooks)} hooks"
             )
         else:
-            # 无 pack_id：写种子数据 / No pack_id: write seed data
             pcs = _seed_pcs()
             actors = _seed_actors()
             arcs, hooks = _seed_story()
@@ -234,7 +241,7 @@ async def run(args: argparse.Namespace) -> None:
 
         repos = {"story": story_repo, "char": char_repo}
 
-    # -- LLM 模式：创建客户端 / LLM mode: create client
+    # -- LLM 模式 / LLM mode
     if use_llm:
         from src.config import load_config
         from src.llm.llm_client import LLMClient
@@ -244,7 +251,6 @@ async def run(args: argparse.Namespace) -> None:
         provider_url = config.llm.providers.primary.base_url or "(default)"
         print(f"  [LLM] provider: {provider_url}")
 
-        # LLM + DB 模式加 MemoryRepo / LLM+DB mode: add MemoryRepo
         chroma = ChromaClient(persist_path="data/chroma")
         if repos:
             repos["memory"] = MemoryRepo(chroma=chroma)
@@ -263,7 +269,6 @@ async def run(args: argparse.Namespace) -> None:
         actions = result.get("character_actions", [])
         errors = result.get("errors", [])
 
-        # DB 写入 / DB write
         if db and narrative:
             await db.execute(
                 "INSERT INTO narratives (tick, content) VALUES (?, ?)",
@@ -488,6 +493,217 @@ async def import_world(args: argparse.Namespace) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
+# 交互式 shell / Interactive shell
+# ═══════════════════════════════════════════════════════════════
+
+
+@dataclass
+class ShellState:
+    """交互式 shell 状态 / Interactive shell state."""
+
+    pack_id: str = ""
+    db_path: str = "data/world_db.db"
+    use_llm: bool = False
+    use_db: bool = True
+
+
+_SHELL_HELP = """╔══════════════════════════════════════════════════════╗
+║  AIGameWorld Shell                                   ║
+╠══════════════════════════════════════════════════════╣
+║  import <dir>    导入 world-pack 到 DB               ║
+║  run [n]         运行 n 个 tick（默认 5）             ║
+║  pack <id>       设置/查看当前 pack_id                ║
+║  llm on|off      开关 LLM 模式                       ║
+║  db on|off       开关 DB 模式                        ║
+║  db-path <path>  设置 DB 文件路径                     ║
+║  show            显示当前设置 + DB 统计               ║
+║  list            列出 DB 中所有 pack                  ║
+║  clear           清空运行时数据 (events/narratives)    ║
+║  help|?          显示帮助                             ║
+║  exit|quit       退出                                 ║
+╚══════════════════════════════════════════════════════╝"""
+
+
+async def _shell_import(state: ShellState, pack_dir: str) -> None:
+    """Shell 内导入 pack / Import pack from shell."""
+    path = Path(pack_dir)
+    if not path.exists():
+        print(f"  Error: directory not found: {path}")
+        return
+    db = SQLiteClient(state.db_path)
+    await db.connect()
+    await db.init_schema()
+    loader = __import__("src.world_pack_loader.loader", fromlist=["WorldLoader"]).WorldLoader(db)
+    counts = await loader.load(path)
+    await db.commit()
+    await db.close()
+    state.pack_id = path.name
+    print(f"  [OK] Imported: {counts}")
+    if counts:
+        print(f"  [OK] pack_id set to '{state.pack_id}'")
+
+
+async def _shell_show(state: ShellState) -> None:
+    """显示当前状态 / Show current state."""
+    print("━" * 50)
+    print(f"  pack_id  : {state.pack_id or '(not set)'}")
+    print(f"  DB path  : {state.db_path}  (DB: {'ON' if state.use_db else 'OFF'})")
+    print(f"  LLM      : {'ON' if state.use_llm else 'OFF'}")
+    # DB 统计 / DB stats
+    try:
+        db = SQLiteClient(state.db_path)
+        await db.connect()
+        for label, table in [
+            ("PCs", "player_characters"),
+            ("Actors", "actors"),
+            ("Scenes", "scenes"),
+            ("Items", "items"),
+            ("Arcs", "story_arcs"),
+            ("Hooks", "story_hooks"),
+            ("Narratives", "narratives"),
+            ("Events", "events"),
+        ]:
+            # 表名来自常量列表，非用户输入 / table names are constants, not user input
+            rows = await db.fetch_all(f"SELECT COUNT(*) as c FROM {table}")  # noqa: S608
+            count = rows[0]["c"] if rows else 0
+            print(f"  {label:12s}: {count:4d}")
+        await db.close()
+    except Exception as e:
+        print(f"  DB: (error) {e}")
+    print("━" * 50)
+
+
+async def _shell_list_packs(state: ShellState) -> None:
+    """列出 DB 中所有 pack / List all packs in DB."""
+    try:
+        db = SQLiteClient(state.db_path)
+        await db.connect()
+        packs: set[str] = set()
+        for table in [
+            "player_characters",
+            "actors",
+            "scenes",
+            "items",
+            "scene_objects",
+            "story_arcs",
+            "story_hooks",
+        ]:
+            try:
+                # 表名来自常量列表，非用户输入 / table names are constants
+                rows = await db.fetch_all(
+                    f"SELECT DISTINCT pack_id FROM {table} WHERE pack_id != ''"  # noqa: S608
+                )
+                for r in rows:
+                    packs.add(r["pack_id"])
+            except Exception as e:
+                print(f"    (warning: {e})")
+        await db.close()
+        if packs:
+            print("  Available packs:")
+            for p in sorted(packs):
+                marker = " <-- current" if p == state.pack_id else ""
+                print(f"    {p}{marker}")
+        else:
+            print("  (no packs in DB)")
+    except Exception as e:
+        print(f"  Error: {e}")
+
+
+async def _shell_clear() -> None:
+    """清空运行时数据 / Clear runtime data."""
+    db = SQLiteClient("data/world_db.db")
+    await db.connect()
+    await db.execute("DELETE FROM events")
+    await db.execute("DELETE FROM narratives")
+    await db.execute("DELETE FROM world_meta")
+    await db.commit()
+    await db.close()
+    print("  [OK] Cleared events, narratives, world_meta")
+
+
+async def shell(args: argparse.Namespace) -> None:
+    """交互式 REPL / Interactive REPL."""
+    state = ShellState(
+        pack_id=args.pack_id or "",
+        db_path=args.db_path or "data/world_db.db",
+    )
+    print(_SHELL_HELP)
+    print(
+        f"  pack_id={state.pack_id or '(none)'}  db={state.db_path}  llm={'ON' if state.use_llm else 'OFF'}"
+    )
+    print()
+
+    while True:
+        try:
+            raw = input("aw> ").strip()
+        except EOFError, KeyboardInterrupt:
+            print("\nexit")
+            break
+        if not raw:
+            continue
+
+        parts = shlex.split(raw)
+        cmd = parts[0].lower()
+        arg = parts[1] if len(parts) > 1 else ""
+
+        try:
+            if cmd in ("exit", "quit"):
+                break
+            elif cmd in ("help", "?"):
+                print(_SHELL_HELP)
+            elif cmd == "import":
+                if not arg:
+                    print("  Usage: import <pack_dir>")
+                else:
+                    await _shell_import(state, arg)
+            elif cmd == "run":
+                n = int(arg) if arg else 5
+                await _do_run(
+                    ticks=n,
+                    use_db=state.use_db,
+                    db_path=state.db_path,
+                    pack_id=state.pack_id or None,
+                    use_llm=state.use_llm,
+                )
+            elif cmd == "pack":
+                if arg:
+                    state.pack_id = arg
+                    print(f"  pack_id = '{arg}'")
+                else:
+                    print(f"  pack_id = '{state.pack_id or '(not set)'}'")
+            elif cmd == "llm":
+                if arg == "on":
+                    state.use_llm = True
+                elif arg == "off":
+                    state.use_llm = False
+                print(f"  LLM = {'ON' if state.use_llm else 'OFF'}")
+            elif cmd == "db":
+                if arg == "on":
+                    state.use_db = True
+                elif arg == "off":
+                    state.use_db = False
+                print(f"  DB = {'ON' if state.use_db else 'OFF'}")
+            elif cmd == "db-path":
+                if arg:
+                    state.db_path = arg
+                print(f"  db_path = '{state.db_path}'")
+            elif cmd == "show":
+                await _shell_show(state)
+            elif cmd == "list":
+                await _shell_list_packs(state)
+            elif cmd == "clear":
+                await _shell_clear()
+            else:
+                print(f"  Unknown: {cmd}  (type 'help' for commands)")
+        except ValueError:
+            print(f"  Invalid argument: {arg}")
+        except Exception as e:
+            print(f"  Error: {e}")
+
+    print("bye.")
+
+
+# ═══════════════════════════════════════════════════════════════
 # main
 # ═══════════════════════════════════════════════════════════════
 
@@ -508,6 +724,11 @@ def main() -> None:
         "--pack-id", default="", help="Load pack data from DB (e.g. forgotten_realms)"
     )
     run_parser.add_argument("--llm", action="store_true", help="Use real LLM instead of mock")
+
+    # shell 子命令 / shell subcommand
+    shell_parser = sub.add_parser("shell", help="Interactive REPL")
+    shell_parser.add_argument("--db-path", default="data/world_db.db", help="DB file path")
+    shell_parser.add_argument("--pack-id", default="", help="Initial pack_id")
 
     # test 子命令（诊断）/ test subcommand (diagnostic)
     test_parser = sub.add_parser("test", help="LLM component diagnostics")
@@ -540,6 +761,8 @@ def main() -> None:
 
     if args.command == "run":
         asyncio.run(run(args))
+    elif args.command == "shell":
+        asyncio.run(shell(args))
     elif args.command == "test":
         asyncio.run(test(args))
     elif args.command == "import":
