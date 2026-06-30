@@ -8,234 +8,27 @@
   world-pack     = aw-studio generate 输出的实例 YAML 合集（含填充值的完整世界包）
 """
 
+import logging
 from pathlib import Path
 
-import yaml
-
-from ..domain import (
-    Actor,
-    Attributes,
-    CharacterArc,
-    CombatStats,
-    Equipment,
-    InventorySlot,
-    Item,
-    ItemType,
-    Location,
-    PlayerCharacter,
-    SceneObject,
-    SceneObjectType,
-    StoryArc,
-    StoryHook,
-)
 from ..repository.character_repo import CharacterRepo
 from ..repository.item_repo import ItemRepo
 from ..repository.scene_repo import SceneRepo
 from ..repository.story_repo import StoryRepo
 from ..storage.chroma_client import ChromaClient
 from ..storage.sqlite_client import SQLiteClient
+from .deserialize import (
+    actor_from_yaml,
+    hook_from_yaml,
+    item_from_yaml,
+    pc_from_yaml,
+    scene_obj_from_yaml,
+    story_arc_from_yaml,
+)
+from .reader import read_pack
+from .validator import validate_pack_relations
 
-# ═══════════════════════════════════════════════════════════════
-# YAML → Domain Model 反序列化 / YAML → Domain Model deserialization
-# ═══════════════════════════════════════════════════════════════
-
-
-def _pc_from_yaml(data: dict, starting_scene: str) -> PlayerCharacter:
-    """YAML dict → PlayerCharacter."""
-    return PlayerCharacter(
-        id=data.get("id", ""),
-        name=data.get("name", ""),
-        role=data.get("role", ""),
-        race=data.get("race"),
-        location=Location(scene_id=data.get("scene_id") or starting_scene),
-        attributes=_attrs_from_yaml(data.get("attributes")),
-        combat=_combat_from_yaml(data.get("combat")),
-        personality=data.get("personality", ""),
-        character_arc=_char_arc_from_yaml(data.get("character_arc")),
-        long_term_goal=(data.get("character_arc") or {}).get("goal", ""),
-        equipment=_equip_from_yaml(data.get("equipment")),
-        inventory=_inventory_from_yaml(data.get("inventory")),
-    )
-
-
-def _actor_from_yaml(data: dict) -> Actor:
-    """YAML dict → Actor."""
-    return Actor(
-        id=data.get("id", ""),
-        name=data.get("name", ""),
-        role=data.get("role", ""),
-        race=data.get("race"),
-        location=Location(scene_id=data.get("scene_id", "")),
-        attributes=_attrs_from_yaml(data.get("attributes")),
-        combat=_combat_from_yaml(data.get("combat")),
-        personality=data.get("personality", ""),
-        functions=data.get("functions", []),
-        function_data=data.get("function_data", {}),
-        equipment=_equip_from_yaml(data.get("equipment")),
-        inventory=_inventory_from_yaml(data.get("inventory")),
-    )
-
-
-def _item_from_yaml(data: dict, pack_name: str) -> Item:
-    """YAML dict → Item."""
-    return Item(
-        id=data.get("id", ""),
-        name=data.get("name", ""),
-        item_type=ItemType(data.get("item_type", "misc")),
-        rarity=data.get("rarity", "common"),
-        weight=data.get("weight", 0.0),
-        value=data.get("value", 0),
-        description=data.get("description", ""),
-        data=data.get("data", {}),
-        pack_name=pack_name,
-    )
-
-
-def _scene_obj_from_yaml(data: dict) -> SceneObject:
-    """YAML dict → SceneObject."""
-    return SceneObject(
-        id=data.get("id", ""),
-        name=data.get("name", ""),
-        object_type=SceneObjectType(data.get("object_type", "decoration")),
-        scene_id=data.get("scene_id", ""),
-        interactable=data.get("interactable", True),
-        interact_data=data.get("interact_data"),
-    )
-
-
-def _story_arc_from_yaml(data: dict) -> StoryArc:
-    """YAML dict → StoryArc."""
-    return StoryArc(
-        id=data.get("id", f"arc_{data.get('title', '')}"),
-        type=data.get("type", "main"),
-        title=data.get("title", ""),
-        stage=data.get("stage", "hook"),
-        main_cast=data.get("main_cast", []),
-        status="setup",
-    )
-
-
-def _hook_from_yaml(data: dict) -> StoryHook:
-    """YAML dict → StoryHook."""
-    return StoryHook(
-        id=data.get("id", f"hook_{hash(data.get('description', ''))}"),
-        description=data.get("description", ""),
-        urgency=_urgency(data.get("urgency", "medium")),
-    )
-
-
-# ── 子结构 / Sub-structures ──
-
-
-def _attrs_from_yaml(data: dict | None) -> Attributes:
-    if not data:
-        return Attributes()
-    return Attributes(
-        strength=data.get("str", data.get("strength", 10)),
-        dexterity=data.get("dex", data.get("dexterity", 10)),
-        constitution=data.get("con", data.get("constitution", 10)),
-        intelligence=data.get("int", data.get("intelligence", 10)),
-        wisdom=data.get("wis", data.get("wisdom", 10)),
-        charisma=data.get("cha", data.get("charisma", 10)),
-    )
-
-
-def _combat_from_yaml(data: dict | None) -> CombatStats | None:
-    if not data:
-        return None
-    return CombatStats(
-        hp=data.get("hp", 10),
-        max_hp=data.get("max_hp", data.get("hp", 10)),
-        ac=data.get("ac", 10),
-        attack_bonus=data.get("attack_bonus", 0),
-        damage_dice=data.get("damage_dice", "1d4"),
-    )
-
-
-def _char_arc_from_yaml(data: dict | None) -> CharacterArc:
-    """YAML dict → CharacterArc."""
-    if not data:
-        return CharacterArc()
-    return CharacterArc(
-        stage=data.get("stage", "setup"),
-        description=data.get("description", ""),
-    )
-
-
-def _equip_from_yaml(data: dict | None) -> Equipment:
-    if not data:
-        return Equipment()
-    return Equipment(
-        weapon_id=data.get("weapon"),
-        armor_id=data.get("armor"),
-        shield_id=data.get("shield"),
-    )
-
-
-def _inventory_from_yaml(data: list | None) -> list[InventorySlot]:
-    if not data:
-        return []
-    return [
-        InventorySlot(
-            item_id=i.get("item", i.get("item_id", "")), quantity=i.get("qty", i.get("quantity", 1))
-        )
-        for i in data
-    ]
-
-
-def _urgency(text: str) -> int:
-    return {"low": 3, "medium": 5, "high": 8}.get(text, 5)
-
-
-# ═══════════════════════════════════════════════════════════════
-# YAML 文件读取 / YAML file reading
-# ═══════════════════════════════════════════════════════════════
-
-
-def _read_pack(pack_dir: Path) -> dict:
-    """读取 world-pack 目录下所有实例 YAML → dict."""
-    result: dict = {
-        "meta": {},
-        "lore": [],
-        "scenes": [],
-        "player_characters": [],
-        "actors": [],
-        "items": [],
-        "scene_objects": [],
-        "story_setup": {"arcs": [], "hooks": []},
-    }
-    if not pack_dir.exists():
-        return result
-
-    _read_single(pack_dir / "meta.yaml", result, "meta")
-    _read_dir(pack_dir / "lore", result, "lore")
-    _read_dir(pack_dir / "scenes", result, "scenes")
-    _read_dir(pack_dir / "player_characters", result, "player_characters")
-    _read_dir(pack_dir / "actors", result, "actors")
-    _read_dir(pack_dir / "items", result, "items")
-    _read_dir(pack_dir / "scene_objects", result, "scene_objects")
-    _read_single(pack_dir / "story_setup.yaml", result, "story_setup")
-
-    return result
-
-
-def _read_single(filepath: Path, result: dict, key: str) -> None:
-    if filepath.exists():
-        data = yaml.safe_load(filepath.read_text(encoding="utf-8")) or {}
-        result[key] = data
-
-
-def _read_dir(dirpath: Path, result: dict, key: str) -> None:
-    if not dirpath.exists():
-        return
-    for yf in sorted(dirpath.glob("*.yaml")):
-        data = yaml.safe_load(yf.read_text(encoding="utf-8")) or {}
-        result[key].append(data)
-
-
-# ═══════════════════════════════════════════════════════════════
-# WorldLoader
-# ═══════════════════════════════════════════════════════════════
+logger = logging.getLogger(__name__)
 
 
 class WorldLoader:
@@ -265,7 +58,13 @@ class WorldLoader:
         if not pack_name:
             pack_name = pack_dir.name
 
-        data = _read_pack(pack_dir)
+        data = read_pack(pack_dir)
+
+        # ── 关联关系校验 / FK validation ──
+        warnings = validate_pack_relations(data)
+        for w in warnings:
+            logger.warning("[WorldLoader] FK warning: %s", w)
+
         counts: dict[str, int] = {}
 
         # 按 FK 依赖顺序写入 / Write in FK dependency order
@@ -273,7 +72,7 @@ class WorldLoader:
         counts["items"] = await self._write_items(data.get("items", []), pack_name)
         counts["scene_objects"] = await self._write_scene_objects(data.get("scene_objects", []))
         counts["pcs"] = await self._write_pcs(data)
-        counts["actors"] = await self._write_actors(data.get("actors", []))
+        counts["actors"] = await self._write_actors(data)
         counts["story_arcs"] = await self._write_story_arcs(data)
         counts["story_hooks"] = await self._write_story_hooks(data)
 
@@ -295,14 +94,14 @@ class WorldLoader:
 
     async def _write_items(self, items: list[dict], pack_name: str) -> int:
         for i in items:
-            await self._item_repo.save(_item_from_yaml(i, pack_name))
+            await self._item_repo.save(item_from_yaml(i, pack_name))
         return len(items)
 
     # ── Scene Objects (SceneRepo) ──
 
     async def _write_scene_objects(self, objects: list[dict]) -> int:
         for o in objects:
-            await self._scene_repo.save_object(_scene_obj_from_yaml(o))
+            await self._scene_repo.save_object(scene_obj_from_yaml(o))
         return len(objects)
 
     # ── PCs (CharacterRepo) ──
@@ -311,28 +110,30 @@ class WorldLoader:
         starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
         pcs = data.get("player_characters", [])
         for pc_data in pcs:
-            await self._char_repo.save_pc(_pc_from_yaml(pc_data, starting_scene))
+            await self._char_repo.save_pc(pc_from_yaml(pc_data, starting_scene))
         return len(pcs)
 
     # ── Actors (CharacterRepo) ──
 
-    async def _write_actors(self, actors: list[dict]) -> int:
+    async def _write_actors(self, data: dict) -> int:
+        starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
+        actors = data.get("actors", [])
         for a_data in actors:
-            await self._char_repo.save_actor(_actor_from_yaml(a_data))
+            await self._char_repo.save_actor(actor_from_yaml(a_data, starting_scene))
         return len(actors)
 
     # ── Story (StoryRepo) ──
 
     async def _write_story_arcs(self, data: dict) -> int:
-        arcs = data.get("story_setup", {}).get("arcs", [])
+        arcs = data.get("story_setup", {}).get("story_arcs", [])
         for arc_data in arcs:
-            await self._story_repo.save_arc(_story_arc_from_yaml(arc_data))
+            await self._story_repo.save_arc(story_arc_from_yaml(arc_data))
         return len(arcs)
 
     async def _write_story_hooks(self, data: dict) -> int:
-        hooks = data.get("story_setup", {}).get("hooks", [])
+        hooks = data.get("story_setup", {}).get("story_hooks", [])
         for h_data in hooks:
-            await self._story_repo.save_hook(_hook_from_yaml(h_data))
+            await self._story_repo.save_hook(hook_from_yaml(h_data))
         return len(hooks)
 
     # ── ChromaDB ──

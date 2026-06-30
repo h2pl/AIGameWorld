@@ -10,6 +10,6 @@ validator.py: meta.yaml Pydantic schema validation
 """
 
 from .loader import WorldLoader
-from .validator import PackValidator
+from .validator import PackValidator, validate_pack_relations
 
-__all__ = ["PackValidator", "WorldLoader"]
+__all__ = ["PackValidator", "WorldLoader", "validate_pack_relations"]

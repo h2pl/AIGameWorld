@@ -1,9 +1,11 @@
+# 场景对象：门 / Scene Objects: Doors
 objects:
-  - id: "door_cellar"
-    name: "Cellar Door"
-    object_type: "door"
-    interactable: true
+  - id: "door_cellar"             # 唯一标识 / unique id
+    name: "Cellar Door"           # 地窖门 / cellar door
+    object_type: "door"           # 门类对象 / door object
+    scene_id: "village_elderwood" # 所属场景 / parent scene
+    interactable: true            # 可交互 / interactable
     interact_data:
-      locked: true
-      key_id: "rusty_key"
-      leads_to: "cellar_scene"
+      locked: true                # 已上锁 / locked
+      key_id: "rusty_key"         # 解锁所需钥匙 / required key
+      leads_to: "cellar_scene"    # 通往场景 / leads to scene
