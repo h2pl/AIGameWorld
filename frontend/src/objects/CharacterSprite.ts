@@ -1,4 +1,4 @@
-/** 角色精灵 / Character Sprite — 圆形 + 首字母 + 功能色边框 */
+/** 角色精灵 / Character Sprite — tileset 风格 + 血条 + 名字标签 */
 
 import Phaser from "phaser";
 import type { CharacterData } from "../types";
@@ -7,9 +7,7 @@ export class CharacterSprite {
   readonly id: string;
   readonly data: CharacterData;
   private scene: Phaser.Scene;
-  private container: Phaser.GameObjects.Container;
-  private circle: Phaser.GameObjects.Arc;
-  private label: Phaser.GameObjects.Text;
+  private sprite: Phaser.GameObjects.Sprite;
   private nameTag: Phaser.GameObjects.Text;
   private hpBar: Phaser.GameObjects.Graphics;
   private tileX: number;
@@ -32,46 +30,45 @@ export class CharacterSprite {
 
     const cx = tileX * tileSize + tileSize / 2;
     const cy = tileY * tileSize + tileSize / 2;
-    const radius = tileSize * 0.4;
-    const borderColor = this.getBorderColor();
-    const fillColor = this.getFillColor();
 
-    // 外圈边框 / Border ring
-    this.circle = scene.add.arc(0, 0, radius + 2, 0, 360, false, borderColor);
-    this.circle.setFillStyle(fillColor);
+    // Sprite 纹理 / Sprite texture key
+    const textureKey = data.is_pc ? this.getPcTextureKey() : "actor_default";
+    this.sprite = scene.add.sprite(cx, cy, textureKey);
+    this.sprite.setOrigin(0.5, 0.5);
+    this.sprite.setInteractive({ useHandCursor: true });
 
-    // 首字母 / First letter
-    const initial = data.name.charAt(0);
-    this.label = scene.add.text(0, 0, initial, {
-      fontFamily: "Segoe UI, sans-serif",
-      fontSize: `${Math.floor(radius)}px`,
-      color: "#ffffff",
-      fontStyle: "bold",
-    }).setOrigin(0.5);
+    // PC 金边 / Gold border for PC
+    if (data.is_pc) {
+      this.sprite.setTint(0xffffff); // 正常颜色
+      // Draw gold selection ring
+      const ring = scene.add.graphics();
+      ring.lineStyle(2, 0xffd700, 0.8);
+      ring.strokeCircle(cx, cy, tileSize * 0.35);
+      ring.setDepth(5);
+    }
 
-    // 名字标签（下方）/ Name tag (below)
-    this.nameTag = scene.add.text(0, radius + 8, data.name, {
+    // Name tag / 名字标签
+    this.nameTag = scene.add.text(cx, cy + tileSize * 0.45, data.name, {
       fontFamily: "Segoe UI, sans-serif",
       fontSize: "10px",
       color: "#ffffff",
-    }).setOrigin(0.5, 0);
+      backgroundColor: "rgba(0,0,0,0.6)",
+      padding: { x: 2, y: 1 },
+    }).setOrigin(0.5, 0).setDepth(20);
 
-    // 血条 / HP bar
-    this.hpBar = scene.add.graphics();
+    // HP bar / 血条
+    this.hpBar = scene.add.graphics().setDepth(20);
     if (data.combat) {
       this.drawHpBar(cx, cy, data.combat.hp, data.combat.max_hp);
     }
 
-    this.container = scene.add.container(cx, cy, [this.circle, this.label, this.nameTag]);
-
-    // 点击交互 / Click interaction
-    this.circle.setInteractive({ useHandCursor: true });
-    this.circle.on("pointerdown", () => {
-      this.scene.events.emit("character-clicked", this.data);
+    // Click / 点击
+    this.sprite.on("pointerdown", () => {
+      scene.events.emit("character-clicked", this.data);
     });
   }
 
-  /** 移动动画 / Move animation */
+  /** 移动动画 / Move to position */
   moveTo(tileX: number, tileY: number, duration = 300): Promise<void> {
     return new Promise((resolve) => {
       this.tileX = tileX;
@@ -79,12 +76,18 @@ export class CharacterSprite {
       const cx = tileX * this.TILE_SIZE + this.TILE_SIZE / 2;
       const cy = tileY * this.TILE_SIZE + this.TILE_SIZE / 2;
       this.scene.tweens.add({
-        targets: this.container,
+        targets: this.sprite,
         x: cx,
         y: cy,
         duration,
         ease: "Sine.easeInOut",
-        onComplete: () => resolve(),
+        onComplete: () => {
+          this.nameTag.setPosition(cx, cy + this.TILE_SIZE * 0.45);
+          if (this.data.combat) {
+            this.drawHpBar(cx, cy, this.data.combat.hp, this.data.combat.max_hp);
+          }
+          resolve();
+        },
       });
     });
   }
@@ -97,40 +100,33 @@ export class CharacterSprite {
     this.drawHpBar(cx, cy, hp, maxHp);
   }
 
+  /** 销毁 / Destroy */
+  destroy(): void {
+    this.sprite.destroy();
+    this.nameTag.destroy();
+    this.hpBar.destroy();
+  }
+
   private drawHpBar(cx: number, cy: number, hp: number, maxHp: number): void {
     const bw = 20;
     const bh = 3;
     const bx = cx - bw / 2;
-    const by = cy - this.TILE_SIZE * 0.4 - 6;
+    const by = cy - this.TILE_SIZE * 0.4 - 4;
     const ratio = Math.max(hp / maxHp, 0);
-    // 背景 / Background
     this.hpBar.fillStyle(0x333333);
     this.hpBar.fillRect(bx, by, bw, bh);
-    // 血量 / HP fill
     const color = ratio > 0.5 ? 0x2ecc71 : ratio > 0.25 ? 0xf39c12 : 0xe74c3c;
     this.hpBar.fillStyle(color);
     this.hpBar.fillRect(bx, by, bw * ratio, bh);
   }
 
-  /** 销毁 / Destroy */
-  destroy(): void {
-    this.container.destroy();
-    this.hpBar.destroy();
-  }
-
-  private getBorderColor(): number {
-    if (this.data.is_pc) return 0xffd700; // 金边 / Gold
-    const map: Record<string, number> = {
-      enemy: 0xe74c3c,
-      merchant: 0x2ecc71,
-      guard: 0xf39c12,
-      quest_giver: 0x9b59b6,
+  private getPcTextureKey(): string {
+    const roleMap: Record<string, string> = {
+      fighter: "pc_fighter",
+      rogue: "pc_rogue",
+      cleric: "pc_cleric",
+      wizard: "pc_wizard",
     };
-    const func = this.data.functions?.[0] || "";
-    return map[func] || 0x1abc9c;
-  }
-
-  private getFillColor(): number {
-    return this.data.is_pc ? 0x3498db : 0x555555;
+    return roleMap[this.data.role] || "pc_fighter";
   }
 }
