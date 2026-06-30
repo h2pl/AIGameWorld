@@ -73,7 +73,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, mapW, mapH);
     // 初始视角：居中城镇区域 / Initial view: center on town
     this.cameras.main.scrollX = Math.max(0, mapW / 2 - CONFIG.CANVAS.width / 2);
-    this.cameras.main.scrollY = 50;
+    this.cameras.main.scrollY = mapH - CONFIG.CANVAS.height - 50;  // 底部城镇区域
 
     // 角色放 spawn 点附近 / Place chars near spawn point (和 phaser-rpg 一样用像素坐标)
     const spawnPoint = map.findObject(TILEMAP.LAYERS.OBJECTS, ({ name }) => name === "Spawn Point");
