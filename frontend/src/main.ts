@@ -144,10 +144,14 @@ async function main(): Promise<void> {
     type: Phaser.AUTO,
     width: CONFIG.CANVAS.width,
     height: CONFIG.CANVAS.height,
-    parent: "game",
+    autoFocus: true,
     backgroundColor: CONFIG.COLOR.background,
-    pixelArt: true,           // 像素风：关闭抗锯齿 / Pixel art: disable anti-aliasing
-    roundPixels: true,        // 像素对齐 / Align to whole pixels
+    pixelArt: true,           // 像素风 / Pixel art
+    roundPixels: true,        // 像素对齐 / Round pixels
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+    },
     scene: [GameScene],
   });
 }
