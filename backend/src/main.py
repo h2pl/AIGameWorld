@@ -9,10 +9,11 @@
 import json
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.storage.sqlite_client import SQLiteClient
+from src.ws import handle_ws
 
 
 @asynccontextmanager
@@ -136,3 +137,9 @@ async def get_pack_state(pack_id: str):
         }
     finally:
         await db.close()
+
+
+@app.websocket("/ws/{session_id}")
+async def websocket_endpoint(ws: WebSocket, session_id: str):
+    """WebSocket 端点 / WebSocket endpoint — 前端驱动 tick 运行."""
+    await handle_ws(ws, session_id)

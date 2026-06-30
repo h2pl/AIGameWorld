@@ -16,6 +16,7 @@ export class GameScene extends Phaser.Scene {
   private ts = 32;
   private iconTexts: Phaser.GameObjects.Text[] = [];
   private hudTexts: Phaser.GameObjects.Text[] = [];
+  private narrativeText: Phaser.GameObjects.Text | null = null;
 
   constructor() { super({ key: "Game" }); }
 
@@ -25,7 +26,21 @@ export class GameScene extends Phaser.Scene {
     this.genSprites(st.characters);
     gameStore.subscribe(s => this.onUpdate(s));
     this.buildMap(st.scenes[0] || {}, st.scene_objects);
-    this.events.on("character-clicked", (c: any) => document.dispatchEvent(new CustomEvent("character-selected", { detail: c })));
+
+    this.events.on("character-clicked", (c: any) =>
+      document.dispatchEvent(new CustomEvent("character-selected", { detail: c })));
+
+    // 叙事区 / Narrative area (bottom overlay)
+    this.narrativeText = this.add.text(10, CONFIG.CANVAS.height - 48, "连接后端后点 [▶] 开始 / Connect backend then press [▶]", {
+      fontFamily: "Segoe UI, sans-serif", fontSize: "13px", color: "#ffd700",
+      backgroundColor: "rgba(0,0,0,0.7)", padding: { x: 10, y: 6 },
+      wordWrap: { width: CONFIG.CANVAS.width - 20 },
+    }).setScrollFactor(0).setDepth(100);
+  }
+
+  /** 更新叙事文本 / Update narrative text */
+  setNarrative(text: string): void {
+    if (this.narrativeText) this.narrativeText.setText(text || this.narrativeText.text);
   }
 
   /* ═══ 角色精灵 / Character sprites ═══ */

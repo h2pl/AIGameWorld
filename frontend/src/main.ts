@@ -141,7 +141,7 @@ async function main(): Promise<void> {
   );
 
   // 启动 Phaser 游戏引擎 / Start Phaser game engine
-  new Phaser.Game({
+  const game = new Phaser.Game({
     type: Phaser.AUTO,
     width: CONFIG.CANVAS.width,
     height: CONFIG.CANVAS.height,
@@ -155,6 +155,51 @@ async function main(): Promise<void> {
     },
     scene: [Boot, GameScene],
   });
+
+  // ── 控制面板 / Control Panel ──
+  const bar = document.createElement("div");
+  bar.style.cssText = "position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:999;";
+  document.body.appendChild(bar);
+
+  const tInput = document.createElement("input");
+  tInput.value = "3"; tInput.style.cssText = "width:50px;text-align:center;border-radius:4px;border:1px solid #555;background:#222;color:#fff;";
+
+  const btnRun = document.createElement("button");
+  btnRun.textContent = "▶ Run";
+  btnRun.style.cssText = "padding:4px 12px;border-radius:4px;border:none;background:#2ecc71;color:#fff;cursor:pointer;";
+
+  const status = document.createElement("span");
+  status.style.cssText = "color:#aaa;font-size:11px;";
+  status.textContent = "Disconnected";
+
+  bar.appendChild(tInput);
+  bar.appendChild(btnRun);
+  bar.appendChild(status);
+
+  // ── WebSocket 客户端 / WebSocket Client ──
+  const { WSClient } = await import("./net/WSClient");
+  const ws = new WSClient("aw");
+
+  btnRun.onclick = async () => {
+    const n = parseInt(tInput.value) || 1;
+    try {
+      status.textContent = "Connecting...";
+      await ws.connect(world.pack_id);
+      status.textContent = "Connected";
+      ws.runTicks(n);
+      // 监听叙事更新 / Watch for narrative updates
+      gameStore.subscribe((s) => {
+        const gs = game.scene.getScene("Game") as import("./scenes/GameScene").GameScene;
+        if (gs?.setNarrative) gs.setNarrative(s.narrative);
+      });
+      status.textContent = `Running ${n} tick(s)...`;
+      await new Promise(r => setTimeout(r, n * 1000 + 500));
+      status.textContent = `Connected (tick: ${gameStore.getState().current_tick})`;
+    } catch (e) {
+      status.textContent = "Error: backend not running";
+      console.error(e);
+    }
+  };
 }
 
 main();
