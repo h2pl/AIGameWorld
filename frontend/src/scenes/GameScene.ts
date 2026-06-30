@@ -85,10 +85,15 @@ export class GameScene extends Phaser.Scene {
     const st2 = gameStore.getState();
     let idx = 0;
     for (const ch of st2.characters) {
-      // 像素坐标，每角色偏移48px / Pixel coords, 48px apart
-      const wx = spawnX + idx * 48;
-      const wy = spawnY;
-      st2.character_positions[ch.id] = { x: Math.floor(wx / 32), y: Math.floor(wy / 32) };
+      // 从 spawn 向右排，跳过树/建筑 / Spread right from spawn, skip trees/buildings
+      let tx = Math.floor(spawnX / 32) + idx * 2;
+      const ty = Math.floor(spawnY / 32);
+      while (tx < 38) {
+        const tile = world.getTileAt(tx, ty);
+        if (!tile || !tile.properties?.collides) break;
+        tx++;
+      }
+      st2.character_positions[ch.id] = { x: tx, y: ty };
       idx++;
     }
 
