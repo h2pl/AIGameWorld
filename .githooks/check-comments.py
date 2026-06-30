@@ -27,7 +27,7 @@ SKIP_GLOBS = [
     ".mypy_cache/*",
 ]
 # 白名单确切文件名（不含路径）/ Whitelist exact filenames
-SKIP_FILES = {".gitkeep", "package-lock.json", ".prettierrc"}
+SKIP_FILES = {".gitkeep", "package-lock.json", ".prettierrc", "tuxemon-town.json"}
 
 # 最低注释率 / Minimum comment ratio
 MIN_COMMENT_RATIO = 0.05

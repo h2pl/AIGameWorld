@@ -1,4 +1,4 @@
-/** 角色精灵 / Character Sprite — 动态纹理 + 血条 + 名字标签 */
+/** 角色精灵 / Character Sprite — 世界坐标 + 名字标签 + 血条 + 点击 */
 
 import Phaser from "phaser";
 import type { CharacterData } from "../types";
@@ -7,75 +7,67 @@ export class CharacterSprite {
   readonly id: string;
   readonly data: CharacterData;
   private scene: Phaser.Scene;
-  private sprite: Phaser.GameObjects.Sprite;
-  private nameTag: Phaser.GameObjects.Text;
-  private hpBar: Phaser.GameObjects.Graphics;
-  private tileX: number;
-  private tileY: number;
-  private readonly TS: number;
+  private sprite: Phaser.GameObjects.Sprite;           // 主精灵 / Main sprite
+  private nameTag: Phaser.GameObjects.Text;             // 名字标签 / Name label
+  private hpBar: Phaser.GameObjects.Graphics;           // 血条 / HP bar
+  private worldX = 0;                                   // 世界坐标 / World X
+  private worldY = 0;                                   // 世界坐标 / World Y
 
-  constructor(
-    scene: Phaser.Scene, data: CharacterData,
-    tileX: number, tileY: number, tileSize: number,
-  ) {
-    this.scene = scene; this.data = data; this.id = data.id;
-    this.tileX = tileX; this.tileY = tileY; this.TS = tileSize;
+  constructor(scene: Phaser.Scene, data: CharacterData, wx: number, wy: number, tileSize: number) {
+    this.scene = scene; this.data = data; this.id = data.id; // 初始化 / Init
+    this.worldX = wx; this.worldY = wy;
 
-    const cx = tileX * tileSize + tileSize / 2;
-    const cy = tileY * tileSize + tileSize / 2;
+    // 纹理 / Texture
+    const key = scene.textures.exists(data.id) ? data.id : (data.is_pc ? "pc_fighter" : "actor_default");
+    this.sprite = scene.add.sprite(wx, wy, key).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
 
-    // 用角色 id 作为纹理 key（GameScene 已动态生成）/ use character id as texture key
-    const textureKey = scene.textures.exists(data.id) ? data.id : (data.is_pc ? "pc_fighter" : "actor_default");
-    this.sprite = scene.add.sprite(cx, cy, textureKey).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
-
-    // PC 金边 / Gold ring for PC
+    // PC 金环 / Gold ring for PC
     if (data.is_pc) {
       const ring = scene.add.graphics(); ring.lineStyle(2, 0xffd700, 0.8);
-      ring.strokeCircle(cx, cy, tileSize * 0.35); ring.setDepth(5);
+      ring.strokeCircle(wx, wy, tileSize * 0.35);
     }
 
-    // 名字标签 / Name tag
-    this.nameTag = scene.add.text(cx, cy + tileSize * 0.45, data.name, {
+    // 名字 / Name
+    this.nameTag = scene.add.text(wx, wy + tileSize * 0.4, data.name, {
       fontFamily: "Segoe UI, sans-serif", fontSize: "10px", color: "#fff",
       backgroundColor: "rgba(0,0,0,0.6)", padding: { x: 2, y: 1 },
-    }).setOrigin(0.5, 0).setDepth(20);
+    }).setOrigin(0.5, 0).setDepth(30);
 
-    // 血条 / HP bar
-    this.hpBar = scene.add.graphics().setDepth(20);
-    if (data.combat) this.drawHpBar(cx, cy, data.combat.hp, data.combat.max_hp);
+    // 血条 / HP
+    this.hpBar = scene.add.graphics().setDepth(30);
+    if (data.combat) this.drawHpBar(wx, wy, data.combat.hp, data.combat.max_hp, tileSize);
 
     this.sprite.on("pointerdown", () => scene.events.emit("character-clicked", this.data));
   }
 
-  moveTo(tileX: number, tileY: number, duration = 300): Promise<void> {
+  /** 设置深度 / Set depth */
+  setDepth(d: number): void { this.sprite.setDepth(d); }
+
+  /** 世界坐标移动 / Move in world coords */
+  moveToWorld(wx: number, wy: number, duration = 300): Promise<void> {
     return new Promise(resolve => {
-      this.tileX = tileX; this.tileY = tileY;
-      const cx = tileX * this.TS + this.TS / 2, cy = tileY * this.TS + this.TS / 2;
+      this.worldX = wx; this.worldY = wy;
       this.scene.tweens.add({
-        targets: this.sprite, x: cx, y: cy, duration, ease: "Sine.easeInOut",
-        onComplete: () => {
-          this.nameTag.setPosition(cx, cy + this.TS * 0.45);
-          if (this.data.combat) this.drawHpBar(cx, cy, this.data.combat.hp, this.data.combat.max_hp);
-          resolve();
-        },
+        targets: this.sprite, x: wx, y: wy, duration, ease: "Sine.easeInOut",
+        onComplete: () => { this.nameTag.setPosition(wx, wy + 14); resolve(); }, // 更新名字位置
       });
     });
   }
 
+  /** 更新血条 / Update HP */
   updateHp(hp: number, maxHp: number): void {
-    const cx = this.tileX * this.TS + this.TS / 2, cy = this.tileY * this.TS + this.TS / 2;
-    this.hpBar.clear(); this.drawHpBar(cx, cy, hp, maxHp);
+    this.hpBar.clear(); this.drawHpBar(this.worldX, this.worldY, hp, maxHp, 32);
   }
 
-  destroy(): void {
-    this.sprite.destroy(); this.nameTag.destroy(); this.hpBar.destroy();
-  }
+  /** 销毁 / Destroy */
+  destroy(): void { this.sprite.destroy(); this.nameTag.destroy(); this.hpBar.destroy(); }
 
-  private drawHpBar(cx: number, cy: number, hp: number, maxHp: number): void {
-    const bw = 20, bh = 3, bx = cx - bw / 2, by = cy - this.TS * 0.4 - 4;
-    const ratio = Math.max(hp / maxHp, 0);
-    this.hpBar.fillStyle(0x333333); this.hpBar.fillRect(bx, by, bw, bh);
-    this.hpBar.fillStyle(ratio > 0.5 ? 0x2ecc71 : ratio > 0.25 ? 0xf39c12 : 0xe74c3c);
-    this.hpBar.fillRect(bx, by, bw * ratio, bh);
+  /** 画血条 / Draw HP bar */
+  private drawHpBar(wx: number, wy: number, hp: number, maxHp: number, ts: number): void {
+    const bw = 20, bh = 3, bx = wx - bw / 2, by = wy - ts * 0.4 - 6; // 位置计算 / Position calc
+    const ratio = Math.max(hp / maxHp, 0);                              // 血量比例 / HP ratio
+    this.hpBar.fillStyle(0x333333); this.hpBar.fillRect(bx, by, bw, bh); // 背景 / Background
+    this.hpBar.fillStyle(ratio > 0.5 ? 0x2ecc71 : ratio > 0.25 ? 0xf39c12 : 0xe74c3c); // 绿/黄/红
+    this.hpBar.fillRect(bx, by, bw * ratio, bh);                        // 血量填充 / HP fill
   }
 }
