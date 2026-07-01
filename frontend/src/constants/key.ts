@@ -5,8 +5,15 @@ export const KEY = {
   },
   TILEMAP: {
     TUXEMON: "tuxemon-map",
+    FOREST: "forest-map",
   },
   SPRITE: {
     SPACEMAN: "spaceman",
   },
 } as const;
+
+/** 场景 → 地图映射 / Scene → Tilemap mapping */
+export const SCENE_MAP: Record<string, string> = {
+  "village_elderwood": "tuxemon-map",
+  "forest_north": "forest-map",
+};

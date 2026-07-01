@@ -3,7 +3,8 @@ import Phaser from "phaser";
 import { gameStore } from "../state/GameStore";
 import { CharacterManager } from "../managers/CharacterManager";
 import { CONFIG } from "../config";
-import { KEY, DEPTH, TILEMAP } from "../constants";
+import { KEY, DEPTH, TILEMAP, SCENE_MAP } from "../constants";
+import { gridToWorld } from "../utils/tile";
 
 /** 种族肤色 / Race skin colors */
 const RACE_SKIN: Record<string, string> = { human: "#f5cba7", elf: "#fdebd0", dwarf: "#d4a574", halfling: "#f5c6a0", orc: "#6b8e5a", tiefling: "#c48b9d", dragonborn: "#8b5e3c" };
@@ -32,12 +33,31 @@ function makeCharTexture(scene: Phaser.Scene, ch: { id: string; race: string | n
   cv.refresh();
 }
 
+/** 生成场景物品纹理 / Generate scene object texture */
+function makeObjectTexture(scene: Phaser.Scene, obj: { id: string; object_type: string }, key: string, size: number): void {
+  const colors: Record<string, string> = { container: "#d4a017", door: "#8b6914", landmark: "#ccc" };
+  const fill = colors[obj.object_type] || "#888";
+  const cv = scene.textures.createCanvas(key, size, size);
+  if (!cv) return;
+  const c = cv.context; c.imageSmoothingEnabled = false;
+  c.fillStyle = fill;
+  if (obj.object_type === "container") {
+    c.fillRect(4, 10, 24, 16); c.fillStyle = "#fff"; c.fillRect(12, 16, 8, 2);
+  } else if (obj.object_type === "door") {
+    c.fillRect(8, 4, 16, 24);
+  } else {
+    c.beginPath(); c.arc(size / 2, size / 2, 8, 0, Math.PI * 2); c.fill();
+  }
+  cv.refresh();
+}
+
 export class GameScene extends Phaser.Scene {
   private ts!: number;
   private tilemap!: Phaser.Tilemaps.Tilemap;
+  private currentMapKey!: string;
   private charManager!: CharacterManager;
+  private sceneNameText!: Phaser.GameObjects.Text;
   private narrativeText!: Phaser.GameObjects.Text;
-  private iconTexts: Phaser.GameObjects.Text[] = [];
   private unsubscribe: (() => void) | null = null;
 
   constructor() { super({ key: "Game" }); }
@@ -48,16 +68,17 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.initVariables();       // 1  ✅
     this.initCamera();          // 2  ✅
-    this.initPhysics();         // 3  ⏭️ TODO: PMove 启用时加
-    this.createBackground();    // 4  ✅
-    this.createGroups();        // 5  ⏭️ TODO: 对象池管理
+    this.initPhysics();         // 3  ⏭️ TODO
+    this.createBackground();    // 4  ✅ → 默认 tuxemon-map
+    this.createGroups();        // 5  ⏭️ TODO
     this.createLevel();         // 6  ✅
-    this.createPlayer();        // 7  ✅ → createCharacters
-    this.createEnemies();       // 8  ⏭️ TODO: 战斗系统
-    this.initAnimations();      // 9  ⏭️ TODO: spritesheet 动画
+    this.createTerrain();       // 6a ✅ 场景物品
+    this.createPlayer();        // 7  ✅
+    this.createEnemies();       // 8  ⏭️ TODO
+    this.initAnimations();      // 9  ⏭️ TODO
     this.initInput();           // 10 ✅
-    this.setupCollisions();     // 11 ⏭️ TODO: 战斗碰撞检测
-    this.createUI();            // 12 ✅ → 含 store subscribe
+    this.setupCollisions();     // 11 ⏭️ TODO
+    this.createUI();            // 12 ✅
   }
 
   /** 1. initVariables / Reset state + 生成纹理 */
@@ -83,12 +104,35 @@ export class GameScene extends Phaser.Scene {
     // 当前跳过：kb/18 "Skip Physics When: Grid-based movement"
   }
 
-  /** 4. createBackground / Background visuals */
-  private createBackground(): void {
-    this.tilemap = this.make.tilemap({ key: KEY.TILEMAP.TUXEMON });
+  /** 4. createBackground / Background visuals — 默认村庄地图 */
+  private createBackground(mapKey = KEY.TILEMAP.TUXEMON): void {
+    this.loadMap(mapKey);
+  }
+
+  /** 加载/切换地图 / Load or switch tilemap */
+  private loadMap(mapKey: string): void {
+    this.currentMapKey = mapKey;
+    this.tilemap = this.make.tilemap({ key: mapKey });
     const tileset = this.tilemap.addTilesetImage(TILEMAP.TILESET_NAME, KEY.IMAGE.TUXEMON);
-    if (!tileset) { console.error("[Scene] tileset FAIL"); return; }
+    if (!tileset) { console.error("[Scene] tileset FAIL for", mapKey); return; }
     this.tilemap.createLayer(TILEMAP.LAYERS.BELOW, tileset, 0, 0);
+    console.log("[Scene] loadMap", mapKey);
+  }
+
+  /** 6a. createTerrain / 场景物品渲染 */
+  private createTerrain(): void {
+    for (const obj of gameStore.getState().scene_objects) {
+      const key = `obj_${obj.id}`;
+      if (!this.textures.exists(key)) makeObjectTexture(this, obj, key, this.ts);
+      const { wx, wy } = gridToWorld(obj.position_x, obj.position_y, this.ts);
+      this.add.sprite(wx, wy, key).setOrigin(0.5, 1).setDepth(DEPTH.CHARACTER - 1)
+        .setInteractive({ useHandCursor: true })
+        .on("pointerdown", () => {
+          console.log("[Scene] interacted with:", obj.name);
+          document.dispatchEvent(new CustomEvent("object-interacted", { detail: obj }));
+        });
+    }
+    console.log("[Scene] createTerrain objects=%d", gameStore.getState().scene_objects.length);
   }
 
   /** 5. createGroups / Physics groups — TODO: 对象池化频繁创建的对象 */
@@ -155,11 +199,11 @@ export class GameScene extends Phaser.Scene {
     // 当前跳过：无 physics 碰撞体
   }
 
-  /** 12. createUI / HUD overlay + startGame */
+  /** 12. createUI / HUD overlay + store subscribe + 场景切换 */
   private createUI(): void {
     const st = gameStore.getState();
     const scene = st.scenes[0];
-    this.add.text(8, 4, `${scene?.name || "Tuxemon Town"}`, {
+    this.sceneNameText = this.add.text(8, 4, `${scene?.name || ""}`, {
       fontFamily: "Segoe UI, sans-serif", fontSize: "12px", color: "#ffd700", fontStyle: "bold",
       backgroundColor: "rgba(0,0,0,0.6)", padding: { x: 5, y: 2 },
     }).setScrollFactor(0).setDepth(DEPTH.HUD);
@@ -170,14 +214,55 @@ export class GameScene extends Phaser.Scene {
         backgroundColor: "rgba(0,0,0,0.7)", padding: { x: 10, y: 6 } },
     ).setScrollFactor(0).setDepth(DEPTH.HUD);
 
-    // startGame: 订阅 store（事件驱动，非 update loop）
+    // 订阅 store / Subscribe to store
+    let lastSceneId = st.characters[0]?.scene_id;
     this.unsubscribe = gameStore.subscribe(() => {
       const s = gameStore.getState();
       this.charManager.sync(s.characters, s.character_positions);
       if (s.narrative && this.narrativeText) this.narrativeText.setText(s.narrative);
+      // 场景切换检测 / Scene change detection
+      const curSceneId = s.characters[0]?.scene_id;
+      if (curSceneId && curSceneId !== lastSceneId) {
+        lastSceneId = curSceneId;
+        this.onSceneChanged(curSceneId);
+      }
     });
 
+    // 场景切换内部逻辑 / Scene change handler (commented: used by CharacterManager for future explicit triggers)
+
     console.log("[Scene] createUI done, store subscribed");
+  }
+
+  /** 场景切换：换地图 + 重居中 / Switch scene: swap tilemap + recenter camera */
+  private onSceneChanged(sceneId: string): void {
+    const mapKey = SCENE_MAP[sceneId];
+    console.log("[Scene] scene-changed →", sceneId, "map=", mapKey);
+    if (mapKey && mapKey !== this.currentMapKey) {
+      // 销毁旧 tilemap 图层 / Destroy old layers
+      for (const name of [TILEMAP.LAYERS.BELOW, TILEMAP.LAYERS.WORLD, TILEMAP.LAYERS.ABOVE]) {
+        const layer = this.tilemap.getLayer(name);
+        if (layer) (layer as unknown as Phaser.Tilemaps.TilemapLayer).destroy();
+      }
+      this.tilemap.destroy();
+      // 加载新地图 / Load new map
+      this.loadMap(mapKey);
+      // 重建 World + Above 图层 / Rebuild collision layers
+      const ts = this.tilemap.getTileset(TILEMAP.TILESET_NAME);
+      if (ts) {
+        const worldLayer = this.tilemap.createLayer(TILEMAP.LAYERS.WORLD, ts, 0, 0)!;
+        worldLayer.setCollisionByProperty({ collides: true });
+        const aboveLayer = this.tilemap.createLayer(TILEMAP.LAYERS.ABOVE, ts, 0, 0)!;
+        aboveLayer.setDepth(DEPTH.ABOVE_PLAYER);
+        this.cameras.main.setBounds(0, 0, this.tilemap.widthInPixels, this.tilemap.heightInPixels);
+      }
+    }
+    // 更新 HUD 场景名 / Update HUD scene name
+    const scene = gameStore.getState().scenes.find(s => s.id === sceneId);
+    if (scene && this.sceneNameText) this.sceneNameText.setText(scene.name);
+    // 重居中摄像机 / Recenter
+    const { sx, sy } = this.charManager.calcCameraScroll(CONFIG.CANVAS.width, CONFIG.CANVAS.height);
+    this.cameras.main.scrollX = sx;
+    this.cameras.main.scrollY = sy;
   }
 
   // ══ Lifecycle ══
