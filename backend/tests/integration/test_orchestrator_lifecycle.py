@@ -87,7 +87,7 @@ class TestFullTickRun:
             dm_instructions=[],
             plot_brief="Custom start",
             scene_direction={},
-            world_events=[],
+            scene_events=[],
             character_actions=[],
             engine_results=[],
             combat_result=None,

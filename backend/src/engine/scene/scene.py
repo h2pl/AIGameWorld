@@ -5,15 +5,15 @@ Phase 2: 接收 DM 指令，产出 scene_setup + scene_objects 事件。
 
 import logging
 
-from ...schemas.request import WorldUpdateRequest
-from ...schemas.response import WorldUpdateResponse
+from ...schemas.request import SceneProcessRequest
+from ...schemas.response import SceneProcessResponse
 
 
-def process_scene(req: WorldUpdateRequest) -> WorldUpdateResponse:
+def process_scene(req: SceneProcessRequest) -> SceneProcessResponse:
     """处理 DM 指令，生成场景事件."""
     logging.getLogger("aw.eng").info("[scene]")
     events = [
         {"type": "dm_instruction", "tick": req.tick, "description": inst}
         for inst in req.dm_instructions
     ]
-    return WorldUpdateResponse(events=events)
+    return SceneProcessResponse(events=events)

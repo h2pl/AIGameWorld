@@ -12,7 +12,7 @@ class TestOverallState:
             "dm_instructions": [],
             "plot_brief": "",
             "scene_direction": {},
-            "world_events": [],
+            "scene_events": [],
             "character_actions": [],
             "engine_results": [],
             "combat_result": None,
@@ -35,7 +35,7 @@ class TestOverallState:
             "dm_instructions": [],
             "plot_brief": "",
             "scene_direction": {},
-            "world_events": [],
+            "scene_events": [],
             "character_actions": [],
             "engine_results": [],
             "combat_result": None,
@@ -51,7 +51,7 @@ class TestOverallState:
         }
         assert s["tick"] == 0
 
-    def test_world_events_annotated_add(self):
+    def test_scene_events_annotated_add(self):
         """Annotated[add] 标记的字段在 langgraph 中会累加."""
         # 这只是一个类型标记，运行时赋值仍然是普通 list
         s: OverallState = {
@@ -59,7 +59,7 @@ class TestOverallState:
             "dm_instructions": [],
             "plot_brief": "",
             "scene_direction": {},
-            "world_events": [{"e": 1}],
+            "scene_events": [{"e": 1}],
             "character_actions": [],
             "engine_results": [],
             "combat_result": None,
@@ -73,7 +73,7 @@ class TestOverallState:
             "errors": [],
             "needs_reflection": False,
         }
-        assert len(s["world_events"]) == 1
+        assert len(s["scene_events"]) == 1
 
     def test_errors_annotated_add(self):
         s: OverallState = {
@@ -81,7 +81,7 @@ class TestOverallState:
             "dm_instructions": [],
             "plot_brief": "",
             "scene_direction": {},
-            "world_events": [],
+            "scene_events": [],
             "character_actions": [],
             "engine_results": [],
             "combat_result": None,

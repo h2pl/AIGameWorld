@@ -24,7 +24,7 @@ def _base_state(**overrides):
         "dm_instructions": [],
         "plot_brief": "",
         "scene_direction": {},
-        "world_events": [],
+        "scene_events": [],
         "character_actions": [],
         "engine_results": [],
         "combat_result": None,
@@ -48,13 +48,13 @@ class TestWorldService:
     def test_process_scene_with_instructions(self):
         state = _base_state(dm_instructions=["探索酒馆", "与NPC交谈"])
         result = scene_service.process_scene(state)
-        assert len(result["world_events"]) == 2
-        assert result["world_events"][0]["type"] == "dm_instruction"
+        assert len(result["scene_events"]) == 2
+        assert result["scene_events"][0]["type"] == "dm_instruction"
 
     def test_process_scene_empty(self):
         state = _base_state()
         result = scene_service.process_scene(state)
-        assert result["world_events"] == []
+        assert result["scene_events"] == []
 
 
 # ============================================================

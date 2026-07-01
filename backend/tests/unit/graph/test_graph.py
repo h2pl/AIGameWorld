@@ -34,7 +34,7 @@ def test_overall_state_defaults():
         dm_instructions=[],
         plot_brief="",
         scene_direction={},
-        world_events=[],
+        scene_events=[],
         character_actions=[],
         engine_results=[],
         combat_result=None,
@@ -58,7 +58,7 @@ def base_state() -> OverallState:
         dm_instructions=[],
         plot_brief="",
         scene_direction={},
-        world_events=[],
+        scene_events=[],
         character_actions=[],
         engine_results=[],
         combat_result=None,
@@ -86,7 +86,7 @@ async def test_phase1_dm_create(base_state):
 
 def test_phase2_world(base_state):
     r = scene_service.process_scene(base_state)
-    assert r["world_events"] == []
+    assert r["scene_events"] == []
 
 
 @pytest.mark.asyncio
@@ -122,7 +122,7 @@ async def test_phase6_reflection_trigger():
         dm_instructions=[],
         plot_brief="Test",
         scene_direction={},
-        world_events=[],
+        scene_events=[],
         character_actions=[],
         engine_results=[],
         combat_result=None,
@@ -147,7 +147,7 @@ async def test_phase6_no_reflection_low_tick():
         dm_instructions=[],
         plot_brief="Test",
         scene_direction={},
-        world_events=[],
+        scene_events=[],
         character_actions=[],
         engine_results=[],
         combat_result=None,
@@ -194,7 +194,7 @@ async def test_full_tick_cycle_with_custom_state():
         dm_instructions=[],
         plot_brief="Custom",
         scene_direction={"featured_pcs": [], "featured_actors": []},
-        world_events=[],
+        scene_events=[],
         character_actions=[],
         engine_results=[],
         combat_result=None,

@@ -17,7 +17,7 @@ from src.schemas.request import (
     QuestRequest,
     ReflectionRequest,
     SummarizerRequest,
-    WorldUpdateRequest,
+    SceneProcessRequest,
 )
 
 
@@ -151,7 +151,7 @@ class TestSummarizerEngine:
 
 class TestSceneEngine:
     def test_process_scene(self):
-        r = process_scene(WorldUpdateRequest(tick=1, dm_instructions=["探索", "交谈"]))
+        r = process_scene(SceneProcessRequest(tick=1, dm_instructions=["探索", "交谈"]))
         assert len(r.events_out) == 2
         assert r.events_out[0]["type"] == "dm_instruction"
         assert r.events_out[0]["tick"] == 1

@@ -26,7 +26,7 @@ class DMNarrateRequest(BaseModel):
 
 
 # === Phase 2: World ===
-class WorldUpdateRequest(BaseModel):
+class SceneProcessRequest(BaseModel):
     tick: int = 0
     dm_instructions: list[str] = []
 

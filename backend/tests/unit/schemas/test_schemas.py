@@ -27,7 +27,7 @@ from src.schemas.request import (
     SceneObjectInteractRequest,
     StoryAdvanceRequest,
     SummarizerRequest,
-    WorldUpdateRequest,
+    SceneProcessRequest,
 )
 from src.schemas.response import (
     ActorDecideResponse,
@@ -42,7 +42,7 @@ from src.schemas.response import (
     QuestResponse,
     ReflectionResponse,
     SummarizerResponse,
-    WorldUpdateResponse,
+    SceneProcessResponse,
 )
 
 
@@ -60,8 +60,8 @@ class TestRequestSchemas:
         assert len(r.dm_instructions) == 2
         assert r.dm_instructions[0] == "探索酒馆"
 
-    def test_world_update_request(self):
-        r = WorldUpdateRequest(tick=5, dm_instructions=["测试"])
+    def test_scene_process_request(self):
+        r = SceneProcessRequest(tick=5, dm_instructions=["测试"])
         assert r.tick == 5
         assert r.dm_instructions == ["测试"]
 
@@ -138,8 +138,8 @@ class TestResponseSchemas:
         r = DMNarrateResponse(narrative_out="伟大的冒险开始了。")
         assert "冒险" in r.narrative_out
 
-    def test_world_update_response(self):
-        r = WorldUpdateResponse(events_out=[{"type": "dm_instruction"}])
+    def test_scene_process_response(self):
+        r = SceneProcessResponse(events_out=[{"type": "dm_instruction"}])
         assert len(r.events_out) == 1
 
     def test_pc_decide_response(self):
@@ -196,9 +196,9 @@ class TestResponseSchemas:
         r = PCDecideResponse.from_entity(action)
         assert r.type == "attack"
 
-    def test_world_update_response_from_entities(self):
+    def test_scene_process_response_from_entities(self):
         events = [Event(id="e1", tick=0, type="combat"), Event(id="e2", tick=0, type="dialogue")]
-        r = WorldUpdateResponse.from_entities(events)
+        r = SceneProcessResponse.from_entities(events)
         assert len(r.events_out) == 2
 
 

@@ -1,7 +1,7 @@
 """Service layer: State ↔ Engine glue / Service 层：State ↔ Engine 胶水。
 
 ├── dm_service.py           — Phase 1 & 6: dm_create / dm_narrate
-├── world_service.py        — Phase 2: world_update
+├── world_service.py        — Phase 2: scene_process
 ├── character_service.py    — Phase 3: pc_decide / actor_decide
 ├── state_update_service.py — Phase 5: state_update
 ├── combat_service.py       — Phase 4: combat

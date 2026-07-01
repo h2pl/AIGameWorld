@@ -43,7 +43,7 @@ class Orchestrator:
                 dm_instructions=[],
                 plot_brief="",
                 scene_direction={},
-                world_events=[],
+                scene_events=[],
                 character_actions=[],
                 engine_results=[],
                 combat_result=None,
@@ -86,7 +86,7 @@ class Orchestrator:
         return {
             "tick": result["tick"],
             "narrative": result.get("narrative", ""),
-            "events": result.get("world_events", []),
+            "events": result.get("scene_events", []),
             "character_actions": result.get("character_actions", []),
             "branch_points": result.get("branch_points", []),
             "hooks_resolved": result.get("hooks_resolved", []),

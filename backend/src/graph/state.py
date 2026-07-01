@@ -21,7 +21,7 @@ class OverallState(TypedDict):
     scene_direction: dict[str, Any]
 
     # Phase 2: WorldEngine / World engine execution
-    world_events: Annotated[list[dict[str, Any]], add]
+    scene_events: Annotated[list[dict[str, Any]], add]
 
     # Phase 3: 角色决策 / Character decisions
     character_actions: Annotated[list[dict[str, Any]], add]

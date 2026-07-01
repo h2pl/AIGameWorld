@@ -45,11 +45,11 @@ class DMNarrateResponse(EngineResponse):
 # ============================================================
 # Phase 2: World
 # ============================================================
-class WorldUpdateResponse(EngineResponse):
+class SceneProcessResponse(EngineResponse):
     events_out: list[dict[str, Any]] = []
 
     @classmethod
-    def from_entities(cls, events: list[Event]) -> WorldUpdateResponse:
+    def from_entities(cls, events: list[Event]) -> SceneProcessResponse:
         return cls(events_out=[e.model_dump() for e in events])
 
 
