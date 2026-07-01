@@ -207,54 +207,156 @@ async function main(): Promise<void> {
   });
   console.log(`${L} mock data injected for demo`);
 
-  // ── 控制面板 / Control Panel ──
+  // ── 控制器 / Controller (P5-4: 状态机 + ▶运行 ⏭自动 ⏸停止) ──
+  type RunState = "idle" | "connecting" | "running";
+  let runState: RunState = "idle";
+  let autoMode = false;
+
   const bar = document.createElement("div");
-  bar.style.cssText = "position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:999;";
+  bar.style.cssText = "position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:999;align-items:center;";
   document.body.appendChild(bar);
 
   const tInput = document.createElement("input");
   tInput.value = "3"; tInput.style.cssText = "width:50px;text-align:center;border-radius:4px;border:1px solid #555;background:#222;color:#fff;";
 
-  const btnRun = document.createElement("button");
-  btnRun.textContent = "▶ Run";
-  btnRun.style.cssText = "padding:4px 12px;border-radius:4px;border:none;background:#2ecc71;color:#fff;cursor:pointer;";
+  const btnRun  = makeBtn("▶ 运行", "#2ecc71");
+  const btnAuto = makeBtn("⏭ 自动", "#3498db");
+  const btnStop = makeBtn("⏸ 停止", "#e74c3c");
 
-  const status = document.createElement("span");
-  status.style.cssText = "color:#aaa;font-size:11px;";
-  status.textContent = "Disconnected";
+  const statusEl = document.createElement("span");
+  statusEl.style.cssText = "padding:6px 14px;border-radius:4px;background:rgba(0,0,0,0.7);color:#ffd700;font-size:13px;font-weight:bold;min-width:140px;text-align:center;border:1px solid rgba(255,215,0,0.3);";
+  statusEl.textContent = "就绪";
 
   bar.appendChild(tInput);
   bar.appendChild(btnRun);
-  bar.appendChild(status);
+  bar.appendChild(btnAuto);
+  bar.appendChild(btnStop);
+  bar.appendChild(statusEl);
+
+  function makeBtn(text: string, bg: string): HTMLButtonElement {
+    const b = document.createElement("button");
+    b.textContent = text;
+    b.style.cssText = `padding:4px 12px;border-radius:4px;border:none;background:${bg};color:#fff;cursor:pointer;`;
+    return b;
+  }
+
+  function updateButtons(): void {
+    const idle = runState === "idle";
+    const running = runState === "running";
+    btnRun.disabled = !idle;
+    btnRun.style.opacity = idle ? "1" : "0.4";
+    btnAuto.disabled = !idle && !running;
+    btnAuto.style.opacity = (!idle && !running) ? "0.4" : "1";
+    btnAuto.textContent = autoMode ? "自动中" : "⏭ 自动";
+    btnAuto.style.background = autoMode ? "#f39c12" : "#3498db";
+    btnStop.disabled = idle;
+    btnStop.style.opacity = idle ? "0.4" : "1";
+  }
+  updateButtons();
 
   // ── WebSocket 客户端 / WebSocket Client ──
   const { WSClient } = await import("./net/WSClient");
   const ws = new WSClient("aw");
 
-  // 只注册一次叙事监听 / Register narrative listener once
+  // 进度追踪 / Progress tracking
+  let totalRequested = 0;
+  let lastTick = 0;
+  let doneResolve: (() => void) | null = null;
+  const progressUnsub = gameStore.subscribe((s) => {
+    if (s.current_tick !== lastTick) {
+      lastTick = s.current_tick;
+      statusEl.textContent = `Running: Tick ${lastTick}/${totalRequested}`;
+    }
+  });
+
+  // 叙事转发保持 / Narrative relay to GameScene
   gameStore.subscribe((s) => {
     const gs = game.scene.getScene("Game") as import("./scenes/GameScene").GameScene;
     if (gs?.setNarrative && s.narrative) gs.setNarrative(s.narrative);
   });
 
+  // ── 按钮行为 / Button behaviors ──
+
+  /** 执行一次 N tick / Execute N ticks once */
+  async function doRun(n: number): Promise<void> {
+    totalRequested = n; lastTick = 0;
+    statusEl.textContent = `运行中: Tick 0/${n}`;
+    ws.runTicks(n);
+    await new Promise<void>((resolve) => { doneResolve = resolve; });
+  }
+
   btnRun.onclick = async () => {
+    if (runState !== "idle") return;
     const n = parseInt(tInput.value) || 1;
-    console.log(`${L} ▶ Run clicked: ticks=${n}`);
+    console.log(`${L} ▶ 运行: ticks=${n}`);
+    runState = "connecting"; updateButtons();
+    statusEl.textContent = "连接中...";
     try {
-      status.textContent = "Connecting...";
       await ws.connect(world.pack_id);
-      console.log(`${L} WS connected, sending run ${n} ticks`);
-      status.textContent = "Connected";
-      ws.runTicks(n);
-      status.textContent = `Running ${n} tick(s)...`;
-      await new Promise(r => setTimeout(r, n * 1000 + 500));
-      status.textContent = `Connected (tick: ${gameStore.getState().current_tick})`;
-      console.log(`${L} Run complete: tick=${gameStore.getState().current_tick}`);
+      console.log(`${L} WS connected`);
+      runState = "running"; updateButtons();
+      await doRun(n);
+      statusEl.textContent = `完成: ${lastTick} tick`;
     } catch (e) {
-      status.textContent = "Error: backend not running";
+      statusEl.textContent = "错误: 后端未启动";
       console.error(`${L} Run failed:`, e instanceof Error ? e.message : e);
+    } finally {
+      runState = "idle"; updateButtons();
+      doneResolve = null;
     }
   };
+
+  btnAuto.onclick = async () => {
+    if (runState === "idle") {
+      // 启动自动模式 / Start auto mode
+      const n = parseInt(tInput.value) || 1;
+      console.log(`${L} ⏭ 自动: ticks=${n}（每批）`);
+      autoMode = true;
+      runState = "connecting"; updateButtons();
+      statusEl.textContent = "连接中...";
+      try {
+        await ws.connect(world.pack_id);
+        console.log(`${L} WS connected（自动）`);
+        runState = "running"; updateButtons();
+        while (autoMode && runState === "running") {
+          await doRun(n);
+        }
+        autoMode = false; updateButtons();
+        statusEl.textContent = `完成: ${lastTick} tick`;
+      } catch (e) {
+        autoMode = false; updateButtons();
+        statusEl.textContent = "错误: 后端未启动";
+        console.error(`${L} Auto failed:`, e instanceof Error ? e.message : e);
+      } finally {
+        runState = "idle"; updateButtons();
+        doneResolve = null;
+      }
+    } else if (runState === "running" && !autoMode) {
+      // 运行中切换到自动 / Switch to auto while running
+      console.log(`${L} ⏭ 自动: 切换到自动模式`);
+      autoMode = true; updateButtons();
+      statusEl.textContent = `自动中: Tick ${lastTick}/${totalRequested}`;
+    }
+  };
+
+  btnStop.onclick = () => {
+    console.log(`${L} ⏸ 停止`);
+    autoMode = false;
+    ws.close();
+    if (doneResolve) doneResolve();
+    runState = "idle"; updateButtons();
+    statusEl.textContent = "已停止";
+  };
+
+  // WS done 检测 / Detect completion by watching lastTick >= totalRequested
+  const pollDone = setInterval(() => {
+    if (runState === "running" && totalRequested > 0 && lastTick >= totalRequested && doneResolve) {
+      console.log(`${L} WS done detected: tick=${lastTick}/${totalRequested}`);
+      doneResolve(); doneResolve = null;
+    }
+  }, 300);
+
+
   console.log(`${L} === main() DONE ===`);
 }
 
