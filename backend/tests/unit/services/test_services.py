@@ -14,7 +14,7 @@ from src.services import (
     reflection_service,
     state_update_service,
     summarizer_service,
-    world_service,
+    scene_service,
 )
 
 
@@ -45,15 +45,15 @@ def _base_state(**overrides):
 # World Service
 # ============================================================
 class TestWorldService:
-    def test_world_update_with_instructions(self):
+    def test_process_scene_with_instructions(self):
         state = _base_state(dm_instructions=["探索酒馆", "与NPC交谈"])
-        result = world_service.world_update(state)
+        result = scene_service.process_scene(state)
         assert len(result["world_events"]) == 2
         assert result["world_events"][0]["type"] == "dm_instruction"
 
-    def test_world_update_empty(self):
+    def test_process_scene_empty(self):
         state = _base_state()
-        result = world_service.world_update(state)
+        result = scene_service.process_scene(state)
         assert result["world_events"] == []
 
 

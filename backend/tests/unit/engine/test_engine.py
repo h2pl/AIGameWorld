@@ -9,7 +9,7 @@ from src.engine.exploration.exploration import resolve_exploration
 from src.engine.quest.quest import check_quests
 from src.engine.reflection.reflection import reflect
 from src.engine.summarizer.summarizer import summarize
-from src.engine.world.world import execute_instructions
+from src.engine.scene.scene import process_scene
 from src.schemas.request import (
     CombatRequest,
     DialogueRequest,
@@ -149,9 +149,9 @@ class TestSummarizerEngine:
         assert not r.compressed  # fallback（无 LLM）不压缩
 
 
-class TestWorldEngine:
-    def test_execute_instructions(self):
-        r = execute_instructions(WorldUpdateRequest(tick=1, dm_instructions=["探索", "交谈"]))
+class TestSceneEngine:
+    def test_process_scene(self):
+        r = process_scene(WorldUpdateRequest(tick=1, dm_instructions=["探索", "交谈"]))
         assert len(r.events_out) == 2
         assert r.events_out[0]["type"] == "dm_instruction"
         assert r.events_out[0]["tick"] == 1

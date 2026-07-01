@@ -29,4 +29,4 @@ from .quest_service import quest  # noqa: F401
 from .reflection_service import reflect  # noqa: F401
 from .state_update_service import state_update  # noqa: F401
 from .summarizer_service import summarize  # noqa: F401
-from .world_service import world_update  # noqa: F401
+from .scene_service import process_scene  # noqa: F401

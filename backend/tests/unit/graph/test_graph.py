@@ -8,7 +8,7 @@ from src.graph.graph import OverallState, build_tick_graph
 from src.graph.subgraphs.character_subgraph import character_subgraph
 from src.graph.subgraphs.engine_subgraph import engine_subgraph
 from src.graph.subgraphs.reflection_subgraph import reflection_subgraph
-from src.services import dm_service, state_update_service, world_service
+from src.services import dm_service, state_update_service, scene_service
 
 # ── 图构建 / Graph build
 
@@ -85,7 +85,7 @@ async def test_phase1_dm_create(base_state):
 
 
 def test_phase2_world(base_state):
-    r = world_service.world_update(base_state)
+    r = scene_service.process_scene(base_state)
     assert r["world_events"] == []
 
 

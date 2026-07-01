@@ -6,7 +6,7 @@ START
  dm_service.dm_create              [node]      DM 创造情境   dm_create
  |
  v
- world_service.world_update        [node]      World 引擎    world_update
+ scene_service.process_scene       [node]      Scene 引擎    process_scene
  |
  v
  character_subgraph             [subgraph]  角色决策      character_subgraph
@@ -33,8 +33,7 @@ START
 
 from langgraph.graph import END, StateGraph
 
-# service（状态适配层）— 模块级导入，方便 key = 文件名.函数名
-from ..services import dm_service, state_update_service, world_service
+from ..services import dm_service, scene_service, state_update_service
 from .state import OverallState
 
 # subgraph（多 node 协调）
@@ -47,7 +46,7 @@ def build_tick_graph() -> StateGraph:
     graph = StateGraph(OverallState)
 
     graph.add_node("dm_service.dm_create", dm_service.dm_create)
-    graph.add_node("world_service.world_update", world_service.world_update)
+    graph.add_node("scene_service.process_scene", scene_service.process_scene)
     graph.add_node("character_subgraph", character_subgraph)
     graph.add_node("engine_subgraph", engine_subgraph)
     graph.add_node("state_update_service.state_update", state_update_service.state_update)
@@ -55,8 +54,8 @@ def build_tick_graph() -> StateGraph:
     graph.add_node("reflection_subgraph", reflection_subgraph)
 
     graph.set_entry_point("dm_service.dm_create")
-    graph.add_edge("dm_service.dm_create", "world_service.world_update")
-    graph.add_edge("world_service.world_update", "character_subgraph")
+    graph.add_edge("dm_service.dm_create", "scene_service.process_scene")
+    graph.add_edge("scene_service.process_scene", "character_subgraph")
     graph.add_edge("character_subgraph", "engine_subgraph")
     graph.add_edge("engine_subgraph", "state_update_service.state_update")
     graph.add_edge("state_update_service.state_update", "dm_service.dm_narrate")
