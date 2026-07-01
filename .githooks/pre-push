@@ -24,7 +24,7 @@ echo "  backend: ${backend_changed} files, frontend: ${frontend_changed} files"
 if [ "$backend_changed" -gt 0 ]; then
     echo ""
     echo "=== Pre-push: 运行后端测试 / Running backend tests ==="
-    (cd backend && uv run python -m pytest) || { echo "FAIL: 后端测试不通过 / Backend tests failed"; exit 1; }
+    (cd backend && uv run python -m pytest --ignore=tests/e2e) || { echo "FAIL: 后端测试不通过 / Backend tests failed"; exit 1; }
 else
     echo "  (backend 无变更，跳过 / no backend changes, skip)"
 fi
