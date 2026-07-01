@@ -54,31 +54,31 @@ function makeObjectTexture(scene: Phaser.Scene, obj: { id: string; object_type: 
 export class GameScene extends Phaser.Scene {
   private ts!: number;
   private tilemap!: Phaser.Tilemaps.Tilemap;
-  private currentMapKey!: string;
   private charManager!: CharacterManager;
   private sceneNameText!: Phaser.GameObjects.Text;
   private narrativeText!: Phaser.GameObjects.Text;
   private unsubscribe: (() => void) | null = null;
+  private mapKey!: string;
 
   constructor() { super({ key: "Game" }); }
 
   // ══ kb/17 初始化顺序 / Init order ══
-  // 完整 21 步，当前跳过的标 TODO
 
-  create(): void {
-    this.initVariables();       // 1  ✅
-    this.initCamera();          // 2  ✅
-    this.initPhysics();         // 3  ⏭️ TODO
-    this.createBackground();    // 4  ✅ → 默认 tuxemon-map
-    this.createGroups();        // 5  ⏭️ TODO
-    this.createLevel();         // 6  ✅
-    this.createTerrain();       // 6a ✅ 场景物品
-    this.createPlayer();        // 7  ✅
-    this.createEnemies();       // 8  ⏭️ TODO
-    this.initAnimations();      // 9  ⏭️ TODO
-    this.initInput();           // 10 ✅
-    this.setupCollisions();     // 11 ⏭️ TODO
-    this.createUI();            // 12 ✅
+  create(data?: { mapKey?: string }): void {
+    this.mapKey = data?.mapKey || KEY.TILEMAP.TUXEMON;
+    this.initVariables();
+    this.initCamera();
+    this.initPhysics();         // ⏭️ TODO
+    this.createBackground();
+    this.createGroups();        // ⏭️ TODO
+    this.createLevel();
+    this.createTerrain();
+    this.createPlayer();
+    this.createEnemies();       // ⏭️ TODO
+    this.initAnimations();      // ⏭️ TODO
+    this.initInput();
+    this.setupCollisions();     // ⏭️ TODO
+    this.createUI();
   }
 
   /** 1. initVariables / Reset state + 生成纹理 */
@@ -104,22 +104,15 @@ export class GameScene extends Phaser.Scene {
     // 当前跳过：kb/18 "Skip Physics When: Grid-based movement"
   }
 
-  /** 4. createBackground / Background visuals — 默认村庄地图 */
-  private createBackground(mapKey = KEY.TILEMAP.TUXEMON): void {
-    this.loadMap(mapKey);
-  }
-
-  /** 加载/切换地图 / Load or switch tilemap */
-  private loadMap(mapKey: string): void {
-    this.currentMapKey = mapKey;
-    this.tilemap = this.make.tilemap({ key: mapKey });
-    // 不同地图用不同 tileset 图片 / Different maps use different tileset images
-    const tsImageKey = mapKey === KEY.TILEMAP.DESERT ? KEY.IMAGE.DESERT : KEY.IMAGE.TUXEMON;
-    const tsName = mapKey === KEY.TILEMAP.DESERT ? "Desert" : TILEMAP.TILESET_NAME;
+  /** 4. createBackground / Background visuals */
+  private createBackground(): void {
+    this.tilemap = this.make.tilemap({ key: this.mapKey });
+    const tsImageKey = this.mapKey === KEY.TILEMAP.DESERT ? KEY.IMAGE.DESERT : KEY.IMAGE.TUXEMON;
+    const tsName = this.mapKey === KEY.TILEMAP.DESERT ? "Desert" : TILEMAP.TILESET_NAME;
     const tileset = this.tilemap.addTilesetImage(tsName, tsImageKey);
-    if (!tileset) { console.error("[Scene] tileset FAIL for", mapKey); return; }
+    if (!tileset) { console.error("[Scene] tileset FAIL for", this.mapKey); return; }
     this.tilemap.createLayer(TILEMAP.LAYERS.BELOW, tileset, 0, 0);
-    console.log("[Scene] loadMap", mapKey);
+    console.log("[Scene] createBackground map=", this.mapKey);
   }
 
   /** 6a. createTerrain / 场景物品渲染 */
@@ -145,7 +138,8 @@ export class GameScene extends Phaser.Scene {
 
   /** 6. createLevel / Static objects: World + Above layers + collision props */
   private createLevel(): void {
-    const ts = this.tilemap.getTileset(TILEMAP.TILESET_NAME);
+    const tsName = this.mapKey === KEY.TILEMAP.DESERT ? "Desert" : TILEMAP.TILESET_NAME;
+    const ts = this.tilemap.getTileset(tsName);
     if (!ts) return;
     const worldLayer = this.tilemap.createLayer(TILEMAP.LAYERS.WORLD, ts, 0, 0)!;
     worldLayer.setCollisionByProperty({ collides: true });
@@ -236,37 +230,12 @@ export class GameScene extends Phaser.Scene {
     console.log("[Scene] createUI done, store subscribed");
   }
 
-  /** 场景切换：换地图 + 重居中 / Switch scene: swap tilemap + recenter camera */
+  /** 场景切换 / Switch scene — Reldens 模式：scene.start 完全重启场景 */
   private onSceneChanged(sceneId: string): void {
     const mapKey = SCENE_MAP[sceneId];
-    console.log("[Scene] scene-changed →", sceneId, "map=", mapKey);
-    if (mapKey && mapKey !== this.currentMapKey) {
-      // 销毁旧 tilemap 图层 / Destroy old layers
-      for (const name of [TILEMAP.LAYERS.BELOW, TILEMAP.LAYERS.WORLD, TILEMAP.LAYERS.ABOVE]) {
-        const layer = this.tilemap.getLayer(name);
-        if (layer) (layer as unknown as Phaser.Tilemaps.TilemapLayer).destroy();
-      }
-      this.tilemap.destroy();
-      // 加载新地图 / Load new map
-      this.loadMap(mapKey);
-      // 重建 World + Above 图层 / Rebuild collision layers
-      const tsName = mapKey === KEY.TILEMAP.DESERT ? "Desert" : TILEMAP.TILESET_NAME;
-      const ts = this.tilemap.getTileset(tsName);
-      if (ts) {
-        const worldLayer = this.tilemap.createLayer(TILEMAP.LAYERS.WORLD, ts, 0, 0)!;
-        worldLayer.setCollisionByProperty({ collides: true });
-        const aboveLayer = this.tilemap.createLayer(TILEMAP.LAYERS.ABOVE, ts, 0, 0)!;
-        aboveLayer.setDepth(DEPTH.ABOVE_PLAYER);
-        this.cameras.main.setBounds(0, 0, this.tilemap.widthInPixels, this.tilemap.heightInPixels);
-      }
-    }
-    // 更新 HUD 场景名 / Update HUD scene name
-    const scene = gameStore.getState().scenes.find(s => s.id === sceneId);
-    if (scene && this.sceneNameText) this.sceneNameText.setText(scene.name);
-    // 重居中摄像机 / Recenter
-    const { sx, sy } = this.charManager.calcCameraScroll(CONFIG.CANVAS.width, CONFIG.CANVAS.height);
-    this.cameras.main.scrollX = sx;
-    this.cameras.main.scrollY = sy;
+    if (!mapKey || mapKey === this.mapKey) return;
+    console.log("[Scene] scene-changed →", sceneId, "restarting with", mapKey);
+    this.scene.start("Game", { mapKey });
   }
 
   // ══ Lifecycle ══

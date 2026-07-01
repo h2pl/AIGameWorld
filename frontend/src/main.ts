@@ -222,6 +222,7 @@ async function main(): Promise<void> {
   const btnRun  = makeBtn("▶ 运行", "#2ecc71");
   const btnAuto = makeBtn("⏭ 自动", "#3498db");
   const btnStop = makeBtn("⏸ 停止", "#e74c3c");
+  const btnMap  = makeBtn("🗺 地图", "#8e44ad");
 
   const statusEl = document.createElement("span");
   statusEl.style.cssText = "padding:6px 14px;border-radius:4px;background:rgba(0,0,0,0.7);color:#ffd700;font-size:13px;font-weight:bold;min-width:140px;text-align:center;border:1px solid rgba(255,215,0,0.3);";
@@ -231,7 +232,26 @@ async function main(): Promise<void> {
   bar.appendChild(btnRun);
   bar.appendChild(btnAuto);
   bar.appendChild(btnStop);
+  bar.appendChild(btnMap);
   bar.appendChild(statusEl);
+
+  // 地图切换测试 / Map cycle test
+  const sceneOrder = ["village_elderwood", "forest_north", "desert"];
+  let sceneIdx = 0;
+  btnMap.onclick = () => {
+    sceneIdx = (sceneIdx + 1) % sceneOrder.length;
+    const newScene = sceneOrder[sceneIdx];
+    const st = gameStore.getState();
+    // 更新所有角色 scene_id = 新场景 / Update all character scene_ids
+    const updated = st.characters.map((ch, i) => ({
+      ...ch,
+      scene_id: newScene,
+      position_x: 2 + i * 4,
+      position_y: 5,
+    }));
+    gameStore.setWorldState(st.pack_id, st.scenes, updated, st.items, st.scene_objects);
+    console.log(`${L} 🗺 switched to ${newScene}`);
+  };
 
   function makeBtn(text: string, bg: string): HTMLButtonElement {
     const b = document.createElement("button");
