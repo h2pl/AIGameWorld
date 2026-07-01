@@ -1,16 +1,17 @@
 """World CRUD——worlds 表读写 / World repository: create, list."""
 
+import logging
+
 from ..domain.world import World
 from ..storage.sqlite_client import SQLiteClient
 
+logger = logging.getLogger("aw.repo.world")
+
 
 class WorldRepo:
-    """World 持久化 / World persistence."""
-
     def __init__(self, client: SQLiteClient):
         self._db = client
 
-    # 创建世界 / Create world
     async def create(self, w: World) -> None:
         await self._db.execute(
             "INSERT INTO worlds (id, name, description, version, rule_set, author, starting_scene) "
@@ -18,6 +19,7 @@ class WorldRepo:
             (w.id, w.name, w.description, w.version, w.rule_set, w.author, w.starting_scene),
         )
         await self._db.commit()
+        logger.info("[world] create id=%s name=%s", w.id, w.name)
 
     async def list_all(self) -> list[World]:
         rows = await self._db.fetch_all(
