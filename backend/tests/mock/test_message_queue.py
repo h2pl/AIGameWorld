@@ -15,7 +15,7 @@ from src.main import app
 async def client(monkeypatch):
     """初始化 :memory: DB + seed test world + patch producer 为 mock."""
     import src.main as m
-    from src.mock.producer import run as mock_run
+    from tests.mock.producer import run as mock_run
     from src.repository.world_repo import WorldRepo
     from src.storage.sqlite_client import SQLiteClient
 

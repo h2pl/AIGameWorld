@@ -4,11 +4,11 @@ import asyncio
 import logging
 from datetime import datetime
 
-from ..domain.event import CharacterMoveEvent, DmNarrativeEvent, OpeningEvent
-from ..domain.message import Message
-from ..repository.event_repo import EventRepo
-from ..repository.message_repo import MessageRepo
-from .tick_engine import MockTickEngine
+from src.domain.event import CharacterMoveEvent, DmNarrativeEvent, OpeningEvent
+from src.domain.message import Message
+from src.repository.event_repo import EventRepo
+from src.repository.message_repo import MessageRepo
+from tests.mock.tick_engine import MockTickEngine
 
 logger = logging.getLogger("aw.producer")
 
