@@ -13,7 +13,7 @@ from src.repository.event_repo import EventRepo
 from src.repository.item_repo import ItemRepo
 from src.repository.scene_repo import SceneRepo
 from src.repository.story_repo import StoryRepo
-from src.repository.world_pack_repo import WorldPackRepo
+from src.repository.world_repo import WorldRepo
 from src.storage.sqlite_client import SQLiteClient
 
 _PROJECT_ROOT = Path(__file__).parent.parent  # backend/
@@ -49,12 +49,12 @@ async def render_index(db_path: str) -> HTMLResponse:
 
     client = await _get_client(db_path)
     try:
-        pack_repo = WorldPackRepo(client)
-        world_packs = await pack_repo.load_all()
+        pack_repo = WorldRepo(client)
+        worlds = await pack_repo.list_all()
 
         # 为每个 registered pack 统计实体数
         packs = []
-        for wp in world_packs:
+        for wp in worlds:
             total = 0
             _ALLOWED_TABLES = {
                 "player_characters",
@@ -130,7 +130,7 @@ async def render_global_items(db_path: str) -> HTMLResponse:
     client = await _get_client(db_path)
     try:
         repo = ItemRepo(client)
-        all_items = await repo.load_all()
+        all_items = await repo.list_all()
         items = [
             {
                 "id": k,
@@ -167,7 +167,7 @@ async def render_global_objects(db_path: str) -> HTMLResponse:
     client = await _get_client(db_path)
     try:
         repo = SceneRepo(client)
-        all_objs = await repo.load_all()
+        all_objs = await repo.list_all()
         objects = [
             {
                 "id": k,
@@ -204,7 +204,7 @@ async def render_global_events(db_path: str) -> HTMLResponse:
     client = await _get_client(db_path)
     try:
         repo = EventRepo(client)
-        events = await repo.load_all()
+        events = await repo.list_all()
         html = _JINJA.get_template("events.html").render(
             events=[
                 {
