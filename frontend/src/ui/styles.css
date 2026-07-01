@@ -108,6 +108,14 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
+/* ===== 物品面板 — 居中弹出，点击场景物品展示信息 / Object Panel — centered popup ===== */
+.object-panel {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px;
+}
+
 /* ===== 角色面板 — 居中弹出，点击角色显示属性+战斗+角色弧 / Character Panel — centered popup, shows attrs+combat+arc ===== */
 .character-panel {
   top: 50%;

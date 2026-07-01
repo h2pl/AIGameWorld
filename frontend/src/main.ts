@@ -15,6 +15,7 @@ import "./ui/styles.css";
 import { NarrativePanel } from "./ui/NarrativePanel";
 import { EventPanel } from "./ui/EventPanel";
 import { CharacterPanel } from "./ui/CharacterPanel";
+import { ObjectPanel } from "./ui/ObjectPanel";
 
 /** 从后端加载初始世界状态 / Load initial world state from backend */
 async function loadWorldState(packId: string): Promise<InitialWorldState | null> {
@@ -186,7 +187,9 @@ async function main(): Promise<void> {
   eventPanel.mount(document.body);
   const characterPanel = new CharacterPanel();
   characterPanel.mount(document.body);
-  console.log(`${L} DOM panels mounted: narrative + event + character`);
+  const objectPanel = new ObjectPanel();
+  objectPanel.mount(document.body);
+  console.log(`${L} DOM panels mounted: narrative + event + character + object`);
 
   // ── Mock 演示数据 / Mock demo data（无后端时展示面板效果）──
   gameStore.addNarrative("晨光洒在 Elderwood 村庄的石板路上，铁匠铺的烟囱升起袅袅青烟。");
