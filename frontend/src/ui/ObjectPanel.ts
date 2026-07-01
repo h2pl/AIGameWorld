@@ -51,7 +51,9 @@ export class ObjectPanel extends Panel {
     }) as EventListener);
   }
 
-  /** 展示物品信息 / Show object info */
+  /** 展示物品信息 / Show object info
+   * TODO: 接入后端后，物品交互数据（描述/内容/触发效果）由 object-interacted 的 detail 字段携带
+   */
   private showObj(obj: SceneObjectData): void {
     this.contentEl.innerHTML = `
       <div class="char-name">${OBJ_TYPES[obj.object_type] || obj.object_type} — ${obj.name}</div>
@@ -59,6 +61,7 @@ export class ObjectPanel extends Panel {
       <div class="section">
         <div class="section-title">📋 类型 / Type</div>
         <p>${obj.object_type} — 交互功能待开发 / Interaction TBD</p>
+        <!-- TODO: 后端稳定后，物品交互数据（描述/内容/触发效果）由 object-interacted event detail 携带 -->
       </div>
     `;
     this.show(); // Panel.show() 设置 display:block

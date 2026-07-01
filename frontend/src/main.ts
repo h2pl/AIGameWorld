@@ -35,7 +35,10 @@ async function loadWorldState(packId: string): Promise<InitialWorldState | null>
   }
 }
 
-/** Mock 数据 / Mock data — 后端不可用时的回退 */
+/** Mock 数据 / Mock data — 后端不可用时的回退
+ * TODO: 接入后端稳定后删除此函数。世界状态完全由 GET /api/pack/{id}/state 提供。
+ * 实施：移除 loadMockState()，loadWorldState() 失败时显示错误页面而非 fallback。
+ */
 function loadMockState(): InitialWorldState {
   return {
     pack_id: "forgotten_realms",
@@ -140,8 +143,9 @@ async function main(): Promise<void> {
   console.log(`${L} pack_id=${packId}`);
 
   // 加载世界数据 / Load world data
+  // TODO: 接入后端稳定后删除 mock fallback。API 失败 → 直接报错提示用户启动后端。
   let world = (await loadWorldState(packId)) || loadMockState();
-  // API 可能返回位置全为 (0,0) 的无初始化数据，此时用 mock 兜底
+  // TODO: 后端修复零初值问题后删除此检查（后端 World Pack 初始化即应有有效坐标）
   if (world.characters.length > 0 && world.characters.every(c => !c.position_x && !c.position_y)) {
     console.log(`${L} API positions empty, using mock data`);
     world = loadMockState();
@@ -192,6 +196,7 @@ async function main(): Promise<void> {
   console.log(`${L} DOM panels mounted: narrative + event + character + object`);
 
   // ── Mock 演示数据 / Mock demo data（无后端时展示面板效果）──
+  // TODO: 接入后端真实 WS tick 后删除此段。叙事/事件由 WebSocket tick 消息实时推送。
   gameStore.addNarrative("晨光洒在 Elderwood 村庄的石板路上，铁匠铺的烟囱升起袅袅青烟。");
   gameStore.addNarrative("Kael 握紧剑柄，警惕地扫视着酒馆门口——昨晚有人报告了可疑的脚印。");
   gameStore.addNarrative("Zeph 悄无声息地滑入阴影，沿着屋檐朝集市方向摸去。");
