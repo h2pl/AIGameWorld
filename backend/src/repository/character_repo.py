@@ -39,7 +39,7 @@ class CharacterRepo:
             character_arc_json, long_term_goal, values_json,
             personality, equipment_json, inventory_json,
             memory_count, importance_accumulator, relationships_json,
-            joined_tick, roster_status, pack_id, updated_at)
+            joined_tick, roster_status, world_id, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
             status=excluded.status, scene_id=excluded.scene_id,
@@ -49,7 +49,7 @@ class CharacterRepo:
             memory_count=excluded.memory_count,
             importance_accumulator=excluded.importance_accumulator,
             relationships_json=excluded.relationships_json,
-            pack_id=excluded.pack_id,
+            world_id=excluded.world_id,
             updated_at=datetime('now')
         """,
             (
@@ -74,7 +74,7 @@ class CharacterRepo:
                 json.dumps({k: v.model_dump() for k, v in pc.relationships.items()}),
                 pc.joined_tick,
                 pc.roster_status,
-                pc.pack_id,
+                pc.world_id,
             ),
         )
 
@@ -86,7 +86,7 @@ class CharacterRepo:
             personality, functions_json, function_data_json,
             equipment_json, inventory_json,
             memory_count, importance_accumulator, relationships_json,
-            dm_assigned, motivation_injected, service_arcs_json, pack_id, updated_at)
+            dm_assigned, motivation_injected, service_arcs_json, world_id, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
             status=excluded.status, scene_id=excluded.scene_id,
@@ -98,7 +98,7 @@ class CharacterRepo:
             relationships_json=excluded.relationships_json,
             dm_assigned=excluded.dm_assigned,
             motivation_injected=excluded.motivation_injected,
-            pack_id=excluded.pack_id,
+            world_id=excluded.world_id,
             updated_at=datetime('now')
         """,
             (
@@ -123,16 +123,16 @@ class CharacterRepo:
                 int(actor.dm_assigned),
                 actor.motivation_injected,
                 json.dumps(actor.service_arcs),
-                actor.pack_id,
+                actor.world_id,
             ),
         )
 
     # ── 读 ──
-    async def load_pcs(self, pack_id: str | None = None) -> list[PlayerCharacter]:
-        """加载 PC / Load PCs. pack_id=None 加载全部."""
-        if pack_id:
+    async def load_pcs(self, world_id: str | None = None) -> list[PlayerCharacter]:
+        """加载 PC / Load PCs. world_id=None 加载全部."""
+        if world_id:
             rows = await self._db.fetch_all(
-                "SELECT * FROM player_characters WHERE pack_id = ?", (pack_id,)
+                "SELECT * FROM player_characters WHERE world_id = ?", (world_id,)
             )
         else:
             rows = await self._db.fetch_all("SELECT * FROM player_characters")
@@ -143,10 +143,10 @@ class CharacterRepo:
         row = await self._db.fetch_one("SELECT * FROM player_characters WHERE id = ?", (char_id,))
         return _pc_from_row(row) if row else None
 
-    async def load_actors(self, pack_id: str | None = None) -> list[Actor]:
-        """加载 Actor / Load Actors. pack_id=None 加载全部."""
-        if pack_id:
-            rows = await self._db.fetch_all("SELECT * FROM actors WHERE pack_id = ?", (pack_id,))
+    async def load_actors(self, world_id: str | None = None) -> list[Actor]:
+        """加载 Actor / Load Actors. world_id=None 加载全部."""
+        if world_id:
+            rows = await self._db.fetch_all("SELECT * FROM actors WHERE world_id = ?", (world_id,))
         else:
             rows = await self._db.fetch_all("SELECT * FROM actors")
         return [_actor_from_row(r) for r in rows]
@@ -186,7 +186,7 @@ def _pc_from_row(row: dict) -> PlayerCharacter:
         },
         joined_tick=_val(row, "joined_tick", 0),
         roster_status=_val(row, "roster_status", "member"),
-        pack_id=_val(row, "pack_id", ""),
+        world_id=_val(row, "world_id", ""),
     )
 
 
@@ -220,5 +220,5 @@ def _actor_from_row(row: dict) -> Actor:
         dm_assigned=bool(_val(row, "dm_assigned", 0)),
         motivation_injected=_val(row, "motivation_injected"),
         service_arcs=json.loads(_val(row, "service_arcs_json", "[]")),
-        pack_id=_val(row, "pack_id", ""),
+        world_id=_val(row, "world_id", ""),
     )

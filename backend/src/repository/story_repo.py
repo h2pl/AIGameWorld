@@ -15,10 +15,10 @@ class StoryRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
-    async def load_arcs(self, pack_id: str | None = None) -> list[StoryArc]:
-        if pack_id:
+    async def load_arcs(self, world_id: str | None = None) -> list[StoryArc]:
+        if world_id:
             rows = await self._db.fetch_all(
-                "SELECT * FROM story_arcs WHERE pack_id = ?", (pack_id,)
+                "SELECT * FROM story_arcs WHERE world_id = ?", (world_id,)
             )
         else:
             rows = await self._db.fetch_all("SELECT * FROM story_arcs")
@@ -33,7 +33,7 @@ class StoryRepo:
                 key_event_ticks=json.loads(r.get("key_event_ticks_json", "[]")),
                 branching_points=json.loads(r.get("branching_points_json", "[]")),
                 status=r.get("status", "setup"),
-                pack_id=r.get("pack_id", ""),
+                world_id=r.get("world_id", ""),
             )
             for r in rows
         ]
@@ -43,7 +43,7 @@ class StoryRepo:
             """
             INSERT OR REPLACE INTO story_arcs
             (id, type, title, stage, main_cast_json, supporting_actors_json,
-             key_event_ticks_json, branching_points_json, status, pack_id)
+             key_event_ticks_json, branching_points_json, status, world_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
@@ -56,14 +56,14 @@ class StoryRepo:
                 json.dumps(arc.key_event_ticks),
                 json.dumps([bp.model_dump() for bp in arc.branching_points]),
                 arc.status,
-                arc.pack_id,
+                arc.world_id,
             ),
         )
 
-    async def load_hooks(self, pack_id: str | None = None) -> list[StoryHook]:
-        if pack_id:
+    async def load_hooks(self, world_id: str | None = None) -> list[StoryHook]:
+        if world_id:
             rows = await self._db.fetch_all(
-                "SELECT * FROM story_hooks WHERE pack_id = ?", (pack_id,)
+                "SELECT * FROM story_hooks WHERE world_id = ?", (world_id,)
             )
         else:
             rows = await self._db.fetch_all("SELECT * FROM story_hooks")
@@ -75,7 +75,7 @@ class StoryRepo:
                 intended_payoff=r.get("intended_payoff", ""),
                 urgency=r.get("urgency", 10),
                 status=r.get("status", "planted"),
-                pack_id=r.get("pack_id", ""),
+                world_id=r.get("world_id", ""),
             )
             for r in rows
         ]
@@ -84,7 +84,7 @@ class StoryRepo:
         await self._db.execute(
             """
             INSERT OR REPLACE INTO story_hooks
-            (id, planted_tick, description, intended_payoff, urgency, status, pack_id)
+            (id, planted_tick, description, intended_payoff, urgency, status, world_id)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
             (
@@ -94,7 +94,7 @@ class StoryRepo:
                 hook.intended_payoff,
                 hook.urgency,
                 hook.status,
-                hook.pack_id,
+                hook.world_id,
             ),
         )
 

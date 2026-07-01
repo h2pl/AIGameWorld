@@ -26,4 +26,4 @@ class SceneObject(BaseModel):
     position_y: int = 0
     interactable: bool = True
     interact_data: dict | None = None
-    pack_id: str = ""
+    world_id: str = ""

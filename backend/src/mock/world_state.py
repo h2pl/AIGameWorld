@@ -28,7 +28,7 @@ mock 模式直接返回此数据，跳过 DB。
 # 修改数据后无需重启前端，Vite HMR 会自动刷新
 
 MOCK_WORLD = {
-    "pack_id": "forgotten_realms",  # 对应 Worlds/forgotten_realms 目录
+    "world_id": "forgotten_realms",  # 对应 Worlds/forgotten_realms 目录
     "scenes": [
         {
             "id": "village_elderwood",

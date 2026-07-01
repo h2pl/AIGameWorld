@@ -11,12 +11,12 @@
 import logging
 from pathlib import Path
 
-from ..domain.world_pack import WorldPack
+from ..domain.world import World
 from ..repository.character_repo import CharacterRepo
 from ..repository.item_repo import ItemRepo
 from ..repository.scene_repo import SceneRepo
 from ..repository.story_repo import StoryRepo
-from ..repository.world_pack_repo import WorldPackRepo
+from ..repository.world_repo import WorldRepo
 from ..storage.chroma_client import ChromaClient
 from ..storage.sqlite_client import SQLiteClient
 from .deserialize import (
@@ -38,7 +38,7 @@ class WorldLoader:
 
     def __init__(self, db: SQLiteClient, chroma: ChromaClient | None = None):
         self._chroma = chroma
-        self._pack_repo = WorldPackRepo(db)
+        self._world_repo = WorldRepo(db)
         self._scene_repo = SceneRepo(db)
         self._item_repo = ItemRepo(db)
         self._char_repo = CharacterRepo(db)
@@ -60,22 +60,21 @@ class WorldLoader:
 
         data = read_pack(pack_dir)
 
-        # ── Pack 标识：pack_id 来自 meta.id，唯一关联字段 / pack_id from meta.id ──
-        pack_id = data["meta"].get("id", pack_dir.name)
-        pack_name = data["meta"].get("name", pack_dir.name)
-        logger.info("[WorldLoader] pack_id=%s pack_name=%s", pack_id, pack_name)
+        # ── Pack 标识：world_id 来自 meta.id，唯一关联字段 / world_id from meta.id ──
+        world_id = data["meta"].get("id", pack_dir.name)
+        world_name = data["meta"].get("name", pack_dir.name)
+        logger.info("[WorldLoader] world_id=%s world_name=%s", world_id, world_name)
 
-        # ── 写入 world_pack 元信息 / Save world_pack metadata ──
+        # ── 创建 world / Create world ──
         meta = data["meta"]
-        await self._pack_repo.save(
-            WorldPack(
-                id=pack_id,
-                name=pack_name,
+        await self._world_repo.create(
+            World(
+                id=world_id,
+                name=world_name,
                 description=meta.get("description", ""),
                 version=meta.get("version", "1.0.0"),
                 rule_set=meta.get("rule_set", "dnd_5e_srd"),
                 author=meta.get("author", ""),
-                license=meta.get("license", "MIT"),
                 starting_scene=meta.get("starting_scene", ""),
             )
         )
@@ -88,83 +87,83 @@ class WorldLoader:
         counts: dict[str, int] = {}
 
         # 按 FK 依赖顺序写入 / Write in FK dependency order
-        counts["scenes"] = await self._write_scenes(data.get("scenes", []), pack_id, pack_name)
-        counts["items"] = await self._write_items(data.get("items", []), pack_id, pack_name)
+        counts["scenes"] = await self._write_scenes(data.get("scenes", []), world_id, world_name)
+        counts["items"] = await self._write_items(data.get("items", []), world_id, world_name)
         counts["scene_objects"] = await self._write_scene_objects(
-            data.get("scene_objects", []), pack_id
+            data.get("scene_objects", []), world_id
         )
-        counts["pcs"] = await self._write_pcs(data, pack_id)
-        counts["actors"] = await self._write_actors(data, pack_id)
-        counts["story_arcs"] = await self._write_story_arcs(data, pack_id)
-        counts["story_hooks"] = await self._write_story_hooks(data, pack_id)
+        counts["pcs"] = await self._write_pcs(data, world_id)
+        counts["actors"] = await self._write_actors(data, world_id)
+        counts["story_arcs"] = await self._write_story_arcs(data, world_id)
+        counts["story_hooks"] = await self._write_story_hooks(data, world_id)
 
-        # ChromaDB (可选 / optional) — collection 用 pack_id 标识
+        # ChromaDB (可选 / optional) — collection 用 world_id 标识
         if self._chroma:
-            self._write_lore_chroma(data.get("lore", []), pack_id)
-            self._write_scenes_chroma(data.get("scenes", []), pack_id)
+            self._write_lore_chroma(data.get("lore", []), world_id)
+            self._write_scenes_chroma(data.get("scenes", []), world_id)
 
         return counts
 
     # ── Scenes (SceneRepo) ──
 
-    async def _write_scenes(self, scenes: list[dict], pack_id: str, pack_name: str) -> int:
+    async def _write_scenes(self, scenes: list[dict], world_id: str, world_name: str) -> int:
         for s in scenes:
-            await self._scene_repo.save_scene(s, pack_id, pack_name)
+            await self._scene_repo.save_scene(s, world_id, world_name)
         return len(scenes)
 
     # ── Items (ItemRepo) ──
 
-    async def _write_items(self, items: list[dict], pack_id: str, pack_name: str) -> int:
+    async def _write_items(self, items: list[dict], world_id: str, world_name: str) -> int:
         for i in items:
-            await self._item_repo.save(item_from_yaml(i, pack_id, pack_name))
+            await self._item_repo.save(item_from_yaml(i, world_id, world_name))
         return len(items)
 
     # ── Scene Objects (SceneRepo) ──
 
-    async def _write_scene_objects(self, objects: list[dict], pack_id: str) -> int:
+    async def _write_scene_objects(self, objects: list[dict], world_id: str) -> int:
         for o in objects:
-            await self._scene_repo.save_object(scene_obj_from_yaml(o, pack_id))
+            await self._scene_repo.save_object(scene_obj_from_yaml(o, world_id))
         return len(objects)
 
     # ── PCs (CharacterRepo) ──
 
-    async def _write_pcs(self, data: dict, pack_id: str) -> int:
+    async def _write_pcs(self, data: dict, world_id: str) -> int:
         starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
         pcs = data.get("player_characters", [])
         for pc_data in pcs:
-            await self._char_repo.save_pc(pc_from_yaml(pc_data, starting_scene, pack_id))
+            await self._char_repo.save_pc(pc_from_yaml(pc_data, starting_scene, world_id))
         return len(pcs)
 
     # ── Actors (CharacterRepo) ──
 
-    async def _write_actors(self, data: dict, pack_id: str) -> int:
+    async def _write_actors(self, data: dict, world_id: str) -> int:
         starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
         actors = data.get("actors", [])
         for a_data in actors:
-            await self._char_repo.save_actor(actor_from_yaml(a_data, starting_scene, pack_id))
+            await self._char_repo.save_actor(actor_from_yaml(a_data, starting_scene, world_id))
         return len(actors)
 
     # ── Story (StoryRepo) ──
 
-    async def _write_story_arcs(self, data: dict, pack_id: str) -> int:
+    async def _write_story_arcs(self, data: dict, world_id: str) -> int:
         arcs = data.get("story_setup", {}).get("story_arcs", [])
         for arc_data in arcs:
-            await self._story_repo.save_arc(story_arc_from_yaml(arc_data, pack_id))
+            await self._story_repo.save_arc(story_arc_from_yaml(arc_data, world_id))
         return len(arcs)
 
-    async def _write_story_hooks(self, data: dict, pack_id: str) -> int:
+    async def _write_story_hooks(self, data: dict, world_id: str) -> int:
         hooks = data.get("story_setup", {}).get("story_hooks", [])
         for h_data in hooks:
-            await self._story_repo.save_hook(hook_from_yaml(h_data, pack_id))
+            await self._story_repo.save_hook(hook_from_yaml(h_data, world_id))
         return len(hooks)
 
     # ── ChromaDB ──
 
-    def _write_lore_chroma(self, lore_items: list[dict], pack_id: str) -> None:
+    def _write_lore_chroma(self, lore_items: list[dict], world_id: str) -> None:
         """灌入 lore 到 ChromaDB / Load lore into ChromaDB."""
         if not lore_items or not self._chroma:
             return
-        collection = f"lore_{pack_id}"
+        collection = f"lore_{world_id}"
         for lore in lore_items:
             content = lore.get("content", "")
             chunks = _chunk_text(content)
@@ -182,11 +181,11 @@ class WorldLoader:
                     ],
                 )
 
-    def _write_scenes_chroma(self, scenes: list[dict], pack_id: str) -> None:
+    def _write_scenes_chroma(self, scenes: list[dict], world_id: str) -> None:
         """灌入场景描述到 ChromaDB / Load scene descriptions into ChromaDB."""
         if not scenes or not self._chroma:
             return
-        collection = f"scene_{pack_id}"
+        collection = f"scene_{world_id}"
         for s in scenes:
             self._chroma.add(
                 collection=collection,

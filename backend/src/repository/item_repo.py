@@ -16,7 +16,7 @@ class ItemRepo:
         """写入单条物品 / Save single item."""
         await self._db.execute(
             "INSERT OR REPLACE INTO items "
-            "(id, name, item_type, rarity, weight, value, description, data_json, pack_id, pack_name) "
+            "(id, name, item_type, rarity, weight, value, description, data_json, world_id, world_name) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 item.id,
@@ -27,8 +27,8 @@ class ItemRepo:
                 item.value,
                 item.description,
                 json.dumps(item.data, ensure_ascii=False),
-                item.pack_id,
-                item.pack_name,
+                item.world_id,
+                item.world_name,
             ),
         )
 
@@ -45,8 +45,8 @@ class ItemRepo:
                 value=r.get("value", 0),
                 description=r.get("description", ""),
                 data=json.loads(r.get("data_json", "{}")),
-                pack_id=r["pack_id"],
-                pack_name=r.get("pack_name", ""),
+                world_id=r["world_id"],
+                world_name=r.get("world_name", ""),
             )
             for r in rows
         }

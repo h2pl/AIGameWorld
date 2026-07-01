@@ -49,7 +49,7 @@ async def _seed(rep: WorldRepo):
     rows = await rep.list_all()
     # 无 test world 则创建 / Create test world if missing
     if not any(r.id == "test" for r in rows):
-        await rep.create(World(id="test", name="测试世界", pack_id="forgotten_realms"))
+        await rep.create(World(id="test", name="测试世界", starting_scene="village_elderwood"))
         logger.info("[Seed] test world created")
 
 
@@ -166,8 +166,8 @@ async def health_check():
     return {"status": "ok"}
 
 
-@app.get("/api/pack/{pack_id}/state")
-async def get_pack_state(pack_id: str):
+@app.get("/api/world/{world_id}/state")
+async def get_pack_state(world_id: str):
     if MOCK_MODE:
         return MOCK_WORLD
     try:
@@ -181,18 +181,20 @@ async def get_pack_state(pack_id: str):
                 "landmarks": json.loads(r.get("landmarks_json", "[]")),
                 "environment": json.loads(r.get("environment_json", "{}")),
             }
-            for r in await _db.fetch_all("SELECT * FROM scenes WHERE pack_id = ?", (pack_id,))
+            for r in await _db.fetch_all("SELECT * FROM scenes WHERE world_id = ?", (world_id,))
         ]
         pcs = [
             _char_from_row(r, True, i * 2 + 5)
             for i, r in enumerate(
-                await _db.fetch_all("SELECT * FROM player_characters WHERE pack_id = ?", (pack_id,))
+                await _db.fetch_all(
+                    "SELECT * FROM player_characters WHERE world_id = ?", (world_id,)
+                )
             )
         ]
         actors = [
             _char_from_row(r, False, i * 3 + 12)
             for i, r in enumerate(
-                await _db.fetch_all("SELECT * FROM actors WHERE pack_id = ?", (pack_id,))
+                await _db.fetch_all("SELECT * FROM actors WHERE world_id = ?", (world_id,))
             )
         ]
         items = [
@@ -203,7 +205,7 @@ async def get_pack_state(pack_id: str):
                 "rarity": r.get("rarity", "common"),
                 "description": r.get("description", ""),
             }
-            for r in await _db.fetch_all("SELECT * FROM items WHERE pack_id = ?", (pack_id,))
+            for r in await _db.fetch_all("SELECT * FROM items WHERE world_id = ?", (world_id,))
         ]
         so = [
             {
@@ -217,7 +219,7 @@ async def get_pack_state(pack_id: str):
             for r in await _db.fetch_all("SELECT * FROM scene_objects")
         ]
         return {
-            "pack_id": pack_id,
+            "world_id": world_id,
             "scenes": scenes,
             "characters": pcs + actors,
             "items": items,
@@ -260,9 +262,9 @@ async def view_global_meta(db: str = Query(default="data/world_db.db")):
     return await render_global_meta(db_path=db)
 
 
-@app.get("/view/pack/{pack_id}", response_class=HTMLResponse)
-async def view_pack(pack_id: str, db: str = Query(default="data/world_db.db")):
-    return await render_pack(pack_id, db_path=db)
+@app.get("/view/pack/{world_id}", response_class=HTMLResponse)
+async def view_pack(world_id: str, db: str = Query(default="data/world_db.db")):
+    return await render_pack(world_id, db_path=db)
 
 
 # --- Internal ---

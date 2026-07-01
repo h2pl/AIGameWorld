@@ -12,11 +12,11 @@ class SceneRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
-    async def save_scene(self, scene: dict, pack_id: str, pack_name: str) -> None:
+    async def save_scene(self, scene: dict, world_id: str, world_name: str) -> None:
         """写入单条场景 / Save single scene."""
         await self._db.execute(
             "INSERT OR REPLACE INTO scenes "
-            "(id, name, type, description, exits_json, landmarks_json, pack_id, pack_name) "
+            "(id, name, type, description, exits_json, landmarks_json, world_id, world_name) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 scene.get("id", ""),
@@ -25,8 +25,8 @@ class SceneRepo:
                 scene.get("description", ""),
                 json.dumps(scene.get("exits", []), ensure_ascii=False),
                 json.dumps(scene.get("landmarks", []), ensure_ascii=False),
-                pack_id,
-                pack_name,
+                world_id,
+                world_name,
             ),
         )
 
@@ -34,7 +34,7 @@ class SceneRepo:
         """写入单条场景对象 / Save single scene object."""
         await self._db.execute(
             "INSERT OR REPLACE INTO scene_objects "
-            "(id, name, object_type, scene_id, position_x, position_y, interactable, interact_data_json, pack_id) "
+            "(id, name, object_type, scene_id, position_x, position_y, interactable, interact_data_json, world_id) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 obj.id,
@@ -45,7 +45,7 @@ class SceneRepo:
                 0,
                 int(obj.interactable),
                 json.dumps(obj.interact_data, ensure_ascii=False) if obj.interact_data else None,
-                obj.pack_id,
+                obj.world_id,
             ),
         )
 
@@ -64,6 +64,6 @@ class SceneRepo:
                 position_y=r.get("position_y", 0),
                 interactable=bool(r.get("interactable", 1)),
                 interact_data=json.loads(idata) if idata else None,
-                pack_id=r.get("pack_id", ""),
+                world_id=r.get("world_id", ""),
             )
         return result

@@ -13,19 +13,25 @@ class WorldRepo:
     # 创建世界 / Create world
     async def create(self, w: World) -> None:
         await self._db.execute(
-            "INSERT INTO worlds (id, name, pack_id, description) VALUES (?, ?, ?, ?)",
-            (w.id, w.name, w.pack_id, w.description),
+            "INSERT INTO worlds (id, name, description, version, rule_set, author, starting_scene) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (w.id, w.name, w.description, w.version, w.rule_set, w.author, w.starting_scene),
         )
         await self._db.commit()
 
     async def list_all(self) -> list[World]:
-        rows = await self._db.fetch_all("SELECT id, name, pack_id, description FROM worlds")
+        rows = await self._db.fetch_all(
+            "SELECT id, name, description, version, rule_set, author, starting_scene FROM worlds"
+        )
         return [
             World(
                 id=r["id"],
                 name=r["name"],
-                pack_id=r["pack_id"],
                 description=r.get("description", ""),
+                version=r.get("version", "1.0.0"),
+                rule_set=r.get("rule_set", "dnd_5e_srd"),
+                author=r.get("author", ""),
+                starting_scene=r.get("starting_scene", ""),
             )
             for r in rows
         ]
