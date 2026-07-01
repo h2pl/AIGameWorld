@@ -8,7 +8,7 @@ from ..domain.event import CharacterMoveEvent, DmNarrativeEvent, OpeningEvent
 from ..domain.message import Message
 from ..repository.event_repo import EventRepo
 from ..repository.message_repo import MessageRepo
-from .world_state import MockTickEngine
+from .tick_engine import MockTickEngine
 
 logger = logging.getLogger("aw.producer")
 

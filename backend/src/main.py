@@ -278,24 +278,44 @@ def _char_from_row(r: dict, is_pc: bool, pos_offset: int) -> dict:
     }
 
 
-# 后台 Graph 生产者 / Background Graph producer
 async def _graph_producer(
     world_id: str,
     msg_repo: MessageRepo,
     evt_repo: EventRepo,
 ) -> None:
-    """循环跑 tick → 写 messages + events / Loop: run tick → write 2 tables."""
-    from src.graph.producer import run
+    """Graph 生产者——Orchestrator 循环 / Graph producer: Orchestrator loop."""
+    from datetime import UTC, datetime
 
-    await run(
-        world_id,
-        msg_repo,
-        evt_repo,
-        lambda: _sessions.get(world_id, {}).get("paused", False),
-        _db,
-    )
-    if world_id in _sessions:
-        _sessions[world_id]["done"] = True
+    from src.domain.event import DmNarrativeEvent
+    from src.domain.message import Message
+    from src.graph.orchestrator import Orchestrator
+    from src.repository.character_repo import CharacterRepo
+    from src.repository.story_repo import StoryRepo
+
+    char_repo = CharacterRepo(_db)
+    story_repo = StoryRepo(_db)
+    orch = Orchestrator(session_id=world_id, repos={"char": char_repo, "story": story_repo})
+    try:
+        while True:
+            while _sessions.get(world_id, {}).get("paused"):
+                await asyncio.sleep(0.5)
+            result = await orch.run_tick()
+            events = [DmNarrativeEvent(text=result.get("narrative", ""))]
+            events.extend(
+                DmNarrativeEvent(text=f"{a.get('character_id', '?')}: {a.get('description', '')}")
+                for a in result.get("character_actions", [])
+            )
+            msg = Message(
+                id=world_id, tick=result["tick"], world_id=world_id,
+                timestamp=datetime.now(UTC), events=events,
+            )
+            await msg_repo.insert(msg)
+            await evt_repo.insert_batch(msg.id, msg.tick, msg.events)
+    except Exception as e:
+        logger.error("[Producer] %s error: %s", world_id, e, exc_info=True)
+    finally:
+        if world_id in _sessions:
+            _sessions[world_id]["done"] = True
 
 
 # Event → JSON / Serialize event

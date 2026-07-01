@@ -1,4 +1,7 @@
-"""E2E——消息队列全链路：start → 5 tick → next → ack → done."""
+"""E2E——消息队列全链路：start → 5 tick → next → ack → done.
+
+使用 mock producer 测试 HTTP 接口全流程 / Uses mock producer for full HTTP pipeline test.
+"""
 
 import asyncio
 
@@ -9,9 +12,10 @@ from src.main import app
 
 
 @pytest.fixture
-async def client():
-    """初始化 :memory: DB + seed test world / Init in-memory DB."""
+async def client(monkeypatch):
+    """初始化 :memory: DB + seed test world + patch producer 为 mock."""
     import src.main as m
+    from src.mock.producer import run as mock_run
     from src.repository.world_repo import WorldRepo
     from src.storage.sqlite_client import SQLiteClient
 
@@ -21,10 +25,21 @@ async def client():
     await WorldRepo(m._db).create(m.World(id="test", name="test"))
     m._sessions.clear()
 
+    # 替换 producer 为 mock / Replace producer with mock
+    async def _mock_producer(world_id, msg_repo, evt_repo):
+        await mock_run(
+            world_id, msg_repo, evt_repo,
+            lambda: m._sessions.get(world_id, {}).get("paused", False),
+            m._db,
+        )
+        if world_id in m._sessions:
+            m._sessions[world_id]["done"] = True
+
+    monkeypatch.setattr(m, "_graph_producer", _mock_producer)
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
-    # 清理 / Cleanup
     for mid in list(m._sessions.keys()):
         s = m._sessions.pop(mid, None)
         if s and (t := s.get("task")) and not t.done():
