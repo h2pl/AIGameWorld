@@ -9,7 +9,6 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
-from src.config import load_config
 from src.domain.world import World
 from src.repository.event_repo import EventRepo
 from src.repository.message_repo import MessageRepo
@@ -28,10 +27,6 @@ from src.viewer import (
 
 logger = logging.getLogger("aw.main")
 setup_logging()
-
-# 全局状态 / Global state
-_cfg = load_config()
-MOCK_MODE: bool = _cfg.mock_mode
 
 # session 管理 / Session store — world_id → {msg_repo, evt_repo, task, paused, done}
 _sessions: dict[str, dict] = {}
@@ -290,17 +285,15 @@ async def _graph_producer(
     evt_repo: EventRepo,
 ) -> None:
     """循环跑 tick → 写 messages + events / Loop: run tick → write 2 tables."""
-    paused = lambda: _sessions.get(world_id, {}).get("paused", False)
+    from src.graph.producer import run
 
-    if MOCK_MODE:
-        from src.mock.producer import run as mock_run
-
-        await mock_run(world_id, msg_repo, evt_repo, paused, _db)
-    else:
-        from src.graph.producer import run as real_run
-
-        await real_run(world_id, msg_repo, evt_repo, paused, _db)
-
+    await run(
+        world_id,
+        msg_repo,
+        evt_repo,
+        lambda: _sessions.get(world_id, {}).get("paused", False),
+        _db,
+    )
     if world_id in _sessions:
         _sessions[world_id]["done"] = True
 
