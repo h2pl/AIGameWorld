@@ -103,7 +103,6 @@ class Config(BaseSettings):
     database: DatabaseConfig = DatabaseConfig()
     auto_run: AutoRunConfig = AutoRunConfig()
     observability: ObservabilityConfig = ObservabilityConfig()
-    mock_mode: bool = True  # dev 默认 mock / default to mock in dev
 
     @classmethod
     def from_yaml(cls, path: str = "config.yaml") -> Config:
