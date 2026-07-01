@@ -314,6 +314,16 @@ async def _graph_producer(
             while True:
                 while _sessions.get(world_id, {}).get("paused"):
                     await asyncio.sleep(0.5)
+                # 反压：积压 > 5 条时等前端消化 / Backpressure: wait if backlog > 5
+                from src.storage.sqlite_client import SQLiteClient as _S
+
+                backlog = await _db.fetch_one(
+                    "SELECT COUNT(*) as cnt FROM messages WHERE id=? AND status='pending'",
+                    (world_id,),
+                )
+                if backlog and backlog.get("cnt", 0) > 5:
+                    await asyncio.sleep(0.3)
+                    continue
                 data = engine.generate_tick()
                 events = [DmNarrativeEvent(text=data.get("narrative", ""))]
                 events.extend(
