@@ -1,7 +1,7 @@
 """E2E——全链路真实 LLM：启动→产 tick→验证 DB→拉取→ACK。
 
-运行：cd backend && python -m pytest tests/e2e/test_live_tick.py -v -s
-前提：config.yaml mock_mode=false，LLM provider 可用
+运行：pytest tests/e2e/test_live_tick.py -v -s
+前提：LLM provider 可用（config.yaml llm_provider 配置正确）
 """
 
 import asyncio
