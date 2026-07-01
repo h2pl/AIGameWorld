@@ -11,6 +11,10 @@ import { GameScene } from "./scenes/GameScene";
 import { gameStore } from "./state/GameStore";
 import { CONFIG } from "./config";
 import type { InitialWorldState } from "./types";
+import "./ui/styles.css";
+import { NarrativePanel } from "./ui/NarrativePanel";
+import { EventPanel } from "./ui/EventPanel";
+import { CharacterPanel } from "./ui/CharacterPanel";
 
 /** 从后端加载初始世界状态 / Load initial world state from backend */
 async function loadWorldState(packId: string): Promise<InitialWorldState | null> {
@@ -175,6 +179,15 @@ async function main(): Promise<void> {
   });
   console.log(`${L} Phaser.Game created, scenes: Boot → Game`);
 
+  // ── DOM 面板 / DOM Panels (P5-3) ──
+  const narrativePanel = new NarrativePanel();
+  narrativePanel.mount(document.body);
+  const eventPanel = new EventPanel();
+  eventPanel.mount(document.body);
+  const characterPanel = new CharacterPanel();
+  characterPanel.mount(document.body);
+  console.log(`${L} DOM panels mounted: narrative + event + character`);
+
   // ── 控制面板 / Control Panel ──
   const bar = document.createElement("div");
   bar.style.cssText = "position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:999;";
@@ -200,7 +213,6 @@ async function main(): Promise<void> {
   const ws = new WSClient("aw");
 
   // 只注册一次叙事监听 / Register narrative listener once
-  let narrativeUnsub: (() => void) | null = null;
   gameStore.subscribe((s) => {
     const gs = game.scene.getScene("Game") as import("./scenes/GameScene").GameScene;
     if (gs?.setNarrative && s.narrative) gs.setNarrative(s.narrative);

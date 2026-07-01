@@ -1,0 +1,190 @@
+/** 面板统一样式 / Panel Styles — 暗色主题，与 Phaser canvas 保持一致
+ *
+ * 设计原则 / Design principles:
+ * - 暗色半透明背景 + 金色边框，与 Phaser canvas 统一 / Dark translucent bg + gold border, matches Phaser canvas
+ * - position:fixed 浮动在 canvas 上方 / fixed positioning floats above canvas
+ * - 自定义暗色滚动条 / Custom dark scrollbar
+ * - 紧凑排版，最小化遮挡游戏画面 / Compact layout, minimize canvas occlusion
+ */
+
+/* ===== 面板基类 — 所有面板共享 / Panel Base — shared by all panels ===== */
+.panel {
+  position: fixed;
+  z-index: 1000;
+  background: rgba(20, 24, 34, 0.92);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 12px;
+  color: #ccc;
+  overflow: hidden;
+  min-width: 200px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+  font-weight: bold;
+  color: #ffd700;
+  user-select: none;
+}
+
+.panel-icon { font-size: 14px; }
+
+.panel-title { flex: 1; font-size: 12px; }
+
+.panel-count {
+  font-size: 10px;
+  color: #aaa;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.panel-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.panel-close:hover { color: #ffd700; }
+
+.panel-body {
+  padding: 10px 12px;
+  overflow-y: auto;
+  max-height: 200px;
+}
+
+/* 自定义滚动条 — 暗色风格 / Custom scrollbar — dark style */
+.panel-body::-webkit-scrollbar { width: 5px; }
+.panel-body::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+.panel-body::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.3); border-radius: 3px; }
+
+/* ===== 叙事面板 — 左下角，展示 DM 生成的叙事文本 / Narrative Panel — bottom-left, shows DM narrative ===== */
+.narrative-panel {
+  left: 10px;
+  bottom: 50px;
+  width: 380px;
+  max-height: 30%;
+}
+
+.narrative-body { max-height: 180px; }
+
+.narrative-line {
+  padding: 3px 0;
+  line-height: 1.5;
+  color: #c8d6e5;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.narrative-line:last-child {
+  color: #fff;
+  font-weight: 500;
+  border-bottom: none;
+}
+
+/* ===== 事件面板 — 右上角，增量追加 tick 事件日志 / Event Panel — top-right, append tick event logs ===== */
+.event-panel {
+  right: 10px;
+  top: 10px;
+  width: 280px;
+  max-height: 40%;
+}
+
+.event-body { max-height: 220px; }
+
+.event-line {
+  padding: 2px 0;
+  line-height: 1.4;
+  color: #a0aec0;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+/* ===== 角色面板 — 居中弹出，点击角色显示属性+战斗+角色弧 / Character Panel — centered popup, shows attrs+combat+arc ===== */
+.character-panel {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 340px;
+  max-height: 70%;
+}
+
+.character-body {
+  max-height: 400px;
+}
+
+.char-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffd700;
+  margin-bottom: 4px;
+}
+
+.char-meta {
+  font-size: 11px;
+  color: #8899aa;
+  margin-bottom: 10px;
+}
+
+.section {
+  margin: 8px 0;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: bold;
+  color: #aaa;
+  margin-bottom: 4px;
+}
+
+.attr-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.attr {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.combat-section .combat-stat {
+  display: block;
+  font-size: 11px;
+  margin: 2px 0;
+}
+
+.hp-bar-wrap {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  margin: 4px 0;
+  overflow: hidden;
+}
+
+.hp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e74c3c, #f39c12, #2ecc71);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.arc-stage {
+  display: inline-block;
+  background: rgba(255, 215, 0, 0.15);
+  color: #ffd700;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+}
