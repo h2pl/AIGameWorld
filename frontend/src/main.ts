@@ -135,8 +135,13 @@ async function main(): Promise<void> {
   console.log(`${L} pack_id=${packId}`);
 
   // 加载世界数据 / Load world data
-  const world = (await loadWorldState(packId)) || loadMockState();
-  console.log(`${L} world loaded: ${world.scenes.length} scenes, ${world.characters.length} chars, mock=${!world.pack_id || world.pack_id === "forgotten_realms"}`);
+  let world = (await loadWorldState(packId)) || loadMockState();
+  // API 可能返回位置全为 (0,0) 的无初始化数据，此时用 mock 兜底
+  if (world.characters.length > 0 && world.characters.every(c => !c.position_x && !c.position_y)) {
+    console.log(`${L} API positions empty, using mock data`);
+    world = loadMockState();
+  }
+  console.log(`${L} world loaded: ${world.scenes.length} scenes, ${world.characters.length} chars`);
   gameStore.setWorldState(
     world.pack_id,
     world.scenes,
