@@ -2,7 +2,7 @@
 
 import logging
 
-from ..engine.scene import scene as scene_engine
+from ..engine.scene import scene_engine as scene_engine
 from ..graph.state import OverallState
 from ..schemas.request import SceneProcessRequest
 
@@ -16,4 +16,4 @@ def process_scene(state: OverallState) -> dict:
             dm_instructions=state.get("dm_instructions", []),
         )
     )
-    return {"scene_events": result.events}
+    return {"scene_events": result.events_out}

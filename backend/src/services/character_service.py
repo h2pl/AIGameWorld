@@ -7,8 +7,8 @@ import logging
 
 from langchain_core.runnables.config import RunnableConfig
 
-from ..engine.character import actor_decide as actor_engine
-from ..engine.character import pc_decide as pc_engine
+from ..engine.character import actor_decide_engine as actor_engine
+from ..engine.character import pc_decide_engine as pc_engine
 from ..graph.state import CharacterAgentState, CharacterSubState
 from ..schemas.request import ActorDecideRequest, PCDecideRequest
 

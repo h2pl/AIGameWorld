@@ -23,7 +23,7 @@ def test_config_model_configs_complete():
     assert config.llm.dm_narrate.model
     assert config.llm.pc_decision.timeout == 10
     assert config.llm.actor_decision.retries == 1
-    assert config.llm.reflection.temperature == 0.5
+    assert config.llm.reflection_engine.temperature == 0.5
 
 
 def test_model_can_override_base_url():

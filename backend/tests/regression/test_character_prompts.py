@@ -69,34 +69,34 @@ class TestCharacterSystemPrompt:
 
 
 class TestPCDecidePrompt:
-    """pc_decide.jinja 结构验证 / Structure validation."""
+    """pc_decide_engine.jinja 结构验证 / Structure validation."""
 
     def test_renders_with_full_context(self):
-        rendered = _PROMPTS.get_template("character/pc_decide.jinja").render(**_pc_context())
+        rendered = _PROMPTS.get_template("character/pc_decide_engine.jinja").render(**_pc_context())
         assert "Alex" in rendered
         assert "Greta" in rendered
 
     def test_output_schema_has_required_fields(self):
-        rendered = _PROMPTS.get_template("character/pc_decide.jinja").render(**_pc_context())
+        rendered = _PROMPTS.get_template("character/pc_decide_engine.jinja").render(**_pc_context())
         assert '"action_type"' in rendered
         assert '"target"' in rendered
         assert '"reasoning"' in rendered
 
     def test_requires_chinese_reasoning(self):
-        rendered = _PROMPTS.get_template("character/pc_decide.jinja").render(**_pc_context())
+        rendered = _PROMPTS.get_template("character/pc_decide_engine.jinja").render(**_pc_context())
         assert "中文" in rendered
 
 
 class TestActorDecidePrompt:
-    """actor_decide.jinja 结构验证 / Structure validation."""
+    """actor_decide_engine.jinja 结构验证 / Structure validation."""
 
     def test_renders_with_full_context(self):
-        rendered = _PROMPTS.get_template("character/actor_decide.jinja").render(**_actor_context())
+        rendered = _PROMPTS.get_template("character/actor_decide_engine.jinja").render(**_actor_context())
         assert "Greta" in rendered
         assert "innkeeper" in rendered
 
     def test_output_schema_has_required_fields(self):
-        rendered = _PROMPTS.get_template("character/actor_decide.jinja").render(**_actor_context())
+        rendered = _PROMPTS.get_template("character/actor_decide_engine.jinja").render(**_actor_context())
         assert '"action_type"' in rendered
         assert '"target"' in rendered
         assert '"reasoning"' in rendered

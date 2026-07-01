@@ -7,14 +7,14 @@ import time
 
 from langchain_core.runnables.config import RunnableConfig
 
-from ..engine.dm import dm as dm_engine
+from ..engine.dm import dm_engine as dm_engine
 from ..graph.state import OverallState
 from ..schemas.request import DMCreateRequest, DMNarrateRequest
 from ..utils.logging import log_phase
 
 
 async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
-    """Phase 1: DM 创造情境 / DM creates the scene."""
+    """Phase 1: DM 创造情境 / DM creates the scene_engine."""
     t0 = time.monotonic()
     result = await dm_engine.dm_create(
         DMCreateRequest(tick=state.get("tick", 0), plot_brief=state.get("plot_brief", "")),
@@ -32,7 +32,7 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
 
 
 async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict:
-    """Phase 6: DM 叙事 / DM narrates the scene."""
+    """Phase 6: DM 叙事 / DM narrates the scene_engine."""
     t0 = time.monotonic()
     interval = config.get("configurable", {}).get("reflection_interval", 5) if config else 5
     result = await dm_engine.dm_narrate(

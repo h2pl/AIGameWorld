@@ -99,11 +99,11 @@ class TestCharacterDomain:
 
     def test_actor_with_combat(self):
         a = Actor(id="npc1", combat=CombatStats(hp=20))
-        assert a.combat.hp == 20
+        assert a.combat_engine.hp == 20
 
     def test_player_character_minimal(self):
         pc = PlayerCharacter(id="hero1", name="Aragon")
-        assert pc.combat.hp == 10
+        assert pc.combat_engine.hp == 10
         assert pc.roster_status == "member"
 
     def test_player_character_requires_id(self):

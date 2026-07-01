@@ -3,13 +3,13 @@
 import pytest
 
 # ── Engine imports / 引擎导入 ──
-from src.engine.combat.combat import resolve_combat
-from src.engine.dialogue.dialogue import resolve_persuasion
-from src.engine.exploration.exploration import resolve_exploration
-from src.engine.quest.quest import check_quests
-from src.engine.reflection.reflection import reflect
-from src.engine.summarizer.summarizer import summarize
-from src.engine.scene.scene import process_scene
+from src.engine.combat.combat_engine import resolve_combat
+from src.engine.dialogue.dialogue_engine import resolve_persuasion
+from src.engine.exploration.exploration_engine import resolve_exploration
+from src.engine.quest.quest_engine import check_quests
+from src.engine.reflection.reflection_engine import reflect
+from src.engine.summarizer.summarizer_engine import summarize
+from src.engine.scene.scene_engine import process_scene
 from src.schemas.request import (
     CombatRequest,
     DialogueRequest,
@@ -62,7 +62,7 @@ class TestExplorationEngine:
 
 class TestInteractEngine:
     def test_pick_lock(self):
-        from src.engine.exploration.interact import resolve_interact
+        from src.engine.exploration.interact_engine import resolve_interact
         from src.schemas.request import SceneObjectInteractRequest
 
         r = resolve_interact(
@@ -80,7 +80,7 @@ class TestInteractEngine:
         assert "roll" in r.result
 
     def test_break_door(self):
-        from src.engine.exploration.interact import resolve_interact
+        from src.engine.exploration.interact_engine import resolve_interact
         from src.schemas.request import SceneObjectInteractRequest
 
         r = resolve_interact(

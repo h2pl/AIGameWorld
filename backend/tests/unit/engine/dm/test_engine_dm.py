@@ -99,7 +99,7 @@ class TestDMNarrate:
 class TestDMGuardrails:
     def test_validate_dm_output_fixes_invalid_mood(self):
         # ── 护栏测试 / Guardrail tests ──
-        from src.engine.dm.dm import _validate_dm_output
+        from src.engine.dm_engine.dm import _validate_dm_output
 
         result = DMOutput(
             plot_brief="x",
@@ -110,7 +110,7 @@ class TestDMGuardrails:
         assert fixed.scene_direction.mood == "neutral"
 
     def test_validate_dm_output_keeps_valid_mood(self):
-        from src.engine.dm.dm import _validate_dm_output
+        from src.engine.dm_engine.dm import _validate_dm_output
 
         result = DMOutput(
             plot_brief="x", scene_direction=SceneDirectionOutput(mood="tense"), instructions=["a"]
@@ -119,14 +119,14 @@ class TestDMGuardrails:
         assert fixed.scene_direction.mood == "tense"
 
     def test_validate_dm_output_fills_empty_instructions(self):
-        from src.engine.dm.dm import _validate_dm_output
+        from src.engine.dm_engine.dm import _validate_dm_output
 
         result = DMOutput(plot_brief="x", scene_direction=SceneDirectionOutput(), instructions=[])
         fixed = _validate_dm_output(result)
         assert len(fixed.instructions) == 1
 
     def test_validate_dm_output_truncates_excess_instructions(self):
-        from src.engine.dm.dm import _validate_dm_output
+        from src.engine.dm_engine.dm import _validate_dm_output
 
         result = DMOutput(
             plot_brief="x", scene_direction=SceneDirectionOutput(), instructions=["a"] * 6
@@ -135,21 +135,21 @@ class TestDMGuardrails:
         assert len(fixed.instructions) == 4
 
     def test_validate_narrate_output_fills_empty(self):
-        from src.engine.dm.dm import _validate_narrate_output
+        from src.engine.dm_engine.dm import _validate_narrate_output
 
         result = DMNarrativeSchema(narrative="")
         fixed = _validate_narrate_output(result)
         assert "沉默" in fixed.narrative
 
     def test_validate_narrate_output_fills_whitespace(self):
-        from src.engine.dm.dm import _validate_narrate_output
+        from src.engine.dm_engine.dm import _validate_narrate_output
 
         result = DMNarrativeSchema(narrative="   \n  ")
         fixed = _validate_narrate_output(result)
         assert "沉默" in fixed.narrative
 
     def test_validate_narrate_output_keeps_valid(self):
-        from src.engine.dm.dm import _validate_narrate_output
+        from src.engine.dm_engine.dm import _validate_narrate_output
 
         result = DMNarrativeSchema(narrative="雾气弥漫，远处传来钟声。")
         fixed = _validate_narrate_output(result)

@@ -15,7 +15,7 @@ class TestReflectPC:
 
     @pytest.mark.asyncio
     async def test_pc_llm_returns_insight(self):
-        from src.engine.reflection.reflection import reflect
+        from src.engine.reflection_engine.reflection import reflect
 
         llm = AsyncMock()
         llm.call_structured = AsyncMock(
@@ -48,7 +48,7 @@ class TestReflectPC:
 
     @pytest.mark.asyncio
     async def test_pc_fallback_on_llm_none(self):
-        from src.engine.reflection.reflection import reflect
+        from src.engine.reflection_engine.reflection import reflect
 
         result = await reflect(
             ReflectionRequest(character_id="alex", character_name="Alex", character_type="pc"),
@@ -59,7 +59,7 @@ class TestReflectPC:
 
     @pytest.mark.asyncio
     async def test_pc_fallback_on_llm_error(self):
-        from src.engine.reflection.reflection import reflect
+        from src.engine.reflection_engine.reflection import reflect
 
         llm = AsyncMock()
         llm.call_structured = AsyncMock(side_effect=RuntimeError("LLM timeout"))
@@ -76,7 +76,7 @@ class TestReflectActor:
 
     @pytest.mark.asyncio
     async def test_actor_llm_returns_summary(self):
-        from src.engine.reflection.reflection import reflect
+        from src.engine.reflection_engine.reflection import reflect
 
         llm = AsyncMock()
         llm.call_structured = AsyncMock(
@@ -106,7 +106,7 @@ class TestSummarizer:
 
     @pytest.mark.asyncio
     async def test_summarizer_compresses_events(self):
-        from src.engine.summarizer.summarizer import summarize
+        from src.engine.summarizer_engine.summarizer import summarize
 
         llm = AsyncMock()
         llm.call_structured = AsyncMock(
@@ -134,7 +134,7 @@ class TestSummarizer:
 
     @pytest.mark.asyncio
     async def test_summarizer_fallback_on_llm_none(self):
-        from src.engine.summarizer.summarizer import summarize
+        from src.engine.summarizer_engine.summarizer import summarize
 
         result = await summarize(
             SummarizerRequest(events=[], tick=0),

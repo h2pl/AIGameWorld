@@ -5,7 +5,7 @@ per test-driven-development: 先写测试再实现
 
 from unittest.mock import patch
 
-from src.engine.combat.combat import resolve_combat
+from src.engine.combat.combat_engine import resolve_combat
 from src.schemas.request import CombatParticipant, CombatRequest
 
 
@@ -56,7 +56,7 @@ class TestInitiative:
         gob = _enemy("goblin", dex=1)
         with (
             patch("src.rules.dnd_rules.roll_d20", return_value=10),
-            patch("src.engine.combat.combat.roll_initiative", side_effect=[14, 11]),
+            patch("src.engine.combat.combat_engine_engine.roll_initiative", side_effect=[14, 11]),
         ):
             r = resolve_combat(CombatRequest(participants=[alex, gob]))
             log_names = [e["attacker"] for e in r.combat_log if "attacker" in e]

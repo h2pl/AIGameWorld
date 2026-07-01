@@ -4,7 +4,7 @@ import logging
 
 from langchain_core.runnables.config import RunnableConfig
 
-from ..engine.summarizer import summarizer as summarizer_engine
+from ..engine.summarizer import summarizer_engine as summarizer_engine
 from ..graph.state import ReflectionSubState
 from ..schemas.request import SummarizerRequest
 

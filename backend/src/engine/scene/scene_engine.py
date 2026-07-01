@@ -16,4 +16,4 @@ def process_scene(req: SceneProcessRequest) -> SceneProcessResponse:
         {"type": "dm_instruction", "tick": req.tick, "description": inst}
         for inst in req.dm_instructions
     ]
-    return SceneProcessResponse(events=events)
+    return SceneProcessResponse(events_out=events)

@@ -34,7 +34,7 @@ async def dm_create(
     config: RunnableConfig = None,
 ) -> DMCreateResponse:
     # ── 护栏校验 / Guardrails ──
-    """Phase 1: DM 创造情境 / DM creates the scene."""
+    """Phase 1: DM 创造情境 / DM creates the scene_engine."""
     llm = get_llm(config)
 
     if llm is None:
@@ -84,7 +84,7 @@ async def dm_create(
 
 
 async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DMNarrateResponse:
-    """Phase 6: DM 叙事 / DM narrates the scene."""
+    """Phase 6: DM 叙事 / DM narrates the scene_engine."""
     llm = get_llm(config)
 
     if llm is None:

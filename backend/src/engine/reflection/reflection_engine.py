@@ -1,4 +1,4 @@
-"""Reflection Engine——LLM 驱动的角色反思 / LLM-driven character reflection.
+"""Reflection Engine——LLM 驱动的角色反思 / LLM-driven character reflection_engine.
 
 PC: 深度反思（弧线分析 + 性格洞察 + 下一步方向）
 Actor: 浅层反思（行为模式总结）

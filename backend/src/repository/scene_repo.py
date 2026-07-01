@@ -13,18 +13,18 @@ class SceneRepo:
         self._db = client
 
     async def save_scene(self, scene: dict, world_id: str, world_name: str) -> None:
-        """写入单条场景 / Save single scene."""
+        """写入单条场景 / Save single scene_engine."""
         await self._db.execute(
             "INSERT OR REPLACE INTO scenes "
             "(id, name, type, description, exits_json, landmarks_json, world_id, world_name) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                scene.get("id", ""),
-                scene.get("name", ""),
-                scene.get("type", ""),
-                scene.get("description", ""),
-                json.dumps(scene.get("exits", []), ensure_ascii=False),
-                json.dumps(scene.get("landmarks", []), ensure_ascii=False),
+                scene_engine.get("id", ""),
+                scene_engine.get("name", ""),
+                scene_engine.get("type", ""),
+                scene_engine.get("description", ""),
+                json.dumps(scene_engine.get("exits", []), ensure_ascii=False),
+                json.dumps(scene_engine.get("landmarks", []), ensure_ascii=False),
                 world_id,
                 world_name,
             ),

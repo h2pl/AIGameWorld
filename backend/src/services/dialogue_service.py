@@ -1,7 +1,7 @@
 """Dialogue Service: State ↔ Engine adapter."""
 import logging
 
-from ..engine.dialogue import dialogue as dialogue_engine
+from ..engine.dialogue import dialogue_engine as dialogue_engine
 from ..graph.state import EngineSubState
 from ..schemas.request import DialogueRequest
 
