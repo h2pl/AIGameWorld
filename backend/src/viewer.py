@@ -9,10 +9,10 @@ from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
 
 from src.repository.character_repo import CharacterRepo
+from src.repository.dm_record_repo import DMRecordRepo
 from src.repository.event_repo import EventRepo
 from src.repository.item_repo import ItemRepo
 from src.repository.scene_repo import SceneRepo
-from src.repository.story_repo import StoryRepo
 from src.repository.world_repo import WorldRepo
 from src.storage.sqlite_client import SQLiteClient
 
@@ -52,7 +52,6 @@ async def render_index(db_path: str) -> HTMLResponse:
         pack_repo = WorldRepo(client)
         worlds = await pack_repo.list_all()
 
-        # 为每个 registered pack 统计实体数
         packs = []
         for wp in worlds:
             total = 0
@@ -62,7 +61,6 @@ async def render_index(db_path: str) -> HTMLResponse:
                 "scenes",
                 "items",
                 "scene_objects",
-                "story_arcs",
             }
             for table in _ALLOWED_TABLES:
                 query = f"SELECT COUNT(*) as cnt FROM {table} WHERE pack_id = ?"  # noqa: S608
@@ -95,14 +93,14 @@ async def render_pack(pack_id: str, db_path: str) -> HTMLResponse:
     client = await _get_client(db_path)
     try:
         char_repo = CharacterRepo(client)
-        story_repo = StoryRepo(client)
+        record_repo = DMRecordRepo(client)
 
         pcs = await _load_pcs(char_repo, pack_id)
         actors = await _load_actors(char_repo, pack_id)
         scenes = await _load_scenes(client, pack_id)
         items = await _load_items(client, pack_id)
         objects = await _load_objects(client, pack_id)
-        arcs = await _load_arcs(story_repo, pack_id)
+        stories = await record_repo.load_by_world(pack_id)
 
         html = _JINJA.get_template("pack.html").render(
             pack_id=pack_id,
@@ -113,7 +111,7 @@ async def render_pack(pack_id: str, db_path: str) -> HTMLResponse:
             items=items,
             scenes=scenes,
             objects=objects,
-            story=arcs,
+            story={"stories": [s.model_dump() for s in stories]} if stories else None,
             rarity_colors=RARITY_COLORS,
         )
     finally:
@@ -223,25 +221,28 @@ async def render_global_events(db_path: str) -> HTMLResponse:
     return HTMLResponse(html)
 
 
-async def render_global_narratives(db_path: str) -> HTMLResponse:
-    """Narrative Log — narratives 表数据 / narratives table data."""
+async def render_global_records(db_path: str) -> HTMLResponse:
+    """DM Records — dm_records 表数据."""
     client = await _get_client(db_path)
     try:
+        DMRecordRepo(client)
         rows = await client.fetch_all(
-            "SELECT id, tick, content, created_at FROM narratives ORDER BY tick, id"
+            "SELECT id, world_id, tick, plot_brief, dm_narrative, created_at FROM dm_records ORDER BY tick, id"
         )
         html = _JINJA.get_template("pack.html").render(
-            pack_id="narratives",
+            pack_id="dm_records",
             meta={
-                "id": "narratives",
-                "name": "Narrative Log",
-                "description": "narratives 表 · 无 pack_id",
+                "id": "dm_records",
+                "name": "DM Records",
+                "description": "dm_records 表",
             },
             lore=[
                 {
-                    "category": f"Tick {r['tick']}",
+                    "category": f"Tick {r['tick']} [{r['world_id']}]",
                     "id": f"#{r['id']}",
-                    "content": r["content"] or "",
+                    "content": f"场景: {r['plot_brief']}\n\n叙事: {r['dm_narrative']}"
+                    if r.get("plot_brief") or r.get("dm_narrative")
+                    else "",
                 }
                 for r in rows
             ],
@@ -384,22 +385,3 @@ async def _load_objects(client: SQLiteClient, pack_id: str) -> list[dict]:
                 d["interact_data"] = json.loads(d["interact_data_json"])
         result.append(d)
     return result
-
-
-async def _load_arcs(repo: StoryRepo, pack_id: str) -> dict | None:
-    arcs = await repo.load_arcs(pack_id)
-    result = [
-        {
-            "id": arc.id,
-            "type": arc.type,
-            "title": arc.title,
-            "stage": arc.stage,
-            "main_cast": arc.main_cast,
-            "supporting_actors": arc.supporting_actors,
-            "key_event_ticks": arc.key_event_ticks,
-            "branching_points": arc.branching_points,
-            "status": arc.status,
-        }
-        for arc in arcs
-    ]
-    return {"arcs": result} if result else None

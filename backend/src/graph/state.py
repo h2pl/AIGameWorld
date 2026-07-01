@@ -14,11 +14,12 @@ class OverallState(TypedDict):
     """7 Phase 主图状态 / 7-phase main graph state."""
 
     tick: int  # 当前 tick 号 / Current tick number
+    world_id: str
 
     # Phase 1: DM 创造情境 / DM creates context
-    dm_instructions: list[str]
+    hints: list[str]
     plot_brief: str
-    scene_direction: dict[str, Any]
+    scene: dict[str, Any]
 
     # Phase 2: WorldEngine / World engine execution
     scene_events: Annotated[list[dict[str, Any]], add]
@@ -32,12 +33,9 @@ class OverallState(TypedDict):
 
     # Phase 5: 状态合并 / State merge
     state_diff: dict[str, Any]
-    cast_changes: list[dict[str, Any]]
 
     # Phase 6: DM 叙事 / DM narration
     narrative: str
-    branch_points: list[dict[str, Any]]  # 本 tick 产生的分支点 / branch points from this tick
-    hooks_resolved: list[str]  # 本 tick 回收的伏笔 / hooks resolved this tick
 
     # Phase 7: 反思 + 摘要 / Reflection + summary
     reflected_characters: list[str]
@@ -56,7 +54,7 @@ class CharacterSubState(TypedDict):
 
     tick: int
     plot_brief: str
-    scene_direction: dict[str, Any]
+    scene: dict[str, Any]
     character_actions: Annotated[list[dict[str, Any]], add]
 
 

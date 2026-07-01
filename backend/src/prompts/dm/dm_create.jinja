@@ -1,69 +1,46 @@
 {# Phase 1: DM 创造情境 / DM creates the scene #}
-{# system prompt 已由 SystemMessage 承载，此处不重复 include / system prompt is sent via SystemMessage, not repeated here #}
 
-{# === 上下文注入 / Context injection === #}
-{% if story_arcs %}
-当前剧情线：
-{% for arc in story_arcs %}
-- {{ arc.title }}（{{ arc.stage }}）
+{# === 场景列表 / Available scenes === #}
+{% if scenes %}
+当前世界的场景列表（请从以下 id 中选择）：
+{% for s in scenes %}
+- {{ s.id }}：{{ s.name }}（{{ s.description }}）
 {% endfor %}
-{% else %}
-{# TODO: story_arcs 待 Phase 2 Story 域接通后启用 / enabled after Story domain wiring #}
 {% endif %}
 
-{% if active_hooks %}
-已埋下的伏笔（未回收）：
-{% for hook in active_hooks %}
-- {{ hook.description }}
-{% endfor %}
-{% else %}
-{# TODO: active_hooks 待 Memory 域接通后启用 / enabled after Memory domain wiring #}
-{% endif %}
-
+{# === 上下文注入 / Context injection #}
 {% if recent_summary %}
-最近事件摘要：{{ recent_summary }}
+最近摘要：{{ recent_summary }}
 {% endif %}
 
 {% if plot_brief_prev %}
 上一步剧情：{{ plot_brief_prev }}
 {% endif %}
 
-{% if pacing %}
-节奏感知：距离上次大事件 {{ pacing.ticks_since_last_event }} 步
-{% if pacing.needs_conflict %}（需要注入冲突）{% endif %}
-{% endif %}
-
 {# === 输出约束 / Output spec === #}
-严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）。
 
-字段说明：
-- instructions: 2-4 条，每条是玩家可尝试的具体行动（中文祈使句，要具体可执行，不要泛泛的"探索周围"）
-- plot_brief: 2-3 句，描述角色行动"之前"发生的场景设置，不要写角色已做的事
-- scene_direction.featured_pcs: 本步重点 PC 的 id 列表（1-2 个）
-- scene_direction.featured_actors: 本步参演 NPC 的 id 列表
-- scene_direction.actor_motivations: {actor_id: 该 NPC 本步的即时动机（中文一句话）}
-- scene_direction.mood: neutral / tense / hopeful / ominous / mysterious 之一
+字段约束：
+- hints（string[]）：2-4 条环境提示。DM 不直接指引玩家行动，只描述环境中可感知的信息。
+  必须使用简体中文。好的示例："地上有血迹通向左边走廊"、"右边房间传来低语"、"北门被重锁封死"。坏的示例："检查祭坛"、"攻击怪物"（直接命令，不是环境提示）。
+- plot_brief（string）：2-3 句场景设置。描述角色行动"之前"发生了什么，不要写角色已做的事。
+  必须使用简体中文。
+- scene_id（string）：当前场景 id。必须从上方场景列表中精确选择一个 id，不得编造。
 
 输出格式：
 {
-  "instructions": ["...", "..."],
+  "hints": ["...", "..."],
   "plot_brief": "...",
-  "scene_direction": {
-    "featured_pcs": ["pc_id"],
-    "featured_actors": ["actor_id"],
-    "actor_motivations": {"actor_id": "动机"},
-    "mood": "tense"
-  }
+  "scene_id": "tavern"
 }
 
 示例：
 {
-  "instructions": ["检查祭坛上的刻文", "询问旅人来自何方", "绕到石塔后方侦察"],
-  "plot_brief": "雾气在十字路口聚拢，一座布满苔藓的祭坛立在路中央，旅人倚着祭坛擦拭长刀。",
-  "scene_direction": {
-    "featured_pcs": ["alex"],
-    "featured_actors": ["traveler_01"],
-    "actor_motivations": {"traveler_01": "想引开队伍注意好独自触碰祭坛"},
-    "mood": "mysterious"
-  }
+  "hints": [
+    "祭坛上的刻文在月光下泛着冷光",
+    "旅人腰间的刀柄上刻着与祭坛相同的符文",
+    "石塔方向传来一声沉闷的钟响，惊起一群乌鸦"
+  ],
+  "plot_brief": "雾气在十字路口聚拢，一座布满苔藓的祭坛立在路中央。旅人倚着祭坛擦拭长刀，斗篷下露出半截符文卷轴。",
+  "scene_id": "crossroad"
 }

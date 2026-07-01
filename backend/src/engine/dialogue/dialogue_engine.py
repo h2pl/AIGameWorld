@@ -3,6 +3,7 @@
 注意：普通对话（talk）不需要检定，只有说服/欺瞒/威吓等影响他人的行为才掷 D20。
 Ordinary conversation doesn't roll dice — only persuasion/intimidation/deception checks do.
 """
+
 import logging
 
 from ...rules.dnd_rules import resolve_check

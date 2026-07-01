@@ -1,8 +1,8 @@
 """Phase 3 子图: Send() fan-out 并行角色决策。
 
 pass_through ──→ [conditional: dispatch_characters → Send × N] ──→ character_agent（并行）
-                                                                          ↓
-                                                                   character_actions (add 合并)
+                                                                         ↓
+                                                                  character_actions (add 合并)
 """
 
 from langgraph.graph import END, StateGraph
@@ -19,7 +19,7 @@ def _pass_through(state: OverallState) -> dict:
 
 def dispatch_characters(state: OverallState) -> list[Send]:
     """P3-3: 并行唤醒 DM 指定的 PC 和 Actor."""
-    direction = state.get("scene_direction", {})
+    scene = state.get("scene", {})
     plot_brief = state.get("plot_brief", "")
     tick = state.get("tick", 0)
     sends: list[Send] = []
@@ -27,11 +27,11 @@ def dispatch_characters(state: OverallState) -> list[Send]:
     _send_args = {"plot_brief": plot_brief, "tick": tick}
     sends.extend(
         Send("character_agent", {"character_id": pc_id, "character_type": "pc", **_send_args})
-        for pc_id in direction.get("featured_pcs", [])
+        for pc_id in scene.get("pc_ids", [])
     )
     sends.extend(
         Send("character_agent", {"character_id": actor_id, "character_type": "actor", **_send_args})
-        for actor_id in direction.get("featured_actors", [])
+        for actor_id in scene.get("actor_ids", [])
     )
     return sends
 

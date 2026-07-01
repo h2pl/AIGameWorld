@@ -84,15 +84,15 @@ class TestFullTickRun:
         orch = Orchestrator()
         state = OverallState(
             tick=0,
+        world_id="",
             dm_instructions=[],
             plot_brief="Custom start",
-            scene_direction={},
+            scene={},
             scene_events=[],
             character_actions=[],
             engine_results=[],
             combat_result=None,
             state_diff={},
-            cast_changes=[],
             narrative="",
             branch_points=[],
             hooks_resolved=[],

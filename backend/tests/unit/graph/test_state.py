@@ -9,18 +9,16 @@ class TestOverallState:
     def test_minimal_state(self):
         s: OverallState = {
             "tick": 0,
-            "dm_instructions": [],
+            "world_id": "",
+            "hints": [],
             "plot_brief": "",
-            "scene_direction": {},
+            "scene": {},
             "scene_events": [],
             "character_actions": [],
             "engine_results": [],
             "combat_result": None,
             "state_diff": {},
-            "cast_changes": [],
             "narrative": "",
-            "branch_points": [],
-            "hooks_resolved": [],
             "reflected_characters": [],
             "summary_compressed": False,
             "errors": [],
@@ -32,18 +30,16 @@ class TestOverallState:
         """完整提供所有字段时 state 可用."""
         s: OverallState = {
             "tick": 0,
-            "dm_instructions": [],
+            "world_id": "",
+            "hints": [],
             "plot_brief": "",
-            "scene_direction": {},
+            "scene": {},
             "scene_events": [],
             "character_actions": [],
             "engine_results": [],
             "combat_result": None,
             "state_diff": {},
-            "cast_changes": [],
             "narrative": "",
-            "branch_points": [],
-            "hooks_resolved": [],
             "reflected_characters": [],
             "summary_compressed": False,
             "errors": [],
@@ -56,18 +52,16 @@ class TestOverallState:
         # 这只是一个类型标记，运行时赋值仍然是普通 list
         s: OverallState = {
             "tick": 0,
-            "dm_instructions": [],
+            "world_id": "",
+            "hints": [],
             "plot_brief": "",
-            "scene_direction": {},
+            "scene": {},
             "scene_events": [{"e": 1}],
             "character_actions": [],
             "engine_results": [],
             "combat_result": None,
             "state_diff": {},
-            "cast_changes": [],
             "narrative": "",
-            "branch_points": [],
-            "hooks_resolved": [],
             "reflected_characters": [],
             "summary_compressed": False,
             "errors": [],
@@ -78,18 +72,16 @@ class TestOverallState:
     def test_errors_annotated_add(self):
         s: OverallState = {
             "tick": 0,
-            "dm_instructions": [],
+            "world_id": "",
+            "hints": [],
             "plot_brief": "",
-            "scene_direction": {},
+            "scene": {},
             "scene_events": [],
             "character_actions": [],
             "engine_results": [],
             "combat_result": None,
             "state_diff": {},
-            "cast_changes": [],
             "narrative": "",
-            "branch_points": [],
-            "hooks_resolved": [],
             "reflected_characters": [],
             "summary_compressed": False,
             "errors": ["error1", "error2"],
@@ -104,11 +96,11 @@ class TestCharacterSubState:
         s: CharacterSubState = {
             "tick": 1,
             "plot_brief": "test",
-            "scene_direction": {"featured_pcs": ["pc1"]},
+            "scene": {"scene_id": "tavern"},
             "character_actions": [],
         }
         assert s["tick"] == 1
-        assert s["scene_direction"]["featured_pcs"] == ["pc1"]
+        assert s["scene"]["scene_id"] == "tavern"
 
 
 # ── EngineSubState 测试 ──

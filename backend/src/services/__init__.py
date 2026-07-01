@@ -27,6 +27,6 @@ from .dm_service import dm_create, dm_narrate  # noqa: F401
 from .exploration_service import exploration  # noqa: F401
 from .quest_service import quest  # noqa: F401
 from .reflection_service import reflect  # noqa: F401
+from .scene_service import process_scene  # noqa: F401
 from .state_update_service import state_update  # noqa: F401
 from .summarizer_service import summarize  # noqa: F401
-from .scene_service import process_scene  # noqa: F401

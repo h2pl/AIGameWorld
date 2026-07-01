@@ -8,7 +8,7 @@ import logging
 
 from langchain_core.runnables.config import RunnableConfig
 
-from ..engine.reflection import reflection_engine as reflection_engine
+from ..engine.reflection import reflection_engine
 from ..graph.state import ReflectionSubState
 from ..schemas.request import ReflectionRequest
 from ..utils.helpers import get_repo

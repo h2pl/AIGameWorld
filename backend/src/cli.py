@@ -23,7 +23,6 @@ import signal
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 
 from src.domain import (
@@ -33,13 +32,13 @@ from src.domain import (
     CombatStats,
     Location,
     PlayerCharacter,
-    StoryArc,
-    StoryHook,
 )
 from src.graph.orchestrator import Orchestrator
 from src.repository.character_repo import CharacterRepo
+from src.repository.dm_record_repo import DMRecordRepo
 from src.repository.memory_repo import MemoryRepo
-from src.repository.story_repo import StoryRepo
+from src.repository.scene_repo import SceneRepo
+from src.repository.world_repo import WorldRepo
 from src.storage.chroma_client import ChromaClient
 from src.storage.sqlite_client import SQLiteClient
 from src.utils.logging import setup_logging
@@ -106,43 +105,6 @@ def _seed_actors() -> list[Actor]:
             functions=["guard", "dialogue"],
         ),
     ]
-
-
-def _seed_story() -> tuple[list[StoryArc], list[StoryHook]]:
-    """初始剧情线与伏笔种子 / Initial story arcs & hooks seed."""
-    arcs = [
-        StoryArc(
-            id="main_01",
-            type="main",
-            title="酒馆的密信",
-            stage="铺陈",
-            main_cast=["alex", "maya"],
-            supporting_actors=["innkeeper"],
-        ),
-        StoryArc(
-            id="side_01",
-            type="side",
-            title="失踪的商队",
-            stage="铺陈",
-            main_cast=["alex"],
-            supporting_actors=["guard"],
-        ),
-    ]
-    hooks = [
-        StoryHook(
-            id="hook_01",
-            planted_tick=0,
-            description="旅店老板娘 Greta 似乎知道一些不为人知的秘密",
-            intended_payoff="Greta 在关键时刻揭露真相",
-        ),
-        StoryHook(
-            id="hook_02",
-            planted_tick=0,
-            description="镇广场巡逻队长 Cole 最近增派了人手，似乎在警戒什么",
-            intended_payoff="发现商队失踪的真凶",
-        ),
-    ]
-    return arcs, hooks
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -219,35 +181,29 @@ async def _do_run(
         print("  [DB] initialized")
 
         char_repo = CharacterRepo(db)
-        story_repo = StoryRepo(db)
+        record_repo = DMRecordRepo(db)
 
         if pack_id:
             pcs = await char_repo.load_pcs(pack_id)
             actors = await char_repo.load_actors(pack_id)
-            arcs = await story_repo.load_arcs(pack_id)
-            hooks = await story_repo.load_hooks(pack_id)
             print(f"  [DB] pack_id={pack_id}")
-            print(
-                f"  [DB] Loaded {len(pcs)} PCs, {len(actors)} Actors, {len(arcs)} arcs, {len(hooks)} hooks"
-            )
+            print(f"  [DB] Loaded {len(pcs)} PCs, {len(actors)} Actors")
         else:
             pcs = _seed_pcs()
             actors = _seed_actors()
-            arcs, hooks = _seed_story()
             for pc in pcs:
                 await char_repo.save_pc(pc)
             for a in actors:
                 await char_repo.save_actor(a)
-            for arc in arcs:
-                await story_repo.save_arc(arc)
-            for hook in hooks:
-                await story_repo.save_hook(hook)
             await db.commit()
-            print(
-                f"  [DB] Seeded {len(pcs)} PCs, {len(actors)} Actors, {len(arcs)} arcs, {len(hooks)} hooks"
-            )
+            print(f"  [DB] Seeded {len(pcs)} PCs, {len(actors)} Actors")
 
-        repos = {"story": story_repo, "char": char_repo}
+        repos = {
+            "dm_record": record_repo,
+            "char": char_repo,
+            "scene": SceneRepo(db),
+            "world": WorldRepo(db),
+        }
 
     # -- LLM：创建客户端 + MemoryRepo / LLM: create client + MemoryRepo
     if use_llm:
@@ -265,8 +221,7 @@ async def _do_run(
         else:
             repos = {"memory": MemoryRepo(chroma=chroma)}
 
-    # -- Tick 循环 + DB 写入 / Tick loop + DB write
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # -- Tick 循环 / Tick loop
     orch = Orchestrator(llm=llm, repos=repos)
 
     for _ in range(n):
@@ -277,34 +232,14 @@ async def _do_run(
         actions = result.get("character_actions", [])
         errors = result.get("errors", [])
 
-        if db and narrative:
-            await db.execute(
-                "INSERT INTO narratives (tick, content) VALUES (?, ?)",
-                (tick, narrative),
-            )
-            for j, ev in enumerate(events):
-                await db.execute(
-                    "INSERT INTO events (id, tick, seq, type, source, data_json) "
-                    "VALUES (?, ?, ?, ?, ?, ?)",
-                    (f"evt_{run_id}_{tick}_{j}", tick, j, ev.get("type", "?"), "dm", "{}"),
-                )
-            await db.execute(
-                "INSERT OR REPLACE INTO world_meta (key, value) VALUES (?, ?)",
-                ("current_tick", str(tick)),
-            )
-            await db.commit()
-
         db_label = f"[DB] ticks {tick}" if use_db else ""
         _print_tick(tick, narrative, actions, events, errors, db_info=db_label)
 
     # -- 收尾：统计 + 关闭 DB / cleanup: stats + close DB
     print(f"{'=' * 60}")
     if db:
-        tick_row = await db.fetch_one("SELECT value FROM world_meta WHERE key = 'current_tick'")
-        narrative_count = len(await db.fetch_all("SELECT id FROM narratives"))
-        print(
-            f"Done. DB: tick={tick_row['value'] if tick_row else '?'}, narratives={narrative_count}"
-        )
+        records_count = len(await db.fetch_all("SELECT id FROM dm_records"))
+        print(f"Done. DB: dm_records={records_count}")
         await db.close()
     else:
         print(f"Done. {n} tick(s) completed.")
@@ -364,8 +299,6 @@ async def _test_engine() -> None:
     create_req = DMCreateRequest(tick=0, plot_brief="")
     system_prompt = prompts.get_template("_dm_system.jinja").render()
     prompt = prompts.get_template("dm/dm_create.jinja").render(
-        story_arcs=[],
-        active_hooks=[],
         recent_summary="",
         plot_brief_prev=create_req.plot_brief,
         pacing={},
@@ -394,16 +327,14 @@ async def _test_engine() -> None:
     narrate_req = DMNarrateRequest(
         tick=0,
         plot_brief="The party encounters a strange traveler.",
-        dm_instructions=[],
-        scene_direction={},
-        character_actions=[{"character_id": "alex", "action_type": "explore"}],
+        hints=[],
+        events=[{"type": "explore", "description": "alex searches the area"}],
+        scene={},
     )
     prompt_n = prompts.get_template("dm/dm_narrate.jinja").render(
         plot_brief=narrate_req.plot_brief,
-        character_actions=narrate_req.character_actions,
-        events=[],
-        combat_result=None,
-        cast_changes=[],
+        hints=narrate_req.hints,
+        events=narrate_req.events,
     )
     print(f"  [INPUT]  plot_brief: {narrate_req.plot_brief}")
     print(f"  [INPUT]  prompt:\n{prompt_n[:300]}...")
@@ -566,9 +497,7 @@ async def _shell_show(state: ShellState) -> None:
             ("Actors", "actors"),
             ("Scenes", "scenes"),
             ("Items", "items"),
-            ("Arcs", "story_arcs"),
-            ("Hooks", "story_hooks"),
-            ("Narratives", "narratives"),
+            ("Story", "story"),
             ("Events", "events"),
         ]:
             # 表名来自常量列表，非用户输入 / table names are constants, not user input
@@ -593,8 +522,6 @@ async def _shell_list_packs(state: ShellState) -> None:
             "scenes",
             "items",
             "scene_objects",
-            "story_arcs",
-            "story_hooks",
         ]:
             try:
                 # 表名来自常量列表，非用户输入 / table names are constants
@@ -622,11 +549,10 @@ async def _shell_clear() -> None:
     db = SQLiteClient("data/world_db.db")
     await db.connect()
     await db.execute("DELETE FROM events")
-    await db.execute("DELETE FROM narratives")
-    await db.execute("DELETE FROM world_meta")
+    await db.execute("DELETE FROM dm_records")
     await db.commit()
     await db.close()
-    print("  [OK] Cleared events, narratives, world_meta")
+    print("  [OK] Cleared events, story")
 
 
 def _show_current(state: ShellState) -> None:

@@ -1,7 +1,8 @@
 """Quest Service: State ↔ Engine adapter."""
+
 import logging
 
-from ..engine.quest import quest_engine as quest_engine
+from ..engine.quest import quest_engine
 from ..graph.state import EngineSubState
 from ..schemas.request import QuestRequest
 

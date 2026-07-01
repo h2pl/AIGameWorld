@@ -9,7 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field
 if TYPE_CHECKING:
     from ..domain.action import Action
     from ..domain.event import Event
-    from ..domain.instruction import DMInstruction
 
 
 # ============================================================
@@ -27,19 +26,13 @@ class EngineResponse(BaseModel):
 # Phase 1 & 6: DM
 # ============================================================
 class DMCreateResponse(EngineResponse):
-    instructions_out: list[str] = Field(default_factory=list)
+    hints: list[str] = Field(default_factory=list)
     plot_brief: str = ""
-    scene_direction: dict[str, Any] = {}
-
-    @classmethod
-    def from_entity(cls, dm: DMInstruction) -> DMCreateResponse:
-        return cls(instructions_out=[dm_engine.model_dump_json()])
+    scene: dict[str, Any] = {}
 
 
 class DMNarrateResponse(EngineResponse):
     narrative_out: str = ""
-    branch_points: list[dict[str, Any]] = Field(default_factory=list)
-    hooks_resolved: list[str] = Field(default_factory=list)
 
 
 # ============================================================
@@ -117,15 +110,6 @@ class ReflectionResponse(EngineResponse):
 class SummarizerResponse(EngineResponse):
     compressed: bool = False
     summary_text: str = ""
-
-
-# ============================================================
-# Domain: Story (M4+)
-# ============================================================
-class StoryAdvanceResponse(EngineResponse):
-    arcs_updated: list[dict[str, Any]] = []
-    hooks_resolved: list[str] = []
-    quests_completed: list[dict[str, Any]] = []
 
 
 # ============================================================

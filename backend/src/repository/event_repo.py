@@ -1,4 +1,5 @@
-"""写入 event + 按 msg 加载."""
+"""Event 仓储 / Event Repository——批量写入 + 按消息/按tick范围加载."""
+# load_by_tick_range 用于 scheduler 按 tick 范围加载事件
 
 import json
 import logging
@@ -27,6 +28,16 @@ class EventRepo:
             )
         await self._db.commit()
         logger.info("[event] insert %s tick=%s count=%d", msg_id, msg_tick, len(events))
+
+    async def load_by_tick_range(self, world_id: str, tick_start: int, tick_end: int) -> list[dict]:
+        """按 world_id + tick 范围加载事件（用于 ChromaDB 归档）."""
+        rows = await self._db.fetch_all(
+            "SELECT e.type, e.payload, m.tick FROM events e "
+            "JOIN messages m ON e.msg_id = m.id AND e.msg_tick = m.tick "
+            "WHERE m.world_id = ? AND m.tick BETWEEN ? AND ? ORDER BY m.tick, e.id",
+            (world_id, tick_start, tick_end),
+        )
+        return [{"tick": r["tick"], "type": r["type"], "payload": r["payload"]} for r in rows]
 
     async def load_by_message(self, msg_id: str, msg_tick: int) -> list[Event]:
         rows = await self._db.fetch_all(

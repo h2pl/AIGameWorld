@@ -1,73 +1,48 @@
-"""LLM Schema 单元测试。per design/04-agent-layer.md §13 + 06-llm-dev-guide.md."""
+"""LLM Schema 单元测试 / LLM Schema unit tests.
 
-from src.schemas.llm_output import BranchPoint, DMNarrativeSchema, DMOutput, SceneDirectionOutput
+验证 DMOutput（hints/plot_brief/scene_id）和 DMNarrativeSchema（narrative）Pydantic 模型.
+"""
+
+from src.schemas.llm_output import DMNarrativeSchema, DMOutput
 
 
 class TestLLMOutputSchemas:
     def test_dm_output_defaults(self):
         out = DMOutput(plot_brief="test")
         assert out.plot_brief == "test"
-        assert out.instructions == []
-        assert out.scene_direction.featured_pcs == []
+        assert out.hints == []
+        assert out.scene_id == ""
 
-    def test_dm_output_with_cast(self):
+    def test_dm_output_with_scene(self):
         out = DMOutput(
             plot_brief="The party enters the forest.",
-            scene_direction=SceneDirectionOutput(
-                featured_pcs=["alex", "maya"],
-                featured_actors=["goblin_scout"],
-                actor_motivations={"goblin_scout": "Ambush the party"},
-                mood="tense",
-            ),
+            scene_id="forest_01",
+            hints=["环境提示"],
         )
-        assert len(out.scene_direction.featured_pcs) == 2
-        assert out.scene_direction.mood == "tense"
-        assert out.scene_direction.actor_motivations["goblin_scout"] == "Ambush the party"
+        assert out.scene_id == "forest_01"
+        assert len(out.hints) == 1
 
     def test_dm_narrative_schema(self):
-        n = DMNarrativeSchema(
-            narrative="The party ventures forth into the dark forest.",
-            branch_points=[
-                BranchPoint(
-                    decision_maker="alex", decision="Enter forest", consequence="Unknown danger"
-                )
-            ],
-            hooks_resolved=["hook_001"],
-        )
+        n = DMNarrativeSchema(narrative="The party ventures forth into the dark forest.")
         assert n.narrative.startswith("The party")
-        assert len(n.branch_points) == 1
-        assert "hook_001" in n.hooks_resolved
 
     def test_dm_narrative_empty(self):
         n = DMNarrativeSchema(narrative="")
-        assert n.branch_points == []
-        assert n.hooks_resolved == []
+        assert n.narrative == ""
 
     def test_dm_output_json_schema(self):
         schema = DMOutput.model_json_schema()
         assert "plot_brief" in schema["properties"]
-        assert "scene_direction" in schema["properties"]
-        assert "instructions" in schema["properties"]
-
-    def test_scene_direction_mood_default(self):
-        d = SceneDirectionOutput()
-        assert d.mood == "neutral"
-
-    def test_branch_point_defaults(self):
-        bp = BranchPoint()
-        assert bp.decision_maker == ""
-        assert bp.decision == ""
-        assert bp.consequence == ""
+        assert "scene_id" in schema["properties"]
+        assert "hints" in schema["properties"]
 
 
 class TestFallbackOutputs:
     def test_fallback_dm_output_empty(self):
-        """降级输出应该是最小情境。per §2.3."""
         fb = DMOutput(plot_brief="平静的一天，没有特别事件。")
-        assert len(fb.instructions) == 0
+        assert len(fb.hints) == 0
         assert "平静" in fb.plot_brief
 
     def test_fallback_narrative_empty(self):
-        """Fallback narrative should contain a valid string."""
         fb = DMNarrativeSchema(narrative="(DM fell silent...)")
         assert "DM" in fb.narrative

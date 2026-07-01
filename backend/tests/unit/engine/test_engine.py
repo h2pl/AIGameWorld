@@ -8,16 +8,16 @@ from src.engine.dialogue.dialogue_engine import resolve_persuasion
 from src.engine.exploration.exploration_engine import resolve_exploration
 from src.engine.quest.quest_engine import check_quests
 from src.engine.reflection.reflection_engine import reflect
-from src.engine.summarizer.summarizer_engine import summarize
 from src.engine.scene.scene_engine import process_scene
+from src.engine.summarizer.summarizer_engine import summarize
 from src.schemas.request import (
     CombatRequest,
     DialogueRequest,
     ExplorationRequest,
     QuestRequest,
     ReflectionRequest,
-    SummarizerRequest,
     SceneProcessRequest,
+    SummarizerRequest,
 )
 
 
@@ -151,9 +151,9 @@ class TestSummarizerEngine:
 
 class TestSceneEngine:
     def test_process_scene(self):
-        r = process_scene(SceneProcessRequest(tick=1, dm_instructions=["探索", "交谈"]))
+        r = process_scene(SceneProcessRequest(tick=1, hints=["探索", "交谈"]))
         assert len(r.events_out) == 2
-        assert r.events_out[0]["type"] == "dm_instruction"
+        assert r.events_out[0]["type"] == "hint"
         assert r.events_out[0]["tick"] == 1
 
 

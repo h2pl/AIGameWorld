@@ -15,17 +15,14 @@ from ..domain.world import World
 from ..repository.character_repo import CharacterRepo
 from ..repository.item_repo import ItemRepo
 from ..repository.scene_repo import SceneRepo
-from ..repository.story_repo import StoryRepo
 from ..repository.world_repo import WorldRepo
 from ..storage.chroma_client import ChromaClient
 from ..storage.sqlite_client import SQLiteClient
 from .deserialize import (
     actor_from_yaml,
-    hook_from_yaml,
     item_from_yaml,
     pc_from_yaml,
     scene_obj_from_yaml,
-    story_arc_from_yaml,
 )
 from .reader import read_pack
 from .validator import validate_pack_relations
@@ -42,7 +39,6 @@ class WorldLoader:
         self._scene_repo = SceneRepo(db)
         self._item_repo = ItemRepo(db)
         self._char_repo = CharacterRepo(db)
-        self._story_repo = StoryRepo(db)
 
     async def load(self, pack_dir: Path) -> dict[str, int]:
         """加载 world-pack 到数据库。
@@ -94,8 +90,6 @@ class WorldLoader:
         )
         counts["pcs"] = await self._write_pcs(data, world_id)
         counts["actors"] = await self._write_actors(data, world_id)
-        counts["story_arcs"] = await self._write_story_arcs(data, world_id)
-        counts["story_hooks"] = await self._write_story_hooks(data, world_id)
 
         # ChromaDB (可选 / optional) — collection 用 world_id 标识
         if self._chroma:
@@ -142,20 +136,6 @@ class WorldLoader:
         for a_data in actors:
             await self._char_repo.save_actor(actor_from_yaml(a_data, starting_scene, world_id))
         return len(actors)
-
-    # ── Story (StoryRepo) ──
-
-    async def _write_story_arcs(self, data: dict, world_id: str) -> int:
-        arcs = data.get("story_setup", {}).get("story_arcs", [])
-        for arc_data in arcs:
-            await self._story_repo.save_arc(story_arc_from_yaml(arc_data, world_id))
-        return len(arcs)
-
-    async def _write_story_hooks(self, data: dict, world_id: str) -> int:
-        hooks = data.get("story_setup", {}).get("story_hooks", [])
-        for h_data in hooks:
-            await self._story_repo.save_hook(hook_from_yaml(h_data, world_id))
-        return len(hooks)
 
     # ── ChromaDB ──
 

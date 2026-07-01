@@ -10,10 +10,7 @@ from ...schemas.response import SceneProcessResponse
 
 
 def process_scene(req: SceneProcessRequest) -> SceneProcessResponse:
-    """处理 DM 指令，生成场景事件."""
+    """处理 DM 提示，生成场景事件."""
     logging.getLogger("aw.eng").info("[scene]")
-    events = [
-        {"type": "dm_instruction", "tick": req.tick, "description": inst}
-        for inst in req.dm_instructions
-    ]
+    events = [{"type": "hint", "tick": req.tick, "description": hint} for hint in req.hints]
     return SceneProcessResponse(events_out=events)

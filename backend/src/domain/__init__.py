@@ -14,6 +14,7 @@ from .character import (
     PlayerCharacter,
     Relationship,
 )
+from .dm_record import DMRecord
 from .event import (
     SEQUENCE,
     CharacterExploreEvent,
@@ -26,28 +27,25 @@ from .event import (
     SceneObjectsEvent,
     SceneSetupEvent,
 )
-from .instruction import ActorMotivation, DMInstruction, PlotEvent, SceneChange, SceneDirection
 from .item import Item, ItemType
 from .message import Message
 from .scene_object import SceneObject, SceneObjectType
-from .story import BranchPoint, CastChangeEvent, MainCastRoster, Quest, StoryArc, StoryHook
+from .story import Quest
+from .story_summary import StorySummary
 from .world import World
 
 # 公共 API / Public API
 __all__ = [
     "Action",
     "Actor",
-    "ActorMotivation",
     "Attributes",
-    "BranchPoint",
-    "CastChangeEvent",
     "CharacterArc",
     "CharacterExploreEvent",
     "CharacterMoveEvent",
     "CharacterTalkEvent",
     "CombatStats",
     "DmNarrativeEvent",
-    "DMInstruction",
+    "DMRecord",
     "Equipment",
     "Event",
     "ExploreRoll",
@@ -55,21 +53,16 @@ __all__ = [
     "Item",
     "ItemType",
     "Location",
-    "MainCastRoster",
     "Message",
     "OpeningEvent",
     "PlayerCharacter",
-    "PlotEvent",
     "Quest",
     "Relationship",
     "SEQUENCE",
-    "SceneChange",
-    "SceneDirection",
     "SceneObject",
     "SceneObjectType",
     "SceneObjectsEvent",
     "SceneSetupEvent",
-    "StoryArc",
-    "StoryHook",
+    "StorySummary",
     "World",
 ]

@@ -40,18 +40,16 @@ class Orchestrator:
         if initial_state is None:
             initial_state = OverallState(
                 tick=self._tick,
-                dm_instructions=[],
+                world_id="",
+                hints=[],
                 plot_brief="",
-                scene_direction={},
+                scene={},
                 scene_events=[],
                 character_actions=[],
                 engine_results=[],
                 combat_result=None,
                 state_diff={},
-                cast_changes=[],
                 narrative="",
-                branch_points=[],
-                hooks_resolved=[],
                 reflected_characters=[],
                 summary_compressed=False,
                 errors=[],
@@ -88,8 +86,6 @@ class Orchestrator:
             "narrative": result.get("narrative", ""),
             "events": result.get("scene_events", []),
             "character_actions": result.get("character_actions", []),
-            "branch_points": result.get("branch_points", []),
-            "hooks_resolved": result.get("hooks_resolved", []),
             "errors": result.get("errors", []),
         }
 

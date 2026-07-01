@@ -4,13 +4,9 @@ import pytest
 from pydantic import ValidationError
 
 from src.domain.action import Action
-from src.domain.event import Event
-from src.domain.instruction import SceneDirection
 from src.schemas.llm_output import (
-    BranchPoint,
     DMNarrativeSchema,
     DMOutput,
-    SceneDirectionOutput,
 )
 from src.schemas.request import (
     ActorDecideRequest,
@@ -25,9 +21,9 @@ from src.schemas.request import (
     QuestRequest,
     ReflectionRequest,
     SceneObjectInteractRequest,
+    SceneProcessRequest,
     StoryAdvanceRequest,
     SummarizerRequest,
-    SceneProcessRequest,
 )
 from src.schemas.response import (
     ActorDecideResponse,
@@ -41,8 +37,8 @@ from src.schemas.response import (
     PCDecideResponse,
     QuestResponse,
     ReflectionResponse,
-    SummarizerResponse,
     SceneProcessResponse,
+    SummarizerResponse,
 )
 
 
@@ -55,15 +51,15 @@ class TestRequestSchemas:
         assert r.tick == 0
         assert r.plot_brief == ""
 
-    def test_dm_narrate_request_with_instructions(self):
-        r = DMNarrateRequest(dm_instructions=["探索酒馆", "与NPC交谈"])
-        assert len(r.dm_instructions) == 2
-        assert r.dm_instructions[0] == "探索酒馆"
+    def test_dm_narrate_request_with_hints(self):
+        r = DMNarrateRequest(hints=["探索酒馆", "与NPC交谈"])
+        assert len(r.hints) == 2
+        assert r.hints[0] == "探索酒馆"
 
     def test_scene_process_request(self):
-        r = SceneProcessRequest(tick=5, dm_instructions=["测试"])
+        r = SceneProcessRequest(tick=5, hints=["测试"])
         assert r.tick == 5
-        assert r.dm_instructions == ["测试"]
+        assert r.hints == ["测试"]
 
     def test_pc_decide_request(self):
         r = PCDecideRequest(pc_id="hero_1", plot_brief="遭遇怪物", tick=3)
@@ -129,10 +125,10 @@ class TestRequestSchemas:
 class TestResponseSchemas:
     def test_dm_create_response(self):
         r = DMCreateResponse(
-            instructions_out=["探索"], plot_brief="故事", scene_direction={"mood": "dark"}
+            hints=["探索"], plot_brief="故事", scene={"scene_id": "tavern", "mood": "dark"}
         )
-        assert r.instructions_out == ["探索"]
-        assert r.scene_direction["mood"] == "dark"
+        assert r.hints == ["探索"]
+        assert r.scene["mood"] == "dark"
 
     def test_dm_narrate_response(self):
         r = DMNarrateResponse(narrative_out="伟大的冒险开始了。")
@@ -184,21 +180,13 @@ class TestResponseSchemas:
         r = ItemResponse(id="sword_01", name="Sword")
         assert r.rarity == "common"
 
-    def test_dm_create_response_from_entity(self):
-        """from_entity 将 DMInstruction.model_dump() dict 序列化为字符串."""
-        inst = SceneDirection(type="scene_direction", featured_pcs=["pc1"], description="dir")
-        r = DMCreateResponse.from_entity(inst)
-        assert len(r.instructions_out) == 1
-        assert isinstance(r.instructions_out[0], str)
-
     def test_pc_decide_response_from_entity(self):
         action = Action(character_id="pc1", action_type="attack", reasoning="enemy near")
         r = PCDecideResponse.from_entity(action)
         assert r.type == "attack"
 
-    def test_scene_process_response_from_entities(self):
-        events = [Event(id="e1", tick=0, type="combat"), Event(id="e2", tick=0, type="dialogue")]
-        r = SceneProcessResponse.from_entities(events)
+    def test_scene_process_response_with_combat(self):
+        r = SceneProcessResponse(events_out=[{"type": "combat"}, {"type": "dialogue"}])
         assert len(r.events_out) == 2
 
 
@@ -206,42 +194,37 @@ class TestResponseSchemas:
 # LLM Output Schema
 # ============================================================
 class TestLLMOutputSchemas:
-    def test_dm_output_validates_str_instructions(self):
-        o = DMOutput(instructions=["探索酒馆", "与NPC交谈"], plot_brief="故事")
-        assert len(o.instructions) == 2
-        assert isinstance(o.instructions[0], str)
+    def test_dm_output_validates_hints(self):
+        o = DMOutput(hints=["探索酒馆", "与NPC交谈"], plot_brief="故事")
+        assert len(o.hints) == 2
+        assert isinstance(o.hints[0], str)
 
     def test_dm_output_json_roundtrip(self):
         o = DMOutput(
             plot_brief="测试",
-            instructions=["action1"],
-            scene_direction=SceneDirectionOutput(featured_pcs=["pc1"], mood="tense"),
+            hints=["action1"],
+            scene_id="tavern",
         )
         dumped = o.model_dump_json()
         loaded = DMOutput.model_validate_json(dumped)
         assert loaded.plot_brief == "测试"
-        assert loaded.scene_direction.mood == "tense"
+        assert loaded.scene_id == "tavern"
 
     def test_dm_narrative_schema(self):
-        n = DMNarrativeSchema(narrative="冒险开始了。", branch_points=[], hooks_resolved=["hook1"])
+        n = DMNarrativeSchema(narrative="冒险开始了。")
         assert n.narrative == "冒险开始了。"
-        assert len(n.hooks_resolved) == 1
 
     def test_dm_narrative_schema_json_roundtrip(self):
         n = DMNarrativeSchema(narrative="test")
         loaded = DMNarrativeSchema.model_validate_json(n.model_dump_json())
         assert loaded.narrative == "test"
 
-    def test_branch_point(self):
-        bp = BranchPoint(decision_maker="pc1", decision="attack", consequence="victory")
-        assert bp.decision_maker == "pc1"
+    def test_dm_output_defaults(self):
+        o = DMOutput(plot_brief="test")
+        assert o.scene_id == ""
+        assert o.hints == []
 
-    def test_scene_direction_output_defaults(self):
-        sd = SceneDirectionOutput()
-        assert sd.mood == "neutral"
-        assert sd.featured_pcs == []
-
-    def test_dm_output_rejects_dict_instructions(self):
-        """instructions 必须是 list[str]，传入 dict 应报错."""
+    def test_dm_output_rejects_dict_hints(self):
+        """hints 必须是 list[str]，传入 dict 应报错."""
         with pytest.raises(ValidationError):
-            DMOutput(plot_brief="test", instructions=[{"type": "wrong"}])
+            DMOutput(plot_brief="test", hints=[{"type": "wrong"}])

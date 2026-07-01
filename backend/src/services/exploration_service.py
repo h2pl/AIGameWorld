@@ -1,7 +1,8 @@
 """Exploration Service: State ↔ Engine adapter."""
+
 import logging
 
-from ..engine.exploration import exploration_engine as exploration_engine
+from ..engine.exploration import exploration_engine
 from ..graph.state import EngineSubState
 from ..schemas.request import ExplorationRequest
 

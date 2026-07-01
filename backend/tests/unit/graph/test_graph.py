@@ -8,7 +8,7 @@ from src.graph.graph import OverallState, build_tick_graph
 from src.graph.subgraphs.character_subgraph import character_subgraph
 from src.graph.subgraphs.engine_subgraph import engine_subgraph
 from src.graph.subgraphs.reflection_subgraph import reflection_subgraph
-from src.services import dm_service, state_update_service, scene_service
+from src.services import dm_service, scene_service, state_update_service
 
 # ── 图构建 / Graph build
 
@@ -31,15 +31,15 @@ def test_graph_can_compile():
 def test_overall_state_defaults():
     state = OverallState(
         tick=0,
-        dm_instructions=[],
+        world_id="",
+        hints=[],
         plot_brief="",
-        scene_direction={},
+        scene={},
         scene_events=[],
         character_actions=[],
         engine_results=[],
         combat_result=None,
         state_diff={},
-        cast_changes=[],
         narrative="",
         branch_points=[],
         hooks_resolved=[],
@@ -55,15 +55,15 @@ def test_overall_state_defaults():
 def base_state() -> OverallState:
     return OverallState(
         tick=0,
-        dm_instructions=[],
+        world_id="",
+        hints=[],
         plot_brief="",
-        scene_direction={},
+        scene={},
         scene_events=[],
         character_actions=[],
         engine_results=[],
         combat_result=None,
         state_diff={},
-        cast_changes=[],
         narrative="",
         branch_points=[],
         hooks_resolved=[],
@@ -80,7 +80,7 @@ def base_state() -> OverallState:
 @pytest.mark.asyncio
 async def test_phase1_dm_create(base_state):
     r = await dm_service.dm_create(base_state)
-    assert "dm_instructions" in r
+    assert "hints" in r
     assert "plot_brief" in r
 
 
@@ -119,15 +119,14 @@ async def test_phase6_narrate(base_state):
 async def test_phase6_reflection_trigger():
     state = OverallState(
         tick=5,
-        dm_instructions=[],
+        hints=[],
         plot_brief="Test",
-        scene_direction={},
+        scene={},
         scene_events=[],
         character_actions=[],
         engine_results=[],
         combat_result=None,
         state_diff={},
-        cast_changes=[],
         narrative="",
         branch_points=[],
         hooks_resolved=[],
@@ -144,15 +143,14 @@ async def test_phase6_reflection_trigger():
 async def test_phase6_no_reflection_low_tick():
     state = OverallState(
         tick=1,
-        dm_instructions=[],
+        hints=[],
         plot_brief="Test",
-        scene_direction={},
+        scene={},
         scene_events=[],
         character_actions=[],
         engine_results=[],
         combat_result=None,
         state_diff={},
-        cast_changes=[],
         narrative="",
         branch_points=[],
         hooks_resolved=[],
@@ -191,15 +189,15 @@ async def test_full_tick_cycle_with_custom_state():
     orch = Orchestrator()
     state = OverallState(
         tick=0,
-        dm_instructions=[],
+        world_id="",
+        hints=[],
         plot_brief="Custom",
-        scene_direction={"featured_pcs": [], "featured_actors": []},
+        scene_direction={"scene_id": ""},
         scene_events=[],
         character_actions=[],
         engine_results=[],
         combat_result=None,
         state_diff={},
-        cast_changes=[],
         narrative="",
         branch_points=[],
         hooks_resolved=[],

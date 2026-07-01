@@ -12,18 +12,18 @@ from src.services import (
     exploration_service,
     quest_service,
     reflection_service,
+    scene_service,
     state_update_service,
     summarizer_service,
-    scene_service,
 )
 
 
 def _base_state(**overrides):
     return {
         "tick": 0,
-        "dm_instructions": [],
+        "hints": [],
         "plot_brief": "",
-        "scene_direction": {},
+        "scene": {},
         "scene_events": [],
         "character_actions": [],
         "engine_results": [],
@@ -45,11 +45,11 @@ def _base_state(**overrides):
 # World Service
 # ============================================================
 class TestWorldService:
-    def test_process_scene_with_instructions(self):
-        state = _base_state(dm_instructions=["探索酒馆", "与NPC交谈"])
+    def test_process_scene_with_hints(self):
+        state = _base_state(hints=["探索酒馆", "与NPC交谈"])
         result = scene_service.process_scene(state)
         assert len(result["scene_events"]) == 2
-        assert result["scene_events"][0]["type"] == "dm_instruction"
+        assert result["scene_events"][0]["type"] == "hint"
 
     def test_process_scene_empty(self):
         state = _base_state()
@@ -61,11 +61,9 @@ class TestWorldService:
 # State Update Service
 # ============================================================
 class TestStateUpdateService:
-    def test_state_update_returns_diff_and_cast(self):
+    def test_state_update_returns_diff(self):
         result = state_update_service.state_update(_base_state())
         assert "state_diff" in result
-        assert "cast_changes" in result
-        assert isinstance(result["cast_changes"], list)
 
 
 # ============================================================
@@ -73,8 +71,8 @@ class TestStateUpdateService:
 # ============================================================
 class TestCharacterService:
     @pytest.mark.asyncio
-    async def test_pc_decide_no_featured_pcs(self):
-        state = {"tick": 0, "plot_brief": "", "scene_direction": {}, "character_actions": []}
+    async def test_pc_decide_no_pcs(self):
+        state = {"tick": 0, "plot_brief": "", "pc_ids": [], "character_actions": []}
         result = await character_service.pc_decide(state, {"configurable": {}})
         assert result["character_actions"] == []
 
@@ -86,7 +84,7 @@ class TestCharacterService:
             "tick": 0,
             "plot_brief": "战斗",
             "character_actions": [],
-            "scene_direction": {"featured_pcs": ["alex"]},
+            "pc_ids": ["alex"],
         }
         with patch("src.services.character_service.pc_engine.pc_decide") as mock:
             mock.return_value = PCDecideResponse(
@@ -106,7 +104,7 @@ class TestCharacterService:
             "tick": 0,
             "plot_brief": "",
             "character_actions": [],
-            "scene_direction": {"featured_actors": ["innkeeper"]},
+            "actor_ids": ["innkeeper"],
         }
         with patch("src.services.character_service.actor_engine.actor_decide") as mock:
             mock.return_value = ActorDecideResponse(
@@ -238,7 +236,7 @@ class TestDMService:
         return {"configurable": {"llm": llm or AsyncMock()}}
 
     @pytest.mark.asyncio
-    async def test_dm_create_returns_instructions(self):
+    async def test_dm_create_returns_hints(self):
         mock_llm = AsyncMock()
         mock_llm.call_structured = AsyncMock(return_value=None)
         state = _base_state(tick=0, plot_brief="")
@@ -247,12 +245,12 @@ class TestDMService:
 
         with patch("src.services.dm_service.dm_engine.dm_create") as mock_create:
             mock_create.return_value = DMCreateResponse(
-                instructions_out=["探索"],
+                hints=["探索"],
                 plot_brief="剧情",
-                scene_direction={"mood": "tense"},
+                scene={"scene_id": "tavern", "mood": "tense"},
             )
             result = await dm_service.dm_create(state, self._config(mock_llm))
-        assert result["dm_instructions"] == ["探索"]
+        assert result["hints"] == ["探索"]
         assert result["errors"] == []
 
     @pytest.mark.asyncio
@@ -267,21 +265,19 @@ class TestDMService:
 
     @pytest.mark.asyncio
     async def test_dm_narrate_returns_narrative(self):
-        state = _base_state(tick=0, character_actions=[])
+        state = _base_state(tick=0)
         from src.schemas.response import DMNarrateResponse
 
         with patch("src.services.dm_service.dm_engine.dm_narrate") as mock_narrate:
             mock_narrate.return_value = DMNarrateResponse(
                 narrative_out="战斗开始！",
-                branch_points=[{"decision_maker": "alex"}],
-                hooks_resolved=["hook_01"],
             )
             result = await dm_service.dm_narrate(state, self._config())
         assert result["narrative"] == "战斗开始！"
 
     @pytest.mark.asyncio
     async def test_dm_narrate_sets_needs_reflection(self):
-        state = _base_state(tick=5, character_actions=[])
+        state = _base_state(tick=5)
         from src.schemas.response import DMNarrateResponse
 
         with patch("src.services.dm_service.dm_engine.dm_narrate") as mock_narrate:

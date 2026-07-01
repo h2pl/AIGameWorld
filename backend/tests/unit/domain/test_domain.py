@@ -15,24 +15,12 @@ from src.domain.character import (
     PlayerCharacter,
     Relationship,
 )
+from src.domain.dm_record import DMRecord
 from src.domain.event import DmNarrativeEvent, OpeningEvent, SceneSetupEvent
-from src.domain.instruction import (
-    ActorMotivation,
-    DMInstruction,
-    PlotEvent,
-    SceneChange,
-    SceneDirection,
-)
 from src.domain.item import Item, ItemType
 from src.domain.scene_object import SceneObject, SceneObjectType
-from src.domain.story import (
-    BranchPoint,
-    CastChangeEvent,
-    MainCastRoster,
-    Quest,
-    StoryArc,
-    StoryHook,
-)
+from src.domain.story import Quest
+from src.domain.story_summary import StorySummary
 
 
 # ============================================================
@@ -99,11 +87,11 @@ class TestCharacterDomain:
 
     def test_actor_with_combat(self):
         a = Actor(id="npc1", combat=CombatStats(hp=20))
-        assert a.combat_engine.hp == 20
+        assert a.combat.hp == 20
 
     def test_player_character_minimal(self):
         pc = PlayerCharacter(id="hero1", name="Aragon")
-        assert pc.combat_engine.hp == 10
+        assert pc.combat.hp == 10
         assert pc.roster_status == "member"
 
     def test_player_character_requires_id(self):
@@ -126,43 +114,6 @@ class TestEvent:
     def test_narrative_mood(self):
         e = DmNarrativeEvent(text="夜幕降临", mood="mysterious")
         assert e.mood == "mysterious"
-
-
-# ============================================================
-# Instruction
-# ============================================================
-class TestInstruction:
-    def test_dm_instruction_base(self):
-        inst = DMInstruction(type="plot_event")
-        assert inst.priority == 0
-
-    def test_plot_event(self):
-        pe = PlotEvent(
-            type="plot_event", event_subtype="monster_attack", description="Goblins attack!"
-        )
-        assert pe.event_subtype == "monster_attack"
-
-    def test_actor_motivation(self):
-        am = ActorMotivation(
-            type="actor_motivation", target_actor_id="npc1", new_goal="protect the village"
-        )
-        assert am.target_actor_id == "npc1"
-
-    def test_scene_change(self):
-        sc = SceneChange(
-            type="scene_change", scene_id="forest_01", weather="rainy", time_of_day="night"
-        )
-        assert sc.weather == "rainy"
-
-    def test_scene_direction(self):
-        sd = SceneDirection(
-            type="scene_direction", featured_pcs=["pc1", "pc2"], featured_actors=["npc_guard"]
-        )
-        assert len(sd.featured_pcs) == 2
-
-    def test_instruction_type_literal(self):
-        with pytest.raises(ValidationError):
-            DMInstruction(type="invalid_type")
 
 
 # ============================================================
@@ -193,34 +144,29 @@ class TestSceneObject:
 
 
 # ============================================================
-# Story
+# DMRecord / StorySummary
 # ============================================================
-class TestStory:
-    def test_branch_point(self):
-        bp = BranchPoint(
-            tick=5, decision_maker="pc1", decision="enter cave", consequence="found treasure"
-        )
-        assert bp.tick == 5
+class TestDMRecord:
+    def test_defaults(self):
+        r = DMRecord()
+        assert r.tick == 0
+        assert r.world_id == ""
+        assert r.dm_narrative == ""
 
-    def test_story_arc_minimal(self):
-        arc = StoryArc(id="arc1")
-        assert arc.stage == "铺陈"
-        assert arc.status == "setup"
+    def test_full(self):
+        r = DMRecord(world_id="test", tick=3, plot_brief="场景", dm_narrative="叙事文本")
+        assert r.dm_narrative == "叙事文本"
 
-    def test_story_hook(self):
-        hook = StoryHook(
-            id="hook1", description="mysterious stranger", intended_payoff="reveal identity"
-        )
-        assert hook.status == "planted"
 
+class TestStorySummary:
+    def test_summary(self):
+        s = StorySummary(world_id="test", tick_start=1, tick_end=10, summary="章节摘要")
+        assert s.tick_start == 1
+        assert s.tick_end == 10
+        assert s.summary == "章节摘要"
+
+
+class TestQuest:
     def test_quest(self):
         q = Quest(id="q1", title="Save Village", assigned_pcs=["pc1"])
         assert q.status == "inactive"
-
-    def test_cast_change_event(self):
-        cce = CastChangeEvent(tick=3, character_id="pc2", event_type="join", reason="met in tavern")
-        assert cce.event_type == "join"
-
-    def test_main_cast_roster(self):
-        roster = MainCastRoster(current_members=["pc1", "pc2"])
-        assert len(roster.current_members) == 2

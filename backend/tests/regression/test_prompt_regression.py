@@ -44,35 +44,29 @@ class TestDMCreatePrompt:
     def test_renders_with_empty_context(self):
         """空上下文不崩溃 / Renders with empty context."""
         rendered = _PROMPTS.get_template("dm/dm_create.jinja").render(
-            story_arcs=[],
-            active_hooks=[],
             recent_summary="",
             plot_brief_prev="",
             pacing={},
         )
         assert len(rendered) > 0
 
-    def test_renders_with_story_arcs(self):
-        """有剧情线时注入 / Injects story arcs when present."""
+    def test_renders_with_previous_plot(self):
+        """有上一步剧情时注入 / Injects previous plot when present."""
         rendered = _PROMPTS.get_template("dm/dm_create.jinja").render(
-            story_arcs=[{"title": "Test", "stage": "铺陈"}],
-            active_hooks=[],
             recent_summary="",
-            plot_brief_prev="plot",
+            plot_brief_prev="雾气弥漫的森林",
             pacing={},
         )
-        assert "Test" in rendered
+        assert "雾气弥漫的森林" in rendered
 
-    def test_output_schema_contains_mood(self):
-        """输出 schema 含 mood 字段 / Output schema includes mood field."""
+    def test_output_schema_contains_scene_id(self):
+        """输出 schema 含 scene_id 字段."""
         rendered = _PROMPTS.get_template("dm/dm_create.jinja").render(
-            story_arcs=[],
-            active_hooks=[],
             recent_summary="",
             plot_brief_prev="",
             pacing={},
         )
-        assert '"mood"' in rendered
+        assert '"scene_id"' in rendered
 
 
 class TestDMNarratePrompt:
@@ -82,23 +76,17 @@ class TestDMNarratePrompt:
         """空上下文不崩溃 / Renders with empty context."""
         rendered = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
             plot_brief="",
-            character_actions=[],
+            hints=[],
             events=[],
-            combat_result=None,
-            cast_changes=[],
         )
         assert len(rendered) > 0
 
-    def test_injects_character_actions(self):
-        """注入角色行动 / Injects character actions."""
+    def test_injects_events(self):
+        """注入事件 / Injects events."""
         rendered = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
             plot_brief="Story",
-            character_actions=[
-                {"character_id": "alex", "type": "explore", "description": "scanning"}
-            ],
-            events=[],
-            combat_result=None,
-            cast_changes=[],
+            hints=[],
+            events=[{"type": "explore", "description": "alex found a clue"}],
         )
         assert "alex" in rendered
 
@@ -106,9 +94,7 @@ class TestDMNarratePrompt:
         """要求感官细节 / Requires sensory detail."""
         rendered = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
             plot_brief="",
-            character_actions=[],
+            hints=[],
             events=[],
-            combat_result=None,
-            cast_changes=[],
         )
         assert "感官" in rendered

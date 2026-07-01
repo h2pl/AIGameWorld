@@ -63,12 +63,11 @@ async def character_agent(state: CharacterAgentState, config: RunnableConfig = N
 
 
 async def pc_decide(state: CharacterSubState, config: RunnableConfig = None) -> dict:
-    """Phase 3: 遍历 featured PCs 串行决策（测试用 / for tests）."""
-    direction = state.get("scene_direction", {})
+    """Phase 3: 遍历 PCs 串行决策（测试用 / for tests）."""
     plot_brief = state.get("plot_brief", "")
     tick = state.get("tick", 0)
     actions = []
-    for pc_id in direction.get("featured_pcs", []):
+    for pc_id in state.get("pc_ids", []):
         action = await pc_engine.pc_decide(
             PCDecideRequest(pc_id=pc_id, plot_brief=plot_brief, tick=tick),
             config=config,
@@ -79,12 +78,11 @@ async def pc_decide(state: CharacterSubState, config: RunnableConfig = None) -> 
 
 
 async def actor_decide(state: CharacterSubState, config: RunnableConfig = None) -> dict:
-    """Phase 3: 遍历 featured Actors 串行决策（测试用 / for tests）."""
-    direction = state.get("scene_direction", {})
+    """Phase 3: 遍历 Actors 串行决策（测试用 / for tests）."""
     plot_brief = state.get("plot_brief", "")
     tick = state.get("tick", 0)
     actions = []
-    for actor_id in direction.get("featured_actors", []):
+    for actor_id in state.get("actor_ids", []):
         action = await actor_engine.actor_decide(
             ActorDecideRequest(actor_id=actor_id, plot_brief=plot_brief, tick=tick),
             config=config,

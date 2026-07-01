@@ -16,8 +16,6 @@ from ..domain import (
     PlayerCharacter,
     SceneObject,
     SceneObjectType,
-    StoryArc,
-    StoryHook,
 )
 
 # ═══════════════════════════════════════════════════════════════
@@ -92,29 +90,6 @@ def scene_obj_from_yaml(data: dict, world_id: str = "") -> SceneObject:
     )
 
 
-def story_arc_from_yaml(data: dict, world_id: str = "") -> StoryArc:
-    """YAML dict → StoryArc."""
-    return StoryArc(
-        id=data.get("id", f"arc_{data.get('title', '')}"),
-        type=data.get("type", "main"),
-        title=data.get("title", ""),
-        stage=data.get("stage", "hook"),
-        main_cast=data.get("main_cast", []),
-        status="setup",
-        world_id=world_id,
-    )
-
-
-def hook_from_yaml(data: dict, world_id: str = "") -> StoryHook:
-    """YAML dict → StoryHook."""
-    return StoryHook(
-        id=data.get("id", f"hook_{hash(data.get('description', ''))}"),
-        description=data.get("description", ""),
-        urgency=_urgency(data.get("urgency", "medium")),
-        world_id=world_id,
-    )
-
-
 # ═══════════════════════════════════════════════════════════════
 # 子结构 / Sub-structures
 # ═══════════════════════════════════════════════════════════════
@@ -180,7 +155,3 @@ def inventory_from_yaml(data: list | None) -> list[InventorySlot]:
             )
         )
     return result
-
-
-def _urgency(text: str) -> int:
-    return {"low": 3, "medium": 5, "high": 8}.get(text, 5)

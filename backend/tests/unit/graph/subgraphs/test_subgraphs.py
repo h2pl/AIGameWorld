@@ -14,7 +14,7 @@ class TestCharacterSubgraph:
         state: CharacterSubState = {
             "tick": 0,
             "plot_brief": "",
-            "scene_direction": {"featured_pcs": ["pc1"], "featured_actors": ["npc1"]},
+            "scene": {"scene_id": "tavern"},
             "character_actions": [],
         }
         result = await character_subgraph.ainvoke(state)
@@ -27,7 +27,7 @@ class TestCharacterSubgraph:
         state: CharacterSubState = {
             "tick": 0,
             "plot_brief": "",
-            "scene_direction": {},
+            "scene": {},
             "character_actions": [],
         }
         result = await character_subgraph.ainvoke(state)
