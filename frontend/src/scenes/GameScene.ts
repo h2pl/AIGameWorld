@@ -113,7 +113,10 @@ export class GameScene extends Phaser.Scene {
   private loadMap(mapKey: string): void {
     this.currentMapKey = mapKey;
     this.tilemap = this.make.tilemap({ key: mapKey });
-    const tileset = this.tilemap.addTilesetImage(TILEMAP.TILESET_NAME, KEY.IMAGE.TUXEMON);
+    // 不同地图用不同 tileset 图片 / Different maps use different tileset images
+    const tsImageKey = mapKey === KEY.TILEMAP.DESERT ? KEY.IMAGE.DESERT : KEY.IMAGE.TUXEMON;
+    const tsName = mapKey === KEY.TILEMAP.DESERT ? "Desert" : TILEMAP.TILESET_NAME;
+    const tileset = this.tilemap.addTilesetImage(tsName, tsImageKey);
     if (!tileset) { console.error("[Scene] tileset FAIL for", mapKey); return; }
     this.tilemap.createLayer(TILEMAP.LAYERS.BELOW, tileset, 0, 0);
     console.log("[Scene] loadMap", mapKey);
@@ -247,7 +250,8 @@ export class GameScene extends Phaser.Scene {
       // 加载新地图 / Load new map
       this.loadMap(mapKey);
       // 重建 World + Above 图层 / Rebuild collision layers
-      const ts = this.tilemap.getTileset(TILEMAP.TILESET_NAME);
+      const tsName = mapKey === KEY.TILEMAP.DESERT ? "Desert" : TILEMAP.TILESET_NAME;
+      const ts = this.tilemap.getTileset(tsName);
       if (ts) {
         const worldLayer = this.tilemap.createLayer(TILEMAP.LAYERS.WORLD, ts, 0, 0)!;
         worldLayer.setCollisionByProperty({ collides: true });

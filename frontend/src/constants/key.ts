@@ -2,10 +2,12 @@
 export const KEY = {
   IMAGE: {
     TUXEMON: "tuxemon",
+    DESERT: "desert-tiles",
   },
   TILEMAP: {
     TUXEMON: "tuxemon-map",
     FOREST: "forest-map",
+    DESERT: "desert-map",
   },
   SPRITE: {
     SPACEMAN: "spaceman",
@@ -16,4 +18,5 @@ export const KEY = {
 export const SCENE_MAP: Record<string, string> = {
   "village_elderwood": "tuxemon-map",
   "forest_north": "forest-map",
+  "desert": "desert-map",
 };
