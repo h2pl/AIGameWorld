@@ -236,21 +236,23 @@ async function main(): Promise<void> {
   bar.appendChild(statusEl);
 
   // 地图切换测试 / Map cycle test
-  const sceneOrder = ["village_elderwood", "forest_north", "desert"];
+  const { SCENE_MAP } = await import("./constants");
+  const sceneOrder = Object.keys(SCENE_MAP);
   let sceneIdx = 0;
   btnMap.onclick = () => {
     sceneIdx = (sceneIdx + 1) % sceneOrder.length;
-    const newScene = sceneOrder[sceneIdx];
+    const sceneId = sceneOrder[sceneIdx];
+    const spawn = SCENE_MAP[sceneId].spawn;
     const st = gameStore.getState();
-    // 更新所有角色 scene_id = 新场景 / Update all character scene_ids
+    // 主角群集中在出生点 3×3 区域 / Cluster PCs in spawn area
     const updated = st.characters.map((ch, i) => ({
       ...ch,
-      scene_id: newScene,
-      position_x: 2 + i * 4,
-      position_y: 5,
+      scene_id: sceneId,
+      position_x: spawn.x + (i % 3) - 1,
+      position_y: spawn.y + Math.floor(i / 3) - 1,
     }));
     gameStore.setWorldState(st.pack_id, st.scenes, updated, st.items, st.scene_objects);
-    console.log(`${L} 🗺 switched to ${newScene}`);
+    console.log(`${L} 🗺 switched to ${sceneId}`);
   };
 
   function makeBtn(text: string, bg: string): HTMLButtonElement {

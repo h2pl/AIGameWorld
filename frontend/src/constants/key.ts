@@ -6,7 +6,6 @@ export const KEY = {
   },
   TILEMAP: {
     TUXEMON: "tuxemon-map",
-    FOREST: "forest-map",
     DESERT: "desert-map",
   },
   SPRITE: {
@@ -14,9 +13,8 @@ export const KEY = {
   },
 } as const;
 
-/** 场景 → 地图映射 / Scene → Tilemap mapping */
-export const SCENE_MAP: Record<string, string> = {
-  "village_elderwood": "tuxemon-map",
-  "forest_north": "forest-map",
-  "desert": "desert-map",
+/** 场景 → 地图 + 出生点 映射 / Scene → Tilemap + Spawn area mapping */
+export const SCENE_MAP: Record<string, { map: string; spawn: { x: number; y: number } }> = {
+  "village_elderwood": { map: "tuxemon-map", spawn: { x: 6, y: 6 } },
+  "desert":            { map: "desert-map",  spawn: { x: 10, y: 10 } },
 };

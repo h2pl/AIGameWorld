@@ -79,6 +79,7 @@ export class GameScene extends Phaser.Scene {
     this.initInput();
     this.setupCollisions();     // ⏭️ TODO
     this.createUI();
+    this.cameras.main.fadeIn(400, 0, 0, 0);
   }
 
   /** 1. initVariables / Reset state + 生成纹理 */
@@ -230,12 +231,15 @@ export class GameScene extends Phaser.Scene {
     console.log("[Scene] createUI done, store subscribed");
   }
 
-  /** 场景切换 / Switch scene — Reldens 模式：scene.start 完全重启场景 */
+  /** 场景切换 / Switch scene — 淡出→重启→淡入 / Fade out → restart → fade in */
   private onSceneChanged(sceneId: string): void {
-    const mapKey = SCENE_MAP[sceneId];
-    if (!mapKey || mapKey === this.mapKey) return;
-    console.log("[Scene] scene-changed →", sceneId, "restarting with", mapKey);
-    this.scene.start("Game", { mapKey });
+    const cfg = SCENE_MAP[sceneId];
+    if (!cfg || cfg.map === this.mapKey) return;
+    console.log("[Scene] scene-changed →", sceneId, "restarting with", cfg.map);
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.cameras.main.once("camerafadeoutcomplete", () => {
+      this.scene.start("Game", { mapKey: cfg.map });
+    });
   }
 
   // ══ Lifecycle ══
