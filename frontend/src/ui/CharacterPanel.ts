@@ -13,11 +13,11 @@ const ATTR_LABELS: Record<string, string> = {
 
 export class CharacterPanel extends Panel {
   private contentEl!: HTMLElement;
-  private ignoreOutsideClick = false; // 防止显示面板时的同帧 document.click 立刻关闭 / Prevent immediate close on the same click that opened it
 
   constructor() {
     super("character-panel");
   }
+
 
 
   protected buildDOM(): HTMLElement {
@@ -42,17 +42,16 @@ export class CharacterPanel extends Panel {
       e.stopPropagation();
       this.hide();
     });
+    // ESC 关闭（Reldens/SkyOffice 标准模式）/ ESC to close
+    document.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Escape" && this.el.style.display !== "none") this.hide();
+    });
     // 监听角色选择事件 / Listen to character-selected event
     document.addEventListener("character-selected", ((e: CustomEvent) => {
       this.showChar(e.detail);
     }) as EventListener);
-    // 点击面板外关闭 / Click outside to close
-    document.addEventListener("click", (e: MouseEvent) => {
-      if (this.el.style.display === "none") return;
-      if (this.ignoreOutsideClick) return; // 忽略显示面板时同帧点击 / Ignore click that opened the panel
-      if (!this.el.contains(e.target as Node)) this.hide();
-    });
   }
+
 
 
   private showChar(ch: CharacterData): void {
@@ -94,10 +93,5 @@ export class CharacterPanel extends Panel {
     `;
 
     this.show();
-    // 忽略接下来同一帧的 document.click，避免刚打开就被关闭
-    this.ignoreOutsideClick = true;
-    requestAnimationFrame(() => {
-      this.ignoreOutsideClick = false;
-    });
   }
 }

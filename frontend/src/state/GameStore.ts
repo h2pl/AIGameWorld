@@ -89,12 +89,14 @@ class GameStore {
     if (update.type === "dm_narrative" && d.narrative) {
       this.state.narrative = d.narrative;
       this.state.events = d.events || [];
-    } else if (update.type === "tick_complete" && d.state_snapshot) {
-      const snap = d.state_snapshot;
-      this.state.character_positions = snap.character_positions || {};
-      Object.entries(this.state.character_positions).forEach(([id, p]) => {
-        console.log("[Store]   tick=%d %s → (%d,%d)", d.tick, id, p.x, p.y);
-      });
+    } else if (update.type === "tick_complete") {
+      if (d.state_snapshot) {
+        const snap = d.state_snapshot;
+        this.state.character_positions = snap.character_positions || {};
+        Object.entries(this.state.character_positions).forEach(([id, p]) => {
+          console.log("[Store]   tick=%d %s → (%d,%d)", d.tick, id, p.x, p.y);
+        });
+      }
       if (d.actions) this.state.actions = d.actions;
       if (d.events) this.state.events = d.events;
     } else if (update.type === "phase_update" && d.events) {

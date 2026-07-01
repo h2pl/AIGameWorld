@@ -188,6 +188,25 @@ async function main(): Promise<void> {
   characterPanel.mount(document.body);
   console.log(`${L} DOM panels mounted: narrative + event + character`);
 
+  // ── Mock 演示数据 / Mock demo data（无后端时展示面板效果）──
+  gameStore.addNarrative("晨光洒在 Elderwood 村庄的石板路上，铁匠铺的烟囱升起袅袅青烟。");
+  gameStore.addNarrative("Kael 握紧剑柄，警惕地扫视着酒馆门口——昨晚有人报告了可疑的脚印。");
+  gameStore.addNarrative("Zeph 悄无声息地滑入阴影，沿着屋檐朝集市方向摸去。");
+  gameStore.applyTickUpdate({
+    type: "tick_complete",
+    data: {
+      tick: 1,
+      events: [
+        { type: "system", description: "世界初始化完成", source: "world" },
+        { type: "exploration", description: "Kael 进入 Elderwood 村庄广场", source: "pc_fighter" },
+        { type: "dialogue", description: "Garret 向 Kael 打招呼：'又来保养你的剑了？'", source: "actor_blacksmith", target: "pc_fighter" },
+        { type: "exploration", description: "Zeph 发现了酒馆后巷的可疑人物", source: "pc_rogue" },
+        { type: "combat", description: "Borin 报告：北边森林传来狼嚎", source: "actor_guard" },
+      ],
+    },
+  });
+  console.log(`${L} mock data injected for demo`);
+
   // ── 控制面板 / Control Panel ──
   const bar = document.createElement("div");
   bar.style.cssText = "position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:999;";
