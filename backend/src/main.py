@@ -13,11 +13,9 @@ from fastapi.responses import HTMLResponse
 from src.config import load_config
 from src.domain.message import Message
 from src.domain.world import World
-from src.mock import MOCK_WORLD, MockTickEngine
-from src.repository.character_repo import CharacterRepo
+from src.mock import MOCK_WORLD
 from src.repository.event_repo import EventRepo
 from src.repository.message_repo import MessageRepo
-from src.repository.story_repo import StoryRepo
 from src.repository.world_repo import WorldRepo
 from src.storage.sqlite_client import SQLiteClient
 from src.utils.logging import setup_logging
@@ -297,52 +295,23 @@ async def _graph_producer(
     evt_repo: EventRepo,
 ) -> None:
     """循环跑 tick → 写 messages + events / Loop: run tick → write 2 tables."""
-    from src.domain.event import CharacterMoveEvent, DmNarrativeEvent, OpeningEvent
+    if MOCK_MODE:
+        from src.mock.producer import run as mock_run
 
-    try:
-        if MOCK_MODE:
-            engine = MockTickEngine()
-            msg = Message(
-                id=world_id,
-                tick=0,
-                world_id=world_id,
-                timestamp=datetime.now(UTC),
-                events=[OpeningEvent(text="冒险开始了！")],
-            )
-            await msg_repo.insert(msg)
-            await evt_repo.insert_batch(msg.id, msg.tick, msg.events)
-            while True:
-                while _sessions.get(world_id, {}).get("paused"):
-                    await asyncio.sleep(0.5)
-                # 反压：积压 > 5 条时等前端消化 / Backpressure: wait if backlog > 5
-                from src.storage.sqlite_client import SQLiteClient as _S
+        await mock_run(
+            world_id,
+            msg_repo,
+            evt_repo,
+            lambda: _sessions.get(world_id, {}).get("paused", False),
+            _db,
+        )
+    else:
+        from src.domain.event import DmNarrativeEvent
+        from src.graph.orchestrator import Orchestrator
+        from src.repository.character_repo import CharacterRepo
+        from src.repository.story_repo import StoryRepo
 
-                backlog = await _db.fetch_one(
-                    "SELECT COUNT(*) as cnt FROM messages WHERE id=? AND status='pending'",
-                    (world_id,),
-                )
-                if backlog and backlog.get("cnt", 0) > 5:
-                    await asyncio.sleep(0.3)
-                    continue
-                data = engine.generate_tick()
-                events = [DmNarrativeEvent(text=data.get("narrative", ""))]
-                events.extend(
-                    CharacterMoveEvent(character_id=m["character_id"], x=m["x"], y=m["y"])
-                    for m in data.get("character_moves", [])
-                )
-                msg = Message(
-                    id=world_id,
-                    tick=data["tick"],
-                    world_id=world_id,
-                    timestamp=datetime.now(UTC),
-                    events=events,
-                )
-                await msg_repo.insert(msg)
-                await evt_repo.insert_batch(msg.id, msg.tick, msg.events)
-                logger.info("[Producer] %s tick=%d events=%d", world_id, msg.tick, len(msg.events))
-        else:
-            from src.graph.orchestrator import Orchestrator
-
+        try:
             char_repo = CharacterRepo(_db)
             story_repo = StoryRepo(_db)
             orch = Orchestrator(session_id=world_id, repos={"char": char_repo, "story": story_repo})
@@ -352,10 +321,11 @@ async def _graph_producer(
                 result = await orch.run_tick()
                 events = [DmNarrativeEvent(text=result.get("narrative", ""))]
                 for a in result.get("character_actions", []):
-                    events.append(
+                    events.extend(
                         DmNarrativeEvent(
                             text=f"{a.get('character_id', '?')}: {a.get('description', '')}"
                         )
+                        for a in result.get("character_actions", [])
                     )
                 msg = Message(
                     id=world_id,
@@ -366,11 +336,11 @@ async def _graph_producer(
                 )
                 await msg_repo.insert(msg)
                 await evt_repo.insert_batch(msg.id, msg.tick, msg.events)
-    except Exception as e:
-        logger.error("[Producer] %s error: %s", world_id, e, exc_info=True)
-    finally:
-        if world_id in _sessions:
-            _sessions[world_id]["done"] = True
+        except Exception as e:
+            logger.error("[Producer] %s error: %s", world_id, e, exc_info=True)
+        finally:
+            if world_id in _sessions:
+                _sessions[world_id]["done"] = True
 
 
 # Event → JSON / Serialize event
