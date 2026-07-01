@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
-
-if TYPE_CHECKING:
-    from ..domain.action import Action
-    from ..domain.event import Event
-    from ..domain.instruction import DMInstruction
 
 
 # ============================================================
@@ -27,19 +22,13 @@ class EngineResponse(BaseModel):
 # Phase 1 & 6: DM
 # ============================================================
 class DMCreateResponse(EngineResponse):
-    instructions_out: list[str] = Field(default_factory=list)
+    hints: list[str] = Field(default_factory=list)
     plot_brief: str = ""
-    scene_direction: dict[str, Any] = {}
-
-    @classmethod
-    def from_entity(cls, dm: DMInstruction) -> DMCreateResponse:
-        return cls(instructions_out=[dm_engine.model_dump_json()])
+    scene_id: str = ""
 
 
 class DMNarrateResponse(EngineResponse):
     narrative_out: str = ""
-    branch_points: list[dict[str, Any]] = Field(default_factory=list)
-    hooks_resolved: list[str] = Field(default_factory=list)
 
 
 # ============================================================
@@ -47,10 +36,6 @@ class DMNarrateResponse(EngineResponse):
 # ============================================================
 class SceneProcessResponse(EngineResponse):
     events_out: list[dict[str, Any]] = []
-
-    @classmethod
-    def from_entities(cls, events: list[Event]) -> SceneProcessResponse:
-        return cls(events_out=[e.model_dump() for e in events])
 
 
 # ============================================================
@@ -61,23 +46,11 @@ class PCDecideResponse(EngineResponse):
     type: str = ""
     description: str = ""
 
-    @classmethod
-    def from_entity(cls, action: Action) -> PCDecideResponse:
-        return cls(
-            character_id=action.character_id, type=action.action_type, description=action.reasoning
-        )
-
 
 class ActorDecideResponse(EngineResponse):
     character_id: str = ""
     type: str = ""
     description: str = ""
-
-    @classmethod
-    def from_entity(cls, action: Action) -> ActorDecideResponse:
-        return cls(
-            character_id=action.character_id, type=action.action_type, description=action.reasoning
-        )
 
 
 # ============================================================
@@ -117,15 +90,6 @@ class ReflectionResponse(EngineResponse):
 class SummarizerResponse(EngineResponse):
     compressed: bool = False
     summary_text: str = ""
-
-
-# ============================================================
-# Domain: Story (M4+)
-# ============================================================
-class StoryAdvanceResponse(EngineResponse):
-    arcs_updated: list[dict[str, Any]] = []
-    hooks_resolved: list[str] = []
-    quests_completed: list[dict[str, Any]] = []
 
 
 # ============================================================

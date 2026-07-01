@@ -7,7 +7,7 @@ import time
 
 from langchain_core.runnables.config import RunnableConfig
 
-from ..engine.dm import dm_engine as dm_engine
+from ..engine.dm import dm_engine
 from ..graph.state import OverallState
 from ..schemas.request import DMCreateRequest, DMNarrateRequest
 from ..utils.logging import log_phase
@@ -17,16 +17,20 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
     """Phase 1: DM 创造情境 / DM creates the scene_engine."""
     t0 = time.monotonic()
     result = await dm_engine.dm_create(
-        DMCreateRequest(tick=state.get("tick", 0), plot_brief=state.get("plot_brief", "")),
+        DMCreateRequest(
+            tick=state.get("tick", 0),
+            plot_brief=state.get("plot_brief", ""),
+            world_id=state.get("world_id", ""),
+        ),
         config=config,
     )
     log_phase(
         "dm_create", state.get("tick", 0), elapsed=time.monotonic() - t0, errors=len(result.errors)
     )
     return {
-        "dm_instructions": result.instructions_out,
+        "hints": result.hints,
         "plot_brief": result.plot_brief,
-        "scene_direction": result.scene_direction,
+        "scene_id": result.scene_id,
         "errors": result.errors,
     }
 
@@ -38,10 +42,10 @@ async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict
     result = await dm_engine.dm_narrate(
         DMNarrateRequest(
             tick=state.get("tick", 0),
+            world_id=state.get("world_id", ""),
             plot_brief=state.get("plot_brief", ""),
-            dm_instructions=state.get("dm_instructions", []),
-            scene_direction=state.get("scene_direction", {}),
-            character_actions=state.get("character_actions", []),
+            hints=state.get("hints", []),
+            events=[],
         ),
         config=config,
     )
@@ -50,8 +54,6 @@ async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict
     )
     return {
         "narrative": result.narrative_out,
-        "branch_points": result.branch_points,
-        "hooks_resolved": result.hooks_resolved,
         "errors": result.errors,
         "needs_reflection": state.get("tick", 0) % interval == 0,
     }

@@ -1,93 +1,51 @@
-"""OverallState + 子图 State 定义 / Root + subgraph state definitions.
+"""OverallState + 子图 State 定义 / Root + subgraph state definitions."""
 
-基于 design/03-orchestration-layer.md / Based on orchestration layer design.
-"""
-
+# LangGraph 累加器 / LangGraph reducer
 from operator import add
+
+# 类型标注 / Type annotations
 from typing import Annotated, Any, TypedDict
 
 
-# ============================================================
-# OverallState: 主图状态 / Main graph state
-# ============================================================
 class OverallState(TypedDict):
-    """7 Phase 主图状态 / 7-phase main graph state."""
+    """根状态——贯穿整个 tick 图 / Root state — flows through entire tick graph."""
 
-    tick: int  # 当前 tick 号 / Current tick number
-
-    # Phase 1: DM 创造情境 / DM creates context
-    dm_instructions: list[str]
-    plot_brief: str
-    scene_direction: dict[str, Any]
-
-    # Phase 2: WorldEngine / World engine execution
-    scene_events: Annotated[list[dict[str, Any]], add]
-
-    # Phase 3: 角色决策 / Character decisions
-    character_actions: Annotated[list[dict[str, Any]], add]
-
-    # Phase 4: Engine 裁决 / Engine resolution
-    engine_results: Annotated[list[dict[str, Any]], add]
-    combat_result: dict[str, Any] | None
-
-    # Phase 5: 状态合并 / State merge
-    state_diff: dict[str, Any]
-    cast_changes: list[dict[str, Any]]
-
-    # Phase 6: DM 叙事 / DM narration
-    narrative: str
-    branch_points: list[dict[str, Any]]  # 本 tick 产生的分支点 / branch points from this tick
-    hooks_resolved: list[str]  # 本 tick 回收的伏笔 / hooks resolved this tick
-
-    # Phase 7: 反思 + 摘要 / Reflection + summary
-    reflected_characters: list[str]
-    summary_compressed: bool
-
-    # 控制 / Control
-    errors: Annotated[list[str], add]
-    needs_reflection: bool
+    tick: int  # 当前 tick 编号 / Current tick number
+    world_id: str  # 世界 ID / World ID
+    msg_id: str  # 消息 ID / Message ID
+    hints: list[str]  # DM 环境提示 / DM environmental hints
+    plot_brief: str  # 剧情梗概 / Plot brief
+    scene_id: str  # 当前场景 ID / Current scene ID
+    character_actions: Annotated[
+        list[dict[str, Any]], add
+    ]  # 角色行动（累加） / Character actions (accumulated)
+    narrative: str  # DM 叙事文本 / DM narrative text
+    reflected_characters: list[str]  # 已反思角色 / Reflected character IDs
+    summary_compressed: bool  # 是否已摘要压缩 / Whether summary compressed
+    errors: Annotated[list[str], add]  # 错误列表（累加） / Error list (accumulated)
+    needs_reflection: bool  # 是否需要反思 / Whether reflection is needed
 
 
-# ============================================================
-# SubState: 各子图专属状态 / Subgraph-specific state schemas
-# ============================================================
 class CharacterSubState(TypedDict):
-    """Phase 3: 角色决策子图 / Character decision subgraph."""
+    """角色子图状态 / Character subgraph state."""
 
     tick: int
     plot_brief: str
-    scene_direction: dict[str, Any]
     character_actions: Annotated[list[dict[str, Any]], add]
 
 
 class CharacterAgentState(TypedDict):
-    """P3-3: 单角色决策 agent（Send fan-out 并行）/ Per-character decision agent."""
+    """单角色代理状态 / Single character agent state."""
 
     character_id: str
-    character_type: str  # "pc" | "actor"
+    character_type: str  # pc / actor / Player character or NPC
     plot_brief: str
     tick: int
     character_actions: Annotated[list[dict[str, Any]], add]
 
 
-class EngineSubState(TypedDict):
-    """Phase 4: Engine 裁决子图 / Engine resolution subgraph."""
-
-    participants: list[str]
-    round: int
-    speaker: str
-    target: str
-    intent: str
-    character_id: str
-    action_type: str
-    quests: list[dict[str, Any]]
-    event_log: list[dict[str, Any]]
-    engine_results: Annotated[list[dict[str, Any]], add]
-    combat_result: dict[str, Any] | None
-
-
 class ReflectionSubState(TypedDict):
-    """Phase 7: 反思 + 摘要子图 / Reflection + summary subgraph."""
+    """反思子图状态 / Reflection subgraph state."""
 
     tick: int
     character_id: str

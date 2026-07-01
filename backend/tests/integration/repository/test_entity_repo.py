@@ -2,9 +2,10 @@
 
 import pytest
 
-from src.domain.character import Actor, Location, PlayerCharacter
-from src.domain.event import CharacterMoveEvent, DmNarrativeEvent
+from src.domain.actor import Actor
+from src.domain.event import Event
 from src.domain.message import Message
+from src.domain.player_character import PlayerCharacter
 from src.repository.character_repo import CharacterRepo
 from src.repository.event_repo import EventRepo
 from src.repository.message_repo import MessageRepo
@@ -57,12 +58,12 @@ class TestCharacterRepo:
         await char_repo.save_pc(pc)
 
         pc.status = "injured"
-        pc.location = Location(scene_id="forest_01")
+        pc.scene_id = "forest_01"
         await char_repo.save_pc(pc)
 
         pcs = await char_repo.load_pcs()
         assert pcs[0].status == "injured"
-        assert pcs[0].location.scene_id == "forest_01"
+        assert pcs[0].scene_id == "forest_01"
 
     @pytest.mark.asyncio
     async def test_save_and_load_actor(self, char_repo):
@@ -109,15 +110,17 @@ class TestMessageEventRepo:
     async def test_insert_and_load_events(self, msg_repo, event_repo):
         await self._insert_msg(msg_repo)
         evts = [
-            DmNarrativeEvent(text="Hello world"),
-            CharacterMoveEvent(character_id="fighter", x=5, y=8),
+            Event(type="dm_narrative", tick=1, payload={"text": "Hello world"}),
+            Event(
+                type="character_move", tick=1, payload={"character_id": "fighter", "x": 5, "y": 8}
+            ),
         ]
-        await event_repo.insert_batch("aw_test", 1, evts)
+        await event_repo.insert_events("aw_test", 1, evts)
         loaded = await event_repo.load_by_message("aw_test", 1)
         assert len(loaded) == 2
         # character_move (SEQUENCE idx=3) 排在 dm_narrative (idx=6) 前面
-        assert loaded[0].character_id == "fighter"
-        assert loaded[1].text == "Hello world"
+        assert loaded[0].payload["character_id"] == "fighter"
+        assert loaded[1].payload["text"] == "Hello world"
 
     @pytest.mark.asyncio
     async def test_load_empty_events(self, event_repo):
@@ -128,15 +131,15 @@ class TestMessageEventRepo:
     async def test_events_ordered_by_seq(self, msg_repo, event_repo):
         await self._insert_msg(msg_repo)
         evts = [
-            DmNarrativeEvent(text="first"),
-            DmNarrativeEvent(text="second"),
-            DmNarrativeEvent(text="third"),
+            Event(type="dm_narrative", tick=1, payload={"text": "first"}),
+            Event(type="dm_narrative", tick=1, payload={"text": "second"}),
+            Event(type="dm_narrative", tick=1, payload={"text": "third"}),
         ]
-        await event_repo.insert_batch("aw_test", 1, evts)
+        await event_repo.insert_events("aw_test", 1, evts)
         loaded = await event_repo.load_by_message("aw_test", 1)
-        assert loaded[0].text == "first"
-        assert loaded[1].text == "second"
-        assert loaded[2].text == "third"
+        assert loaded[0].payload["text"] == "first"
+        assert loaded[1].payload["text"] == "second"
+        assert loaded[2].payload["text"] == "third"
 
     @pytest.mark.asyncio
     async def test_insert_then_get_pending(self, msg_repo, event_repo):
@@ -145,16 +148,16 @@ class TestMessageEventRepo:
             tick=1,
             world_id="test",
             timestamp="2026-07-01T12:00:00Z",
-            events=[DmNarrativeEvent(text="test")],
         )
         await msg_repo.insert(msg)
-        await event_repo.insert_batch(msg.id, msg.tick, msg.events)
+        evt = Event(type="dm_narrative", tick=1, payload={"text": "test"})
+        await event_repo.insert_events(msg.id, msg.tick, [evt])
         meta = await msg_repo.get_next_pending("aw_test")
         assert meta is not None
         assert meta["tick"] == 1
         events = await event_repo.load_by_message(meta["id"], meta["tick"])
         assert len(events) == 1
-        assert events[0].text == "test"
+        assert events[0].payload["text"] == "test"
 
     @pytest.mark.asyncio
     async def test_ack_skips_consumed(self, msg_repo):

@@ -2,8 +2,8 @@
 
 依赖 src/rules/dnd_rules.py 做 D20 判定。
 """
-import logging
 
+import logging
 import random
 
 from ...rules.dnd_rules import attack_roll, roll_initiative

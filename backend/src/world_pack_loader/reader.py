@@ -20,7 +20,6 @@ def read_pack(pack_dir: Path) -> dict:
             "actors": [],
             "items": [],
             "scene_objects": [],
-            "story_setup": {"arcs": [], "hooks": []},
         }
     """
     result: dict = {
@@ -31,7 +30,6 @@ def read_pack(pack_dir: Path) -> dict:
         "actors": [],
         "items": [],
         "scene_objects": [],
-        "story_setup": {"arcs": [], "hooks": []},
     }
     if not pack_dir.exists():
         return result
@@ -43,7 +41,6 @@ def read_pack(pack_dir: Path) -> dict:
     _read_dir(pack_dir / "actors", result, "actors")
     _read_dir(pack_dir / "items", result, "items")
     _read_dir(pack_dir / "scene_objects", result, "scene_objects")
-    _read_single(pack_dir / "story_setup.yaml", result, "story_setup")
 
     return result
 

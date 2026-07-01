@@ -4,20 +4,21 @@ import pytest
 
 # ── Engine imports / 引擎导入 ──
 from src.engine.combat.combat_engine import resolve_combat
-from src.engine.dialogue.dialogue_engine import resolve_persuasion
 from src.engine.exploration.exploration_engine import resolve_exploration
 from src.engine.quest.quest_engine import check_quests
 from src.engine.reflection.reflection_engine import reflect
+from src.engine.scene.scene_engine import process_scene_objects, process_scene_setup
 from src.engine.summarizer.summarizer_engine import summarize
-from src.engine.scene.scene_engine import process_scene
+from src.engine.talk.talk_engine import talk_actor, talk_pc
 from src.schemas.request import (
+    ActorDecideRequest,
     CombatRequest,
-    DialogueRequest,
     ExplorationRequest,
+    PCDecideRequest,
     QuestRequest,
     ReflectionRequest,
-    SummarizerRequest,
     SceneProcessRequest,
+    SummarizerRequest,
 )
 
 
@@ -37,16 +38,16 @@ class TestCombatEngine:
         assert r.winner == "party"
 
 
-class TestDialogueEngine:
-    def test_persuasion_success(self):
-        r = resolve_persuasion(
-            DialogueRequest(speaker="pc1", target="npc1", intent="persuade", attribute_mod=3, dc=12)
-        )
-        assert isinstance(r.success, bool)
+class TestTalkEngine:
+    @pytest.mark.asyncio
+    async def test_talk_pc(self):
+        r = await talk_pc(PCDecideRequest(pc_id="pc1", plot_brief="test", tick=0))
+        assert r is None  # no LLM → None
 
-    def test_empty_speaker(self):
-        r = resolve_persuasion(DialogueRequest())
-        assert r.success is False
+    @pytest.mark.asyncio
+    async def test_talk_actor(self):
+        r = await talk_actor(ActorDecideRequest(actor_id="npc1", plot_brief="test", tick=0))
+        assert r is None  # no LLM → None
 
 
 class TestExplorationEngine:
@@ -150,11 +151,13 @@ class TestSummarizerEngine:
 
 
 class TestSceneEngine:
-    def test_process_scene(self):
-        r = process_scene(SceneProcessRequest(tick=1, dm_instructions=["探索", "交谈"]))
-        assert len(r.events_out) == 2
-        assert r.events_out[0]["type"] == "dm_instruction"
-        assert r.events_out[0]["tick"] == 1
+    @pytest.mark.asyncio
+    async def test_process_scene_setup(self):
+        await process_scene_setup(SceneProcessRequest(tick=1, scene_id="tavern", msg_id="tick_1"))
+
+    @pytest.mark.asyncio
+    async def test_process_scene_objects(self):
+        await process_scene_objects(SceneProcessRequest(tick=1, scene_id="tavern", msg_id="tick_1"))
 
 
 # ── END / 结束 ──

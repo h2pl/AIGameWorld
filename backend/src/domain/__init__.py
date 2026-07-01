@@ -1,75 +1,55 @@
-"""AIGameWorld 领域模型层——角色/物品/场景/故事/消息/世界 / Domain layer: chars, items, scenes, stories, messages, worlds."""
+"""AIGameWorld 领域模型层 / Domain layer.
 
-# ── 动作 / Action ──
-# 导出所有子模块模型 / Re-export all sub-module models
-from .action import Action
-from .character import (
-    Actor,
-    Attributes,
-    CharacterArc,
-    CombatStats,
-    Equipment,
-    InventorySlot,
-    Location,
-    PlayerCharacter,
-    Relationship,
-)
-from .event import (
-    SEQUENCE,
-    CharacterExploreEvent,
-    CharacterMoveEvent,
-    CharacterTalkEvent,
-    DmNarrativeEvent,
-    Event,
-    ExploreRoll,
-    OpeningEvent,
-    SceneObjectsEvent,
-    SceneSetupEvent,
-)
-from .instruction import ActorMotivation, DMInstruction, PlotEvent, SceneChange, SceneDirection
+所有模型继承 DomainModel（含 world_id），不再嵌套子模型。
+All models inherit DomainModel (with world_id), no nested sub-models.
+"""
+
+# 演员 NPC / Actor NPC model
+from .actor import Actor
+
+# 领域模型基类 / Domain model base class
+from .base import DomainModel
+
+# DM 产出记录 / DM output record (plot_brief + hints + narrative)
+from .dm_record import DMRecord
+
+# 事件模型 + 事件类型顺序 / Event model + type sequence
+from .event import SEQUENCE, Event
+
+# 物品 / Item model
 from .item import Item, ItemType
+
+# 消息 / Message model
 from .message import Message
+
+# 玩家角色 / Player character model
+from .player_character import PlayerCharacter
+
+# 场景 / Scene model
+from .scene import Scene
+
+# 场景物体 / Scene object model
 from .scene_object import SceneObject, SceneObjectType
-from .story import BranchPoint, CastChangeEvent, MainCastRoster, Quest, StoryArc, StoryHook
+
+# 剧情摘要 / Story summary model
+from .story_summary import StorySummary
+
+# 世界 / World model
 from .world import World
 
-# 公共 API / Public API
 __all__ = [
-    "Action",
     "Actor",
-    "ActorMotivation",
-    "Attributes",
-    "BranchPoint",
-    "CastChangeEvent",
-    "CharacterArc",
-    "CharacterExploreEvent",
-    "CharacterMoveEvent",
-    "CharacterTalkEvent",
-    "CombatStats",
-    "DmNarrativeEvent",
-    "DMInstruction",
-    "Equipment",
+    "DMRecord",
+    "DomainModel",
     "Event",
-    "ExploreRoll",
-    "InventorySlot",
     "Item",
     "ItemType",
-    "Location",
-    "MainCastRoster",
     "Message",
-    "OpeningEvent",
     "PlayerCharacter",
-    "PlotEvent",
-    "Quest",
-    "Relationship",
-    "SEQUENCE",
-    "SceneChange",
-    "SceneDirection",
+    "Scene",
     "SceneObject",
     "SceneObjectType",
-    "SceneObjectsEvent",
-    "SceneSetupEvent",
-    "StoryArc",
-    "StoryHook",
+    "SEQUENCE",
+    "StorySummary",
     "World",
 ]

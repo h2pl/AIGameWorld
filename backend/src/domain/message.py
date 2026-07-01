@@ -1,19 +1,11 @@
 """消息 / Message — 一次 tick 产出的完整数据包."""
 
-from __future__ import annotations
-
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from .event import Event
+from .base import DomainModel
 
 
-class Message(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class Message(DomainModel):
     id: str
     tick: int
-    world_id: str
-    timestamp: datetime
-    events: list[Event] = Field(default_factory=list)
+    timestamp: datetime | None = None

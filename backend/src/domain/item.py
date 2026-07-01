@@ -2,7 +2,9 @@
 
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from .base import DomainModel
 
 
 class ItemType(StrEnum):
@@ -16,7 +18,7 @@ class ItemType(StrEnum):
     MISC = "misc"
 
 
-class Item(BaseModel):
+class Item(DomainModel):
     """全局物品定义."""
 
     id: str
@@ -27,5 +29,4 @@ class Item(BaseModel):
     value: int = 0
     description: str = ""
     data: dict = Field(default_factory=dict)
-    world_id: str = ""
     world_name: str = ""

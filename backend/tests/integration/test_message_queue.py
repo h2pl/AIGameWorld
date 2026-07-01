@@ -15,9 +15,9 @@ from src.main import app
 async def client(monkeypatch):
     """初始化 :memory: DB + seed test world + patch producer 为 mock."""
     import src.main as m
-    from tests.mock.producer import run as mock_run
     from src.repository.world_repo import WorldRepo
     from src.storage.sqlite_client import SQLiteClient
+    from tests.mock.producer import run as mock_run
 
     m._db = SQLiteClient(":memory:")
     await m._db.connect()
@@ -28,7 +28,9 @@ async def client(monkeypatch):
     # 替换 producer 为 mock / Replace producer with mock
     async def _mock_producer(world_id, msg_repo, evt_repo):
         await mock_run(
-            world_id, msg_repo, evt_repo,
+            world_id,
+            msg_repo,
+            evt_repo,
             lambda: m._sessions.get(world_id, {}).get("paused", False),
             m._db,
         )

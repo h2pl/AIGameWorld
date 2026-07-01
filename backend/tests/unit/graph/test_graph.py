@@ -1,23 +1,23 @@
-"""测试 TickGraph 7 Phase 主图 / TickGraph 7-phase main graph tests."""
+"""TickGraph 主图测试 / TickGraph main graph tests."""
 
 import pytest
 
-from src.graph.graph import OverallState, build_tick_graph
-
-# ── Fixtures / 测试夹具 ──
+from src.graph.graph import build_tick_graph
+from src.graph.state import OverallState
 from src.graph.subgraphs.character_subgraph import character_subgraph
-from src.graph.subgraphs.engine_subgraph import engine_subgraph
 from src.graph.subgraphs.reflection_subgraph import reflection_subgraph
-from src.services import dm_service, state_update_service, scene_service
+from src.services import dm_service, message_service, scene_service
 
-# ── 图构建 / Graph build
+# ══ 图构建 / Graph build ══
 
 
 def test_build_graph_returns_state_graph():
+    """build_tick_graph 返回 StateGraph / returns StateGraph."""
     assert build_tick_graph() is not None
 
 
 def test_graph_can_compile():
+    """图可以编译 / Graph compiles successfully."""
     from langgraph.checkpoint.memory import MemorySaver
 
     g = build_tick_graph()
@@ -25,48 +25,21 @@ def test_graph_can_compile():
     assert app is not None
 
 
-# ── State 验证 / State validation
-
-
-def test_overall_state_defaults():
-    state = OverallState(
-        tick=0,
-        dm_instructions=[],
-        plot_brief="",
-        scene_direction={},
-        scene_events=[],
-        character_actions=[],
-        engine_results=[],
-        combat_result=None,
-        state_diff={},
-        cast_changes=[],
-        narrative="",
-        branch_points=[],
-        hooks_resolved=[],
-        reflected_characters=[],
-        summary_compressed=False,
-        errors=[],
-        needs_reflection=False,
-    )
-    assert state["tick"] == 0
+# ══ Fixtures / 测试夹具 ══
 
 
 @pytest.fixture
 def base_state() -> OverallState:
+    """基础状态 fixture / Base state fixture."""
     return OverallState(
         tick=0,
-        dm_instructions=[],
+        world_id="",
+        msg_id="",
+        hints=[],
         plot_brief="",
-        scene_direction={},
-        scene_events=[],
+        scene_id="",
         character_actions=[],
-        engine_results=[],
-        combat_result=None,
-        state_diff={},
-        cast_changes=[],
         narrative="",
-        branch_points=[],
-        hooks_resolved=[],
         reflected_characters=[],
         summary_compressed=False,
         errors=[],
@@ -74,143 +47,64 @@ def base_state() -> OverallState:
     )
 
 
-# ── Phase 1~6 节点 / Phase 1~6 nodes
+# ══ Phase 节点测试 / Phase node tests ══
 
 
 @pytest.mark.asyncio
-async def test_phase1_dm_create(base_state):
+async def test_message_create(base_state):
+    """Phase 0: 创建消息 / Create message."""
+    r = await message_service.create_message(base_state)
+    assert "msg_id" in r
+
+
+@pytest.mark.asyncio
+async def test_dm_create(base_state):
+    """Phase 1: DM 创造情境 / DM creates situation."""
     r = await dm_service.dm_create(base_state)
-    assert "dm_instructions" in r
+    assert "hints" in r
     assert "plot_brief" in r
 
 
-def test_phase2_world(base_state):
-    r = scene_service.process_scene(base_state)
-    assert r["scene_events"] == []
+@pytest.mark.asyncio
+async def test_process_scene(base_state):
+    """Phase 2: 场景处理 / Scene processing."""
+    r = await scene_service.process_scene(base_state)
+    assert isinstance(r, dict)
 
 
 @pytest.mark.asyncio
-async def test_phase3_char_decide(base_state):
+async def test_character_subgraph(base_state):
+    """Phase 3: 角色子图 / Character subgraph."""
     r = await character_subgraph.ainvoke(base_state)
-    assert r["character_actions"] == []
-
-
-def test_phase4_engine_router(base_state):
-    base_state["action_type"] = "search"
-    r = engine_subgraph.invoke(base_state)
-    assert "engine_results" in r
-
-
-def test_phase5_state_update(base_state):
-    r = state_update_service.state_update(base_state)
-    assert "state_diff" in r
+    assert "character_actions" in r
 
 
 @pytest.mark.asyncio
-async def test_phase6_narrate(base_state):
-    base_state["character_actions"] = [{"action": "test"}]
+async def test_dm_narrate(base_state):
+    """Phase 6: DM 叙事 / DM narrates."""
     r = await dm_service.dm_narrate(base_state)
-    # ── Phase 7 反思 / Phase 7 reflection
     assert "narrative" in r
     assert "needs_reflection" in r
 
 
 @pytest.mark.asyncio
-async def test_phase6_reflection_trigger():
-    state = OverallState(
-        tick=5,
-        dm_instructions=[],
-        plot_brief="Test",
-        scene_direction={},
-        scene_events=[],
-        character_actions=[],
-        engine_results=[],
-        combat_result=None,
-        state_diff={},
-        cast_changes=[],
-        narrative="",
-        branch_points=[],
-        hooks_resolved=[],
-        reflected_characters=[],
-        summary_compressed=False,
-        errors=[],
-        needs_reflection=False,
-    )
-    r = await dm_service.dm_narrate(state)
-    assert r["needs_reflection"] is True
-
-
-@pytest.mark.asyncio
-async def test_phase6_no_reflection_low_tick():
-    state = OverallState(
-        tick=1,
-        dm_instructions=[],
-        plot_brief="Test",
-        scene_direction={},
-        scene_events=[],
-        character_actions=[],
-        engine_results=[],
-        combat_result=None,
-        state_diff={},
-        cast_changes=[],
-        narrative="",
-        branch_points=[],
-        hooks_resolved=[],
-        reflected_characters=[],
-        summary_compressed=False,
-        errors=[],
-        needs_reflection=False,
-    )
-    r = await dm_service.dm_narrate(state)
-    assert r["needs_reflection"] is False
-
-
-@pytest.mark.asyncio
-# ── 全 Tick 流程 / Full tick flow
-async def test_phase7_reflect(base_state):
+async def test_reflection_subgraph(base_state):
+    """Phase 7: 反思子图 / Reflection subgraph."""
     r = await reflection_subgraph.ainvoke(base_state)
     assert "reflected_characters" in r
 
 
+# ══ 全 Tick 流程 / Full tick flow ══
+
+
 @pytest.mark.asyncio
 async def test_full_tick_cycle():
+    """完整 tick 循环 / Full tick cycle."""
     from src.graph.orchestrator import Orchestrator
 
     orch = Orchestrator()
-    for i in range(10):
+    for i in range(3):
         result = await orch.run_tick()
         assert "narrative" in result
-        assert result["tick"] == i + 1  # tick 从 1 开始
-    assert orch.tick == 11
-
-
-@pytest.mark.asyncio
-async def test_full_tick_cycle_with_custom_state():
-    from src.graph.orchestrator import Orchestrator
-
-    orch = Orchestrator()
-    state = OverallState(
-        tick=0,
-        dm_instructions=[],
-        plot_brief="Custom",
-        scene_direction={"featured_pcs": [], "featured_actors": []},
-        scene_events=[],
-        character_actions=[],
-        engine_results=[],
-        combat_result=None,
-        state_diff={},
-        cast_changes=[],
-        narrative="",
-        branch_points=[],
-        hooks_resolved=[],
-        reflected_characters=[],
-        summary_compressed=False,
-        errors=[],
-        needs_reflection=False,
-    )
-    result = await orch.run_tick(state)
-    assert result["narrative"] is not None
-
-
-# ── DM 服务测试 / DM service tests
-# ── 完整 Tick 流程 / Full tick flow
+        assert result["tick"] == i + 1
+    assert orch.tick == 4

@@ -1,4 +1,5 @@
 """Quest Engine: 纯业务逻辑."""
+
 import logging
 
 from ...schemas.request import QuestRequest

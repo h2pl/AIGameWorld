@@ -1,4 +1,7 @@
-"""FastAPI 应用入口——World 管理 + 消息队列 API / App entry: World CRUD + message queue API."""
+"""FastAPI 应用入口 / App entry point.
+
+World CRUD + 消息队列 API + DB Viewer.
+"""
 
 import asyncio
 import json
@@ -19,8 +22,8 @@ from src.viewer import (
     render_global_events,
     render_global_items,
     render_global_meta,
-    render_global_narratives,
     render_global_objects,
+    render_global_records,
     render_index,
     render_pack,
 )
@@ -110,7 +113,9 @@ async def tick_next(world_id: str):
         return {
             "type": "tick",
             "data": {
-                "id": meta["id"], "tick": meta["tick"], "timestamp": meta["created_at"],
+                "id": meta["id"],
+                "tick": meta["tick"],
+                "timestamp": meta["created_at"],
                 "events": [_event_to_dict(ev) for ev in events],
             },
         }
@@ -242,9 +247,9 @@ async def view_global_events(db: str = Query(default="data/world_db.db")):
     return await render_global_events(db_path=db)
 
 
-@app.get("/view/global/narratives", response_class=HTMLResponse)
-async def view_global_narratives(db: str = Query(default="data/world_db.db")):
-    return await render_global_narratives(db_path=db)
+@app.get("/view/global/dm_records", response_class=HTMLResponse)
+async def view_global_records(db: str = Query(default="data/world_db.db")):
+    return await render_global_records(db_path=db)
 
 
 @app.get("/view/global/meta", response_class=HTMLResponse)
@@ -286,33 +291,18 @@ async def _graph_producer(
     evt_repo: EventRepo,
 ) -> None:
     """Graph 生产者——Orchestrator 循环 / Graph producer: Orchestrator loop."""
-    from datetime import UTC, datetime
-
-    from src.domain.event import DmNarrativeEvent
-    from src.domain.message import Message
     from src.graph.orchestrator import Orchestrator
     from src.repository.character_repo import CharacterRepo
-    from src.repository.story_repo import StoryRepo
+    from src.repository.dm_record_repo import DMRecordRepo
 
     char_repo = CharacterRepo(_db)
-    story_repo = StoryRepo(_db)
-    orch = Orchestrator(session_id=world_id, repos={"char": char_repo, "story": story_repo})
+    record_repo = DMRecordRepo(_db)
+    orch = Orchestrator(session_id=world_id, repos={"char": char_repo, "dm_record": record_repo})
     try:
         while True:
             while _sessions.get(world_id, {}).get("paused"):
                 await asyncio.sleep(0.5)
-            result = await orch.run_tick()
-            events = [DmNarrativeEvent(text=result.get("narrative", ""))]
-            events.extend(
-                DmNarrativeEvent(text=f"{a.get('character_id', '?')}: {a.get('description', '')}")
-                for a in result.get("character_actions", [])
-            )
-            msg = Message(
-                id=world_id, tick=result["tick"], world_id=world_id,
-                timestamp=datetime.now(UTC), events=events,
-            )
-            await msg_repo.insert(msg)
-            await evt_repo.insert_batch(msg.id, msg.tick, msg.events)
+            await orch.run_tick()
     except Exception as e:
         logger.error("[Producer] %s error: %s", world_id, e, exc_info=True)
     finally:

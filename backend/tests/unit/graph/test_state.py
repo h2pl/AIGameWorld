@@ -1,95 +1,42 @@
-"""Graph State 测试——OverallState / SubState 定义验证."""
+"""Graph State 测试 / Graph State tests."""
 
-from src.graph.state import CharacterSubState, EngineSubState, OverallState, ReflectionSubState
+from src.graph.state import CharacterSubState, OverallState, ReflectionSubState
 
-# ── OverallState 测试 / Main state tests ──
+# ══ OverallState 测试 / Main state tests ══
 
 
 class TestOverallState:
+    """根状态测试 / Root state tests."""
+
     def test_minimal_state(self):
+        """最小状态构造 / Minimal state construction."""
         s: OverallState = {
             "tick": 0,
-            "dm_instructions": [],
+            "world_id": "",
+            "msg_id": "",
+            "hints": [],
             "plot_brief": "",
-            "scene_direction": {},
-            "scene_events": [],
+            "scene_id": "",
             "character_actions": [],
-            "engine_results": [],
-            "combat_result": None,
-            "state_diff": {},
-            "cast_changes": [],
             "narrative": "",
-            "branch_points": [],
-            "hooks_resolved": [],
             "reflected_characters": [],
             "summary_compressed": False,
             "errors": [],
             "needs_reflection": False,
         }
         assert s["tick"] == 0
-
-    def test_minimal_state_complete(self):
-        """完整提供所有字段时 state 可用."""
-        s: OverallState = {
-            "tick": 0,
-            "dm_instructions": [],
-            "plot_brief": "",
-            "scene_direction": {},
-            "scene_events": [],
-            "character_actions": [],
-            "engine_results": [],
-            "combat_result": None,
-            "state_diff": {},
-            "cast_changes": [],
-            "narrative": "",
-            "branch_points": [],
-            "hooks_resolved": [],
-            "reflected_characters": [],
-            "summary_compressed": False,
-            "errors": [],
-            "needs_reflection": False,
-        }
-        assert s["tick"] == 0
-
-    def test_scene_events_annotated_add(self):
-        """Annotated[add] 标记的字段在 langgraph 中会累加."""
-        # 这只是一个类型标记，运行时赋值仍然是普通 list
-        s: OverallState = {
-            "tick": 0,
-            "dm_instructions": [],
-            "plot_brief": "",
-            "scene_direction": {},
-            "scene_events": [{"e": 1}],
-            "character_actions": [],
-            "engine_results": [],
-            "combat_result": None,
-            "state_diff": {},
-            "cast_changes": [],
-            "narrative": "",
-            "branch_points": [],
-            "hooks_resolved": [],
-            "reflected_characters": [],
-            "summary_compressed": False,
-            "errors": [],
-            "needs_reflection": False,
-        }
-        assert len(s["scene_events"]) == 1
 
     def test_errors_annotated_add(self):
+        """errors 字段使用 Annotated[add] 累加 / errors field uses Annotated[add]."""
         s: OverallState = {
             "tick": 0,
-            "dm_instructions": [],
+            "world_id": "",
+            "msg_id": "",
+            "hints": [],
             "plot_brief": "",
-            "scene_direction": {},
-            "scene_events": [],
+            "scene_id": "",
             "character_actions": [],
-            "engine_results": [],
-            "combat_result": None,
-            "state_diff": {},
-            "cast_changes": [],
             "narrative": "",
-            "branch_points": [],
-            "hooks_resolved": [],
             "reflected_characters": [],
             "summary_compressed": False,
             "errors": ["error1", "error2"],
@@ -98,40 +45,31 @@ class TestOverallState:
         assert len(s["errors"]) == 2
 
 
-# ── CharacterSubState 测试 ──
+# ══ CharacterSubState 测试 ══
+
+
 class TestCharacterSubState:
+    """角色子图状态测试 / Character subgraph state tests."""
+
     def test_character_substate(self):
+        """角色子状态构造 / Character subgraph state construction."""
         s: CharacterSubState = {
             "tick": 1,
             "plot_brief": "test",
-            "scene_direction": {"featured_pcs": ["pc1"]},
             "character_actions": [],
         }
         assert s["tick"] == 1
-        assert s["scene_direction"]["featured_pcs"] == ["pc1"]
+        assert s["plot_brief"] == "test"
 
 
-# ── EngineSubState 测试 ──
-class TestEngineSubState:
-    def test_engine_substate(self):
-        s: EngineSubState = {
-            "participants": ["a", "b"],
-            "round": 1,
-            "speaker": "",
-            "target": "",
-            "intent": "",
-            "character_id": "",
-            "action_type": "",
-            "quests": [],
-            "event_log": [],
-            "engine_results": [],
-            "combat_result": None,
-        }
-        assert len(s["participants"]) == 2
+# ══ ReflectionSubState 测试 ══
 
 
 class TestReflectionSubState:
+    """反思子图状态测试 / Reflection subgraph state tests."""
+
     def test_reflection_substate(self):
+        """反思子状态构造 / Reflection subgraph state construction."""
         s: ReflectionSubState = {
             "tick": 5,
             "character_id": "pc1",
@@ -142,6 +80,3 @@ class TestReflectionSubState:
         }
         assert s["tick"] == 5
         assert len(s["memories"]) == 1
-
-
-# ── END / 结束

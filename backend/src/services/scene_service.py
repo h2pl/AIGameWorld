@@ -2,18 +2,22 @@
 
 import logging
 
-from ..engine.scene import scene_engine as scene_engine
+from ..engine.scene import scene_engine
 from ..graph.state import OverallState
 from ..schemas.request import SceneProcessRequest
 
+logger = logging.getLogger("aw.svc")
 
-def process_scene(state: OverallState) -> dict:
-    """Phase 2: Scene Engine 处理 DM 指令生成场景事件."""
-    logging.getLogger("aw.svc").info("[scene]")
-    result = scene_engine.process_scene(
-        SceneProcessRequest(
-            tick=state.get("tick", 0),
-            dm_instructions=state.get("dm_instructions", []),
-        )
+
+async def process_scene(state: OverallState, config=None) -> dict:
+    """Phase 1.5: 场景引擎——写 scene_setup + scene_objects 事件到 events 表."""
+    tick = state.get("tick", 0)
+    scene_id = state.get("scene_id", "")
+    msg_id = state.get("msg_id", "")
+    logger.info("[scene] tick=%s scene_id=%s msg_id=%s", tick, scene_id, msg_id)
+    req = SceneProcessRequest(
+        tick=tick, world_id=state.get("world_id", ""), scene_id=scene_id, msg_id=msg_id
     )
-    return {"scene_events": result.events_out}
+    await scene_engine.process_scene_setup(req, config=config)
+    await scene_engine.process_scene_objects(req, config=config)
+    return {}

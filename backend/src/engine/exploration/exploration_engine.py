@@ -1,4 +1,5 @@
 """Exploration Engine——D20 探索检定 / D20 exploration check."""
+
 import logging
 
 from ...rules.dnd_rules import resolve_check

@@ -1,116 +1,19 @@
-"""7 种事件类型 + Event Union / 7 event types + Event union."""
+"""事件领域模型 / Event Domain Model.
 
-from __future__ import annotations
+事件是每 tick 内产生的结构化记录，通过 message_id 关联一条消息，写入 events 表。
+所有事件共享同一结构：type + tick + payload dict，不区分子类型。
+"""
 
-from typing import Literal
-
-from pydantic import BaseModel, ConfigDict, Field
-
-
-class SceneObject(BaseModel):
-    """scene_objects 内的场景物品."""
-
-    id: str
-    name: str
-    object_type: Literal["container", "door", "landmark"]
-    position_x: int
-    position_y: int
+from pydantic import BaseModel, Field
 
 
-class ExploreRoll(BaseModel):
-    """character_explore 的 D20 检定."""
+class Event(BaseModel):
+    """通用事件——type 标识类型，payload 承载具体数据."""
 
-    success: bool
-    total: int
-    dc: int
-    critical: bool | None = None
-    fumble: bool | None = None
+    type: str
+    tick: int
+    payload: dict = Field(default_factory=dict)
 
-
-class OpeningEvent(BaseModel):
-    """DM 开场白."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    type: Literal["opening"] = "opening"
-    text: str
-
-
-class DmNarrativeEvent(BaseModel):
-    """DM 叙事文本."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    type: Literal["dm_narrative"] = "dm_narrative"
-    text: str
-    mood: Literal["neutral", "tense", "hopeful", "ominous", "mysterious"] | None = None
-
-
-class SceneSetupEvent(BaseModel):
-    """加载场景."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    type: Literal["scene_setup"] = "scene_setup"
-    scene_id: str
-    scene_name: str
-
-
-class SceneObjectsEvent(BaseModel):
-    """加载场景物品."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    type: Literal["scene_objects"] = "scene_objects"
-    scene_id: str
-    objects: list[SceneObject] = Field(default_factory=list)
-
-
-class CharacterMoveEvent(BaseModel):
-    """角色移动到目标格."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    type: Literal["character_move"] = "character_move"
-    character_id: str
-    x: int
-    y: int
-    reasoning: str | None = None
-
-
-class CharacterTalkEvent(BaseModel):
-    """角色对话."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    type: Literal["character_talk"] = "character_talk"
-    character_id: str
-    dialogue: str
-    target_id: str | None = None
-
-
-class CharacterExploreEvent(BaseModel):
-    """角色探索/交互，含 D20 检定."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    type: Literal["character_explore"] = "character_explore"
-    character_id: str
-    action: str
-    target_id: str | None = None
-    roll: ExploreRoll | None = None
-    detail: str | None = None
-
-
-Event = (
-    OpeningEvent
-    | DmNarrativeEvent
-    | SceneSetupEvent
-    | SceneObjectsEvent
-    | CharacterMoveEvent
-    | CharacterTalkEvent
-    | CharacterExploreEvent
-)
 
 # 事件播放顺序 / Event playback sequence
 SEQUENCE: list[str] = [

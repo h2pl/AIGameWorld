@@ -65,32 +65,44 @@ def log_llm(purpose: str, action: str, elapsed: float, extra: dict | None = None
 
 def log_api(action: str, world_id: str, **extra) -> None:
     """记录 API 调用 / Log API call."""
-    logging.getLogger("api").info(f"[{action}] world={world_id}", extra={"action": action, "world_id": world_id, **extra})
+    logging.getLogger("api").info(
+        f"[{action}] world={world_id}", extra={"action": action, "world_id": world_id, **extra}
+    )
 
 
 def log_msg(op: str, msg_id: str, tick: int, **extra) -> None:
     """记录消息队列操作 / Log message queue operation."""
-    logging.getLogger("msg").info(f"[{op}] id={msg_id} tick={tick}", extra={"op": op, "msg_id": msg_id, "tick": tick, **extra})
+    logging.getLogger("msg").info(
+        f"[{op}] id={msg_id} tick={tick}", extra={"op": op, "msg_id": msg_id, "tick": tick, **extra}
+    )
 
 
 def log_db(table: str, op: str, rows: int = 0) -> None:
     """记录 DB 操作 / Log DB operation."""
-    logging.getLogger("db").info(f"[{table}] {op} rows={rows}", extra={"table": table, "op": op, "rows": rows})
+    logging.getLogger("db").info(
+        f"[{table}] {op} rows={rows}", extra={"table": table, "op": op, "rows": rows}
+    )
 
 
 def log_graph(node: str, tick: int, **extra) -> None:
     """记录 Graph 节点 / Log Graph node execution."""
-    logging.getLogger("graph").info(f"[graph] {node} tick={tick}", extra={"node": node, "tick": tick, **extra})
+    logging.getLogger("graph").info(
+        f"[graph] {node} tick={tick}", extra={"node": node, "tick": tick, **extra}
+    )
 
 
 def log_svc(svc: str, tick: int, **extra) -> None:
     """记录 Service 调用 / Log service call."""
-    logging.getLogger("svc").info(f"[svc] {svc} tick={tick}", extra={"svc": svc, "tick": tick, **extra})
+    logging.getLogger("svc").info(
+        f"[svc] {svc} tick={tick}", extra={"svc": svc, "tick": tick, **extra}
+    )
 
 
 def log_eng(eng: str, tick: int, **extra) -> None:
     """记录 Engine 调用 / Log engine call."""
-    logging.getLogger("eng").info(f"[eng] {eng} tick={tick}", extra={"eng": eng, "tick": tick, **extra})
+    logging.getLogger("eng").info(
+        f"[eng] {eng} tick={tick}", extra={"eng": eng, "tick": tick, **extra}
+    )
 
 
 def log_repo(repo: str, op: str, **extra) -> None:

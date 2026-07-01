@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from pydantic import BaseModel
+from .base import DomainModel
 
 
 class SceneObjectType(StrEnum):
@@ -15,7 +15,7 @@ class SceneObjectType(StrEnum):
     ITEM_DROP = "item_drop"
 
 
-class SceneObject(BaseModel):
+class SceneObject(DomainModel):
     """场景中不能自主行动的实体."""
 
     id: str
@@ -26,4 +26,3 @@ class SceneObject(BaseModel):
     position_y: int = 0
     interactable: bool = True
     interact_data: dict | None = None
-    world_id: str = ""

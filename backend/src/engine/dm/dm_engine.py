@@ -4,8 +4,6 @@
 Service 负责 State↔Request 适配，Engine 负责业务逻辑 + 从 config 取 repos 调用 Repository。
 """
 
-# ── Prompt 加载 / Prompt loading ──
-# ── 依赖 / Dependencies ──
 import logging
 from pathlib import Path
 
@@ -13,41 +11,41 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import BranchPoint as DomainBranchPoint
-from ...domain.instruction import SceneDirection
-from ...schemas.llm_output import DMNarrativeSchema, DMOutput, SceneDirectionOutput
+from ...domain.dm_record import DMRecord
+from ...schemas.llm_output import DMNarrativeSchema, DMOutput
 from ...schemas.request import DMCreateRequest, DMNarrateRequest
 from ...schemas.response import DMCreateResponse, DMNarrateResponse
 from ...utils.helpers import get_llm, get_repo
 
+# 模块日志 / Module logger
 logger = logging.getLogger(__name__)
 
+# Jinja2 模板环境 / Jinja2 template environment
 _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
-_DM_SYSTEM_PROMPT = _PROMPTS.get_template("_dm_system.jinja").render()
-
-# ── Helpers / 辅助函数 ──
 
 
 async def dm_create(
     req: DMCreateRequest,
     config: RunnableConfig = None,
 ) -> DMCreateResponse:
-    # ── 护栏校验 / Guardrails ──
-    """Phase 1: DM 创造情境 / DM creates the scene_engine."""
+    """Phase 1: DM 创造情境 / DM creates situation."""
+    # 获取 LLM 实例 / Get LLM instance
     llm = get_llm(config)
 
     if llm is None:
-        return DMCreateResponse(instructions_out=[], plot_brief="平静的一天，没有特别事件。")
-    try:
-        story_repo = get_repo(config, "story")
-        story_arcs = await story_repo.load_arcs() if story_repo else []
-        all_hooks = await story_repo.load_hooks() if story_repo else []
-        active_hooks = [h for h in all_hooks if h.status == "planted"]
+        return DMCreateResponse(hints=[], plot_brief="平静的一天，没有特别事件。")
 
+    # 加载场景列表供 LLM 选择 / Load scene list for LLM selection
+    scene_repo = get_repo(config, "scene")
+    scenes: list[dict] = []
+    if scene_repo and req.world_id:
+        scenes = await scene_repo.list_scenes(req.world_id)
+
+    try:
+        system_prompt = await _render_dm_system(config, req.world_id)
         prompt = _PROMPTS.get_template("dm/dm_create.jinja").render(
-            story_arcs=story_arcs,
-            active_hooks=active_hooks,
+            scenes=scenes,
             recent_summary="",
             plot_brief_prev=req.plot_brief,
             pacing={},
@@ -55,64 +53,85 @@ async def dm_create(
         result = await llm.call_structured(
             "dm_create",
             DMOutput,
-            [SystemMessage(content=_DM_SYSTEM_PROMPT), HumanMessage(content=prompt)],
+            [SystemMessage(content=system_prompt), HumanMessage(content=prompt)],
             fallback=lambda: DMOutput(
+                hints=[],
                 plot_brief="平静的一天，没有特别事件。",
-                scene_direction=SceneDirectionOutput(mood="neutral"),
             ),
         )
-        result = _validate_dm_output(result)
-        direction = SceneDirection(
-            type="scene_direction",
-            featured_pcs=result.scene_direction.featured_pcs,
-            featured_actors=result.scene_direction.featured_actors,
-            actor_motivations=result.scene_direction.actor_motivations,
-        )
+        # 限制 hints 数量 / Cap hints count
+        if len(result.hints) > 4:
+            result.hints = result.hints[:4]
+
+        # 写入 dm_records 表 / Write to dm_records table
+        record_repo = get_repo(config, "dm_record")
+        if record_repo and req.world_id:
+            await record_repo.save_plot_brief(
+                DMRecord(
+                    world_id=req.world_id,
+                    tick=req.tick,
+                    plot_brief=result.plot_brief,
+                    hints=result.hints,
+                    ext=result.model_dump(),
+                )
+            )
+            logger.info("[dm_create] saved to dm_records tick=%s", req.tick)
+
         return DMCreateResponse(
-            instructions_out=result.instructions,
+            hints=result.hints,
             plot_brief=result.plot_brief,
-            scene_direction=direction.model_dump(),
+            scene_id=result.scene_id,
         )
     except Exception:
         logger.exception("dm_create failed, using fallback")
         return DMCreateResponse(
-            instructions_out=[],
+            hints=[],
             plot_brief="平静的一天，没有特别事件。",
-            scene_direction={},
+            scene_id="",
             errors=["dm_create LLM 调用失败，使用降级输出"],
         )
 
 
 async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DMNarrateResponse:
-    """Phase 6: DM 叙事 / DM narrates the scene_engine."""
+    """Phase 6: DM 叙事，产出写入 dm_records / DM narrates, output to dm_records."""
+    # 获取 LLM 实例 / Get LLM instance
     llm = get_llm(config)
 
     if llm is None:
         return DMNarrateResponse(narrative_out="（DM 沉默了...）")
     try:
+        system_prompt = await _render_dm_system(config, req.world_id)
         prompt = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
             plot_brief=req.plot_brief,
-            character_actions=req.character_actions,
-            events=[],
-            combat_result=None,
-            cast_changes=[],
+            hints=req.hints,
+            events=req.events,
         )
         result = await llm.call_structured(
             "dm_narrate",
             DMNarrativeSchema,
-            [SystemMessage(content=_DM_SYSTEM_PROMPT), HumanMessage(content=prompt)],
+            [SystemMessage(content=system_prompt), HumanMessage(content=prompt)],
             fallback=lambda: DMNarrativeSchema(narrative="（DM 沉默了...）"),
         )
-        result = _validate_narrate_output(result)
-        response = DMNarrateResponse(
-            narrative_out=result.narrative,
-            branch_points=[bp.model_dump() for bp in result.branch_points],
-            hooks_resolved=result.hooks_resolved,
-        )
-        story_repo = get_repo(config, "story")
-        if story_repo:
-            await _persist_narrate_results(story_repo, response, req.tick)
-        return response
+        # 叙事文本为空时降级 / Fallback when narrative is empty
+        narrative = result.narrative
+        if not narrative or not narrative.strip():
+            narrative = "（DM 沉默了...）"
+        logger.info("[dm_narrate] tick=%s narrative_len=%s", req.tick, len(narrative))
+
+        # 更新 dm_records 叙事字段 / Update narrative field in dm_records
+        record_repo = get_repo(config, "dm_record")
+        if record_repo:
+            await record_repo.update_narrative(
+                DMRecord(
+                    world_id=req.world_id,
+                    tick=req.tick,
+                    dm_narrative=narrative,
+                    ext={"narrative": narrative},
+                )
+            )
+            logger.info("[dm_narrate] updated narrative in dm_records tick=%s", req.tick)
+
+        return DMNarrateResponse(narrative_out=narrative)
     except Exception:
         logger.exception("dm_narrate failed, using fallback")
         return DMNarrateResponse(
@@ -120,43 +139,14 @@ async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DM
         )
 
 
-_VALID_MOODS = {"neutral", "tense", "hopeful", "ominous", "mysterious"}
-
-
-def _validate_dm_output(result: DMOutput) -> DMOutput:
-    if result.scene_direction.mood not in _VALID_MOODS:
-        result.scene_direction.mood = "neutral"
-    if not result.instructions:
-        result.instructions = ["观察周围环境"]
-    elif len(result.instructions) > 4:
-        result.instructions = result.instructions[:4]
-    return result
-
-
-def _validate_narrate_output(result: DMNarrativeSchema) -> DMNarrativeSchema:
-    if not result.narrative or not result.narrative.strip():
-        result.narrative = "（DM 沉默了...）"
-    return result
-
-
-async def _persist_narrate_results(story_repo, result: DMNarrateResponse, tick: int) -> None:
-    if result.hooks_resolved:
-        hooks = await story_repo.load_hooks()
-        for h in hooks:
-            if h.id in result.hooks_resolved:
-                h.status = "resolved"
-                await story_repo.save_hook(h)
-    if result.branch_points:
-        arcs = await story_repo.load_arcs()
-        active_main = next((a for a in arcs if a.type == "main" and a.status != "completed"), None)
-        if active_main:
-            for bp_data in result.branch_points:
-                active_main.branching_points.append(
-                    DomainBranchPoint(
-                        tick=tick,
-                        decision_maker=bp_data.get("decision_maker", ""),
-                        decision=bp_data.get("decision", ""),
-                        consequence=bp_data.get("consequence", ""),
-                    )
-                )
-            await story_repo.save_arc(active_main)
+async def _render_dm_system(config: RunnableConfig | None, world_id: str) -> str:
+    """渲染 DM system prompt，注入世界观信息 / Render DM system prompt with world info."""
+    # 从 DB 加载世界观 / Load world info from DB
+    world = None
+    if world_id:
+        world_repo = get_repo(config, "world")
+        if world_repo:
+            w = await world_repo.get(world_id)
+            if w:
+                world = {"name": w.name, "description": w.description, "rule_set": w.rule_set}
+    return _PROMPTS.get_template("_dm_system.jinja").render(world=world)

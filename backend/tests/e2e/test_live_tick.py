@@ -5,7 +5,6 @@
 """
 
 import asyncio
-import json
 import time
 
 import pytest
@@ -113,8 +112,12 @@ class TestLiveTickE2E:
         for ev in events:
             assert "type" in ev, "事件必须有 type"
             assert ev["type"] in (
-                "opening", "scene_setup", "scene_objects",
-                "character_move", "character_talk", "character_explore",
+                "opening",
+                "scene_setup",
+                "scene_objects",
+                "character_move",
+                "character_talk",
+                "character_explore",
                 "dm_narrative",
             ), f"未知事件类型 {ev['type']}"
         print(f"✅ 6. event structure valid: {len(events)} events")

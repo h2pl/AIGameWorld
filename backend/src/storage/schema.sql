@@ -1,20 +1,10 @@
 --  ============================================================
 --  AIGameWorld SQLite Schema / 数据库表结构定义
---  15 张表：实体 + 故事 + 关系 + 日志 / 15 tables: entities + stories + relations + logs
 --  WAL 模式：支持并发读 + 单写 / WAL mode: concurrent reads + single write
 --  ============================================================
 
-PRAGMA journal_mode=WAL;    -- 预写日志模式 / Write-Ahead Log mode
-PRAGMA foreign_keys=ON;     -- 外键约束 / Foreign key constraints
-
--- ============================================================
---  schema_version: 数据库版本追踪 / Database version tracking
--- ============================================================
-CREATE TABLE IF NOT EXISTS schema_version (
-    version     INTEGER PRIMARY KEY,                    -- 版本号 / Version number
-    applied_at  TEXT NOT NULL DEFAULT (datetime('now')) -- 应用时间 / Applied timestamp
-);
-INSERT OR IGNORE INTO schema_version (version) VALUES (1);
+PRAGMA journal_mode=WAL;
+PRAGMA foreign_keys=ON;
 
 -- ============================================================
 --  worlds: 世界 / Worlds——承载 world_pack 元信息 + 运行时状态
@@ -126,20 +116,6 @@ CREATE TABLE IF NOT EXISTS actors (
 );
 
 -- ============================================================
---  main_cast: 主角团花名册变更历史 / Main cast roster change history
--- ============================================================
-CREATE TABLE IF NOT EXISTS main_cast (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    tick            INTEGER NOT NULL,
-    character_id    TEXT NOT NULL,
-    event_type      TEXT NOT NULL,                          -- join/leave/death/betrayal
-    reason          TEXT,
-    arc_id          TEXT,
-    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- ============================================================
 --  scenes: 场景定义 / Scene definitions
 -- ============================================================
 CREATE TABLE IF NOT EXISTS scenes (
@@ -194,50 +170,7 @@ CREATE TABLE IF NOT EXISTS scene_objects (
 );
 CREATE INDEX IF NOT EXISTS idx_scene_objects_scene ON scene_objects(scene_id);
 
--- ============================================================
---  story_arcs: 剧情线 / Story arcs
--- ============================================================
-CREATE TABLE IF NOT EXISTS story_arcs (
-    id                      TEXT PRIMARY KEY,
-    type                    TEXT NOT NULL,                  -- main/side
-    title                   TEXT NOT NULL,
-    stage                   TEXT,
-    main_cast_json          TEXT NOT NULL DEFAULT '[]',
-    supporting_actors_json  TEXT NOT NULL DEFAULT '[]',
-    key_event_ticks_json    TEXT NOT NULL DEFAULT '[]',
-    branching_points_json   TEXT NOT NULL DEFAULT '[]',
-    status                  TEXT NOT NULL DEFAULT 'setup',
-    world_id                 TEXT NOT NULL DEFAULT '',
-    created_at              TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at              TEXT NOT NULL DEFAULT (datetime('now'))
-);
 
--- ============================================================
---  story_hooks: 伏笔 / Story hooks (foreshadowing)
--- ============================================================
-CREATE TABLE IF NOT EXISTS story_hooks (
-    id              TEXT PRIMARY KEY,
-    planted_tick    INTEGER NOT NULL,
-    description     TEXT NOT NULL,
-    intended_payoff TEXT,
-    urgency         INTEGER,
-    status          TEXT NOT NULL DEFAULT 'planted',
-    world_id         TEXT NOT NULL DEFAULT '',
-    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- ============================================================
---  worlds: 世界 / Worlds
--- ============================================================
-CREATE TABLE IF NOT EXISTS worlds (
-    id          TEXT PRIMARY KEY,
-    name        TEXT NOT NULL,
-    world_id     TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
 
 -- ============================================================
 --  messages: 消息元数据 / Message metadata
@@ -273,16 +206,35 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_msg ON events(msg_id, msg_tick);
 
 -- ============================================================
---  narratives: 叙事日志 / Narrative log
+--  dm_records: DM 产出记录 / DM output records——每 tick 一行
 -- ============================================================
-CREATE TABLE IF NOT EXISTS narratives (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    tick        INTEGER NOT NULL,
-    content     TEXT NOT NULL,
-    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+CREATE TABLE IF NOT EXISTS dm_records (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    world_id        TEXT NOT NULL,
+    tick            INTEGER NOT NULL,
+    plot_brief      TEXT NOT NULL DEFAULT '',
+    hint_list      TEXT NOT NULL DEFAULT '[]',
+    dm_narrative    TEXT NOT NULL DEFAULT '',
+    ext_json        TEXT NOT NULL DEFAULT '{}',
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(world_id, tick)
 );
-CREATE INDEX IF NOT EXISTS idx_narratives_tick ON narratives(tick);
+CREATE INDEX IF NOT EXISTS idx_dm_records_world_tick ON dm_records(world_id, tick);
+
+-- ============================================================
+--  story_summaries: 故事摘要 / Story summaries——每 N tick LLM 压缩
+-- ============================================================
+CREATE TABLE IF NOT EXISTS story_summaries (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    world_id        TEXT NOT NULL,
+    tick_start      INTEGER NOT NULL,
+    tick_end        INTEGER NOT NULL,
+    summary         TEXT NOT NULL,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(world_id, tick_start)
+);
+CREATE INDEX IF NOT EXISTS idx_summaries_world ON story_summaries(world_id);
 
 -- ============================================================
 --  quests: 任务 / Quests
@@ -301,17 +253,4 @@ CREATE TABLE IF NOT EXISTS quests (
     updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- ============================================================
---  factions: 势力 / Factions
--- ============================================================
-CREATE TABLE IF NOT EXISTS factions (
-    id                  TEXT PRIMARY KEY,
-    name                TEXT NOT NULL,
-    leader_character_id TEXT,
-    influence           REAL NOT NULL DEFAULT 0.5,
-    members_json        TEXT NOT NULL DEFAULT '[]',
-    allies_json         TEXT NOT NULL DEFAULT '[]',
-    enemies_json        TEXT NOT NULL DEFAULT '[]',
-    created_at          TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
-);
+

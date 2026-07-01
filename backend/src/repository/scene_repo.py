@@ -12,19 +12,36 @@ class SceneRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
+    async def list_scenes(self, world_id: str) -> list[dict]:
+        """按 world_id 加载场景摘要列表（id + name + description）."""
+        rows = await self._db.fetch_all(
+            "SELECT id, name, type, description FROM scenes WHERE world_id = ?", (world_id,)
+        )
+        return [
+            {"id": r["id"], "name": r["name"], "type": r["type"], "description": r["description"]}
+            for r in rows
+        ]
+
+    async def get_object_ids(self, scene_id: str) -> list[str]:
+        """按 scene_id 获取关联的场景对象 id 列表."""
+        rows = await self._db.fetch_all(
+            "SELECT id FROM scene_objects WHERE scene_id = ?", (scene_id,)
+        )
+        return [r["id"] for r in rows]
+
     async def save_scene(self, scene: dict, world_id: str, world_name: str) -> None:
-        """写入单条场景 / Save single scene_engine."""
+        """写入单条场景 / Save single scene."""
         await self._db.execute(
             "INSERT OR REPLACE INTO scenes "
             "(id, name, type, description, exits_json, landmarks_json, world_id, world_name) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                scene_engine.get("id", ""),
-                scene_engine.get("name", ""),
-                scene_engine.get("type", ""),
-                scene_engine.get("description", ""),
-                json.dumps(scene_engine.get("exits", []), ensure_ascii=False),
-                json.dumps(scene_engine.get("landmarks", []), ensure_ascii=False),
+                scene.get("id", ""),
+                scene.get("name", ""),
+                scene.get("type", ""),
+                scene.get("description", ""),
+                json.dumps(scene.get("exits", []), ensure_ascii=False),
+                json.dumps(scene.get("landmarks", []), ensure_ascii=False),
                 world_id,
                 world_name,
             ),

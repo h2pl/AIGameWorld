@@ -2,9 +2,10 @@
 
 import asyncio
 import logging
-from datetime import datetime
+from collections.abc import Callable
+from datetime import UTC, datetime
 
-from src.domain.event import CharacterMoveEvent, DmNarrativeEvent, OpeningEvent
+from src.domain.event import Event
 from src.domain.message import Message
 from src.repository.event_repo import EventRepo
 from src.repository.message_repo import MessageRepo
@@ -17,7 +18,7 @@ async def run(
     world_id: str,
     msg_repo: MessageRepo,
     evt_repo: EventRepo,
-    get_paused: callable,
+    get_paused: Callable[[], bool],
     db,
 ) -> None:
     """循环产 tick → 写两表，带反压."""
@@ -27,11 +28,11 @@ async def run(
         id=world_id,
         tick=0,
         world_id=world_id,
-        timestamp=datetime.now(datetime.timezone.utc),
-        events=[OpeningEvent(text="冒险开始了！")],
+        timestamp=datetime.now(UTC).isoformat(),
     )
     await msg_repo.insert(msg)
-    await evt_repo.insert_batch(msg.id, msg.tick, msg.events)
+    opening_evt = Event(type="opening", tick=0, payload={"text": "冒险开始了！"})
+    await evt_repo.insert_events(msg.id, msg.tick, [opening_evt])
 
     try:
         while True:
@@ -48,20 +49,26 @@ async def run(
                 continue
 
             data = engine.generate_tick()
-            events = [DmNarrativeEvent(text=data.get("narrative", ""))]
+            tick = data["tick"]
+            events: list[Event] = []
+            if narrative := data.get("narrative", ""):
+                events.append(Event(type="dm_narrative", tick=tick, payload={"text": narrative}))
             events.extend(
-                CharacterMoveEvent(character_id=m["character_id"], x=m["x"], y=m["y"])
+                Event(
+                    type="character_move",
+                    tick=tick,
+                    payload={"character_id": m["character_id"], "x": m["x"], "y": m["y"]},
+                )
                 for m in data.get("character_moves", [])
             )
             msg = Message(
                 id=world_id,
-                tick=data["tick"],
+                tick=tick,
                 world_id=world_id,
-                timestamp=datetime.now(datetime.timezone.utc),
-                events=events,
+                timestamp=datetime.now(UTC).isoformat(),
             )
             await msg_repo.insert(msg)
-            await evt_repo.insert_batch(msg.id, msg.tick, msg.events)
-            logger.info("[Mock] %s tick=%d events=%d", world_id, msg.tick, len(msg.events))
-    except Exception as e:
-        logger.error("[Mock] %s error: %s", world_id, e, exc_info=True)
+            await evt_repo.insert_events(msg.id, msg.tick, events)
+            logger.info("[Mock] %s tick=%d events=%d", world_id, msg.tick, len(events))
+    except Exception:
+        logger.error("[Mock] %s error", world_id, exc_info=True)

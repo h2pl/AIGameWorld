@@ -7,28 +7,37 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 
+# === Phase 0: Message ===
+class MessageCreateRequest(BaseModel):
+    tick: int = 0
+    world_id: str = ""
+
+
 # === Phase 1 & 6: DM ===
 class DMCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     tick: int = 0
     plot_brief: str = ""
+    world_id: str = ""
 
 
 class DMNarrateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     tick: int = 0
+    world_id: str = ""
     plot_brief: str = ""
-    dm_instructions: list[str] = []
-    scene_direction: dict[str, Any] = {}
-    character_actions: list[dict[str, Any]] = []
+    hints: list[str] = []
+    events: list[dict[str, Any]] = []
 
 
 # === Phase 2: World ===
 class SceneProcessRequest(BaseModel):
     tick: int = 0
-    dm_instructions: list[str] = []
+    world_id: str = ""
+    scene_id: str = ""
+    msg_id: str = ""
 
 
 # === Phase 3: Character ===

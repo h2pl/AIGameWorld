@@ -10,15 +10,15 @@ def base_state() -> OverallState:
     """基础 mock state."""
     return OverallState(
         tick=0,
+        world_id="",
         dm_instructions=[],
         plot_brief="",
-        scene_direction={},
+        scene={},
         scene_events=[],
         character_actions=[],
         engine_results=[],
         combat_result=None,
         state_diff={},
-        cast_changes=[],
         narrative="",
         branch_points=[],
         hooks_resolved=[],

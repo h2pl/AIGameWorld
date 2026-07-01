@@ -1,48 +1,20 @@
-"""Phase 3 子图: Send() fan-out 并行角色决策。
-
-pass_through ──→ [conditional: dispatch_characters → Send × N] ──→ character_agent（并行）
-                                                                          ↓
-                                                                   character_actions (add 合并)
-"""
+"""Phase 3 子图: 角色决策——处理 character_move / character_talk / character_explore 事件."""
 
 from langgraph.graph import END, StateGraph
-from langgraph.types import Send
 
-from ...services import character_service
 from ..state import OverallState
 
 
-def _pass_through(state: OverallState) -> dict:
-    """入站节点：不做任何转换，直接透传 / Pass-through entry node."""
-    return {}
-
-
-def dispatch_characters(state: OverallState) -> list[Send]:
-    """P3-3: 并行唤醒 DM 指定的 PC 和 Actor."""
-    direction = state.get("scene_direction", {})
-    plot_brief = state.get("plot_brief", "")
-    tick = state.get("tick", 0)
-    sends: list[Send] = []
-
-    _send_args = {"plot_brief": plot_brief, "tick": tick}
-    sends.extend(
-        Send("character_agent", {"character_id": pc_id, "character_type": "pc", **_send_args})
-        for pc_id in direction.get("featured_pcs", [])
-    )
-    sends.extend(
-        Send("character_agent", {"character_id": actor_id, "character_type": "actor", **_send_args})
-        for actor_id in direction.get("featured_actors", [])
-    )
-    return sends
+def _process(state: OverallState) -> dict:
+    """Placeholder: 后续实现角色决策并写入 character_* 事件到 events 表."""
+    return {"character_actions": []}
 
 
 def build_character_subgraph() -> StateGraph:
     graph = StateGraph(OverallState)
-    graph.add_node("pass_through", _pass_through)
-    graph.add_node("character_agent", character_service.character_agent)
-    graph.set_entry_point("pass_through")
-    graph.add_conditional_edges("pass_through", dispatch_characters)
-    graph.add_edge("character_agent", END)
+    graph.add_node("_process", _process)
+    graph.set_entry_point("_process")
+    graph.add_edge("_process", END)
     return graph
 
 

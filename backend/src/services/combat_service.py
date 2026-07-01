@@ -1,7 +1,8 @@
 """Combat Service: State ↔ Engine adapter."""
+
 import logging
 
-from ..engine.combat import combat_engine as combat_engine
+from ..engine.combat import combat_engine
 from ..graph.state import EngineSubState
 from ..schemas.request import CombatParticipant, CombatRequest
 

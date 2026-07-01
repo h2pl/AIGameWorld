@@ -90,7 +90,6 @@ def validate_pack_relations(data: dict) -> list[str]:
       - PC/Actor.location.scene_id → Scene（含 fallback starting_scene）
       - PC/Actor.equipment.{weapon,armor,shield} → Item
       - PC/Actor.inventory[].item_id → Item
-      - StoryArc.main_cast[] → Character (PC + Actor)
       - Scene.exits[].target → Scene
     """
     warnings: list[str] = []
@@ -100,7 +99,7 @@ def validate_pack_relations(data: dict) -> list[str]:
     item_ids = {i.get("id") for i in data.get("items", []) if i.get("id")}
     pc_ids = {p.get("id") for p in data.get("player_characters", []) if p.get("id")}
     actor_ids = {a.get("id") for a in data.get("actors", []) if a.get("id")}
-    char_ids = pc_ids | actor_ids
+    pc_ids | actor_ids
 
     starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
 
@@ -157,15 +156,7 @@ def validate_pack_relations(data: dict) -> list[str]:
                         f"references unknown item '{item_id}'"
                     )
 
-    # 5. StoryArc.main_cast[] → Character / 故事弧线角色引用校验
-    warnings.extend(
-        f"StoryArc '{arc.get('id', '?')}' main_cast references unknown character '{char_id}'"
-        for arc in (data.get("story_setup") or {}).get("story_arcs", [])
-        for char_id in arc.get("main_cast", [])
-        if char_id not in char_ids
-    )
-
-    # 6. Scene.exits[] → Scene（互引校验）
+    # 5. Scene.exits[] → Scene（互引校验）
     for s in data.get("scenes", []):
         for exit_ref in s.get("exits", []):
             if isinstance(exit_ref, dict):
