@@ -14,7 +14,7 @@ from src.repository.event_repo import EventRepo
 from src.repository.message_repo import MessageRepo
 from src.repository.world_repo import WorldRepo
 from src.storage.sqlite_client import SQLiteClient
-from src.utils.logging import setup_logging
+from src.utils.logging import log_api, log_msg, setup_logging
 from src.viewer import (
     render_global_events,
     render_global_items,
@@ -94,7 +94,7 @@ async def session_start(world_id: str):
     }
     task = asyncio.create_task(_graph_producer(world_id, msg_repo, evt_repo))
     _sessions[world_id]["task"] = task
-    logger.info("[Main] %s started", world_id)
+    log_api("start", world_id)
     return {"status": "ok"}
 
 
@@ -105,18 +105,17 @@ async def tick_next(world_id: str):
         return {"type": "error", "data": {"message": "session not found"}}
     meta = await s["msg_repo"].get_next_pending(world_id)
     if meta:
-        # 加载事件并组装 JSON / Load events + assemble JSON
         events = await s["evt_repo"].load_by_message(meta["id"], meta["tick"])
+        log_msg("pull", world_id, meta["tick"], event_count=len(events))
         return {
             "type": "tick",
             "data": {
-                "id": meta["id"],
-                "tick": meta["tick"],
-                "timestamp": meta["created_at"],
+                "id": meta["id"], "tick": meta["tick"], "timestamp": meta["created_at"],
                 "events": [_event_to_dict(ev) for ev in events],
             },
         }
     if s.get("done"):
+        log_api("done", world_id)
         return {"type": "done"}
     return {"type": "wait"}
 
@@ -127,6 +126,7 @@ async def tick_ack(world_id: str, tick: int):
     if not s:
         return {"status": "error", "detail": "session not found"}
     await s["msg_repo"].ack(world_id, tick)
+    log_msg("ack", world_id, tick)
     return {"status": "ok"}
 
 
@@ -136,6 +136,7 @@ async def session_pause(world_id: str):
     if not s:
         return {"status": "error", "detail": "session not found"}
     s["paused"] = True
+    log_api("pause", world_id)
     return {"status": "ok"}
 
 
@@ -145,6 +146,7 @@ async def session_resume(world_id: str):
     if not s:
         return {"status": "error", "detail": "session not found"}
     s["paused"] = False
+    log_api("resume", world_id)
     return {"status": "ok"}
 
 

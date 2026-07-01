@@ -1,7 +1,12 @@
 """消息仓储——messages 表 CRUD / Message repository: insert / get pending / ack."""
 
+import logging
+
 from ..domain.message import Message
 from ..storage.sqlite_client import SQLiteClient
+from ..utils.logging import log_msg
+
+logger = logging.getLogger("aw.repo.msg")
 
 
 class MessageRepo:
@@ -17,15 +22,19 @@ class MessageRepo:
             (msg.id, msg.tick, msg.world_id),
         )
         await self._db.commit()
+        log_msg("insert", msg.id, msg.tick, event_count=len(msg.events))
 
     async def get_next_pending(self, mid: str) -> dict | None:
         """读取下一条 pending 消息 / Fetch next pending message."""
-        return await self._db.fetch_one(
+        row = await self._db.fetch_one(
             "SELECT id, tick, world_id, status, created_at FROM messages "
             "WHERE id = ? AND status = 'pending' "
             "ORDER BY tick LIMIT 1",
             (mid,),
         )
+        if row:
+            log_msg("next_pending", mid, row["tick"])
+        return row
 
     async def ack(self, mid: str, tick: int) -> None:
         """标记已消费 / Mark as consumed."""

@@ -61,3 +61,18 @@ def log_llm(purpose: str, action: str, elapsed: float, extra: dict | None = None
         logger.error(f"[{purpose}] 失败 / failed", extra=data)
     else:
         logger.info(f"[{purpose}] ok", extra=data)
+
+
+def log_api(action: str, world_id: str, **extra) -> None:
+    """记录 API 调用 / Log API call."""
+    logging.getLogger("api").info(f"[{action}] world={world_id}", extra={"action": action, "world_id": world_id, **extra})
+
+
+def log_msg(op: str, msg_id: str, tick: int, **extra) -> None:
+    """记录消息队列操作 / Log message queue operation."""
+    logging.getLogger("msg").info(f"[{op}] id={msg_id} tick={tick}", extra={"op": op, "msg_id": msg_id, "tick": tick, **extra})
+
+
+def log_db(table: str, op: str, rows: int = 0) -> None:
+    """记录 DB 操作 / Log DB operation."""
+    logging.getLogger("db").info(f"[{table}] {op} rows={rows}", extra={"table": table, "op": op, "rows": rows})
