@@ -45,6 +45,14 @@ export class CharacterSprite {
     if (this.ring) this.ring.setDepth(d + 5);
   }
 
+  /** 获取当前 tile 坐标 / Get current grid position */
+  getGridPos(ts: number): { tx: number; ty: number } {
+    return {
+      tx: Math.floor((this.sprite.x - ts / 2) / ts),
+      ty: Math.floor((this.sprite.y - ts / 2) / ts),
+    };
+  }
+
   /** 世界坐标移动 + 关联对象跟随 / Move in world coords, followers follow */
   moveToWorld(wx: number, wy: number, duration = 300): Promise<void> {
     return new Promise(resolve => {
