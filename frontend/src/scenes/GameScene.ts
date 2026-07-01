@@ -5,6 +5,33 @@ import { CharacterManager } from "../managers/CharacterManager";
 import { CONFIG } from "../config";
 import { KEY, DEPTH, TILEMAP } from "../constants";
 
+/** 种族肤色 / Race skin colors */
+const RACE_SKIN: Record<string, string> = { human: "#f5cba7", elf: "#fdebd0", dwarf: "#d4a574", halfling: "#f5c6a0", orc: "#6b8e5a", tiefling: "#c48b9d", dragonborn: "#8b5e3c" };
+/** 种族发色 / Race hair colors */
+const RACE_HAIR: Record<string, string> = { human: "#4a2c0a", elf: "#d4c0a0", dwarf: "#8b4513", halfling: "#6b3a1f", orc: "#1a1a1a", tiefling: "#2c0033", dragonborn: "#3c1a00" };
+/** 职业色 / Role colors */
+const ROLE_COLOR: Record<string, string> = { fighter: "#c0392b", rogue: "#2c3e50", cleric: "#f0f0f0", wizard: "#5b2c6f", ranger: "#27ae60", paladin: "#f1c40f", blacksmith: "#a0522d", guard: "#2980b9", merchant: "#16a085", innkeeper: "#d35400", boss: "#e74c3c", enemy: "#c0392b", villager: "#95a5a6" };
+
+/** 生成单个角色 Canvas 纹理 / Generate character Canvas texture */
+function makeCharTexture(scene: Phaser.Scene, ch: { id: string; race: string | null; role: string; is_pc: boolean; functions?: string[] }, size: number): void {
+  if (scene.textures.exists(ch.id)) return;
+  const skin = RACE_SKIN[ch.race || ""] || "#f5cba7";
+  const hair = RACE_HAIR[ch.race || ""] || "#4a2c0a";
+  const body = ROLE_COLOR[ch.role] || (ch.functions?.[0] ? ROLE_COLOR[ch.functions[0]] || "#7f8c8d" : "#7f8c8d");
+  const cv = scene.textures.createCanvas(ch.id, size, size);
+  if (!cv) return;
+  const c = cv.context; c.imageSmoothingEnabled = false;
+  const cx = size / 2;
+  c.fillStyle = body; c.fillRect(cx - 6, 11, 12, 10);           // body
+  c.fillStyle = skin; c.beginPath(); c.arc(cx, 9, 6, 0, Math.PI * 2); c.fill(); // head
+  c.fillStyle = hair; c.beginPath(); c.arc(cx, 7, 6, Math.PI, Math.PI * 2); c.fill(); // hair
+  c.fillStyle = "#fff"; c.fillRect(cx - 2, 8, 1, 2); c.fillRect(cx + 1, 8, 1, 2); // eyes
+  c.fillStyle = "#000"; c.fillRect(cx - 2, 9, 1, 1); c.fillRect(cx + 1, 9, 1, 1); // pupils
+  c.fillStyle = "#2c3e50"; c.fillRect(cx - 4, 20, 4, 6); c.fillRect(cx + 1, 20, 4, 6); // legs
+  if (ch.is_pc) { c.fillStyle = "#ffd700"; c.fillRect(cx - 7, 12, 3, 3); c.fillRect(cx + 4, 12, 3, 3); }
+  cv.refresh();
+}
+
 export class GameScene extends Phaser.Scene {
   private ts!: number;
   private tilemap!: Phaser.Tilemaps.Tilemap;
@@ -33,11 +60,17 @@ export class GameScene extends Phaser.Scene {
     this.createUI();            // 12 ✅ → 含 store subscribe
   }
 
-  /** 1. initVariables / Reset state */
+  /** 1. initVariables / Reset state + 生成纹理 */
   private initVariables(): void {
     this.ts = TILEMAP.TILE_SIZE;
     const st = gameStore.getState();
-    console.log("[Scene] initVariables ts=%d chars=%d", this.ts, st.characters.length);
+    // 为所有角色生成 Canvas 纹理 / Generate Canvas textures for all characters
+    for (const ch of st.characters) makeCharTexture(this, ch, this.ts);
+    // fallback 纹理 / Fallback textures
+    for (const fb of [{ id: "pc_fighter", race: "human", role: "fighter", is_pc: true }, { id: "actor_default", race: "human", role: "villager", is_pc: false }]) {
+      makeCharTexture(this, fb, this.ts);
+    }
+    console.log("[Scene] initVariables ts=%d chars=%d textures=ready", this.ts, st.characters.length);
   }
 
   /** 2. initCamera / Camera config */
