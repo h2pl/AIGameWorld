@@ -49,10 +49,7 @@ export class CharacterManager {
       const existing = this.sprites.get(ch.id);
       if (existing) {
         const old = existing.getGridPos(this.ts);
-        // TODO: 后端返回有效初始坐标后移除此 guard
-        const isInitZero = (p.x === 0 && p.y === 0 && (old.tx !== 0 || old.ty !== 0));
-        const changed = (old.tx !== p.x || old.ty !== p.y) && !isInitZero;
-        if (changed) {
+        if (old.tx !== p.x || old.ty !== p.y) {
           existing.cancelWalk();
           const steps = calcSteps(old, { tx: p.x, ty: p.y }, this.ts);
           existing.walkPath(steps, WALK_SPEED);

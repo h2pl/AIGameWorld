@@ -35,120 +35,20 @@ async function loadWorldState(packId: string): Promise<InitialWorldState | null>
   }
 }
 
-/** Mock 数据 / Mock data — 后端不可用时的回退
- * TODO: 接入后端稳定后删除此函数。世界状态完全由 GET /api/pack/{id}/state 提供。
- * 实施：移除 loadMockState()，loadWorldState() 失败时显示错误页面而非 fallback。
- */
-function loadMockState(): InitialWorldState {
-  return {
-    pack_id: "forgotten_realms",
-    scenes: [{
-      id: "village_elderwood",
-      name: "Elderwood Village",
-      type: "village",
-      description: "A quiet border village, smoke rising from the blacksmith's chimney.",
-      exits: [{
-        target_scene: "forest_north",
-        position: { x: 28, y: 0 },
-        description: "Path to the northern forest",
-      }],
-      landmarks: [
-        { id: "blacksmith_shop", name: "铁匠铺", position: { x: 5, y: 7 } },
-        { id: "tavern", name: "酒馆", position: { x: 15, y: 3 } },
-        { id: "market", name: "集市", position: { x: 12, y: 10 } },
-      ],
-      environment: { weather: "clear", time_of_day: "morning" },
-    }],
-    characters: [
-      {
-        id: "fighter", name: "Kael", role: "fighter", race: "human",
-        status: "active", scene_id: "village_elderwood",
-        position_x: 6, position_y: 6,
-        attributes: { strength: 16, dexterity: 12, constitution: 14, intelligence: 10, wisdom: 10, charisma: 12 },
-        combat: { hp: 28, max_hp: 28, ac: 16, attack_bonus: 5, damage_dice: "1d8", initiative: 2 },
-        personality: "Brave but impulsive.", character_arc: { stage: "growth", description: "Prove himself" },
-        is_pc: true,
-      },
-      {
-        id: "rogue", name: "Zeph", role: "rogue", race: "elf",
-        status: "active", scene_id: "village_elderwood",
-        position_x: 14, position_y: 6,
-        attributes: { strength: 10, dexterity: 18, constitution: 12, intelligence: 14, wisdom: 12, charisma: 14 },
-        combat: { hp: 20, max_hp: 20, ac: 14, attack_bonus: 6, damage_dice: "1d6", initiative: 4 },
-        personality: "Sly and curious.", character_arc: { stage: "crisis", description: "Trust issues" },
-        is_pc: true,
-      },
-      {
-        id: "cleric", name: "Elara", role: "cleric", race: "human",
-        status: "active", scene_id: "village_elderwood",
-        position_x: 6, position_y: 12,
-        attributes: { strength: 12, dexterity: 10, constitution: 14, intelligence: 12, wisdom: 18, charisma: 14 },
-        combat: { hp: 24, max_hp: 24, ac: 18, attack_bonus: 4, damage_dice: "1d8", initiative: 1 },
-        personality: "Calm and devout.", character_arc: { stage: "growth", description: "Seeking signs" },
-        is_pc: true,
-      },
-      {
-        id: "wizard", name: "Mira", role: "wizard", race: "elf",
-        status: "active", scene_id: "village_elderwood",
-        position_x: 14, position_y: 12,
-        attributes: { strength: 8, dexterity: 14, constitution: 12, intelligence: 18, wisdom: 14, charisma: 10 },
-        combat: { hp: 16, max_hp: 16, ac: 12, attack_bonus: 3, damage_dice: "1d6", initiative: 2 },
-        personality: "Brilliant but aloof.", character_arc: { stage: "setup", description: "Uncover ancient lore" },
-        is_pc: true,
-      },
-      {
-        id: "blacksmith", name: "Garret", role: "blacksmith", race: "dwarf",
-        status: "active", scene_id: "village_elderwood",
-        position_x: 4, position_y: 8,
-        attributes: { strength: 14, dexterity: 10, constitution: 16, intelligence: 12, wisdom: 10, charisma: 10 },
-        combat: null,
-        personality: "Gruff but kind.", functions: ["merchant"],
-        is_pc: false,
-      },
-      {
-        id: "guard", name: "Borin", role: "guard", race: "human",
-        status: "active", scene_id: "village_elderwood",
-        position_x: 10, position_y: 2,
-        attributes: { strength: 14, dexterity: 10, constitution: 14, intelligence: 10, wisdom: 12, charisma: 10 },
-        combat: { hp: 22, max_hp: 22, ac: 15, attack_bonus: 4, damage_dice: "1d8", initiative: 1 },
-        personality: "Stern but fair.", functions: ["guard"],
-        is_pc: false,
-      },
-      {
-        id: "merchant", name: "Selia", role: "merchant", race: "human",
-        status: "active", scene_id: "village_elderwood",
-        position_x: 24, position_y: 8,
-        attributes: { strength: 8, dexterity: 12, constitution: 10, intelligence: 14, wisdom: 12, charisma: 16 },
-        combat: null,
-        personality: "Charming and shrewd.", functions: ["merchant"],
-        is_pc: false,
-      },
-    ],
-    items: [
-      { id: "longsword", name: "Longsword", item_type: "weapon", rarity: "common", description: "A well-forged blade." },
-      { id: "health_potion", name: "Health Potion", item_type: "potion", rarity: "common", description: "Heals 2d4+2 HP." },
-    ],
-    scene_objects: [
-      { id: "chest_wooden", name: "Wooden Chest", object_type: "container", scene_id: "village_elderwood", position_x: 20, position_y: 15 },
-      { id: "door_cellar", name: "Cellar Door", object_type: "door", scene_id: "village_elderwood", position_x: 25, position_y: 5 },
-    ],
-  };
-}
-
-/** 主入口 / Main entry */
+/** 主入口 / Main entry — 全部数据来自后端，前端不再自带 mock */
 async function main(): Promise<void> {
   console.log(`${L} === main() START ===`);
   const params = new URLSearchParams(window.location.search);
   const packId = params.get("pack") || "forgotten_realms";
   console.log(`${L} pack_id=${packId}`);
 
-  // 加载世界数据 / Load world data
-  // TODO: 接入后端稳定后删除 mock fallback。API 失败 → 直接报错提示用户启动后端。
-  let world = (await loadWorldState(packId)) || loadMockState();
-  // TODO: 后端修复零初值问题后删除此检查（后端 World Pack 初始化即应有有效坐标）
-  if (world.characters.length > 0 && world.characters.every(c => !c.position_x && !c.position_y)) {
-    console.log(`${L} API positions empty, using mock data`);
-    world = loadMockState();
+  // 加载世界数据 / Load world data — 全部依赖后端，失败则提示
+  const world = await loadWorldState(packId);
+  if (!world) {
+    const msg = "❌ 后端未启动。请先运行 aw serve 或 make backend-dev";
+    console.error(`${L} ${msg}`);
+    document.body.innerHTML = `<div style="color:#ff6b6b;font:16px sans-serif;padding:40px;text-align:center">${msg}</div>`;
+    return;
   }
   console.log(`${L} world loaded: ${world.scenes.length} scenes, ${world.characters.length} chars`);
   gameStore.setWorldState(
@@ -195,25 +95,8 @@ async function main(): Promise<void> {
   objectPanel.mount(document.body);
   console.log(`${L} DOM panels mounted: narrative + event + character + object`);
 
-  // ── Mock 演示数据 / Mock demo data（无后端时展示面板效果）──
-  // TODO: 接入后端真实 WS tick 后删除此段。叙事/事件由 WebSocket tick 消息实时推送。
-  gameStore.addNarrative("晨光洒在 Elderwood 村庄的石板路上，铁匠铺的烟囱升起袅袅青烟。");
-  gameStore.addNarrative("Kael 握紧剑柄，警惕地扫视着酒馆门口——昨晚有人报告了可疑的脚印。");
-  gameStore.addNarrative("Zeph 悄无声息地滑入阴影，沿着屋檐朝集市方向摸去。");
-  gameStore.applyTickUpdate({
-    type: "tick_complete",
-    data: {
-      tick: 1,
-      events: [
-        { type: "system", description: "世界初始化完成", source: "world" },
-        { type: "exploration", description: "Kael 进入 Elderwood 村庄广场", source: "fighter" },
-        { type: "dialogue", description: "Garret 向 Kael 打招呼：'又来保养你的剑了？'", source: "blacksmith", target: "fighter" },
-        { type: "exploration", description: "Zeph 发现了酒馆后巷的可疑人物", source: "rogue" },
-        { type: "combat", description: "Borin 报告：北边森林传来狼嚎", source: "guard" },
-      ],
-    },
-  });
-  console.log(`${L} mock data injected for demo`);
+
+
 
   // ── 控制器 / Controller (P5-4: 状态机 + ▶运行 ⏭自动 ⏸停止) ──
   type RunState = "idle" | "connecting" | "running";

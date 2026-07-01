@@ -13,12 +13,18 @@ from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 
+from src.config import load_config
 from src.graph.orchestrator import Orchestrator
+from src.mock import MOCK_WORLD, MockTickEngine
 from src.repository.character_repo import CharacterRepo
 from src.repository.story_repo import StoryRepo
 from src.storage.sqlite_client import SQLiteClient
 
 logger = logging.getLogger("aw.ws")  # 日志器 / Logger
+
+# 是否 mock 模式 / Mock mode toggle
+_cfg = load_config("../config.yaml")
+_MOCK = _cfg.mock_mode
 
 
 async def handle_ws(ws: WebSocket, session_id: str) -> None:
@@ -29,6 +35,7 @@ async def handle_ws(ws: WebSocket, session_id: str) -> None:
     orch: Orchestrator | None = None
 
     try:
+        _mock_engine: MockTickEngine | None = None  # Mock tick 引擎
         while True:
             raw = await ws.receive_text()  # 接收消息 / Receive message
             msg = json.loads(raw)  # 解析 JSON / Parse JSON
@@ -43,31 +50,56 @@ async def handle_ws(ws: WebSocket, session_id: str) -> None:
                     await ws.send_json({"type": "error", "data": "missing pack_id"})
                     continue
 
-                logger.info("[WS] %s init pack_id=%s llm=%s", session_id, pack_id, use_llm)
-                db, orch = await _init_session(session_id, pack_id, use_llm)
+                if _MOCK:
+                    # Mock 模式：直接返回预制数据 / Mock mode: return pre-built data
+                    logger.info("[WS] %s init pack_id=%s (MOCK)", session_id, pack_id)
+                    chars = list(MOCK_WORLD["characters"])
+                    _mock_engine = MockTickEngine()
+                    await ws.send_json(
+                        {
+                            "type": "init_ok",
+                            "data": {"pack_id": pack_id, "characters": chars, "tick": 0},
+                        }
+                    )
+                else:
+                    logger.info("[WS] %s init pack_id=%s llm=%s", session_id, pack_id, use_llm)
+                    db, orch = await _init_session(session_id, pack_id, use_llm)
 
-                char_repo = CharacterRepo(db)
-                pcs = await char_repo.load_pcs(pack_id)
-                actors = await char_repo.load_actors(pack_id)
-                chars = _serialize_characters(pcs, True) + _serialize_characters(
-                    actors, False
-                )  # 合并 PC+Actor
-                logger.info(
-                    "[WS] %s init_ok: %d PCs + %d Actors = %d chars",
-                    session_id,
-                    len(pcs),
-                    len(actors),
-                    len(chars),
-                )
-
-                await ws.send_json(
-                    {
-                        "type": "init_ok",
-                        "data": {"pack_id": pack_id, "characters": chars, "tick": 0},
-                    }
-                )
+                    char_repo = CharacterRepo(db)
+                    pcs = await char_repo.load_pcs(pack_id)
+                    actors = await char_repo.load_actors(pack_id)
+                    chars = _serialize_characters(pcs, True) + _serialize_characters(actors, False)
+                    logger.info(
+                        "[WS] %s init_ok: %d PCs + %d Actors = %d chars",
+                        session_id,
+                        len(pcs),
+                        len(actors),
+                        len(chars),
+                    )
+                    await ws.send_json(
+                        {
+                            "type": "init_ok",
+                            "data": {"pack_id": pack_id, "characters": chars, "tick": 0},
+                        }
+                    )
 
             elif cmd == "run":
+                if _MOCK:
+                    n = msg.get("ticks", 1)
+                    logger.info("[WS] %s run: %d ticks starting (MOCK)", session_id, n)
+                    for _ in range(n):
+                        data = _mock_engine.generate_tick()
+                        logger.info(
+                            "[WS] %s tick=%d narrative=%r moves=%d",
+                            session_id,
+                            data["tick"],
+                            data["narrative"][:40],
+                            len(data["character_moves"]),
+                        )
+                        await ws.send_json({"type": "tick", "data": data})
+                    logger.info("[WS] %s run: done (MOCK)", session_id)
+                    await ws.send_json({"type": "done", "data": {"tick": _mock_engine._tick}})
+                    continue
                 if not orch or not db:
                     logger.warning("[WS] %s run: not initialized", session_id)
                     await ws.send_json({"type": "error", "data": "not initialized"})

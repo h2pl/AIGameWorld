@@ -15,6 +15,8 @@ from fastapi import FastAPI, HTTPException, Query, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
+from src.config import load_config
+from src.mock import MOCK_WORLD
 from src.storage.sqlite_client import SQLiteClient
 from src.utils.logging import setup_logging
 from src.viewer import (
@@ -30,6 +32,10 @@ from src.ws import handle_ws
 
 # 终端可见日志 / Terminal-visible logging
 setup_logging()
+
+# 配置：是否 mock 模式 / Config: mock mode toggle
+_cfg = load_config()
+MOCK_MODE = _cfg.mock_mode
 
 
 @asynccontextmanager
@@ -82,6 +88,8 @@ async def get_pack_state(pack_id: str):
 
     前端加载时调用 → 返回场景/角色/物品/场景对象 / Called by frontend on load.
     """
+    if MOCK_MODE:
+        return MOCK_WORLD
     db = SQLiteClient("data/world_db.db")
     try:
         await db.connect()  # 连接 DB / connect
