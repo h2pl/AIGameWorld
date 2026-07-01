@@ -36,11 +36,11 @@ export class WSClient {
           if (msg.type === "init_ok") {
             const d = msg.data as Record<string, unknown>;
             const chars = d.characters as unknown[];
-            console.log("[WS] init_ok: chars=%d pack=%s", chars?.length || 0, d.pack_id);
-            // 写入 gameStore / Update gameStore
+            console.log("[WS] init_ok: pack=%s chars=%d", d.pack_id, chars?.length || 0);
+            // 同步后端角色列表（坐标可能为0,0，前端 sync() 中会过滤零初值）
             gameStore.setWorldState(
               d.pack_id as string,
-              gameStore.getState().scenes, // 保持现有场景
+              gameStore.getState().scenes,
               chars as never,
               [],
               [],

@@ -17,7 +17,7 @@ export class CharacterSprite {
     this.scene = scene; this.data = data; this.id = data.id; this.tileSize = tileSize;
 
     // 纹理 / Texture
-    const key = scene.textures.exists(data.id) ? data.id : (data.is_pc ? "pc_fighter" : "actor_default");
+    const key = scene.textures.exists(data.id) ? data.id : (data.is_pc ? "fighter_fb" : "actor_fb");
     this.sprite = scene.add.sprite(wx, wy, key).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
 
     // PC 金环 / Gold ring for PC
@@ -53,28 +53,52 @@ export class CharacterSprite {
     };
   }
 
-  /** 世界坐标移动 + 关联对象跟随 / Move in world coords, followers follow */
-  moveToWorld(wx: number, wy: number, duration = 300): Promise<void> {
-    return new Promise(resolve => {
-      this.scene.tweens.add({
-        targets: this.sprite, x: wx, y: wy, duration, ease: "Sine.easeInOut",
-        onUpdate: () => {
-          // 让名字标签跟随精灵当前位置 / Let name tag follow sprite's current position
-          this.nameTag.setPosition(this.sprite.x, this.sprite.y + this.tileSize * 0.4);
-          // 金环跟随 / Ring follows
-          if (this.ring) {
-            this.ring.clear(); this.ring.lineStyle(2, 0xffd700, 0.8);
-            this.ring.strokeCircle(this.sprite.x, this.sprite.y, this.tileSize * 0.35);
-          }
-          // 血条跟随 / HP bar follows
-          if (this.data.combat) {
-            this.hpBar.clear();
-            this.drawHpBar(this.sprite.x, this.sprite.y, this.data.combat.hp, this.data.combat.max_hp, this.tileSize);
-          }
-        },
-        onComplete: () => resolve(),
-      });
+  private walkSteps: { wx: number; wy: number }[] = [];
+  private walkSpeed = 200;
+  private walkIdx = 0;
+
+  /** 逐格行走 / Step-by-step walk — 参考 Phaser official complete delay.js 双方法交替模式 */
+  walkPath(steps: { wx: number; wy: number }[], speed: number): void {
+    this.walkSteps = steps;
+    this.walkSpeed = speed;
+    this.walkIdx = 0;
+    this.walkNext();
+  }
+
+  /** 走下一步 / Walk next step — 与 complete delay.js 相同风格 */
+  private walkNext(): void {
+    if (this.walkIdx >= this.walkSteps.length) return;
+    const s = this.walkSteps[this.walkIdx++];
+    this.scene.tweens.add({
+      targets: this.sprite,
+      x: s.wx,
+      y: s.wy,
+      duration: this.walkSpeed,
+      ease: "Linear",
+      onUpdate: () => this.updateFollowers(),
+      onComplete: () => { this.walkNext(); },
     });
+  }
+
+  /** 中断当前行走 / Cancel current walk */
+  cancelWalk(): void {
+    this.walkSteps = [];
+    this.walkIdx = 0;
+    this.scene.tweens.killTweensOf(this.sprite);
+  }
+
+  /** 名字标签、血条、金环跟随精灵 / Followers update with sprite position */
+  updateFollowers(): void {
+    const x = this.sprite.x, y = this.sprite.y, ts = this.tileSize;
+    this.nameTag.setPosition(x, y + ts * 0.4);
+    if (this.ring) {
+      this.ring.clear(); this.ring.lineStyle(2, 0xffd700, 0.8);
+      this.ring.strokeCircle(x, y, ts * 0.35);
+    }
+    if (this.data.combat) {
+      this.hpBar.clear();
+      this.drawHpBar(x, y, this.data.combat.hp, this.data.combat.max_hp, ts);
+    }
   }
 
   /** 更新血条 / Update HP */

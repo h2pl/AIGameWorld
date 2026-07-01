@@ -67,7 +67,7 @@ export class GameScene extends Phaser.Scene {
     // 为所有角色生成 Canvas 纹理 / Generate Canvas textures for all characters
     for (const ch of st.characters) makeCharTexture(this, ch, this.ts);
     // fallback 纹理 / Fallback textures
-    for (const fb of [{ id: "pc_fighter", race: "human", role: "fighter", is_pc: true }, { id: "actor_default", race: "human", role: "villager", is_pc: false }]) {
+    for (const fb of [{ id: "fighter_fb", race: "human", role: "fighter", is_pc: true }, { id: "actor_fb", race: "human", role: "villager", is_pc: false }]) {
       makeCharTexture(this, fb, this.ts);
     }
     console.log("[Scene] initVariables ts=%d chars=%d textures=ready", this.ts, st.characters.length);

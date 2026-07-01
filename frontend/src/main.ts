@@ -57,7 +57,7 @@ function loadMockState(): InitialWorldState {
     }],
     characters: [
       {
-        id: "pc_fighter", name: "Kael", role: "fighter", race: "human",
+        id: "fighter", name: "Kael", role: "fighter", race: "human",
         status: "active", scene_id: "village_elderwood",
         position_x: 6, position_y: 6,
         attributes: { strength: 16, dexterity: 12, constitution: 14, intelligence: 10, wisdom: 10, charisma: 12 },
@@ -66,7 +66,7 @@ function loadMockState(): InitialWorldState {
         is_pc: true,
       },
       {
-        id: "pc_rogue", name: "Zeph", role: "rogue", race: "elf",
+        id: "rogue", name: "Zeph", role: "rogue", race: "elf",
         status: "active", scene_id: "village_elderwood",
         position_x: 14, position_y: 6,
         attributes: { strength: 10, dexterity: 18, constitution: 12, intelligence: 14, wisdom: 12, charisma: 14 },
@@ -75,7 +75,7 @@ function loadMockState(): InitialWorldState {
         is_pc: true,
       },
       {
-        id: "pc_cleric", name: "Elara", role: "cleric", race: "human",
+        id: "cleric", name: "Elara", role: "cleric", race: "human",
         status: "active", scene_id: "village_elderwood",
         position_x: 6, position_y: 12,
         attributes: { strength: 12, dexterity: 10, constitution: 14, intelligence: 12, wisdom: 18, charisma: 14 },
@@ -84,7 +84,7 @@ function loadMockState(): InitialWorldState {
         is_pc: true,
       },
       {
-        id: "pc_wizard", name: "Mira", role: "wizard", race: "elf",
+        id: "wizard", name: "Mira", role: "wizard", race: "elf",
         status: "active", scene_id: "village_elderwood",
         position_x: 14, position_y: 12,
         attributes: { strength: 8, dexterity: 14, constitution: 12, intelligence: 18, wisdom: 14, charisma: 10 },
@@ -93,7 +93,7 @@ function loadMockState(): InitialWorldState {
         is_pc: true,
       },
       {
-        id: "actor_blacksmith", name: "Garret", role: "blacksmith", race: "dwarf",
+        id: "blacksmith", name: "Garret", role: "blacksmith", race: "dwarf",
         status: "active", scene_id: "village_elderwood",
         position_x: 4, position_y: 8,
         attributes: { strength: 14, dexterity: 10, constitution: 16, intelligence: 12, wisdom: 10, charisma: 10 },
@@ -102,7 +102,7 @@ function loadMockState(): InitialWorldState {
         is_pc: false,
       },
       {
-        id: "actor_guard", name: "Borin", role: "guard", race: "human",
+        id: "guard", name: "Borin", role: "guard", race: "human",
         status: "active", scene_id: "village_elderwood",
         position_x: 10, position_y: 2,
         attributes: { strength: 14, dexterity: 10, constitution: 14, intelligence: 10, wisdom: 12, charisma: 10 },
@@ -111,7 +111,7 @@ function loadMockState(): InitialWorldState {
         is_pc: false,
       },
       {
-        id: "actor_merchant", name: "Selia", role: "merchant", race: "human",
+        id: "merchant", name: "Selia", role: "merchant", race: "human",
         status: "active", scene_id: "village_elderwood",
         position_x: 24, position_y: 8,
         attributes: { strength: 8, dexterity: 12, constitution: 10, intelligence: 14, wisdom: 12, charisma: 16 },
@@ -198,10 +198,10 @@ async function main(): Promise<void> {
       tick: 1,
       events: [
         { type: "system", description: "世界初始化完成", source: "world" },
-        { type: "exploration", description: "Kael 进入 Elderwood 村庄广场", source: "pc_fighter" },
-        { type: "dialogue", description: "Garret 向 Kael 打招呼：'又来保养你的剑了？'", source: "actor_blacksmith", target: "pc_fighter" },
-        { type: "exploration", description: "Zeph 发现了酒馆后巷的可疑人物", source: "pc_rogue" },
-        { type: "combat", description: "Borin 报告：北边森林传来狼嚎", source: "actor_guard" },
+        { type: "exploration", description: "Kael 进入 Elderwood 村庄广场", source: "fighter" },
+        { type: "dialogue", description: "Garret 向 Kael 打招呼：'又来保养你的剑了？'", source: "blacksmith", target: "fighter" },
+        { type: "exploration", description: "Zeph 发现了酒馆后巷的可疑人物", source: "rogue" },
+        { type: "combat", description: "Borin 报告：北边森林传来狼嚎", source: "guard" },
       ],
     },
   });

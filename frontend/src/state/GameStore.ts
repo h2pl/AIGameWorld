@@ -108,13 +108,13 @@ class GameStore {
     this.notify();
   }
 
-  /** 批量更新角色位置 / Batch update character positions */
+  /** 批量更新角色位置（静默，applyTickUpdate 会统一 notify）/ Batch update positions (silent, notify via applyTickUpdate) */
   updatePositions(pos: Record<string, { x: number; y: number }>): void {
     for (const [id, p] of Object.entries(pos)) {
       this.state.character_positions[id] = p;
     }
     console.log("[Store] updatePositions %d chars: %s", Object.keys(pos).length, Object.keys(pos).join(","));
-    this.notify();
+    // notify() 由 applyTickUpdate 统一触发，避免 sync 双次调用
   }
 
   /** 添加叙事 / Add narrative */

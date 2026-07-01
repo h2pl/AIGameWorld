@@ -3,9 +3,12 @@
 
 import Phaser from "phaser";
 import { CharacterSprite } from "../gameobjects/CharacterSprite";
-import { gridToWorld } from "../utils/tile";
+import { gridToWorld, calcSteps } from "../utils/tile";
 import { TILEMAP, DEPTH } from "../constants";
 import type { CharacterData } from "../types";
+
+/** 行走速度 / Walk speed: 200ms per tile */
+const WALK_SPEED = 200;
 
 type Pos = { x: number; y: number };
 
@@ -45,7 +48,15 @@ export class CharacterManager {
       const { wx, wy } = gridToWorld(p.x, p.y, this.ts);
       const existing = this.sprites.get(ch.id);
       if (existing) {
-        existing.moveToWorld(wx, wy, 300);
+        const old = existing.getGridPos(this.ts);
+        // 跳过后端 init_ok 的零初值 / Skip zero-init from backend
+        const isInitZero = (p.x === 0 && p.y === 0 && (old.tx !== 0 || old.ty !== 0));
+        const changed = (old.tx !== p.x || old.ty !== p.y) && !isInitZero;
+        if (changed) {
+          existing.cancelWalk();
+          const steps = calcSteps(old, { tx: p.x, ty: p.y }, this.ts);
+          existing.walkPath(steps, WALK_SPEED);
+        }
         if (ch.combat) existing.updateHp(ch.combat.hp, ch.combat.max_hp);
       } else {
         const sp = new CharacterSprite(this.scene, ch, wx, wy, this.ts);
