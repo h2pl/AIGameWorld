@@ -15,7 +15,7 @@ from src.domain.character import (
     PlayerCharacter,
     Relationship,
 )
-from src.domain.event import Event
+from src.domain.event import DmNarrativeEvent, OpeningEvent, SceneSetupEvent
 from src.domain.instruction import (
     ActorMotivation,
     DMInstruction,
@@ -112,17 +112,20 @@ class TestCharacterDomain:
 
 
 # ============================================================
-# Event
+# Event / 消息事件
 # ============================================================
 class TestEvent:
-    def test_minimal(self):
-        e = Event(id="e1", tick=0, type="combat")
-        assert e.importance == 1
-        assert e.source == "system"
+    def test_opening(self):
+        e = OpeningEvent(text="欢迎！")
+        assert e.type == "opening"
 
-    def test_with_data(self):
-        e = Event(id="e2", tick=5, type="dialogue", data={"speaker": "npc1"}, narrative="Hello")
-        assert e.data["speaker"] == "npc1"
+    def test_scene_setup(self):
+        e = SceneSetupEvent(scene_id="s1", scene_name="Village")
+        assert e.type == "scene_setup"
+
+    def test_narrative_mood(self):
+        e = DmNarrativeEvent(text="夜幕降临", mood="mysterious")
+        assert e.mood == "mysterious"
 
 
 # ============================================================

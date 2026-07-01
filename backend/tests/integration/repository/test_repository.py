@@ -1,16 +1,21 @@
-"""Repository 集成测试——真实 SQLite DB 读写."""
+"""Repository 集成测试——内存 SQLite 验证 MessageRepo / EventRepo / CharacterRepo 读写."""
 
 import pytest
 
 from src.domain.character import Actor, Location, PlayerCharacter
-from src.domain.event import Event
+from src.domain.event import CharacterMoveEvent, DmNarrativeEvent
+from src.domain.message import Message
 from src.repository.character_repo import CharacterRepo
 from src.repository.event_repo import EventRepo
+from src.repository.message_repo import MessageRepo
 from src.storage.sqlite_client import SQLiteClient
+
+# ══ Fixtures / 夹具 ══
 
 
 @pytest.fixture
 async def db():
+    """内存 SQLite / In-memory SQLite."""
     client = SQLiteClient(":memory:")
     await client.connect()
     await client.init_schema()
@@ -27,7 +32,16 @@ async def event_repo(db):
     return EventRepo(db)
 
 
+@pytest.fixture
+async def msg_repo(db):
+    return MessageRepo(db)
+
+
+# ══ CharacterRepo 测试 / Character Repo Tests ══
+
+
 class TestCharacterRepo:
+    # 保存并加载 PC / Save and load PC
     @pytest.mark.asyncio
     async def test_save_and_load_pc(self, char_repo):
         pc = PlayerCharacter(id="pc_test1", name="Hero")
@@ -83,17 +97,81 @@ class TestCharacterRepo:
         assert len(actors) == 1
 
 
-class TestEventRepo:
-    @pytest.mark.asyncio
-    async def test_insert_and_load(self, event_repo):
-        evt = Event(id="evt_1", tick=0, type="combat", data={"damage": 10})
-        await event_repo.insert(evt)
-        events = await event_repo.load_all()
-        assert len(events) == 1
-        assert events[0].type == "combat"
-        assert events[0].data["damage"] == 10
+class TestMessageEventRepo:
+    """Message + Event 联合测试 / Combined Message + Event tests."""
+
+    # 辅助：插入测试消息 / Helper: insert test msg
+    async def _insert_msg(self, msg_repo, mid="aw_test", tick=1):
+        msg = Message(id=mid, tick=tick, world_id="test", timestamp="2026-07-01T12:00:00Z")
+        await msg_repo.insert(msg)
 
     @pytest.mark.asyncio
-    async def test_load_empty(self, event_repo):
-        events = await event_repo.load_all()
-        assert events == []
+    async def test_insert_and_load_events(self, msg_repo, event_repo):
+        await self._insert_msg(msg_repo)
+        evts = [
+            DmNarrativeEvent(text="Hello world"),
+            CharacterMoveEvent(character_id="fighter", x=5, y=8),
+        ]
+        await event_repo.insert_batch("aw_test", 1, evts)
+        loaded = await event_repo.load_by_message("aw_test", 1)
+        assert len(loaded) == 2
+        # character_move (SEQUENCE idx=3) 排在 dm_narrative (idx=6) 前面
+        assert loaded[0].character_id == "fighter"
+        assert loaded[1].text == "Hello world"
+
+    @pytest.mark.asyncio
+    async def test_load_empty_events(self, event_repo):
+        loaded = await event_repo.load_by_message("nonexistent", 0)
+        assert loaded == []
+
+    @pytest.mark.asyncio
+    async def test_events_ordered_by_seq(self, msg_repo, event_repo):
+        await self._insert_msg(msg_repo)
+        evts = [
+            DmNarrativeEvent(text="first"),
+            DmNarrativeEvent(text="second"),
+            DmNarrativeEvent(text="third"),
+        ]
+        await event_repo.insert_batch("aw_test", 1, evts)
+        loaded = await event_repo.load_by_message("aw_test", 1)
+        assert loaded[0].text == "first"
+        assert loaded[1].text == "second"
+        assert loaded[2].text == "third"
+
+    @pytest.mark.asyncio
+    async def test_insert_then_get_pending(self, msg_repo, event_repo):
+        msg = Message(
+            id="aw_test",
+            tick=1,
+            world_id="test",
+            timestamp="2026-07-01T12:00:00Z",
+            events=[DmNarrativeEvent(text="test")],
+        )
+        await msg_repo.insert(msg)
+        await event_repo.insert_batch(msg.id, msg.tick, msg.events)
+        meta = await msg_repo.get_next_pending("aw_test")
+        assert meta is not None
+        assert meta["tick"] == 1
+        events = await event_repo.load_by_message(meta["id"], meta["tick"])
+        assert len(events) == 1
+        assert events[0].text == "test"
+
+    @pytest.mark.asyncio
+    async def test_ack_skips_consumed(self, msg_repo):
+        await self._insert_msg(msg_repo, tick=1)
+        await self._insert_msg(msg_repo, tick=2)
+        await msg_repo.ack("aw_test", 1)
+        meta = await msg_repo.get_next_pending("aw_test")
+        assert meta["tick"] == 2
+
+    @pytest.mark.asyncio
+    async def test_get_pending_empty(self, msg_repo):
+        meta = await msg_repo.get_next_pending("no_session")
+        assert meta is None
+
+    @pytest.mark.asyncio
+    async def test_ack_all_then_none(self, msg_repo):
+        await self._insert_msg(msg_repo, tick=1)
+        await msg_repo.ack("aw_test", 1)
+        meta = await msg_repo.get_next_pending("aw_test")
+        assert meta is None
