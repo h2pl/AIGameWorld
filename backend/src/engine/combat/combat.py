@@ -2,6 +2,7 @@
 
 依赖 src/rules/dnd_rules.py 做 D20 判定。
 """
+import logging
 
 import random
 
@@ -13,6 +14,7 @@ _MAX_ROUNDS = 20
 
 
 def resolve_combat(req: CombatRequest) -> CombatResponse:
+    logging.getLogger("aw.eng").info("[combat]")
     """战斗裁决主入口 / Combat resolution entry point."""
     participants = [p.model_copy() for p in req.participants]
     if not participants:

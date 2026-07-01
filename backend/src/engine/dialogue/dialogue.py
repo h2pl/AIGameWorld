@@ -3,6 +3,7 @@
 注意：普通对话（talk）不需要检定，只有说服/欺瞒/威吓等影响他人的行为才掷 D20。
 Ordinary conversation doesn't roll dice — only persuasion/intimidation/deception checks do.
 """
+import logging
 
 from ...rules.dnd_rules import resolve_check
 from ...schemas.request import DialogueRequest
@@ -10,6 +11,7 @@ from ...schemas.response import DialogueResponse
 
 
 def resolve_persuasion(req: DialogueRequest) -> DialogueResponse:
+    logging.getLogger("aw.eng").info("[dialogue]")
     """社交检定——D20 + 修正 vs DC / Social skill check."""
     if not req.speaker:
         return DialogueResponse(success=False, content="无效角色。")
