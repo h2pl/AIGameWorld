@@ -128,7 +128,7 @@ async def render_global_items(db_path: str) -> HTMLResponse:
     client = await _get_client(db_path)
     try:
         repo = ItemRepo(client)
-        all_items = await repo.list_all()
+        all_items = await repo.load_all()
         items = [
             {
                 "id": k,
@@ -140,7 +140,7 @@ async def render_global_items(db_path: str) -> HTMLResponse:
                 "weight": v.weight,
                 "value": v.value,
                 "description": v.description,
-                "pack_id": v.pack_id,
+                "pack_id": v.world_id,
             }
             for k, v in all_items.items()
         ]
@@ -165,7 +165,7 @@ async def render_global_objects(db_path: str) -> HTMLResponse:
     client = await _get_client(db_path)
     try:
         repo = SceneRepo(client)
-        all_objs = await repo.list_all()
+        all_objs = await repo.load_all()
         objects = [
             {
                 "id": k,
@@ -202,18 +202,18 @@ async def render_global_events(db_path: str) -> HTMLResponse:
     client = await _get_client(db_path)
     try:
         repo = EventRepo(client)
-        events = await repo.list_all()
+        events = await repo.load_by_tick_range(world_id="", tick_start=0, tick_end=10**9)
         html = _JINJA.get_template("events.html").render(
             events=[
                 {
-                    "id": e.id,
-                    "tick": e.tick,
-                    "type": e.type,
-                    "source": e.source,
-                    "target": e.target,
-                    "narrative": e.narrative,
+                    "id": f"{e['tick']}-{index}",
+                    "tick": e["tick"],
+                    "type": e["type"],
+                    "source": "",
+                    "target": "",
+                    "narrative": e["payload"],
                 }
-                for e in events
+                for index, e in enumerate(events)
             ],
         )
     finally:
@@ -365,7 +365,7 @@ async def _load_items(client: SQLiteClient, pack_id: str) -> list[dict]:
         if d.get("data_json"):
             try:
                 d["data"] = json.loads(d["data_json"])
-            except json.JSONDecodeError, TypeError:
+            except (json.JSONDecodeError, TypeError):
                 d["data"] = {}
         result.append(d)
     return result

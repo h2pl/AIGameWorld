@@ -53,3 +53,12 @@ class ReflectionSubState(TypedDict):
     events: list[dict[str, Any]]
     reflected_characters: list[str]
     summary_compressed: bool
+
+
+class EngineSubState(TypedDict, total=False):
+    """引擎适配状态 / Engine adapter state."""
+
+    round: int
+    participants: list[Any]
+    quests: list[Any]
+    event_log: list[Any]

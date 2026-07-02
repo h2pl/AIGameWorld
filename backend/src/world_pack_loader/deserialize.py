@@ -3,6 +3,8 @@
 从 YAML dict 构建 Pydantic 领域模型实例。
 """
 
+import json
+
 from ..domain import (
     Actor,
     Attributes,
@@ -12,7 +14,6 @@ from ..domain import (
     InventorySlot,
     Item,
     ItemType,
-    Location,
     PlayerCharacter,
     SceneObject,
     SceneObjectType,
@@ -30,14 +31,19 @@ def pc_from_yaml(data: dict, starting_scene: str, world_id: str) -> PlayerCharac
         name=data.get("name", ""),
         role=data.get("role", ""),
         race=data.get("race"),
-        location=Location(scene_id=data.get("scene_id") or starting_scene),
-        attributes=attrs_from_yaml(data.get("attributes")),
-        combat=combat_from_yaml(data.get("combat")),
+        scene_id=data.get("scene_id") or starting_scene,
+        attributes_json=json.dumps(attrs_from_yaml(data.get("attributes")), ensure_ascii=False),
+        combat_json=json.dumps(combat_from_yaml(data.get("combat")) or {}, ensure_ascii=False),
         personality=data.get("personality", ""),
-        character_arc=char_arc_from_yaml(data.get("character_arc")),
+        character_arc_json=json.dumps(
+            char_arc_from_yaml(data.get("character_arc")), ensure_ascii=False
+        ),
         long_term_goal=(data.get("character_arc") or {}).get("goal", ""),
-        equipment=equip_from_yaml(data.get("equipment")),
-        inventory=inventory_from_yaml(data.get("inventory")),
+        equipment_json=json.dumps(equip_from_yaml(data.get("equipment")), ensure_ascii=False),
+        inventory_json=json.dumps(inventory_from_yaml(data.get("inventory")), ensure_ascii=False),
+        values_json=json.dumps(
+            (data.get("character_arc") or {}).get("values", []), ensure_ascii=False
+        ),
         world_id=world_id,
     )
 
@@ -49,14 +55,14 @@ def actor_from_yaml(data: dict, starting_scene: str = "", world_id: str = "") ->
         name=data.get("name", ""),
         role=data.get("role", ""),
         race=data.get("race"),
-        location=Location(scene_id=data.get("scene_id") or starting_scene),
-        attributes=attrs_from_yaml(data.get("attributes")),
-        combat=combat_from_yaml(data.get("combat")),
+        scene_id=data.get("scene_id") or starting_scene,
+        attributes_json=json.dumps(attrs_from_yaml(data.get("attributes")), ensure_ascii=False),
+        combat_json=json.dumps(combat_from_yaml(data.get("combat")) or {}, ensure_ascii=False),
         personality=data.get("personality", ""),
-        functions=data.get("functions", []),
-        function_data=data.get("function_data", {}),
-        equipment=equip_from_yaml(data.get("equipment")),
-        inventory=inventory_from_yaml(data.get("inventory")),
+        functions_json=json.dumps(data.get("functions", []), ensure_ascii=False),
+        function_data_json=json.dumps(data.get("function_data", {}), ensure_ascii=False),
+        equipment_json=json.dumps(equip_from_yaml(data.get("equipment")), ensure_ascii=False),
+        inventory_json=json.dumps(inventory_from_yaml(data.get("inventory")), ensure_ascii=False),
         world_id=world_id,
     )
 
@@ -97,48 +103,49 @@ def scene_obj_from_yaml(data: dict, world_id: str = "") -> SceneObject:
 
 def attrs_from_yaml(data: dict | None) -> Attributes:
     if not data:
-        return Attributes()
-    return Attributes(
-        strength=data.get("str", data.get("strength", 10)),
-        dexterity=data.get("dex", data.get("dexterity", 10)),
-        constitution=data.get("con", data.get("constitution", 10)),
-        intelligence=data.get("int", data.get("intelligence", 10)),
-        wisdom=data.get("wis", data.get("wisdom", 10)),
-        charisma=data.get("cha", data.get("charisma", 10)),
-    )
+        return {}
+    return {
+        "strength": data.get("str", data.get("strength", 10)),
+        "dexterity": data.get("dex", data.get("dexterity", 10)),
+        "constitution": data.get("con", data.get("constitution", 10)),
+        "intelligence": data.get("int", data.get("intelligence", 10)),
+        "wisdom": data.get("wis", data.get("wisdom", 10)),
+        "charisma": data.get("cha", data.get("charisma", 10)),
+    }
 
 
 def combat_from_yaml(data: dict | None) -> CombatStats | None:
     if not data:
         return None
-    return CombatStats(
-        hp=data.get("hp", 10),
-        max_hp=data.get("max_hp", data.get("hp", 10)),
-        ac=data.get("ac", 10),
-        initiative=data.get("initiative", 0),
-        speed=data.get("speed", 30),
-        attack_bonus=data.get("attack_bonus", 0),
-        damage_dice=data.get("damage_dice", "1d4"),
-    )
+    return {
+        "hp": data.get("hp", 10),
+        "max_hp": data.get("max_hp", data.get("hp", 10)),
+        "ac": data.get("ac", 10),
+        "initiative": data.get("initiative", 0),
+        "speed": data.get("speed", 30),
+        "attack_bonus": data.get("attack_bonus", 0),
+        "damage_dice": data.get("damage_dice", "1d4"),
+    }
 
 
 def char_arc_from_yaml(data: dict | None) -> CharacterArc:
     if not data:
-        return CharacterArc()
-    return CharacterArc(
-        stage=data.get("stage", "setup"),
-        description=data.get("description", ""),
-    )
+        return {}
+    return {
+        "stage": data.get("stage", "setup"),
+        "description": data.get("description", ""),
+        "goal": data.get("goal", ""),
+    }
 
 
 def equip_from_yaml(data: dict | None) -> Equipment:
     if not data:
-        return Equipment()
-    return Equipment(
-        weapon_id=data.get("weapon"),
-        armor_id=data.get("armor"),
-        shield_id=data.get("shield"),
-    )
+        return {}
+    return {
+        "weapon": data.get("weapon"),
+        "armor": data.get("armor"),
+        "shield": data.get("shield"),
+    }
 
 
 def inventory_from_yaml(data: list | None) -> list[InventorySlot]:
@@ -149,9 +156,9 @@ def inventory_from_yaml(data: list | None) -> list[InventorySlot]:
         if not isinstance(i, dict):
             continue  # 跳过字符串等非 dict 项 / Skip non-dict entries
         result.append(
-            InventorySlot(
-                item_id=i.get("item", i.get("item_id", "")),
-                quantity=i.get("qty", i.get("quantity", 1)),
-            )
+            {
+                "item_id": i.get("item", i.get("item_id", "")),
+                "quantity": i.get("qty", i.get("quantity", 1)),
+            }
         )
     return result

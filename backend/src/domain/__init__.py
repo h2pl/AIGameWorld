@@ -4,6 +4,8 @@
 All models inherit DomainModel (with world_id), no nested sub-models.
 """
 
+from typing import Any
+
 # 演员 NPC / Actor NPC model
 from .actor import Actor
 
@@ -37,13 +39,27 @@ from .story_summary import StorySummary
 # 世界 / World model
 from .world import World
 
+# 兼容旧加载器的类型别名 / Compatibility aliases for legacy loaders
+Attributes = dict[str, Any]
+CharacterArc = dict[str, Any]
+CombatStats = dict[str, Any]
+Equipment = dict[str, Any]
+InventorySlot = dict[str, Any]
+Location = dict[str, Any]
+
 __all__ = [
     "Actor",
+    "Attributes",
+    "CharacterArc",
+    "CombatStats",
     "DMRecord",
     "DomainModel",
+    "Equipment",
     "Event",
+    "InventorySlot",
     "Item",
     "ItemType",
+    "Location",
     "Message",
     "PlayerCharacter",
     "Scene",

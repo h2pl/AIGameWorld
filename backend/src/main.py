@@ -34,6 +34,7 @@ setup_logging()
 app = FastAPI(title="AIGameWorld API", version="0.1.0")
 
 
+# 运行时 session 注册表 / Runtime session registry
 def _get_sessions() -> dict[str, dict]:
     sessions = getattr(app.state, "sessions", None)
     if sessions is None:
@@ -42,6 +43,7 @@ def _get_sessions() -> dict[str, dict]:
     return sessions
 
 
+# 统一读取共享 DB 连接 / Unified accessor for shared DB connection
 def _get_db() -> SQLiteClient:
     db = getattr(app.state, "db", None)
     if db is None:
@@ -49,6 +51,7 @@ def _get_db() -> SQLiteClient:
     return db
 
 
+# 统一写入共享 DB 连接 / Unified setter for shared DB connection
 def _set_db(db: SQLiteClient | None) -> None:
     app.state.db = db
 
@@ -64,6 +67,7 @@ async def _seed(rep: WorldRepo):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 启动时初始化共享资源 / Initialize shared resources on startup
     db = SQLiteClient("data/world_db.db")
     _set_db(db)
     app.state.sessions = {}
@@ -71,6 +75,7 @@ async def lifespan(app: FastAPI):
     await db.init_schema()
     await _seed(WorldRepo(db))
     yield
+    # 关闭时回收 session 与 DB / Clean up sessions and DB on shutdown
     sessions = _get_sessions()
     for mid in list(sessions.keys()):
         s = sessions.pop(mid, None)

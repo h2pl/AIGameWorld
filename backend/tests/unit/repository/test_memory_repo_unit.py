@@ -1,16 +1,16 @@
 """MemoryRepo 单元测试——Mock ChromaClient."""
 
-# ── 依赖 / Dependencies ──
-
 from unittest.mock import Mock
 
 from src.domain.memory import importance_of
+
 from src.repository.memory_repo import MemoryRepo
 
 
 class TestMemoryRepoUnit:
     """Mock ChromaClient 的 MemoryRepo 单元测试."""
 
+    # 短期记忆应保留基本字段 / Short-term memory should keep core fields
     def test_store_short_term(self):
         repo = MemoryRepo(Mock())
         mem = repo.store("alex", "Found a rusty sword.", tick=1, importance=5)

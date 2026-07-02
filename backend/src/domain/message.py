@@ -8,4 +8,5 @@ from .base import DomainModel
 class Message(DomainModel):
     id: str
     tick: int
+    events: list[dict] = []
     timestamp: datetime | None = None

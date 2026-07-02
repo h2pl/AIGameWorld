@@ -97,9 +97,6 @@ def validate_pack_relations(data: dict) -> list[str]:
     # ── 收集已声明 ID / Collect declared IDs ──
     scene_ids = {s.get("id") for s in data.get("scenes", []) if s.get("id")}
     item_ids = {i.get("id") for i in data.get("items", []) if i.get("id")}
-    pc_ids = {p.get("id") for p in data.get("player_characters", []) if p.get("id")}
-    actor_ids = {a.get("id") for a in data.get("actors", []) if a.get("id")}
-    pc_ids | actor_ids
 
     starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
 
