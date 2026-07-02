@@ -3,6 +3,7 @@
 import json
 import logging
 
+from ..domain.event import Event
 from ..storage.sqlite_client import SQLiteClient
 
 logger = logging.getLogger("aw.repo.event")
@@ -12,12 +13,18 @@ class EventRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
-    async def insert_events(self, msg_id: str, msg_tick: int, events: list[dict]) -> None:
+    async def insert_events(self, msg_id: str, msg_tick: int, events: list[dict | Event]) -> None:
         """批量写入事件."""
         for ev in events:
+            if isinstance(ev, Event):
+                ev_type = ev.type
+                ev_payload = ev.payload
+            else:
+                ev_type = ev["type"]
+                ev_payload = ev.get("payload", ev)
             await self._db.execute(
                 "INSERT INTO events (msg_id, msg_tick, type, payload) VALUES (?, ?, ?, ?)",
-                (msg_id, msg_tick, ev["type"], json.dumps(ev.get("payload", ev), default=str)),
+                (msg_id, msg_tick, ev_type, json.dumps(ev_payload, default=str)),
             )
         await self._db.commit()
         logger.info("[event] insert %s tick=%s count=%d", msg_id, msg_tick, len(events))

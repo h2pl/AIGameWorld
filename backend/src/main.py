@@ -341,4 +341,6 @@ async def _graph_producer(
 
 # Event → JSON / Serialize event
 def _event_to_dict(ev) -> dict:
+    if isinstance(ev, dict):
+        return ev
     return ev.model_dump()

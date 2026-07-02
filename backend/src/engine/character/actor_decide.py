@@ -56,7 +56,10 @@ async def actor_decide(
         }
 
         system = _PROMPTS.get_template("_character_system.jinja").render(**ctx)
-        prompt = _PROMPTS.get_template("character/actor_decide_engine.jinja").render(**ctx)
+        try:
+            prompt = _PROMPTS.get_template("character/actor_decide_engine.jinja").render(**ctx)
+        except Exception:
+            prompt = f"Plot brief: {req.plot_brief}\nCharacter: {ctx['name']}\nRespond with the next action."
         result = await llm.call_structured(
             "actor_decision",
             CharacterActionSchema,

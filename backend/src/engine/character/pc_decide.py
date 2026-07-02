@@ -51,7 +51,10 @@ async def pc_decide(req: PCDecideRequest, config: RunnableConfig = None) -> PCDe
             "memories": [{"content": m.content} for m in memories],
         }
         system = _PROMPTS.get_template("_character_system.jinja").render(**ctx)
-        prompt = _PROMPTS.get_template("character/pc_decide_engine.jinja").render(**ctx)
+        try:
+            prompt = _PROMPTS.get_template("character/pc_decide_engine.jinja").render(**ctx)
+        except Exception:
+            prompt = f"Plot brief: {req.plot_brief}\nCharacter: {ctx['name']}\nRespond with the next action."
         result = await llm.call_structured(
             "pc_decision",
             CharacterActionSchema,

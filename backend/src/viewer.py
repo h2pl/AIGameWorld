@@ -263,7 +263,10 @@ async def render_global_meta(db_path: str) -> HTMLResponse:
     """World Meta — world_meta 表 key-value / world_meta table key-value."""
     client = await _get_client(db_path)
     try:
-        rows = await client.fetch_all("SELECT key, value FROM world_meta ORDER BY key")
+        try:
+            rows = await client.fetch_all("SELECT key, value FROM world_meta ORDER BY key")
+        except Exception:
+            rows = []
         kv = {r["key"]: r["value"] or "" for r in rows}
         html = _JINJA.get_template("pack.html").render(
             pack_id="meta",
