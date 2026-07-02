@@ -4,7 +4,7 @@ import logging
 
 from langchain_core.runnables.config import RunnableConfig
 
-from ....schemas.request import ActorDecideRequest, PCDecideRequest
+from ...schemas.request import ActorDecideRequest, PCDecideRequest
 from . import actor_decide, pc_decide
 
 logger = logging.getLogger("aw.eng.char")
