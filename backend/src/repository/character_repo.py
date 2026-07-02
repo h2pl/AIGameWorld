@@ -24,8 +24,9 @@ class CharacterRepo:
         await self._db.execute(
             """
             INSERT INTO player_characters (id, name, role, race, status, scene_id,
-            position_x, position_y, world_id, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            position_x, position_y, attributes_json, combat_json, character_arc_json,
+            values_json, equipment_json, inventory_json, relationships_json, world_id, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
             status=excluded.status, scene_id=excluded.scene_id,
             position_x=excluded.position_x, position_y=excluded.position_y,
@@ -41,6 +42,13 @@ class CharacterRepo:
                 pc.scene_id,
                 pc.position_x,
                 pc.position_y,
+                pc.attributes_json,
+                pc.combat_json,
+                pc.character_arc_json,
+                pc.values_json,
+                pc.equipment_json,
+                pc.inventory_json,
+                pc.relationships_json,
                 pc.world_id,
             ),
         )
@@ -49,8 +57,9 @@ class CharacterRepo:
         await self._db.execute(
             """
             INSERT INTO actors (id, name, role, race, status, scene_id,
-            position_x, position_y, world_id, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            position_x, position_y, attributes_json, combat_json, functions_json,
+            function_data_json, inventory_json, relationships_json, world_id, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
             status=excluded.status, scene_id=excluded.scene_id,
             position_x=excluded.position_x, position_y=excluded.position_y,
@@ -66,6 +75,12 @@ class CharacterRepo:
                 actor.scene_id,
                 actor.position_x,
                 actor.position_y,
+                actor.attributes_json,
+                actor.combat_json,
+                actor.functions_json,
+                actor.function_data_json,
+                actor.inventory_json,
+                actor.relationships_json,
                 actor.world_id,
             ),
         )
