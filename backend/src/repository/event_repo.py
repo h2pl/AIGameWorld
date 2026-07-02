@@ -3,7 +3,7 @@
 import json
 import logging
 
-from ..domain.event import Event
+from ..domain.event import SEQUENCE, Event
 from ..storage.sqlite_client import SQLiteClient
 
 logger = logging.getLogger("aw.repo.event")
@@ -39,10 +39,10 @@ class EventRepo:
         )
         return [{"tick": r["tick"], "type": r["type"], "payload": r["payload"]} for r in rows]
 
-    async def load_by_message(self, msg_id: str, msg_tick: int) -> list[dict]:
+    async def load_by_message(self, msg_id: str, msg_tick: int) -> list[Event]:
         """按消息加载事件."""
         rows = await self._db.fetch_all(
-            "SELECT type, payload FROM events WHERE msg_id = ? AND msg_tick = ? ORDER BY id",
+            "SELECT id, type, payload FROM events WHERE msg_id = ? AND msg_tick = ? ORDER BY id",
             (msg_id, msg_tick),
         )
         result: list[Event] = []
@@ -51,4 +51,5 @@ class EventRepo:
             if not isinstance(payload, dict):
                 payload = {"description": payload}
             result.append(Event(type=r["type"], tick=msg_tick, payload=payload))
-        return result
+        order_index = {event_type: index for index, event_type in enumerate(SEQUENCE)}
+        return sorted(result, key=lambda ev: order_index.get(ev.type, len(SEQUENCE)))

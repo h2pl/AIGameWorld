@@ -40,6 +40,7 @@ class PlayerCharacter(DomainModel):
         data = dict(data)
         if "location" in data and isinstance(data["location"], dict):
             data.setdefault("scene_id", data["location"].get("scene_id", ""))
+            data.pop("location", None)
         if "attributes" in data and not data.get("attributes_json"):
             data["attributes_json"] = json.dumps(data.pop("attributes"), ensure_ascii=False)
         if "combat" in data and not data.get("combat_json"):

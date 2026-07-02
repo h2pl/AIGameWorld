@@ -58,11 +58,14 @@ class CharacterRepo:
             """
             INSERT INTO actors (id, name, role, race, status, scene_id,
             position_x, position_y, attributes_json, combat_json, functions_json,
-            function_data_json, inventory_json, relationships_json, world_id, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            function_data_json, inventory_json, relationships_json, dm_assigned,
+            motivation_injected, world_id, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
             status=excluded.status, scene_id=excluded.scene_id,
             position_x=excluded.position_x, position_y=excluded.position_y,
+            dm_assigned=excluded.dm_assigned,
+            motivation_injected=excluded.motivation_injected,
             world_id=excluded.world_id,
             updated_at=datetime('now')
         """,
@@ -81,6 +84,8 @@ class CharacterRepo:
                 actor.function_data_json,
                 actor.inventory_json,
                 actor.relationships_json,
+                int(actor.dm_assigned),
+                actor.motivation_injected,
                 actor.world_id,
             ),
         )
