@@ -13,15 +13,20 @@ class OverallState(TypedDict):
     tick: int  # 当前 tick 编号 / Current tick number
     world_id: str  # 世界 ID / World ID
     tick_message_id: str  # 消息 ID / Message ID
-    scene_observations: list[
-        dict[str, Any]
-    ]  # 每个角色的场景观察结果 / Per-character scene observations
+    scene_info: dict[
+        str, Any
+    ]  # 当前场景的信息（与谁使用无关，不区分 PC）/ Current scene info (consumer-independent, not per-PC)
+    pending_events: Annotated[
+        list[dict[str, Any]], add
+    ]  # 各引擎产生的原始结果（累加，非事件；tick 结束时由 event_service 统一构造事件并写入）/
+    # Raw results from engines (accumulated, not events; event_service builds events from
+    # these and flushes them at tick end)
     hints: list[str]  # DM 环境提示 / DM environmental hints
     plot_brief: str  # 剧情梗概 / Plot brief
     scene_id: str  # 当前场景 ID / Current scene ID
-    character_actions: Annotated[
+    character_decisions: Annotated[
         list[dict[str, Any]], add
-    ]  # 角色行动（累加） / Character actions (accumulated)
+    ]  # 角色决策（累加） / Character decisions (accumulated)
     narrative: str  # DM 叙事文本 / DM narrative text
     reflected_characters: list[str]  # 已反思角色 / Reflected character IDs
     summary_compressed: bool  # 是否已摘要压缩 / Whether summary compressed
@@ -34,8 +39,9 @@ class CharacterSubState(TypedDict):
 
     tick: int
     plot_brief: str
-    scene_observations: list[dict[str, Any]]
-    character_actions: Annotated[list[dict[str, Any]], add]
+    scene_info: dict[str, Any]
+    pending_events: Annotated[list[dict[str, Any]], add]
+    character_decisions: Annotated[list[dict[str, Any]], add]
 
 
 class CharacterAgentState(TypedDict):
@@ -45,7 +51,7 @@ class CharacterAgentState(TypedDict):
     character_type: str  # pc / actor / Player character or NPC
     plot_brief: str
     tick: int
-    character_actions: Annotated[list[dict[str, Any]], add]
+    character_decisions: Annotated[list[dict[str, Any]], add]
 
 
 class ReflectionSubState(TypedDict):

@@ -1,24 +1,84 @@
-{# Phase 3: PC 深层决策 / PC deep decision #}
-{% include '_pc_system.jinja' %}
+{# Phase 3: PC 深层决策——每 tick 变化的世界状态 / Per-tick world state #}
+当前剧情情境：{{ plot_brief }}
+
+{# DM 环境提示 / DM environmental hints #}
+{% if hints %}
+DM 提示：
+{% for hint in hints %}
+- {{ hint }}
+{% endfor %}
+{% endif %}
+
+{# 当前场景具体信息 / Concrete current scene info #}
+当前场景：{{ scene.name }}（{{ scene.type }}）
+{{ scene.description }}
+{% if scene.landmarks %}
+场景地标：{{ scene.landmarks | join("、") }}
+{% endif %}
+{% if scene.exits %}
+出口：
+{% for exit in scene.exits %}
+- {{ exit }}
+{% endfor %}
+{% endif %}
+
+{# 场景物体具体信息 / Concrete scene object info #}
+{% if scene_objects %}
+场景中的物体（target_id 请使用括号内的 id；只能对标注"可交互"的物体发起 interact）：
+{% for obj in scene_objects %}
+- {{ obj.name }}（id: {{ obj.id }}，{{ obj.object_type }}，{{ "可交互" if obj.interactable else "不可交互" }}）
+{% endfor %}
+{% endif %}
+
+{# 附近的玩家角色 / Nearby player characters #}
+{% if nearby_pcs %}
+附近的玩家角色（PC，target_id 请使用括号内的 id）：
+{% for c in nearby_pcs %}
+- {{ c.name }}（id: {{ c.id }}，{{ c.role }}{% if c.race %}，{{ c.race }}{% endif %}，状态：{{ c.status }}）
+{% endfor %}
+{% endif %}
+
+{# 按 disposition 区分 NPC 与敌人 / Split actors into NPC vs enemy by disposition #}
+{% set hostile_actors = nearby_actors | selectattr("disposition", "equalto", "hostile") | list %}
+{% set other_actors = nearby_actors | rejectattr("disposition", "equalto", "hostile") | list %}
+{% if other_actors %}
+附近的 NPC（target_id 请使用括号内的 id）：
+{% for c in other_actors %}
+- {{ c.name }}（id: {{ c.id }}，{{ c.role }}{% if c.race %}，{{ c.race }}{% endif %}，状态：{{ c.status }}{% if c.personality %}，性格：{{ c.personality }}{% endif %}）
+{% endfor %}
+{% endif %}
+{% if hostile_actors %}
+附近的敌人（target_id 请使用括号内的 id；如需应对可选择 action_type=combat）：
+{% for c in hostile_actors %}
+- {{ c.name }}（id: {{ c.id }}，{{ c.role }}{% if c.race %}，{{ c.race }}{% endif %}，状态：{{ c.status }}）
+{% endfor %}
+{% endif %}
 
 {# === 输出约束 / Output spec === #}
 严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
 
 字段说明：
-- action_type: move / talk / attack / interact / wait 之一
-- target: 目标角色 id 或场景对象 id；无则 null
+- action_type: talk / interact / combat / wait 之一
+  - talk: 与人交谈，必须提供 target_id + target_type（pc 或 actor）
+  - interact: 与场景物体互动，必须提供 target_id + target_type（scene_object），且该物体必须标注"可交互"
+  - combat: 向敌人发起战斗（combat 尚未接入完整战斗结算，仅记录意图），必须提供 target_id + target_type（pc 或 actor）
+  - wait: 观望等待，target_id 和 target_type 都必须是 null
+- target_id: 目标 id（必须使用上文括号内列出的 id，不要使用名字）；action_type 为 wait 时必须是 null
+- target_type: pc / actor / scene_object 之一，需与 action_type 匹配；action_type 为 wait 时必须是 null
 - reasoning: 你的决策理由（2-3 句中文，结合当前场景和附近的人）
 
 输出格式：
 {
   "action_type": "talk",
-  "target": "innkeeper",
+  "target_id": "npc_greta",
+  "target_type": "actor",
   "reasoning": "我想了解这个小镇发生了什么，Greta 看起来知道很多。"
 }
 
 示例：
 {
   "action_type": "talk",
-  "target": "innkeeper",
-  "reasoning": "Greta 的眼神暗示她有话要说。我的直觉告诉我应该打听一下最近镇上有什么异常。"
+  "target_id": "npc_greta",
+  "target_type": "actor",
+  "reasoning": "Greta 的眼神暗示她有话要说，酒馆里的气氛也有些不对劲。我的直觉告诉我应该打听一下最近镇上发生了什么异常。"
 }

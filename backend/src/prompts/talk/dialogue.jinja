@@ -1,0 +1,29 @@
+{# 双人对话——每 tick 变化的任务内容 / Per-call task content #}
+当前剧情情境：{{ plot_brief }}
+
+{% if hints %}
+DM 提示：
+{% for hint in hints %}
+- {{ hint }}
+{% endfor %}
+{% endif %}
+
+当前场景：{{ scene.name }}（{{ scene.type }}）
+{{ scene.description }}
+
+对话缘由（发起者的动机）：{{ reason }}
+
+{# 生成要求——轮数/收尾等任务相关约束 / Generation requirements: turn count, natural ending, etc. #}
+生成要求：
+1. 双方台词交替出现，从发起者（{{ initiator.id }}）开始，最多 10 轮。
+2. 对话要自然收尾（达成共识、道别、或话题自然结束），不要生硬截断在半句话。
+3. 如果对话缘由不足以支撑对话，可以让对方礼貌回应后自然结束，不要编造无关内容。
+
+{# === 输出约束 / Output spec === #}
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
+{
+  "turns": [
+    {"speaker_id": "{{ initiator.id }}", "text": "..."},
+    {"speaker_id": "{{ target.id }}", "text": "..."}
+  ]
+}

@@ -50,7 +50,9 @@ class RequestsChatModel(BaseChatModel):
     def _generate(self, tick_messages: list[BaseMessage], stop=None, run_manager=None, **kwargs):
         raise NotImplementedError("Use async version")
 
-    async def _agenerate(self, tick_messages: list[BaseMessage], stop=None, run_manager=None, **kwargs):
+    async def _agenerate(
+        self, tick_messages: list[BaseMessage], stop=None, run_manager=None, **kwargs
+    ):
         _role_map = {"human": "user", "ai": "assistant"}
         msg_count = len(tick_messages)
         payload = {
@@ -67,7 +69,12 @@ class RequestsChatModel(BaseChatModel):
         t_start = time.monotonic()
         logger.debug(
             "LLM 请求发送",
-            extra={"model": self.model, "url": url, "tick_messages": msg_count, "timeout": self.timeout},
+            extra={
+                "model": self.model,
+                "url": url,
+                "tick_messages": msg_count,
+                "timeout": self.timeout,
+            },
         )
 
         loop = asyncio.get_event_loop()
@@ -131,7 +138,7 @@ class RequestsChatModel(BaseChatModel):
                 "content_preview": content[:120],
             },
         )
-        return ChatResult(generations=[ChatGeneration(message=AITickMessage(content=content))])
+        return ChatResult(generations=[ChatGeneration(message=AIMessage(content=content))])
 
     @property
     def _llm_type(self) -> str:
@@ -351,7 +358,7 @@ class LLMClient:
             f"{k}({v.annotation.__name__ if hasattr(v.annotation, '__name__') else str(v.annotation)})"
             for k, v in fields.items()
         )
-        json_hint = HumanTickMessage(content=f"请只输出一个 JSON 对象，字段：{{{field_desc}}}")
+        json_hint = HumanMessage(content=f"请只输出一个 JSON 对象，字段：{{{field_desc}}}")
         augmented = list(tick_messages) + [json_hint]
 
         logger.info(

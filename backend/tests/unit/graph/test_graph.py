@@ -7,7 +7,6 @@ import pytest
 from langgraph.checkpoint.memory import MemorySaver
 
 from src.graph.graph import build_tick_graph
-from src.schemas.response import SceneObservation
 
 
 def _graph_input(**overrides):
@@ -16,11 +15,11 @@ def _graph_input(**overrides):
         "tick": 5,
         "world_id": "world-1",
         "tick_message_id": "",
-        "scene_observations": [],
+        "scene_info": {},
         "hints": [],
         "plot_brief": "",
         "scene_id": "scene-1",
-        "character_actions": [],
+        "character_decisions": [],
         "narrative": "",
         "reflected_characters": [],
         "summary_compressed": False,
@@ -60,31 +59,22 @@ async def test_full_tick_graph_runs_current_flow():
         )()
     )
     # 场景内唯一一个 PC / The only PC in the scene
-    pc = SimpleNamespace(id="pc-1", scene_id="tavern")
+    pc = SimpleNamespace(
+        id="pc-1", scene_id="tavern", name="Alex", role="fighter", race="human", status="active"
+    )
     char_repo = AsyncMock()
     char_repo.load_pcs = AsyncMock(return_value=[pc])
-    observation = SceneObservation(pc_id="pc-1")
+    char_repo.load_actors = AsyncMock(return_value=[])
+    scene_repo = AsyncMock()
+    scene_repo.get_scene = AsyncMock(return_value=None)
+    scene_repo.get_object_ids = AsyncMock(return_value=[])
+    scene_repo.load_all = AsyncMock(return_value={})
+    message_repo = AsyncMock()
 
     with (
         patch(
-            "src.services.message_service.message_engine.create_tick_message",
-            AsyncMock(return_value="tick-1"),
-        ),
-        patch(
             "src.services.dm_service.dm_engine.dm_create",
             dm_create_result,
-        ),
-        patch(
-            "src.services.scene_service.scene_engine.process_scene_setup",
-            AsyncMock(),
-        ),
-        patch(
-            "src.services.scene_service.scene_engine.process_scene_objects",
-            AsyncMock(),
-        ),
-        patch(
-            "src.services.character_service.observation_engine.observe_scene",
-            AsyncMock(return_value=observation),
         ),
         patch(
             "src.services.character_service.decision_engine.decide",
@@ -92,11 +82,15 @@ async def test_full_tick_graph_runs_current_flow():
         ),
         patch(
             "src.services.character_service.talk_engine.process_talk_action",
-            AsyncMock(),
+            AsyncMock(return_value=None),
         ),
         patch(
-            "src.services.character_service.exploration_engine.process_explore_action",
-            AsyncMock(),
+            "src.services.character_service.interact_engine.process_interact_action",
+            AsyncMock(return_value=None),
+        ),
+        patch(
+            "src.services.character_service.combat_engine.process_combat_action",
+            AsyncMock(return_value=None),
         ),
         patch(
             "src.services.dm_service.dm_engine.dm_narrate",
@@ -113,11 +107,11 @@ async def test_full_tick_graph_runs_current_flow():
                 "configurable": {
                     "thread_id": "test-thread",
                     "reflection_interval": 5,
-                    "repos": {"char": char_repo},
+                    "repos": {"char": char_repo, "scene": scene_repo, "message": message_repo},
                 }
             },
         )
-    assert result["tick_message_id"] == "tick-1"
+    assert result["tick_message_id"] == "tick_5"
     assert result["scene_id"] == "tavern"
     assert result["narrative"] == "夜幕降临。"
     assert result["reflected_characters"] == []

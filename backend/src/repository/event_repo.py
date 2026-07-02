@@ -13,7 +13,9 @@ class TickEventRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
-    async def insert_tick_events(self, tick_message_id: str, msg_tick: int, tick_events: list[dict | TickEvent]) -> None:
+    async def insert_tick_events(
+        self, tick_message_id: str, msg_tick: int, tick_events: list[dict | TickEvent]
+    ) -> None:
         """批量写入事件."""
         for ev in tick_events:
             if isinstance(ev, TickEvent):
@@ -27,10 +29,13 @@ class TickEventRepo:
                 (tick_message_id, msg_tick, ev_type, json.dumps(ev_payload, default=str)),
             )
         await self._db.commit()
-        logger.info("[event] insert %s tick=%s count=%d", tick_message_id, msg_tick, len(tick_events))
+        logger.info(
+            "[event] insert %s tick=%s count=%d", tick_message_id, msg_tick, len(tick_events)
+        )
 
-
-    async def insert_events(self, tick_message_id: str, msg_tick: int, events: list[dict | TickEvent]) -> None:
+    async def insert_events(
+        self, tick_message_id: str, msg_tick: int, events: list[dict | TickEvent]
+    ) -> None:
         """兼容旧接口 / Legacy alias."""
         await self.insert_tick_events(tick_message_id, msg_tick, events)
 

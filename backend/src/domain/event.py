@@ -23,6 +23,8 @@ TICK_EVENT_SEQUENCE: list[str] = [
     "character_move",
     "character_talk",
     "character_explore",
+    "character_interact",
+    "character_combat",
     "dm_narrative",
 ]
 

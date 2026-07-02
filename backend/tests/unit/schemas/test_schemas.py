@@ -13,7 +13,6 @@ from src.schemas.request import (
     DialogueRequest,
     DMCreateRequest,
     DMNarrateRequest,
-    ExplorationRequest,
     ItemQueryRequest,
     PCDecideRequest,
     QuestRequest,
@@ -29,7 +28,6 @@ from src.schemas.response import (
     DialogueResponse,
     DMCreateResponse,
     DMNarrateResponse,
-    ExplorationResponse,
     ItemResponse,
     PCDecideResponse,
     QuestResponse,
@@ -78,10 +76,6 @@ class TestRequestSchemas:
     def test_dialogue_request(self):
         r = DialogueRequest(speaker="pc1", target="npc1", intent="persuade")
         assert r.intent == "persuade"
-
-    def test_exploration_request(self):
-        r = ExplorationRequest(character_id="pc1", action_type="search")
-        assert r.action_type == "search"
 
     def test_quest_request(self):
         r = QuestRequest(quests=[{"id": "q1"}])
@@ -139,10 +133,6 @@ class TestResponseSchemas:
 
     def test_dialogue_response(self):
         r = DialogueResponse(success=True, content="hello")
-        assert r.success is True
-
-    def test_exploration_response(self):
-        r = ExplorationResponse(success=True, result={"found": "gold"})
         assert r.success is True
 
     def test_quest_response(self):

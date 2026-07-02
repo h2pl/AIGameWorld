@@ -92,7 +92,7 @@ def _seed_actors() -> list[Actor]:
 def _print_tick(
     tick: int,
     narrative: str,
-    actions: list,
+    decisions: list,
     tick_events: list,
     errors: list,
     db_info: str = "",
@@ -102,7 +102,7 @@ def _print_tick(
     print(header)
     if narrative:
         print(f"  [DM] {narrative}")
-    for a in actions:
+    for a in decisions:
         cid = a.get("character_id", "?")
         atype = a.get("action_type", a.get("type", "?"))
         desc = a.get("reasoning", a.get("description", ""))
@@ -208,11 +208,11 @@ async def _do_run(
         tick = result["tick"]
         narrative = result.get("narrative", "")
         tick_events = result.get("tick_events", [])
-        actions = result.get("character_actions", [])
+        decisions = result.get("character_decisions", [])
         errors = result.get("errors", [])
 
         db_label = f"[DB] ticks {tick}" if use_db else ""
-        _print_tick(tick, narrative, actions, tick_events, errors, db_info=db_label)
+        _print_tick(tick, narrative, decisions, tick_events, errors, db_info=db_label)
 
     # -- 收尾：统计 + 关闭 DB / cleanup: stats + close DB
     print(f"{'=' * 60}")
@@ -247,7 +247,7 @@ async def _test_client() -> None:
     print(f"  provider: {config.llm.providers.primary.base_url or '(default)'}")
     print(_SEP)
 
-    msgs = [SystemTickMessage(content="Reply in one word."), HumanTickMessage(content="Hello")]
+    msgs = [SystemMessage(content="Reply in one word."), HumanMessage(content="Hello")]
     print(f"  [INPUT]  tick_messages: {[m.content[:30] for m in msgs]}")
     print(_SUB)
 
@@ -276,7 +276,7 @@ async def _test_engine() -> None:
     print(_SEP)
 
     create_req = DMCreateRequest(tick=0, plot_brief="")
-    system_prompt = prompts.get_template("_dm_system.jinja").render()
+    system_prompt = prompts.get_template("dm/_dm_system.jinja").render()
     prompt = prompts.get_template("dm/dm_create.jinja").render(
         recent_summary="",
         plot_brief_prev=create_req.plot_brief,
@@ -289,8 +289,8 @@ async def _test_engine() -> None:
 
     # Engine 现在收 (req, config)，诊断测试直接调 call_structured
     msgs = [
-        SystemTickMessage(content=system_prompt),
-        HumanTickMessage(content=prompt),
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=prompt),
     ]
     result_raw = await client.call_structured("dm_create", None, msgs, fallback=dict)
     print(
@@ -319,8 +319,8 @@ async def _test_engine() -> None:
     print(_SUB)
 
     msgs_n = [
-        SystemTickMessage(content=system_prompt),
-        HumanTickMessage(content=prompt_n),
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=prompt_n),
     ]
     result2_raw = await client.call_structured("dm_narrate", None, msgs_n, fallback=dict)
     print(
@@ -347,7 +347,7 @@ async def _test_tick() -> None:
     result = await orch.run_tick()
     print(f"  [OUTPUT] Tick {result['tick']}")
     print(f"  [OUTPUT] DM narrative: {result.get('narrative', '')}")
-    for a in result.get("character_actions", [])[:5]:
+    for a in result.get("character_decisions", [])[:5]:
         print(f"  [OUTPUT] Act: {a.get('character_id', '?')}({a.get('action_type', '?')})")
     errs = result.get("errors", [])
     if errs:

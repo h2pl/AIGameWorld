@@ -44,14 +44,9 @@ class SceneProcessResponse(EngineResponse):
 class PCDecideResponse(EngineResponse):
     pc_id: str = ""
     type: str = ""
+    target_id: str | None = None
+    target_type: str | None = None
     description: str = ""
-
-
-class SceneObservation(EngineResponse):
-    pc_id: str = ""
-    nearby_pc_ids: list[str] = Field(default_factory=list)
-    nearby_actor_ids: list[str] = Field(default_factory=list)
-    scene_object_ids: list[str] = Field(default_factory=list)
 
 
 # ============================================================
@@ -67,11 +62,6 @@ class CombatResponse(EngineResponse):
 class DialogueResponse(EngineResponse):
     success: bool | None = None
     content: str | None = None
-
-
-class ExplorationResponse(EngineResponse):
-    success: bool | None = None
-    result: dict[str, Any] | None = None
 
 
 # ============================================================

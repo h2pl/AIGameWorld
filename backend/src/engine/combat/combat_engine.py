@@ -6,10 +6,13 @@
 import logging
 import random
 
+from langchain_core.runnables.config import RunnableConfig
+
 from ...rules.dnd_rules import attack_roll, roll_initiative
 from ...schemas.request import CombatRequest
 from ...schemas.response import CombatResponse
 
+logger = logging.getLogger("aw.eng.combat")
 _MAX_ROUNDS = 20
 
 
@@ -95,3 +98,29 @@ def resolve_combat(req: CombatRequest) -> CombatResponse:
         combat_log=combat_log,
         errors=["战斗达到最大回合数，强制结束 / Combat reached max rounds, forced end"],
     )
+
+
+# TODO: combat 尚未接入完整战斗结算——PC/敌人的战斗属性（hp/ac/atk_bonus 等）
+# 目前不在 decide 阶段可用，暂时只记录战斗意图，不调用 resolve_combat。
+# TODO: full combat resolution not wired yet — PC/enemy combat stats (hp/ac/
+# atk_bonus etc.) are not available at the decide stage, so this only records
+# the combat intent as an event without calling resolve_combat.
+async def process_combat_action(decision: dict, config: RunnableConfig = None) -> dict | None:
+    """处理单个 combat 决策 → 记录战斗意图（尚未结算），返回原始结果（不构造事件）/
+    Record a combat intent (not resolved yet), return the raw result (not an event)."""
+    if decision.get("type") != "combat":
+        return None
+    target_id = decision.get("target_id", "")
+    if not target_id:
+        return None
+
+    char_id = decision.get("pc_id", "")
+    description = decision.get("description", "")
+    logger.info("[combat] %s → %s（意图记录，未结算）", char_id, target_id)
+    return {
+        "kind": "character_combat",
+        "character_id": char_id,
+        "target_id": target_id,
+        "description": description,
+        "resolved": False,
+    }

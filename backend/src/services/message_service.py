@@ -1,10 +1,14 @@
-"""Message Service: State ↔ Engine adapter——创建消息."""
+"""Message Service: State ↔ Repo adapter——创建消息.
+
+创建消息只是一次简单的写库操作，不需要单独的 engine 层 /
+Creating a message is a simple repo write, no separate engine layer is needed.
+"""
 
 import logging
 
-from ..engine.message import message_engine
+from ..domain.message import TickMessage
 from ..graph.state import OverallState
-from ..schemas.request import TickMessageCreateRequest
+from ..utils.helpers import get_repo
 
 logger = logging.getLogger("aw.svc")
 
@@ -14,7 +18,13 @@ async def create_tick_message(state: OverallState, config=None) -> dict:
     tick = state.get("tick", 0)
     world_id = state.get("world_id", "")
     logger.info("[msg] tick=%s", tick)
-    tick_message_id = await message_engine.create_tick_message(
-        TickMessageCreateRequest(tick=tick, world_id=world_id), config=config
-    )
+
+    message_repo = get_repo(config, "message")
+    if not message_repo:
+        logger.warning("[msg] no message_repo")
+        return {"tick_message_id": ""}
+
+    tick_message_id = f"tick_{tick}"
+    await message_repo.insert(TickMessage(id=tick_message_id, tick=tick, world_id=world_id))
+    logger.info("[msg] created tick_message_id=%s tick=%s", tick_message_id, tick)
     return {"tick_message_id": tick_message_id}

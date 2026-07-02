@@ -16,25 +16,25 @@ class TestDMSystemPrompt:
 
     def test_system_prompt_loaded(self):
         """_dm_system.jinja 存在且可渲染 / _dm_system.jinja exists and renders."""
-        rendered = _PROMPTS.get_template("_dm_system.jinja").render()
+        rendered = _PROMPTS.get_template("dm/_dm_system.jinja").render()
         assert len(rendered) > 0
         assert "DM" in rendered or "Dungeon Master" in rendered
 
     def test_contains_iron_rules(self):
         """包含三条核心铁律 / Contains 3 core iron rules."""
-        rendered = _PROMPTS.get_template("_dm_system.jinja").render()
+        rendered = _PROMPTS.get_template("dm/_dm_system.jinja").render()
         assert "不扮演任何角色" in rendered
         assert "不替任何角色做决策" in rendered
         assert "不写角色的对话内容" in rendered
 
     def test_requires_chinese_output(self):
         """要求中文输出 / Requires Chinese output."""
-        rendered = _PROMPTS.get_template("_dm_system.jinja").render()
+        rendered = _PROMPTS.get_template("dm/_dm_system.jinja").render()
         assert "简体中文" in rendered or "中文" in rendered
 
     def test_requires_json_only(self):
         """要求只输出 JSON / Requires JSON only output."""
-        rendered = _PROMPTS.get_template("_dm_system.jinja").render()
+        rendered = _PROMPTS.get_template("dm/_dm_system.jinja").render()
         assert "JSON" in rendered
 
 

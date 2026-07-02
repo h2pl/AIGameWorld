@@ -74,13 +74,6 @@ class DialogueRequest(BaseModel):
     dc: int = 10  # 难度等级 / difficulty class
 
 
-class ExplorationRequest(BaseModel):
-    character_id: str = ""
-    action_type: str = ""
-    attribute_mod: int = 0  # 通常感知修正 / typically wisdom modifier
-    dc: int = 10
-
-
 class QuestRequest(BaseModel):
     quests: list[dict[str, Any]] = []
     event_log: list[dict[str, Any]] = []

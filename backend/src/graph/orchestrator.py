@@ -42,10 +42,12 @@ class Orchestrator:
                 tick=self._tick,
                 world_id="",
                 tick_message_id="",
+                scene_info={},
+                pending_events=[],
                 hints=[],
                 plot_brief="",
                 scene_id="",
-                character_actions=[],
+                character_decisions=[],
                 narrative="",
                 reflected_characters=[],
                 summary_compressed=False,
@@ -81,7 +83,7 @@ class Orchestrator:
         return {
             "tick": result["tick"],
             "narrative": result.get("narrative", ""),
-            "character_actions": result.get("character_actions", []),
+            "character_decisions": result.get("character_decisions", []),
             "errors": result.get("errors", []),
         }
 

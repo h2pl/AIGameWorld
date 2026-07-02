@@ -16,7 +16,7 @@ from .base import DomainModel
 from .dm_record import DMRecord
 
 # 事件模型 + 事件类型顺序 / Event model + type sequence
-from .event import Event, SEQUENCE, TICK_EVENT_SEQUENCE, TickEvent
+from .event import SEQUENCE, TICK_EVENT_SEQUENCE, Event, TickEvent
 
 # 物品 / Item model
 from .item import Item, ItemType

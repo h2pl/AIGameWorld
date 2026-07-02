@@ -13,11 +13,13 @@ class TestOverallState:
         s: OverallState = {
             "tick": 0,
             "world_id": "",
-            "msg_id": "",
+            "tick_message_id": "",
+            "scene_info": {},
+            "pending_events": [],
             "hints": [],
             "plot_brief": "",
             "scene_id": "",
-            "character_actions": [],
+            "character_decisions": [],
             "narrative": "",
             "reflected_characters": [],
             "summary_compressed": False,
@@ -31,11 +33,13 @@ class TestOverallState:
         s: OverallState = {
             "tick": 0,
             "world_id": "",
-            "msg_id": "",
+            "tick_message_id": "",
+            "scene_info": {},
+            "pending_events": [],
             "hints": [],
             "plot_brief": "",
             "scene_id": "",
-            "character_actions": [],
+            "character_decisions": [],
             "narrative": "",
             "reflected_characters": [],
             "summary_compressed": False,
@@ -56,7 +60,9 @@ class TestCharacterSubState:
         s: CharacterSubState = {
             "tick": 1,
             "plot_brief": "test",
-            "character_actions": [],
+            "scene_info": {},
+            "pending_events": [],
+            "character_decisions": [],
         }
         assert s["tick"] == 1
         assert s["plot_brief"] == "test"
@@ -74,7 +80,7 @@ class TestReflectionSubState:
             "tick": 5,
             "character_id": "pc1",
             "memories": [{"text": "m1"}],
-            "events": [],
+            "tick_events": [],
             "reflected_characters": [],
             "summary_compressed": False,
         }

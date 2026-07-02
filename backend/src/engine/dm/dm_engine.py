@@ -149,4 +149,4 @@ async def _render_dm_system(config: RunnableConfig | None, world_id: str) -> str
             w = await world_repo.get(world_id)
             if w:
                 world = {"name": w.name, "description": w.description, "rule_set": w.rule_set}
-    return _PROMPTS.get_template("_dm_system.jinja").render(world=world)
+    return _PROMPTS.get_template("dm/_dm_system.jinja").render(world=world)

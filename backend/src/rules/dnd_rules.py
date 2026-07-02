@@ -72,6 +72,14 @@ def roll_damage(dice_str: str) -> int:
     return max(total, 0)
 
 
+# ── 属性修正值 / Ability modifiers ──
+
+
+def ability_modifier(score: int) -> int:
+    """属性值 → D&D 修正值 / Ability score → D&D modifier. (score - 10) // 2."""
+    return (score - 10) // 2
+
+
 # ── 检定函数 / Check functions ──
 
 

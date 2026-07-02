@@ -47,11 +47,11 @@ class TestFullTickRun:
         assert orch.tick == 6
 
     @pytest.mark.asyncio
-    async def test_run_tick_returns_character_actions(self):
-        """每个 tick 返回 character_actions."""
+    async def test_run_tick_returns_character_decisions(self):
+        """每个 tick 返回 character_decisions."""
         orch = Orchestrator()
         result = await orch.run_tick()
-        assert "character_actions" in result
+        assert "character_decisions" in result
 
     @pytest.mark.asyncio
     async def test_run_tick_handles_narrative(self):
@@ -86,10 +86,12 @@ class TestFullTickRun:
             tick=0,
             world_id="",
             tick_message_id="",
+            scene_info={},
+            pending_events=[],
             hints=[],
             plot_brief="Custom start",
             scene_id="",
-            character_actions=[],
+            character_decisions=[],
             narrative="",
             reflected_characters=[],
             summary_compressed=False,
