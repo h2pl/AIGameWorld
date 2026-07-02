@@ -1,13 +1,5 @@
 {# Phase 3: PC 深层决策 / PC deep decision #}
-{% include '_character_system.jinja' %}
-
-{# === 上下文注入 / Context === #}
-{% if visible_characters %}
-你能看到的人：
-{% for c in visible_characters %}
-- {{ c.name }}（{{ c.role }}），态度：{{ c.get("attitude", "neutral") }}
-{% endfor %}
-{% endif %}
+{% include '_pc_system.jinja' %}
 
 {# === 输出约束 / Output spec === #}
 严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
@@ -15,7 +7,7 @@
 字段说明：
 - action_type: move / talk / attack / interact / wait 之一
 - target: 目标角色 id 或场景对象 id；无则 null
-- reasoning: 你的决策理由（2-3 句中文，体现你的角色弧和价值观）
+- reasoning: 你的决策理由（2-3 句中文，结合当前场景和附近的人）
 
 输出格式：
 {

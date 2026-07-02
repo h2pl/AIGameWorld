@@ -15,6 +15,7 @@ class Actor(DomainModel):
     role: str = ""
     race: str | None = None
     status: str = "active"
+    disposition: str = "neutral"  # neutral / friendly / hostile（NPC / 敌人 等）
     scene_id: str = ""
     position_x: int = 0
     position_y: int = 0

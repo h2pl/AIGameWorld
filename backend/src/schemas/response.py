@@ -42,15 +42,16 @@ class SceneProcessResponse(EngineResponse):
 # Phase 3: Character
 # ============================================================
 class PCDecideResponse(EngineResponse):
-    character_id: str = ""
+    pc_id: str = ""
     type: str = ""
     description: str = ""
 
 
-class ActorDecideResponse(EngineResponse):
-    character_id: str = ""
-    type: str = ""
-    description: str = ""
+class SceneObservation(EngineResponse):
+    pc_id: str = ""
+    nearby_pc_ids: list[str] = Field(default_factory=list)
+    nearby_actor_ids: list[str] = Field(default_factory=list)
+    scene_object_ids: list[str] = Field(default_factory=list)
 
 
 # ============================================================

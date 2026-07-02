@@ -8,7 +8,6 @@ from src.schemas.llm_output import (
     DMOutput,
 )
 from src.schemas.request import (
-    ActorDecideRequest,
     CharacterLoadRequest,
     CombatRequest,
     DialogueRequest,
@@ -25,7 +24,6 @@ from src.schemas.request import (
     SummarizerRequest,
 )
 from src.schemas.response import (
-    ActorDecideResponse,
     CharacterResponse,
     CombatResponse,
     DialogueResponse,
@@ -64,10 +62,6 @@ class TestRequestSchemas:
         r = PCDecideRequest(pc_id="hero_1", plot_brief="遭遇怪物", tick=3)
         assert r.pc_id == "hero_1"
         assert r.tick == 3
-
-    def test_actor_decide_request(self):
-        r = ActorDecideRequest(actor_id="npc_guard")
-        assert r.actor_id == "npc_guard"
 
     def test_combat_request(self):
         from src.schemas.request import CombatParticipant
@@ -136,12 +130,8 @@ class TestResponseSchemas:
         assert len(r.tick_events_out) == 1
 
     def test_pc_decide_response(self):
-        r = PCDecideResponse(character_id="pc1", type="attack", description="strikes")
-        assert r.character_id == "pc1"
-
-    def test_actor_decide_response(self):
-        r = ActorDecideResponse(character_id="npc1", type="flee")
-        assert r.character_id == "npc1"
+        r = PCDecideResponse(pc_id="pc1", type="attack", description="strikes")
+        assert r.pc_id == "pc1"
 
     def test_combat_response(self):
         r = CombatResponse(winner="pc1", combat_log=[{"round": 1}])

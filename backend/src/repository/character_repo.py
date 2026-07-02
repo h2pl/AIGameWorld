@@ -56,13 +56,13 @@ class CharacterRepo:
     async def save_actor(self, actor: Actor) -> None:
         await self._db.execute(
             """
-            INSERT INTO actors (id, name, role, race, status, scene_id,
+            INSERT INTO actors (id, name, role, race, status, disposition, scene_id,
             position_x, position_y, attributes_json, combat_json, functions_json,
             function_data_json, inventory_json, relationships_json, dm_assigned,
             motivation_injected, world_id, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
-            status=excluded.status, scene_id=excluded.scene_id,
+            status=excluded.status, disposition=excluded.disposition, scene_id=excluded.scene_id,
             position_x=excluded.position_x, position_y=excluded.position_y,
             dm_assigned=excluded.dm_assigned,
             motivation_injected=excluded.motivation_injected,
@@ -75,6 +75,7 @@ class CharacterRepo:
                 actor.role,
                 actor.race,
                 actor.status,
+                actor.disposition,
                 actor.scene_id,
                 actor.position_x,
                 actor.position_y,
@@ -142,6 +143,7 @@ def _actor_from_row(row: dict) -> Actor:
         role=row["role"],
         race=_val(row, "race"),
         status=_val(row, "status", "active"),
+        disposition=_val(row, "disposition", "neutral"),
         scene_id=_val(row, "scene_id", ""),
         position_x=_val(row, "position_x", 0),
         position_y=_val(row, "position_y", 0),

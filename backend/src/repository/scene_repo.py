@@ -22,6 +22,24 @@ class SceneRepo:
             for r in rows
         ]
 
+    async def get_scene(self, scene_id: str) -> dict | None:
+        """按 scene_id 直接加载单个场景（含 exits/landmarks）."""
+        row = await self._db.fetch_one(
+            "SELECT id, name, type, description, exits_json, landmarks_json "
+            "FROM scenes WHERE id = ?",
+            (scene_id,),
+        )
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "type": row["type"],
+            "description": row["description"],
+            "exits": json.loads(row.get("exits_json") or "[]"),
+            "landmarks": json.loads(row.get("landmarks_json") or "[]"),
+        }
+
     async def get_object_ids(self, scene_id: str) -> list[str]:
         """按 scene_id 获取关联的场景对象 id 列表."""
         rows = await self._db.fetch_all(

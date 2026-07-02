@@ -30,36 +30,31 @@ def resolve_exploration(req: ExplorationRequest) -> ExplorationResponse:
     )
 
 
-async def process_explore_actions(
-    actions: list[dict],
+async def process_explore_action(
+    action: dict,
     tick_message_id: str,
     tick: int,
     config: RunnableConfig = None,
 ) -> None:
-    """处理所有 search/explore 动作 → 检定 + 写 character_explore 事件."""
-    explore_actions = [a for a in actions if a.get("type") in ("search", "explore")]
-    if not explore_actions:
+    """处理单个 search/explore 动作 → 检定 + 写 character_explore 事件."""
+    if action.get("type") not in ("search", "explore"):
         return
 
     event_repo = get_repo(config, "event")
     if not event_repo or not tick_message_id:
         return
 
-    tick_events: list[dict] = []
-    for a in explore_actions:
-        char_id = a.get("character_id", "")
-        result = resolve_exploration(ExplorationRequest(character_id=char_id, action_type="search"))
-        tick_events.append(
-            {
-                "type": "character_explore",
-                "payload": {
-                    "character_id": char_id,
-                    "action": "search",
-                    "success": result.success,
-                    "result": result.result if result else {},
-                },
-            }
-        )
-        logger.info("[explore] %s search %s", char_id, "success" if result.success else "fail")
-
-    await event_repo.insert_tick_events(tick_message_id, tick, tick_events)
+    char_id = action.get("pc_id", "")
+    action_type = action.get("type", "search")
+    result = resolve_exploration(ExplorationRequest(character_id=char_id, action_type=action_type))
+    tick_event = {
+        "type": "character_explore",
+        "payload": {
+            "character_id": char_id,
+            "action": action_type,
+            "success": result.success,
+            "result": result.result if result else {},
+        },
+    }
+    logger.info("[explore] %s %s %s", char_id, action_type, "success" if result.success else "fail")
+    await event_repo.insert_tick_events(tick_message_id, tick, [tick_event])

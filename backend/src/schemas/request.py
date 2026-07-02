@@ -47,12 +47,6 @@ class PCDecideRequest(BaseModel):
     tick: int = 0
 
 
-class ActorDecideRequest(BaseModel):
-    actor_id: str = ""
-    plot_brief: str = ""
-    tick: int = 0
-
-
 # === Phase 4: Engines ===
 class CombatParticipant(BaseModel):
     """战斗参与者 / Combat participant."""

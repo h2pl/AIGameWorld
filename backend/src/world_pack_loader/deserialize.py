@@ -55,6 +55,7 @@ def actor_from_yaml(data: dict, starting_scene: str = "", world_id: str = "") ->
         name=data.get("name", ""),
         role=data.get("role", ""),
         race=data.get("race"),
+        disposition=data.get("disposition", "neutral"),
         scene_id=data.get("scene_id") or starting_scene,
         attributes_json=json.dumps(attrs_from_yaml(data.get("attributes")), ensure_ascii=False),
         combat_json=json.dumps(combat_from_yaml(data.get("combat")) or {}, ensure_ascii=False),

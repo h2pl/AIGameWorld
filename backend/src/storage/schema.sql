@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS actors (
     role        TEXT,                                   -- 角色描述 / Role description
     race        TEXT,
     status      TEXT NOT NULL DEFAULT 'active',         -- active/dead/inactive
+    disposition TEXT NOT NULL DEFAULT 'neutral',        -- neutral/friendly/hostile
     scene_id    TEXT NOT NULL,
     position_x  INTEGER NOT NULL DEFAULT 0,
     position_y  INTEGER NOT NULL DEFAULT 0,
