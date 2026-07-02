@@ -45,12 +45,10 @@ class EventRepo:
             "SELECT type, payload FROM events WHERE msg_id = ? AND msg_tick = ? ORDER BY id",
             (msg_id, msg_tick),
         )
-        result: list[dict] = []
+        result: list[Event] = []
         for r in rows:
             payload = json.loads(r["payload"])
-            result.append(
-                {"type": r["type"], **payload}
-                if isinstance(payload, dict)
-                else {"type": r["type"], "description": payload}
-            )
+            if not isinstance(payload, dict):
+                payload = {"description": payload}
+            result.append(Event(type=r["type"], tick=msg_tick, payload=payload))
         return result
