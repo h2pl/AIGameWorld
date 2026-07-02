@@ -53,6 +53,11 @@ class LLMConfig(BaseModel):
     actor_decision: LLMModelConfig  # Actor 浅层决策（快模型）/ Actor shallow decision
     reflection: LLMModelConfig  # 反思洞察（强模型）/ Reflection insight
 
+    @property
+    def reflection_engine(self) -> LLMModelConfig:
+        """兼容旧字段名 / Compatibility alias for legacy field name."""
+        return self.reflection
+
 
 class DatabaseConfig(BaseModel):
     """数据库配置 / Database configuration."""

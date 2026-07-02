@@ -186,7 +186,7 @@ async def session_resume(world_id: str):
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "service": "AIGameWorld-backend"}
 
 
 @app.get("/api/world/{world_id}/state")

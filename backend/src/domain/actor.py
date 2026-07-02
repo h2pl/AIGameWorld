@@ -1,5 +1,9 @@
 """NPC Actor 领域模型 / Actor (NPC) Domain Model."""
 
+import json
+
+from pydantic import model_validator
+
 from .base import DomainModel
 
 
@@ -26,3 +30,17 @@ class Actor(DomainModel):
     relationships_json: str = "{}"
     dm_assigned: bool = False
     motivation_injected: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _compat_legacy_fields(cls, data):
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if "location" in data and isinstance(data["location"], dict):
+            data.setdefault("scene_id", data["location"].get("scene_id", ""))
+        if "attributes" in data and not data.get("attributes_json"):
+            data["attributes_json"] = json.dumps(data.pop("attributes"), ensure_ascii=False)
+        if "combat" in data and not data.get("combat_json"):
+            data["combat_json"] = json.dumps(data.pop("combat"), ensure_ascii=False)
+        return data

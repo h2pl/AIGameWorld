@@ -206,6 +206,24 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_msg ON events(msg_id, msg_tick);
 
 -- ============================================================
+--  narratives: 旧版叙事表 / Legacy narratives table
+-- ============================================================
+CREATE TABLE IF NOT EXISTS narratives (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    tick        INTEGER NOT NULL,
+    content     TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ============================================================
+--  world_meta: 旧版世界元信息表 / Legacy world meta key-value table
+-- ============================================================
+CREATE TABLE IF NOT EXISTS world_meta (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL DEFAULT ''
+);
+
+-- ============================================================
 --  dm_records: DM 产出记录 / DM output records——每 tick 一行
 -- ============================================================
 CREATE TABLE IF NOT EXISTS dm_records (
