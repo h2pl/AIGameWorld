@@ -145,5 +145,7 @@ def _actor_from_row(row: dict) -> Actor:
         scene_id=_val(row, "scene_id", ""),
         position_x=_val(row, "position_x", 0),
         position_y=_val(row, "position_y", 0),
+        dm_assigned=bool(_val(row, "dm_assigned", 0)),
+        motivation_injected=_val(row, "motivation_injected"),
         world_id=_val(row, "world_id", ""),
     )
