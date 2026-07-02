@@ -1,8 +1,17 @@
 """Talk Service: State ↔ Engine adapter——角色交谈."""
 
-import logging
+from langchain_core.runnables.config import RunnableConfig
 
-logger = logging.getLogger("aw.svc")
+from ..engine.talk.talk_engine import process_talk_actions
+from ..graph.state import OverallState
 
 
-# TODO: 实现角色交谈逻辑，写入 character_talk 事件到 events 表
+async def process(state: OverallState, config: RunnableConfig = None) -> dict:
+    """处理 talk 动作 → Engine 写 character_talk 事件."""
+    await process_talk_actions(
+        actions=state.get("character_actions", []),
+        msg_id=state.get("msg_id", ""),
+        tick=state.get("tick", 0),
+        config=config,
+    )
+    return {}

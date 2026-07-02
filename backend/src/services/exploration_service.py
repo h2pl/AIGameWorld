@@ -1,19 +1,17 @@
-"""Exploration Service: State ↔ Engine adapter."""
+"""Exploration Service: State ↔ Engine adapter——探索检定."""
 
-import logging
+from langchain_core.runnables.config import RunnableConfig
 
-from ..engine.exploration import exploration_engine
-from ..graph.state import EngineSubState
-from ..schemas.request import ExplorationRequest
+from ..engine.exploration.exploration_engine import process_explore_actions
+from ..graph.state import OverallState
 
 
-def exploration(state: EngineSubState) -> dict:
-    logging.getLogger("aw.svc").info("[exploration]")
-    """Phase 4: 探索检定."""
-    result = exploration_engine.resolve_exploration(
-        ExplorationRequest(
-            character_id=state.get("character_id", ""),
-            action_type=state.get("action_type", ""),
-        )
+async def process(state: OverallState, config: RunnableConfig = None) -> dict:
+    """处理 search/explore 动作 → Engine 检定 + 写 character_explore 事件."""
+    await process_explore_actions(
+        actions=state.get("character_actions", []),
+        msg_id=state.get("msg_id", ""),
+        tick=state.get("tick", 0),
+        config=config,
     )
-    return {"engine_results": [{"engine": "exploration", "result": result.model_dump()}]}
+    return {}

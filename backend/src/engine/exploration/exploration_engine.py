@@ -1,14 +1,18 @@
-"""Exploration Engine——D20 探索检定 / D20 exploration check."""
+"""Exploration Engine——D20 探索检定 + 事件写入 / D20 exploration check + event writing."""
 
 import logging
+
+from langchain_core.runnables.config import RunnableConfig
 
 from ...rules.dnd_rules import resolve_check
 from ...schemas.request import ExplorationRequest
 from ...schemas.response import ExplorationResponse
+from ...utils.helpers import get_repo
+
+logger = logging.getLogger("aw.eng.explore")
 
 
 def resolve_exploration(req: ExplorationRequest) -> ExplorationResponse:
-    logging.getLogger("aw.eng").info("[exploration]")
     """探索检定——感知察觉 / Wisdom (Perception) check."""
     result = resolve_check(bonus=req.attribute_mod, dc=req.dc)
     return ExplorationResponse(
@@ -24,3 +28,38 @@ def resolve_exploration(req: ExplorationRequest) -> ExplorationResponse:
             "fumble": result.is_fumble,
         },
     )
+
+
+async def process_explore_actions(
+    actions: list[dict],
+    msg_id: str,
+    tick: int,
+    config: RunnableConfig = None,
+) -> None:
+    """处理所有 search/explore 动作 → 检定 + 写 character_explore 事件."""
+    explore_actions = [a for a in actions if a.get("type") in ("search", "explore")]
+    if not explore_actions:
+        return
+
+    event_repo = get_repo(config, "event")
+    if not event_repo or not msg_id:
+        return
+
+    events: list[dict] = []
+    for a in explore_actions:
+        char_id = a.get("character_id", "")
+        result = resolve_exploration(ExplorationRequest(character_id=char_id, action_type="search"))
+        events.append(
+            {
+                "type": "character_explore",
+                "payload": {
+                    "character_id": char_id,
+                    "action": "search",
+                    "success": result.success,
+                    "result": result.result if result else {},
+                },
+            }
+        )
+        logger.info("[explore] %s search %s", char_id, "success" if result.success else "fail")
+
+    await event_repo.insert_events(msg_id, tick, events)

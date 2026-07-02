@@ -1,7 +1,7 @@
 """PC Decide Engine——LLM 驱动的深层决策 / PC deep decision with LLM."""
 
 # ── 依赖 / Dependencies ──
-# ── 核心逻辑 / Core Logic
+import json
 import logging
 from pathlib import Path
 
@@ -38,15 +38,16 @@ async def pc_decide(req: PCDecideRequest, config: RunnableConfig = None) -> PCDe
         pc = await char_repo.load_pc(req.pc_id) if char_repo else None
         query = req.plot_brief or "最近发生了什么"
         memories = memory_repo.retrieve(req.pc_id, query, top_k=5) if memory_repo else []
+        # 简化模型字段用 getattr + json.loads 安全访问 / safe access to simplified model fields
         ctx = {
-            "name": pc.name if pc else req.pc_id,
+            "name": getattr(pc, "name", req.pc_id) if pc else req.pc_id,
             "character_type": "pc",
-            "role": pc.role if pc else "",
-            "character_arc": pc.character_arc.model_dump() if pc and pc.character_arc else {},
-            "values": pc.values if pc else [],
-            "long_term_goal": pc.long_term_goal if pc else "",
+            "role": getattr(pc, "role", "") if pc else "",
+            "character_arc": _safe_json(getattr(pc, "character_arc_json", "{}") if pc else "{}"),
+            "values": _safe_json(getattr(pc, "values_json", "[]") if pc else "[]", default=[]),
+            "long_term_goal": getattr(pc, "long_term_goal", "") if pc else "",
             "plot_brief": req.plot_brief,
-            "equipment": pc.equipment.model_dump() if pc and pc.equipment else {},
+            "equipment": _safe_json(getattr(pc, "equipment_json", "{}") if pc else "{}"),
             "memories": [{"content": m.content} for m in memories],
         }
         system = _PROMPTS.get_template("_character_system.jinja").render(**ctx)
@@ -77,3 +78,13 @@ def _validate(result: CharacterActionSchema) -> CharacterActionSchema:
     if not result.reasoning or not result.reasoning.strip():
         result.reasoning = "等待时机。"
     return result
+
+
+def _safe_json(raw: str, default=None):
+    """安全解析 JSON 字符串 / Safe JSON string parse."""
+    if default is None:
+        default = {}
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError, TypeError:
+        return default

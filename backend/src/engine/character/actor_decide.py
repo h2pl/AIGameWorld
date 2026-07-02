@@ -1,6 +1,7 @@
 """Actor Decide Engine——LLM 驱动的浅层决策 / Actor shallow decision with LLM."""
 
 # ── 依赖 / Dependencies ──
+import json
 import logging
 from pathlib import Path
 
@@ -40,12 +41,15 @@ async def actor_decide(
         actor = await char_repo.load_actor(req.actor_id) if char_repo else None
         query = req.plot_brief or "最近发生了什么"
         memories = memory_repo.retrieve(req.actor_id, query, top_k=3) if memory_repo else []
+        # 简化模型字段用 getattr + json.loads 安全访问 / safe access to simplified model fields
         ctx = {
-            "name": actor.name if actor else req.actor_id,
+            "name": getattr(actor, "name", req.actor_id) if actor else req.actor_id,
             "character_type": "actor",
-            "role": actor.role if actor else "",
-            "personality": actor.personality if actor else "",
-            "functions": actor.functions if actor else [],
+            "role": getattr(actor, "role", "") if actor else "",
+            "personality": getattr(actor, "personality", "") if actor else "",
+            "functions": _safe_json(
+                getattr(actor, "functions_json", "[]") if actor else "[]", default=[]
+            ),
             "plot_brief": req.plot_brief,
             "equipment": {},
             "memories": [{"content": m.content} for m in memories],
@@ -83,3 +87,13 @@ def _validate(result: CharacterActionSchema) -> CharacterActionSchema:
     if not result.reasoning or not result.reasoning.strip():
         result.reasoning = "继续日常行为。"
     return result
+
+
+def _safe_json(raw: str, default=None):
+    """安全解析 JSON 字符串 / Safe JSON string parse."""
+    if default is None:
+        default = {}
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError, TypeError:
+        return default

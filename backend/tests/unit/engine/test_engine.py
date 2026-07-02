@@ -9,12 +9,10 @@ from src.engine.quest.quest_engine import check_quests
 from src.engine.reflection.reflection_engine import reflect
 from src.engine.scene.scene_engine import process_scene_objects, process_scene_setup
 from src.engine.summarizer.summarizer_engine import summarize
-from src.engine.talk.talk_engine import talk_actor, talk_pc
+from src.engine.talk.talk_engine import process_talk_actions
 from src.schemas.request import (
-    ActorDecideRequest,
     CombatRequest,
     ExplorationRequest,
-    PCDecideRequest,
     QuestRequest,
     ReflectionRequest,
     SceneProcessRequest,
@@ -40,14 +38,19 @@ class TestCombatEngine:
 
 class TestTalkEngine:
     @pytest.mark.asyncio
-    async def test_talk_pc(self):
-        r = await talk_pc(PCDecideRequest(pc_id="pc1", plot_brief="test", tick=0))
-        assert r is None  # no LLM → None
+    async def test_empty_actions(self):
+        """空 actions 不报错 / Empty actions don't crash."""
+        await process_talk_actions(actions=[], msg_id="", tick=0)
+        # no error = pass
 
     @pytest.mark.asyncio
-    async def test_talk_actor(self):
-        r = await talk_actor(ActorDecideRequest(actor_id="npc1", plot_brief="test", tick=0))
-        assert r is None  # no LLM → None
+    async def test_non_talk_actions_skipped(self):
+        """非 talk 类型被跳过 / Non-talk actions are skipped."""
+        await process_talk_actions(
+            actions=[{"type": "move", "character_id": "pc1"}],
+            msg_id="",
+            tick=0,
+        )
 
 
 class TestExplorationEngine:
@@ -63,7 +66,7 @@ class TestExplorationEngine:
 
 class TestInteractEngine:
     def test_pick_lock(self):
-        from src.engine.exploration.interact_engine import resolve_interact
+        from src.engine.exploration.interact import resolve_interact
         from src.schemas.request import SceneObjectInteractRequest
 
         r = resolve_interact(
@@ -81,7 +84,7 @@ class TestInteractEngine:
         assert "roll" in r.result
 
     def test_break_door(self):
-        from src.engine.exploration.interact_engine import resolve_interact
+        from src.engine.exploration.interact import resolve_interact
         from src.schemas.request import SceneObjectInteractRequest
 
         r = resolve_interact(

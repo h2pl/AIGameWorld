@@ -1,20 +1,29 @@
-"""Phase 3 子图: 角色决策——处理 character_move / character_talk / character_explore 事件."""
+"""Phase 3 子图: 角色决策 → 交谈 → 探索.
+
+只做 Graph 编排 / Graph orchestration only:
+  character_service.decide → talk_service.process → exploration_service.process → END
+"""
 
 from langgraph.graph import END, StateGraph
 
+from ...services.character_service import decide
+from ...services.exploration_service import process as explore_process
+from ...services.talk_service import process as talk_process
 from ..state import OverallState
 
 
-def _process(state: OverallState) -> dict:
-    """Placeholder: 后续实现角色决策并写入 character_* 事件到 events 表."""
-    return {"character_actions": []}
-
-
 def build_character_subgraph() -> StateGraph:
+    """构建角色子图——三个 service 节点 / Three service nodes."""
     graph = StateGraph(OverallState)
-    graph.add_node("_process", _process)
-    graph.set_entry_point("_process")
-    graph.add_edge("_process", END)
+    graph.add_node("character_service.decide", decide)
+    graph.add_node("talk_service.process", talk_process)
+    graph.add_node("exploration_service.process", explore_process)
+
+    graph.set_entry_point("character_service.decide")
+    graph.add_edge("character_service.decide", "talk_service.process")
+    graph.add_edge("talk_service.process", "exploration_service.process")
+    graph.add_edge("exploration_service.process", END)
+
     return graph
 
 
