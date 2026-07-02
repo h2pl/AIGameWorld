@@ -13,8 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 from src.domain.world import World
-from src.repository.event_repo import EventRepo
-from src.repository.message_repo import MessageRepo
+from src.repository.event_repo import TickEventRepo
+from src.repository.message_repo import TickMessageRepo
 from src.repository.world_repo import WorldRepo
 from src.storage.sqlite_client import SQLiteClient
 from src.utils.logging import log_api, log_msg, setup_logging
@@ -113,8 +113,8 @@ async def session_start(world_id: str):
     if world_id in sessions:
         return {"status": "error", "detail": "session already exists"}
     db = _get_db()
-    msg_repo = MessageRepo(db)
-    evt_repo = EventRepo(db)
+    msg_repo = TickMessageRepo(db)
+    evt_repo = TickEventRepo(db)
     sessions[world_id] = {
         "msg_repo": msg_repo,
         "evt_repo": evt_repo,
@@ -134,15 +134,15 @@ async def tick_next(world_id: str):
         return {"type": "error", "data": {"message": "session not found"}}
     meta = await s["msg_repo"].get_next_pending(world_id)
     if meta:
-        events = await s["evt_repo"].load_by_message(meta["id"], meta["tick"])
-        log_msg("pull", world_id, meta["tick"], event_count=len(events))
+        tick_events = await s["evt_repo"].load_by_message(meta["id"], meta["tick"])
+        log_msg("pull", world_id, meta["tick"], event_count=len(tick_events))
         return {
             "type": "tick",
             "data": {
                 "id": meta["id"],
                 "tick": meta["tick"],
                 "timestamp": meta["created_at"],
-                "events": [_event_to_dict(ev) for ev in events],
+                "events": [_event_to_dict(ev) for ev in tick_events],
             },
         }
     if s.get("done"):
@@ -269,8 +269,8 @@ async def view_global_objects(db: str = Query(default="data/world_db.db")):
     return await render_global_objects(db_path=db)
 
 
-@app.get("/view/global/events", response_class=HTMLResponse)
-async def view_global_events(db: str = Query(default="data/world_db.db")):
+@app.get("/view/global/tick_events", response_class=HTMLResponse)
+async def view_global_tick_events(db: str = Query(default="data/world_db.db")):
     return await render_global_events(db_path=db)
 
 
@@ -314,8 +314,8 @@ def _char_from_row(r: dict, is_pc: bool, pos_offset: int) -> dict:
 
 async def _graph_producer(
     world_id: str,
-    msg_repo: MessageRepo,
-    evt_repo: EventRepo,
+    msg_repo: TickMessageRepo,
+    evt_repo: TickEventRepo,
 ) -> None:
     """Graph 生产者——Orchestrator 循环 / Graph producer: Orchestrator loop."""
     from src.graph.orchestrator import Orchestrator

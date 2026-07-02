@@ -12,7 +12,7 @@ class OverallState(TypedDict):
 
     tick: int  # 当前 tick 编号 / Current tick number
     world_id: str  # 世界 ID / World ID
-    msg_id: str  # 消息 ID / Message ID
+    tick_message_id: str  # 消息 ID / Message ID
     hints: list[str]  # DM 环境提示 / DM environmental hints
     plot_brief: str  # 剧情梗概 / Plot brief
     scene_id: str  # 当前场景 ID / Current scene ID
@@ -50,7 +50,7 @@ class ReflectionSubState(TypedDict):
     tick: int
     character_id: str
     memories: list[dict[str, Any]]
-    events: list[dict[str, Any]]
+    tick_events: list[dict[str, Any]]
     reflected_characters: list[str]
     summary_compressed: bool
 

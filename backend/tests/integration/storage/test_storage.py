@@ -34,7 +34,7 @@ class TestSQLiteClient:
         assert "player_characters" in names
         assert "actors" in names
         assert "narratives" in names
-        assert "events" in names
+        assert "tick_events" in names
 
     async def test_world_meta_write_read(self, db):
         await db.execute(

@@ -1,4 +1,4 @@
-"""Repository 集成测试——内存 SQLite 验证 MessageRepo / EventRepo / CharacterRepo 读写."""
+"""Repository 集成测试——内存 SQLite 验证 TickMessageRepo / TickEventRepo / CharacterRepo 读写."""
 
 import pytest
 
@@ -7,8 +7,8 @@ from src.domain.event import Event
 from src.domain.message import Message
 from src.domain.player_character import PlayerCharacter
 from src.repository.character_repo import CharacterRepo
-from src.repository.event_repo import EventRepo
-from src.repository.message_repo import MessageRepo
+from src.repository.event_repo import TickEventRepo
+from src.repository.message_repo import TickMessageRepo
 from src.storage.sqlite_client import SQLiteClient
 
 # ══ Fixtures / 夹具 ══
@@ -30,12 +30,12 @@ async def char_repo(db):
 
 @pytest.fixture
 async def event_repo(db):
-    return EventRepo(db)
+    return TickEventRepo(db)
 
 
 @pytest.fixture
 async def msg_repo(db):
-    return MessageRepo(db)
+    return TickMessageRepo(db)
 
 
 # ══ CharacterRepo 测试 / Character Repo Tests ══

@@ -4,7 +4,7 @@
 独立于主 tick 链路，纯异步轮询：
 # Summarizer._generate 调用 LLM 摘要，降级时截断到200字
 # 每2s轮询一次，从ChromaDB恢复断点
-- RecordArchiver: dm_records + events → ChromaDB
+- RecordArchiver: dm_records + tick_events → ChromaDB
 # 每2s轮询，从ChromaDB恢复断点继续归档
 - Summarizer: 每 N tick 摘要 → story_summaries + ChromaDB 双写
 """
@@ -23,7 +23,7 @@ _SUMMARY_INTERVAL = 10
 
 
 class RecordArchiver:
-    """任务 1：轮询 dm_records + events，归档到 ChromaDB."""
+    """任务 1：轮询 dm_records + tick_events，归档到 ChromaDB."""
 
     def __init__(self, world_id: str, record_repo: DMRecordRepo, event_repo, chroma: ChromaClient):
         self._world_id = world_id
@@ -51,17 +51,17 @@ class RecordArchiver:
         records = await self._repo.load_range(self._world_id, start, max_tick)
         if not records:
             return
-        events = (
+        tick_events = (
             await self._event_repo.load_by_tick_range(self._world_id, start, max_tick)
             if self._event_repo
             else []
         )
-        events_by_tick: dict[int, list[str]] = {}
-        for ev in events:
-            events_by_tick.setdefault(ev["tick"], []).append(f"[{ev['type']}] {ev['payload']}")
+        tick_events_by_tick: dict[int, list[str]] = {}
+        for ev in tick_events:
+            tick_events_by_tick.setdefault(ev["tick"], []).append(f"[{ev['type']}] {ev['payload']}")
 
         ids = [f"{self._world_id}_{r.tick}" for r in records]
-        docs = [_build_document(r, events_by_tick.get(r.tick, [])) for r in records]
+        docs = [_build_document(r, tick_events_by_tick.get(r.tick, [])) for r in records]
         metas = [{"world_id": self._world_id, "tick": r.tick, "type": "record"} for r in records]
         self._chroma.add(self._collection, ids=ids, documents=docs, metadatas=metas)
         self._last = max_tick
@@ -81,7 +81,7 @@ class RecordArchiver:
 
 
 class Summarizer:
-    """任务 2：轮询 dm_records + events，每 N tick 生成摘要双写 SQLite + ChromaDB."""
+    """任务 2：轮询 dm_records + tick_events，每 N tick 生成摘要双写 SQLite + ChromaDB."""
 
     def __init__(
         self, world_id: str, record_repo: DMRecordRepo, event_repo, chroma: ChromaClient, llm=None
@@ -140,20 +140,20 @@ class Summarizer:
         records = await self._repo.load_range(self._world_id, tick_start, tick_end)
         if not records:
             return ""
-        events = (
+        tick_events = (
             await self._event_repo.load_by_tick_range(self._world_id, tick_start, tick_end)
             if self._event_repo
             else []
         )
-        events_by_tick: dict[int, list[str]] = {}
-        for ev in events:
-            events_by_tick.setdefault(ev["tick"], []).append(f"[{ev['type']}] {ev['payload']}")
+        tick_events_by_tick: dict[int, list[str]] = {}
+        for ev in tick_events:
+            tick_events_by_tick.setdefault(ev["tick"], []).append(f"[{ev['type']}] {ev['payload']}")
 
         lines = []
         for r in records:
             lines.append(f"[Tick {r.tick}] {r.plot_brief}\n{r.dm_narrative}")
-            if r.tick in events_by_tick:
-                lines.append("事件: " + " | ".join(events_by_tick[r.tick]))
+            if r.tick in tick_events_by_tick:
+                lines.append("事件: " + " | ".join(tick_events_by_tick[r.tick]))
         text = "\n".join(lines)
 
         if self._llm:
@@ -174,8 +174,8 @@ class Summarizer:
         return text[:200]
 
 
-def _build_document(r: DMRecord, events: list[str] | None = None) -> str:
+def _build_document(r: DMRecord, tick_events: list[str] | None = None) -> str:
     parts = [f"[场景] {r.plot_brief}", f"[叙事] {r.dm_narrative}"]
-    if events:
-        parts.append("[事件]\n" + "\n".join(events))
+    if tick_events:
+        parts.append("[事件]\n" + "\n".join(tick_events))
     return "\n".join(parts)

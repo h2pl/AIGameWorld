@@ -5,8 +5,11 @@ from datetime import datetime
 from .base import DomainModel
 
 
-class Message(DomainModel):
+class TickMessage(DomainModel):
     id: str
     tick: int
-    events: list[dict] = []
+    tick_events: list[dict] = []
     timestamp: datetime | None = None
+
+
+Message = TickMessage

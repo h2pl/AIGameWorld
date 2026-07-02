@@ -1,6 +1,6 @@
 """Talk Engine——处理角色交谈动作 / Handle character talk actions.
 
-写出 character_talk 事件到 events 表。
+写出 character_talk 事件到 tick_events 表。
 """
 
 import logging
@@ -14,7 +14,7 @@ logger = logging.getLogger("aw.eng.talk")
 
 async def process_talk_actions(
     actions: list[dict],
-    msg_id: str,
+    tick_message_id: str,
     tick: int,
     config: RunnableConfig = None,
 ) -> None:
@@ -24,10 +24,10 @@ async def process_talk_actions(
         return
 
     event_repo = get_repo(config, "event")
-    if not event_repo or not msg_id:
+    if not event_repo or not tick_message_id:
         return
 
-    events: list[dict] = []
+    tick_events: list[dict] = []
     for a in talk_actions:
         char_id = a.get("character_id", "")
         target = a.get("target", a.get("target_id", ""))
@@ -38,7 +38,7 @@ async def process_talk_actions(
             # TODO: LLM 生成真实对话
             pass
 
-        events.append(
+        tick_events.append(
             {
                 "type": "character_talk",
                 "payload": {
@@ -50,4 +50,4 @@ async def process_talk_actions(
         )
         logger.info("[talk] %s → %s : %s", char_id, target, dialogue[:60])
 
-    await event_repo.insert_events(msg_id, tick, events)
+    await event_repo.insert_tick_events(tick_message_id, tick, tick_events)

@@ -35,7 +35,7 @@ class DMNarrateResponse(EngineResponse):
 # Phase 2: World
 # ============================================================
 class SceneProcessResponse(EngineResponse):
-    events_out: list[dict[str, Any]] = []
+    tick_events_out: list[dict[str, Any]] = []
 
 
 # ============================================================

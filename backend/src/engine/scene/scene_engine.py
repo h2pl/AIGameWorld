@@ -1,4 +1,4 @@
-"""Scene Engine——加载场景数据 + 构造事件 + 写入 events 表.
+"""Scene Engine——加载场景数据 + 构造事件 + 写入 tick_events 表.
 
 Phase 1.5: DM 已选出 scene_id，引擎从 DB 加载场景详情，分两步写入:
   - process_scene_setup: 写 scene_setup 事件
@@ -18,13 +18,13 @@ logger = logging.getLogger("aw.eng")
 async def process_scene_setup(req: SceneProcessRequest, config: RunnableConfig = None) -> None:
     """写入 scene_setup 事件."""
     scene_id = req.scene_id
-    if not scene_id or not req.msg_id:
+    if not scene_id or not req.tick_message_id:
         return
     event_repo = get_repo(config, "event")
     if not event_repo:
         return
-    await event_repo.insert_events(
-        req.msg_id,
+    await event_repo.insert_tick_events(
+        req.tick_message_id,
         req.tick,
         [
             {
@@ -41,7 +41,7 @@ async def process_scene_setup(req: SceneProcessRequest, config: RunnableConfig =
 async def process_scene_objects(req: SceneProcessRequest, config: RunnableConfig = None) -> None:
     """写入 scene_objects 事件（每个场景物体一条）."""
     scene_id = req.scene_id
-    if not scene_id or not req.msg_id:
+    if not scene_id or not req.tick_message_id:
         return
     scene_repo = get_repo(config, "scene")
     if not scene_repo:
@@ -50,12 +50,12 @@ async def process_scene_objects(req: SceneProcessRequest, config: RunnableConfig
     if not obj_ids:
         return
     all_objs = await scene_repo.load_all()
-    events: list[dict] = []
+    tick_events: list[dict] = []
     for oid in obj_ids:
         if oid not in all_objs:
             continue
         obj = all_objs[oid]
-        events.append(
+        tick_events.append(
             {
                 "type": "scene_objects",
                 "tick": req.tick,
@@ -66,12 +66,12 @@ async def process_scene_objects(req: SceneProcessRequest, config: RunnableConfig
                 "description": f"{obj.object_type.value}「{oid}」",
             }
         )
-    if not events:
+    if not tick_events:
         return
     event_repo = get_repo(config, "event")
     if not event_repo:
         return
-    await event_repo.insert_events(req.msg_id, req.tick, events)
+    await event_repo.insert_tick_events(req.tick_message_id, req.tick, tick_events)
     logger.info(
-        "[scene] scene_objects tick=%s scene_id=%s count=%d", req.tick, scene_id, len(events)
+        "[scene] scene_objects tick=%s scene_id=%s count=%d", req.tick, scene_id, len(tick_events)
     )

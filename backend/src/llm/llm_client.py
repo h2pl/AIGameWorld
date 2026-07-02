@@ -47,16 +47,16 @@ class RequestsChatModel(BaseChatModel):
     base_url: str = ""
     timeout: int = 30
 
-    def _generate(self, messages: list[BaseMessage], stop=None, run_manager=None, **kwargs):
+    def _generate(self, tick_messages: list[BaseMessage], stop=None, run_manager=None, **kwargs):
         raise NotImplementedError("Use async version")
 
-    async def _agenerate(self, messages: list[BaseMessage], stop=None, run_manager=None, **kwargs):
+    async def _agenerate(self, tick_messages: list[BaseMessage], stop=None, run_manager=None, **kwargs):
         _role_map = {"human": "user", "ai": "assistant"}
-        msg_count = len(messages)
+        msg_count = len(tick_messages)
         payload = {
             "model": self.model,
-            "messages": [
-                {"role": _role_map.get(m.type, m.type), "content": m.content} for m in messages
+            "tick_messages": [
+                {"role": _role_map.get(m.type, m.type), "content": m.content} for m in tick_messages
             ],
             "temperature": self.temperature,
         }
@@ -67,7 +67,7 @@ class RequestsChatModel(BaseChatModel):
         t_start = time.monotonic()
         logger.debug(
             "LLM 请求发送",
-            extra={"model": self.model, "url": url, "messages": msg_count, "timeout": self.timeout},
+            extra={"model": self.model, "url": url, "tick_messages": msg_count, "timeout": self.timeout},
         )
 
         loop = asyncio.get_event_loop()
@@ -131,7 +131,7 @@ class RequestsChatModel(BaseChatModel):
                 "content_preview": content[:120],
             },
         )
-        return ChatResult(generations=[ChatGeneration(message=AIMessage(content=content))])
+        return ChatResult(generations=[ChatGeneration(message=AITickMessage(content=content))])
 
     @property
     def _llm_type(self) -> str:
@@ -256,7 +256,7 @@ class LLMClient:
     # call —— 纯文本调用
     # --------------------------------------------------------
 
-    async def call(self, purpose: str, messages: list[BaseMessage]) -> str | None:
+    async def call(self, purpose: str, tick_messages: list[BaseMessage]) -> str | None:
         model = self._models[purpose]
         timeout = self._timeouts[purpose]
         max_attempts = self._retries[purpose] + 1
@@ -272,7 +272,7 @@ class LLMClient:
             t_start = time.monotonic()
             try:
                 result = await asyncio.wait_for(
-                    model._agenerate(messages),
+                    model._agenerate(tick_messages),
                     timeout=timeout,
                 )
                 elapsed = time.monotonic() - t_start
@@ -337,7 +337,7 @@ class LLMClient:
         self,
         purpose: str,
         schema: type[BaseModel],
-        messages: list[BaseMessage],
+        tick_messages: list[BaseMessage],
         fallback: Callable[[], BaseModel],
     ) -> BaseModel:
         """结构化调用——纯文本请求 + 手动解析 JSON（兼容 Zen Proxy 免费模型）."""
@@ -351,8 +351,8 @@ class LLMClient:
             f"{k}({v.annotation.__name__ if hasattr(v.annotation, '__name__') else str(v.annotation)})"
             for k, v in fields.items()
         )
-        json_hint = HumanMessage(content=f"请只输出一个 JSON 对象，字段：{{{field_desc}}}")
-        augmented = list(messages) + [json_hint]
+        json_hint = HumanTickMessage(content=f"请只输出一个 JSON 对象，字段：{{{field_desc}}}")
+        augmented = list(tick_messages) + [json_hint]
 
         logger.info(
             f"[{purpose}] 开始结构化调用",

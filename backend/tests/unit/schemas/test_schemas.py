@@ -132,8 +132,8 @@ class TestResponseSchemas:
         assert "冒险" in r.narrative_out
 
     def test_scene_process_response(self):
-        r = SceneProcessResponse(events_out=[{"type": "dm_instruction"}])
-        assert len(r.events_out) == 1
+        r = SceneProcessResponse(tick_events_out=[{"type": "dm_instruction"}])
+        assert len(r.tick_events_out) == 1
 
     def test_pc_decide_response(self):
         r = PCDecideResponse(character_id="pc1", type="attack", description="strikes")
@@ -178,8 +178,8 @@ class TestResponseSchemas:
         assert r.rarity == "common"
 
     def test_scene_process_response_with_combat(self):
-        r = SceneProcessResponse(events_out=[{"type": "combat"}, {"type": "dialogue"}])
-        assert len(r.events_out) == 2
+        r = SceneProcessResponse(tick_events_out=[{"type": "combat"}, {"type": "dialogue"}])
+        assert len(r.tick_events_out) == 2
 
 
 # ============================================================

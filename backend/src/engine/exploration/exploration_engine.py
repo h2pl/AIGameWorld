@@ -32,7 +32,7 @@ def resolve_exploration(req: ExplorationRequest) -> ExplorationResponse:
 
 async def process_explore_actions(
     actions: list[dict],
-    msg_id: str,
+    tick_message_id: str,
     tick: int,
     config: RunnableConfig = None,
 ) -> None:
@@ -42,14 +42,14 @@ async def process_explore_actions(
         return
 
     event_repo = get_repo(config, "event")
-    if not event_repo or not msg_id:
+    if not event_repo or not tick_message_id:
         return
 
-    events: list[dict] = []
+    tick_events: list[dict] = []
     for a in explore_actions:
         char_id = a.get("character_id", "")
         result = resolve_exploration(ExplorationRequest(character_id=char_id, action_type="search"))
-        events.append(
+        tick_events.append(
             {
                 "type": "character_explore",
                 "payload": {
@@ -62,4 +62,4 @@ async def process_explore_actions(
         )
         logger.info("[explore] %s search %s", char_id, "success" if result.success else "fail")
 
-    await event_repo.insert_events(msg_id, tick, events)
+    await event_repo.insert_tick_events(tick_message_id, tick, tick_events)

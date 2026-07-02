@@ -3,7 +3,7 @@
 START
  |
  v
- message_service.create_message     [node]      创建消息       create_message
+ message_service.create_tick_message     [node]      创建消息       create_tick_message
  |
  v
  dm_service.dm_create              [node]      DM 创造情境   dm_create
@@ -48,7 +48,7 @@ def build_tick_graph() -> StateGraph:
     graph = StateGraph(OverallState)
 
     # 注册 6 个节点 / Register 6 nodes
-    graph.add_node("message_service.create_message", message_service.create_message)
+    graph.add_node("message_service.create_tick_message", message_service.create_tick_message)
     graph.add_node("dm_service.dm_create", dm_service.dm_create)
     graph.add_node("scene_service.process_scene", scene_service.process_scene)
     graph.add_node("character_subgraph", character_subgraph)
@@ -56,8 +56,8 @@ def build_tick_graph() -> StateGraph:
     graph.add_node("reflection_subgraph", reflection_subgraph)
 
     # 顺序边 / Sequential edges
-    graph.set_entry_point("message_service.create_message")
-    graph.add_edge("message_service.create_message", "dm_service.dm_create")
+    graph.set_entry_point("message_service.create_tick_message")
+    graph.add_edge("message_service.create_tick_message", "dm_service.dm_create")
     graph.add_edge("dm_service.dm_create", "scene_service.process_scene")
     graph.add_edge("scene_service.process_scene", "character_subgraph")
     graph.add_edge("character_subgraph", "dm_service.dm_narrate")

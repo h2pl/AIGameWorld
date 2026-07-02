@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 # === Phase 0: Message ===
-class MessageCreateRequest(BaseModel):
+class TickMessageCreateRequest(BaseModel):
     tick: int = 0
     world_id: str = ""
 
@@ -37,7 +37,7 @@ class SceneProcessRequest(BaseModel):
     tick: int = 0
     world_id: str = ""
     scene_id: str = ""
-    msg_id: str = ""
+    tick_message_id: str = ""
 
 
 # === Phase 3: Character ===
@@ -140,3 +140,6 @@ class SceneObjectInteractRequest(BaseModel):
 # === Domain: Character (Phase 3+) ===
 class CharacterLoadRequest(BaseModel):
     character_id: str = ""
+
+
+MessageCreateRequest = TickMessageCreateRequest

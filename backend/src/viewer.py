@@ -10,7 +10,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from src.repository.character_repo import CharacterRepo
 from src.repository.dm_record_repo import DMRecordRepo
-from src.repository.event_repo import EventRepo
+from src.repository.event_repo import TickEventRepo
 from src.repository.item_repo import ItemRepo
 from src.repository.scene_repo import SceneRepo
 from src.repository.world_repo import WorldRepo
@@ -201,7 +201,7 @@ async def render_global_objects(db_path: str) -> HTMLResponse:
 async def render_global_events(db_path: str) -> HTMLResponse:
     client = await _get_client(db_path)
     try:
-        repo = EventRepo(client)
+        repo = TickEventRepo(client)
         events = await repo.load_by_tick_range(world_id="", tick_start=0, tick_end=10**9)
         html = _JINJA.get_template("events.html").render(
             events=[
@@ -388,3 +388,6 @@ async def _load_objects(client: SQLiteClient, pack_id: str) -> list[dict]:
                 d["interact_data"] = json.loads(d["interact_data_json"])
         result.append(d)
     return result
+
+
+render_global_tick_events = render_global_events

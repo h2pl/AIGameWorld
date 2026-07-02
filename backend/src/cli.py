@@ -32,9 +32,9 @@ from src.domain import (
 from src.graph.orchestrator import Orchestrator
 from src.repository.character_repo import CharacterRepo
 from src.repository.dm_record_repo import DMRecordRepo
-from src.repository.event_repo import EventRepo
+from src.repository.event_repo import TickEventRepo
 from src.repository.memory_repo import MemoryRepo
-from src.repository.message_repo import MessageRepo
+from src.repository.message_repo import TickMessageRepo
 from src.repository.scene_repo import SceneRepo
 from src.repository.world_repo import WorldRepo
 from src.storage.chroma_client import ChromaClient
@@ -93,7 +93,7 @@ def _print_tick(
     tick: int,
     narrative: str,
     actions: list,
-    events: list,
+    tick_events: list,
     errors: list,
     db_info: str = "",
 ) -> None:
@@ -107,7 +107,7 @@ def _print_tick(
         atype = a.get("action_type", a.get("type", "?"))
         desc = a.get("reasoning", a.get("description", ""))
         print(f"  [Act] {cid}({atype}): {desc}")
-    for ev in events[:3]:
+    for ev in tick_events[:3]:
         print(f"  [Evt] {ev.get('type', '?')}: {ev.get('description', '')[:80]}")
     if errors:
         print(f"  [Err] {[e[:60] for e in errors]}")
@@ -180,8 +180,8 @@ async def _do_run(
             "char": char_repo,
             "scene": SceneRepo(db),
             "world": WorldRepo(db),
-            "event": EventRepo(db),
-            "message": MessageRepo(db),
+            "event": TickEventRepo(db),
+            "message": TickMessageRepo(db),
         }
 
     # -- LLM：创建客户端 + MemoryRepo / LLM: create client + MemoryRepo
@@ -207,12 +207,12 @@ async def _do_run(
         result = await orch.run_tick()
         tick = result["tick"]
         narrative = result.get("narrative", "")
-        events = result.get("events", [])
+        tick_events = result.get("tick_events", [])
         actions = result.get("character_actions", [])
         errors = result.get("errors", [])
 
         db_label = f"[DB] ticks {tick}" if use_db else ""
-        _print_tick(tick, narrative, actions, events, errors, db_info=db_label)
+        _print_tick(tick, narrative, actions, tick_events, errors, db_info=db_label)
 
     # -- 收尾：统计 + 关闭 DB / cleanup: stats + close DB
     print(f"{'=' * 60}")
@@ -247,8 +247,8 @@ async def _test_client() -> None:
     print(f"  provider: {config.llm.providers.primary.base_url or '(default)'}")
     print(_SEP)
 
-    msgs = [SystemMessage(content="Reply in one word."), HumanMessage(content="Hello")]
-    print(f"  [INPUT]  messages: {[m.content[:30] for m in msgs]}")
+    msgs = [SystemTickMessage(content="Reply in one word."), HumanTickMessage(content="Hello")]
+    print(f"  [INPUT]  tick_messages: {[m.content[:30] for m in msgs]}")
     print(_SUB)
 
     result = await client.call("dm_create", msgs)
@@ -289,8 +289,8 @@ async def _test_engine() -> None:
 
     # Engine 现在收 (req, config)，诊断测试直接调 call_structured
     msgs = [
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=prompt),
+        SystemTickMessage(content=system_prompt),
+        HumanTickMessage(content=prompt),
     ]
     result_raw = await client.call_structured("dm_create", None, msgs, fallback=dict)
     print(
@@ -319,8 +319,8 @@ async def _test_engine() -> None:
     print(_SUB)
 
     msgs_n = [
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=prompt_n),
+        SystemTickMessage(content=system_prompt),
+        HumanTickMessage(content=prompt_n),
     ]
     result2_raw = await client.call_structured("dm_narrate", None, msgs_n, fallback=dict)
     print(
@@ -435,7 +435,7 @@ _SHELL_HELP = """╔════════════════════
 ║  db-path <path>  设置 DB 文件路径                     ║
 ║  show            显示当前设置 + DB 统计               ║
 ║  list            列出 DB 中所有 pack                  ║
-║  clear           清空运行时数据 (events/narratives)    ║
+║  clear           清空运行时数据 (tick_events/narratives)    ║
 ║  help|?          显示帮助                             ║
 ║  exit|quit       退出                                 ║
 ╚══════════════════════════════════════════════════════╝"""
@@ -476,7 +476,7 @@ async def _shell_show(state: ShellState) -> None:
             ("Scenes", "scenes"),
             ("Items", "items"),
             ("Story", "story"),
-            ("Events", "events"),
+            ("Events", "tick_events"),
         ]:
             # 表名来自常量列表，非用户输入 / table names are constants, not user input
             rows = await db.fetch_all(f"SELECT COUNT(*) as c FROM {table}")  # noqa: S608
@@ -526,11 +526,11 @@ async def _shell_clear() -> None:
     """清空运行时数据 / Clear runtime data."""
     db = SQLiteClient("data/world_db.db")
     await db.connect()
-    await db.execute("DELETE FROM events")
+    await db.execute("DELETE FROM tick_events")
     await db.execute("DELETE FROM dm_records")
     await db.commit()
     await db.close()
-    print("  [OK] Cleared events, story")
+    print("  [OK] Cleared tick_events, story")
 
 
 def _show_current(state: ShellState) -> None:
@@ -806,7 +806,7 @@ async def view_server(args: argparse.Namespace) -> None:
     print(f"[view] Starting DB viewer on http://localhost:{args.port}")
     print(f"[view]   DB: {args.db}")
     print(f"[view]   Home:    http://localhost:{args.port}/view")
-    print(f"[view]   Events:  http://localhost:{args.port}/view/global/events")
+    print(f"[view]   Events:  http://localhost:{args.port}/view/global/tick_events")
     print(f"[view]   Items:   http://localhost:{args.port}/view/global/items")
     print()
     print("   按 Ctrl+C 停止 / Press Ctrl+C to stop")

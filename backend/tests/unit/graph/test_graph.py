@@ -34,7 +34,7 @@ def base_state() -> OverallState:
     return OverallState(
         tick=0,
         world_id="",
-        msg_id="",
+        tick_message_id="",
         hints=[],
         plot_brief="",
         scene_id="",
@@ -53,8 +53,8 @@ def base_state() -> OverallState:
 @pytest.mark.asyncio
 async def test_message_create(base_state):
     """Phase 0: 创建消息 / Create message."""
-    r = await message_service.create_message(base_state)
-    assert "msg_id" in r
+    r = await message_service.create_tick_message(base_state)
+    assert "tick_message_id" in r
 
 
 @pytest.mark.asyncio

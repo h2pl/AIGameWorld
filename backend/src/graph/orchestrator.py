@@ -41,7 +41,7 @@ class Orchestrator:
             initial_state = OverallState(
                 tick=self._tick,
                 world_id="",
-                msg_id="",
+                tick_message_id="",
                 hints=[],
                 plot_brief="",
                 scene_id="",

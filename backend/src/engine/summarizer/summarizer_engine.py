@@ -18,7 +18,7 @@ _TEMPLATE = _PROMPTS.get_template("summarize.jinja")
 
 
 async def summarize(req: SummarizerRequest, config: RunnableConfig = None) -> SummarizerResponse:
-    """压缩事件 / Compress events."""
+    """压缩事件 / Compress tick_events."""
     llm = get_llm(config)
     if llm is None:
         return SummarizerResponse(

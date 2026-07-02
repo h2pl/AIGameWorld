@@ -70,10 +70,10 @@ def log_api(action: str, world_id: str, **extra) -> None:
     )
 
 
-def log_msg(op: str, msg_id: str, tick: int, **extra) -> None:
+def log_msg(op: str, tick_message_id: str, tick: int, **extra) -> None:
     """记录消息队列操作 / Log message queue operation."""
     logging.getLogger("msg").info(
-        f"[{op}] id={msg_id} tick={tick}", extra={"op": op, "msg_id": msg_id, "tick": tick, **extra}
+        f"[{op}] id={tick_message_id} tick={tick}", extra={"op": op, "tick_message_id": tick_message_id, "tick": tick, **extra}
     )
 
 

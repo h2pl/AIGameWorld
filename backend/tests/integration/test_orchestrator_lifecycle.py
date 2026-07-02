@@ -85,7 +85,7 @@ class TestFullTickRun:
         state = OverallState(
             tick=0,
             world_id="",
-            msg_id="",
+            tick_message_id="",
             hints=[],
             plot_brief="Custom start",
             scene_id="",

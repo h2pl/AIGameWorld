@@ -173,10 +173,10 @@ CREATE INDEX IF NOT EXISTS idx_scene_objects_scene ON scene_objects(scene_id);
 
 
 -- ============================================================
---  messages: 消息元数据 / Message metadata
+--  tick_messages: 消息元数据 / Message metadata
 --  Graph 生产 → 写入 DB → 前端轮询读取 → ACK 标记已消费
 -- ============================================================
-CREATE TABLE IF NOT EXISTS messages (
+CREATE TABLE IF NOT EXISTS tick_messages (
     id         TEXT    NOT NULL,                               -- 消息标识 / Message identifier
     tick       INTEGER NOT NULL,                               -- tick 序号 / Tick number
     world_id   TEXT    NOT NULL,                               -- FK → worlds.id
@@ -185,25 +185,27 @@ CREATE TABLE IF NOT EXISTS messages (
     updated_at TEXT    NOT NULL DEFAULT (datetime('now')),
     acked_at   TEXT                                            -- ACK 时间
 );
-CREATE UNIQUE INDEX IF NOT EXISTS idx_msg_id_tick ON messages(id, tick);
-CREATE INDEX IF NOT EXISTS idx_msg_status ON messages(id, status);
-CREATE INDEX IF NOT EXISTS idx_msg_world ON messages(world_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tick_message_id_tick ON tick_messages(id, tick);
+CREATE INDEX IF NOT EXISTS idx_msg_status ON tick_messages(id, status);
+CREATE INDEX IF NOT EXISTS idx_msg_world ON tick_messages(world_id);
 
 -- ============================================================
---  events: 消息事件明细 / Message event details
+--  tick_events: 消息事件明细 / Message event details
 --  一条消息包含多个事件，按 id（自增=入库顺序）排序
 -- ============================================================
-CREATE TABLE IF NOT EXISTS events (
+CREATE TABLE IF NOT EXISTS tick_events (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    msg_id      TEXT    NOT NULL,                               -- FK → messages.id
-    msg_tick    INTEGER NOT NULL,                               -- FK → messages.tick
+    tick_message_id      TEXT    NOT NULL,                               -- FK → tick_messages.id
+    msg_tick    INTEGER NOT NULL,                               -- FK → tick_messages.tick
     type        TEXT    NOT NULL,                               -- 7 种事件类型
     payload     TEXT    NOT NULL,                               -- 事件 JSON（不含 type）
     created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (msg_id, msg_tick) REFERENCES messages(id, tick)
+    FOREIGN KEY (tick_message_id, msg_tick) REFERENCES tick_messages(id, tick)
 );
-CREATE INDEX IF NOT EXISTS idx_events_msg ON events(msg_id, msg_tick);
+CREATE INDEX IF NOT EXISTS idx_tick_events_msg ON tick_events(tick_message_id, msg_tick);
+
+
 
 -- ============================================================
 --  narratives: 旧版叙事表 / Legacy narratives table

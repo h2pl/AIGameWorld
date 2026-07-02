@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 async def summarize(state: ReflectionSubState, config: RunnableConfig = None) -> dict:
-    """Phase 7: 压缩本轮事件 / Compress this tick's events."""
-    events = state.get("events", [])
+    """Phase 7: 压缩本轮事件 / Compress this tick's tick_events."""
+    events = state.get("tick_events", [])
     char_count = len(state.get("reflected_characters", []))
 
     result = await summarizer_engine.summarize(
@@ -27,5 +27,5 @@ async def summarize(state: ReflectionSubState, config: RunnableConfig = None) ->
 
     return {
         "summary_compressed": result.compressed,
-        "events": result.summary_text if result.compressed else "",
+        "tick_events": result.summary_text if result.compressed else "",
     }

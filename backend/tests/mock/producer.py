@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 
 from src.domain.event import Event
 from src.domain.message import Message
-from src.repository.event_repo import EventRepo
-from src.repository.message_repo import MessageRepo
+from src.repository.event_repo import TickEventRepo
+from src.repository.message_repo import TickMessageRepo
 from tests.mock.tick_engine import MockTickEngine
 
 logger = logging.getLogger("aw.producer")
@@ -16,8 +16,8 @@ logger = logging.getLogger("aw.producer")
 
 async def run(
     world_id: str,
-    msg_repo: MessageRepo,
-    evt_repo: EventRepo,
+    msg_repo: TickMessageRepo,
+    evt_repo: TickEventRepo,
     get_paused: Callable[[], bool],
     db,
 ) -> None:
@@ -41,7 +41,7 @@ async def run(
 
             # 反压 / Backpressure
             backlog = await db.fetch_one(
-                "SELECT COUNT(*) as cnt FROM messages WHERE id=? AND status='pending'",
+                "SELECT COUNT(*) as cnt FROM tick_messages WHERE id=? AND status='pending'",
                 (world_id,),
             )
             if backlog and backlog.get("cnt", 0) > 5:
