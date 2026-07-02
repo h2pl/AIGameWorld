@@ -19,11 +19,12 @@ async def client(monkeypatch):
     from src.storage.sqlite_client import SQLiteClient
     from tests.mock.producer import run as mock_run
 
-    m._db = SQLiteClient(":memory:")
-    await m._db.connect()
-    await m._db.init_schema()
-    await WorldRepo(m._db).create(m.World(id="test", name="test"))
-    m._sessions.clear()
+    db = SQLiteClient(":memory:")
+    m._set_db(db)
+    m.app.state.sessions = {}
+    await db.connect()
+    await db.init_schema()
+    await WorldRepo(db).create(m.World(id="test", name="test"))
 
     # 替换 producer 为 mock / Replace producer with mock
     async def _mock_producer(world_id, msg_repo, evt_repo):
@@ -31,25 +32,27 @@ async def client(monkeypatch):
             world_id,
             msg_repo,
             evt_repo,
-            lambda: m._sessions.get(world_id, {}).get("paused", False),
-            m._db,
+            lambda: m._get_sessions().get(world_id, {}).get("paused", False),
+            m._get_db(),
         )
-        if world_id in m._sessions:
-            m._sessions[world_id]["done"] = True
+        sessions = m._get_sessions()
+        if world_id in sessions:
+            sessions[world_id]["done"] = True
 
     monkeypatch.setattr(m, "_graph_producer", _mock_producer)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
-    for mid in list(m._sessions.keys()):
-        s = m._sessions.pop(mid, None)
+    sessions = m._get_sessions()
+    for mid in list(sessions.keys()):
+        s = sessions.pop(mid, None)
         if s and (t := s.get("task")) and not t.done():
             t.cancel()
             await asyncio.sleep(0.1)
-    if m._db:
-        await m._db.close()
-        m._db = None
+    if getattr(m.app.state, "db", None):
+        await m._get_db().close()
+        m._set_db(None)
 
 
 class TestMessageQueueE2E:

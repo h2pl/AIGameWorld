@@ -554,7 +554,7 @@ async def shell(args: argparse.Namespace) -> None:
         """单步输入，返回 None 表示取消 / single input, None = cancel."""
         try:
             v = input(f"    {prompt} [{default}]: ").strip()
-        except EOFError, KeyboardInterrupt:
+        except (EOFError, KeyboardInterrupt):
             return None
         return v if v else default
 
@@ -590,7 +590,7 @@ async def shell(args: argparse.Namespace) -> None:
     while True:
         try:
             raw = input("aw> ").strip()
-        except EOFError, KeyboardInterrupt:
+        except (EOFError, KeyboardInterrupt):
             print("\nexit")
             break
         if not raw:
@@ -723,7 +723,7 @@ async def serve(args: argparse.Namespace) -> None:
             return
 
         print(f"[serve] ✓ Backend running at http://localhost:{args.port}")
-        print(f"[serve]   API: http://localhost:{args.port}/api/pack/forgotten_realms/state")
+        print(f"[serve]   API: http://localhost:{args.port}/api/world/forgotten_realms/state")
         print(f"[serve]   WS:  ws://localhost:{args.port}/ws/aw")
         print(f"[serve]   Viewer: http://localhost:{args.port}/view")
 

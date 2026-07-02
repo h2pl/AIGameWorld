@@ -5,7 +5,7 @@
 name = "AIGameWorld-backend"
 version = "0.1.0"
 description = "AIGameWorld backend - DM-driven DND world simulation"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 
 # === 运行时依赖 / Runtime Dependencies ===
 dependencies = [
@@ -43,7 +43,7 @@ production = [
 
 # === Ruff Lint 配置 / Ruff Lint Config ===
 [tool.ruff]
-target-version = "py314"
+target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
@@ -84,7 +84,7 @@ quote-style = "double"
 
 # === Mypy 类型检查配置 / Mypy Type Check Config ===
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 strict = true                        # 严格模式 / Strict mode
 warn_return_any = true
 warn_unused_configs = true

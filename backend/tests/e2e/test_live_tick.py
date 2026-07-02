@@ -20,23 +20,25 @@ async def client():
     from src.repository.world_repo import WorldRepo
     from src.storage.sqlite_client import SQLiteClient
 
-    m._db = SQLiteClient("data/live_test.db")
-    await m._db.connect()
-    await m._db.init_schema()
-    await WorldRepo(m._db).create(m.World(id="e2e_live", name="E2E 真实测试"))
-    m._sessions.clear()
+    db = SQLiteClient("data/live_test.db")
+    m._set_db(db)
+    m.app.state.sessions = {}
+    await db.connect()
+    await db.init_schema()
+    await WorldRepo(db).create(m.World(id="e2e_live", name="E2E 真实测试"))
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
-    for mid in list(m._sessions.keys()):
-        s = m._sessions.pop(mid, None)
+    sessions = m._get_sessions()
+    for mid in list(sessions.keys()):
+        s = sessions.pop(mid, None)
         if s and (t := s.get("task")) and not t.done():
             t.cancel()
             await asyncio.sleep(0.1)
-    if m._db:
-        await m._db.close()
-        m._db = None
+    if getattr(m.app.state, "db", None):
+        await m._get_db().close()
+        m._set_db(None)
 
 
 class TestLiveTickE2E:
@@ -82,12 +84,14 @@ class TestLiveTickE2E:
         # 3. 验证 DB 写入 / Verify DB write
         import src.main as m
 
-        msg_row = await m._db.fetch_one(
+        db = m._get_db()
+
+        msg_row = await db.fetch_one(
             "SELECT id, tick, status FROM messages WHERE id=? AND status='pending'",
             (WORLD,),
         )
         assert msg_row is not None, "messages 表应有 pending 记录"
-        event_rows = await m._db.fetch_one(
+        event_rows = await db.fetch_one(
             "SELECT COUNT(*) as cnt FROM events WHERE msg_id=? AND msg_tick=?",
             (WORLD, msg_row["tick"]),
         )
@@ -100,7 +104,7 @@ class TestLiveTickE2E:
         print(f"✅ 4. ack tick={tick}")
 
         # 5. 验证消费 / Verify consumed
-        msg_row_after = await m._db.fetch_one(
+        msg_row_after = await db.fetch_one(
             "SELECT id, status FROM messages WHERE id=? AND tick=?",
             (WORLD, tick),
         )

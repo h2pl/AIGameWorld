@@ -1,5 +1,9 @@
 /** 前端配置 / Frontend Configuration */
 
+const DEFAULT_API_ORIGIN = `${window.location.protocol}//${window.location.hostname}:8000`;
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_ORIGIN).replace(/\/$/, "");
+const WS_BASE = API_BASE.replace(/^http/, "ws");
+
 export const CONFIG = {
   /** 画布 / Canvas */
   CANVAS: {
@@ -33,9 +37,9 @@ export const CONFIG = {
 
   /** 后端 API / Backend API */
   API: {
-    base: "http://localhost:8000",
-    ws: "ws://localhost:8000/ws",
+    base: API_BASE,
+    ws: `${WS_BASE}/ws`,
     health: "/health",
-    worldState: "/api/pack",
+    worldState: "/api/world",
   },
 };

@@ -31,10 +31,26 @@ from src.viewer import (
 logger = logging.getLogger("aw.main")
 setup_logging()
 
-# session 管理 / Session store — world_id → {msg_repo, evt_repo, task, paused, done}
-_sessions: dict[str, dict] = {}
-# 共享 DB / Shared DB connection
-_db: SQLiteClient | None = None
+app = FastAPI(title="AIGameWorld API", version="0.1.0")
+
+
+def _get_sessions() -> dict[str, dict]:
+    sessions = getattr(app.state, "sessions", None)
+    if sessions is None:
+        sessions = {}
+        app.state.sessions = sessions
+    return sessions
+
+
+def _get_db() -> SQLiteClient:
+    db = getattr(app.state, "db", None)
+    if db is None:
+        raise RuntimeError("DB not initialized")
+    return db
+
+
+def _set_db(db: SQLiteClient | None) -> None:
+    app.state.db = db
 
 
 # 启动 seed test world / Seed test world on startup
@@ -48,21 +64,24 @@ async def _seed(rep: WorldRepo):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _db  # noqa: PLW0603
-    _db = SQLiteClient("data/world_db.db")
-    await _db.connect()
-    await _db.init_schema()
-    await _seed(WorldRepo(_db))
+    db = SQLiteClient("data/world_db.db")
+    _set_db(db)
+    app.state.sessions = {}
+    await db.connect()
+    await db.init_schema()
+    await _seed(WorldRepo(db))
     yield
-    for mid in list(_sessions.keys()):
-        s = _sessions.pop(mid, None)
+    sessions = _get_sessions()
+    for mid in list(sessions.keys()):
+        s = sessions.pop(mid, None)
         if s and (t := s.get("task")) and not t.done():
             t.cancel()
-    if _db:
-        await _db.close()
+    if getattr(app.state, "db", None):
+        await db.close()
+        _set_db(None)
 
 
-app = FastAPI(title="AIGameWorld API", version="0.1.0", lifespan=lifespan)
+app.router.lifespan_context = lifespan
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
@@ -71,12 +90,12 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 @app.get("/api/world")
 async def world_list():
-    return [w.model_dump() for w in await WorldRepo(_db).list_all()]
+    return [w.model_dump() for w in await WorldRepo(_get_db()).list_all()]
 
 
 @app.post("/api/world")
 async def world_create(w: World):
-    await WorldRepo(_db).create(w)
+    await WorldRepo(_get_db()).create(w)
     return {"status": "ok"}
 
 
@@ -85,25 +104,27 @@ async def world_create(w: World):
 
 @app.post("/api/world/{world_id}/session/start")
 async def session_start(world_id: str):
-    if world_id in _sessions:
+    sessions = _get_sessions()
+    if world_id in sessions:
         return {"status": "error", "detail": "session already exists"}
-    msg_repo = MessageRepo(_db)
-    evt_repo = EventRepo(_db)
-    _sessions[world_id] = {
+    db = _get_db()
+    msg_repo = MessageRepo(db)
+    evt_repo = EventRepo(db)
+    sessions[world_id] = {
         "msg_repo": msg_repo,
         "evt_repo": evt_repo,
         "paused": False,
         "done": False,
     }
     task = asyncio.create_task(_graph_producer(world_id, msg_repo, evt_repo))
-    _sessions[world_id]["task"] = task
+    sessions[world_id]["task"] = task
     log_api("start", world_id)
     return {"status": "ok"}
 
 
 @app.get("/api/world/{world_id}/tick/next")
 async def tick_next(world_id: str):
-    s = _sessions.get(world_id)
+    s = _get_sessions().get(world_id)
     if not s:
         return {"type": "error", "data": {"message": "session not found"}}
     meta = await s["msg_repo"].get_next_pending(world_id)
@@ -127,7 +148,7 @@ async def tick_next(world_id: str):
 
 @app.post("/api/world/{world_id}/tick/{tick}/ack")
 async def tick_ack(world_id: str, tick: int):
-    s = _sessions.get(world_id)
+    s = _get_sessions().get(world_id)
     if not s:
         return {"status": "error", "detail": "session not found"}
     await s["msg_repo"].ack(world_id, tick)
@@ -137,7 +158,7 @@ async def tick_ack(world_id: str, tick: int):
 
 @app.post("/api/world/{world_id}/pause")
 async def session_pause(world_id: str):
-    s = _sessions.get(world_id)
+    s = _get_sessions().get(world_id)
     if not s:
         return {"status": "error", "detail": "session not found"}
     s["paused"] = True
@@ -147,7 +168,7 @@ async def session_pause(world_id: str):
 
 @app.post("/api/world/{world_id}/resume")
 async def session_resume(world_id: str):
-    s = _sessions.get(world_id)
+    s = _get_sessions().get(world_id)
     if not s:
         return {"status": "error", "detail": "session not found"}
     s["paused"] = False
@@ -166,6 +187,7 @@ async def health_check():
 @app.get("/api/world/{world_id}/state")
 async def get_pack_state(world_id: str):
     try:
+        db = _get_db()
         scenes = [
             {
                 "id": r["id"],
@@ -176,12 +198,12 @@ async def get_pack_state(world_id: str):
                 "landmarks": json.loads(r.get("landmarks_json", "[]")),
                 "environment": json.loads(r.get("environment_json", "{}")),
             }
-            for r in await _db.fetch_all("SELECT * FROM scenes WHERE world_id = ?", (world_id,))
+            for r in await db.fetch_all("SELECT * FROM scenes WHERE world_id = ?", (world_id,))
         ]
         pcs = [
             _char_from_row(r, True, i * 2 + 5)
             for i, r in enumerate(
-                await _db.fetch_all(
+                await db.fetch_all(
                     "SELECT * FROM player_characters WHERE world_id = ?", (world_id,)
                 )
             )
@@ -189,7 +211,7 @@ async def get_pack_state(world_id: str):
         actors = [
             _char_from_row(r, False, i * 3 + 12)
             for i, r in enumerate(
-                await _db.fetch_all("SELECT * FROM actors WHERE world_id = ?", (world_id,))
+                await db.fetch_all("SELECT * FROM actors WHERE world_id = ?", (world_id,))
             )
         ]
         items = [
@@ -200,7 +222,7 @@ async def get_pack_state(world_id: str):
                 "rarity": r.get("rarity", "common"),
                 "description": r.get("description", ""),
             }
-            for r in await _db.fetch_all("SELECT * FROM items WHERE world_id = ?", (world_id,))
+            for r in await db.fetch_all("SELECT * FROM items WHERE world_id = ?", (world_id,))
         ]
         so = [
             {
@@ -211,7 +233,7 @@ async def get_pack_state(world_id: str):
                 "position_x": r.get("position_x", 0),
                 "position_y": r.get("position_y", 0),
             }
-            for r in await _db.fetch_all("SELECT * FROM scene_objects")
+            for r in await db.fetch_all("SELECT * FROM scene_objects")
         ]
         return {
             "world_id": world_id,
@@ -295,19 +317,21 @@ async def _graph_producer(
     from src.repository.character_repo import CharacterRepo
     from src.repository.dm_record_repo import DMRecordRepo
 
-    char_repo = CharacterRepo(_db)
-    record_repo = DMRecordRepo(_db)
+    db = _get_db()
+    char_repo = CharacterRepo(db)
+    record_repo = DMRecordRepo(db)
     orch = Orchestrator(session_id=world_id, repos={"char": char_repo, "dm_record": record_repo})
     try:
         while True:
-            while _sessions.get(world_id, {}).get("paused"):
+            while _get_sessions().get(world_id, {}).get("paused"):
                 await asyncio.sleep(0.5)
             await orch.run_tick()
     except Exception as e:
         logger.error("[Producer] %s error: %s", world_id, e, exc_info=True)
     finally:
-        if world_id in _sessions:
-            _sessions[world_id]["done"] = True
+        sessions = _get_sessions()
+        if world_id in sessions:
+            sessions[world_id]["done"] = True
 
 
 # Event → JSON / Serialize event
