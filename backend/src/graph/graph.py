@@ -22,7 +22,7 @@ START
  True
  |
  v
- reflection_subgraph [subgraph]  反思/摘要     reflection_subgraph
+ reflection_service.reflect        [node]      角色反思     reflect
  |
  v
  END
@@ -32,14 +32,13 @@ START
 from langgraph.graph import END, StateGraph
 
 # 服务层 / Service layer
-from ..services import dm_service, message_service, scene_service
+from ..services import dm_service, message_service, reflection_service, scene_service
 
 # 根状态定义 / Root state definition
 from .state import OverallState
 
 # 子图 / Subgraphs
-from .subgraphs.character_subgraph import character_subgraph
-from .subgraphs.reflection_subgraph import reflection_subgraph
+from .subgraphs import character_subgraph as character_subgraph_module
 
 
 def build_tick_graph() -> StateGraph:
@@ -51,9 +50,9 @@ def build_tick_graph() -> StateGraph:
     graph.add_node("message_service.create_tick_message", message_service.create_tick_message)
     graph.add_node("dm_service.dm_create", dm_service.dm_create)
     graph.add_node("scene_service.process_scene", scene_service.process_scene)
-    graph.add_node("character_subgraph", character_subgraph)
+    graph.add_node("character_subgraph", character_subgraph_module.character_subgraph)
     graph.add_node("dm_service.dm_narrate", dm_service.dm_narrate)
-    graph.add_node("reflection_subgraph", reflection_subgraph)
+    graph.add_node("reflection_service.reflect", reflection_service.reflect)
 
     # 顺序边 / Sequential edges
     graph.set_entry_point("message_service.create_tick_message")
@@ -65,8 +64,8 @@ def build_tick_graph() -> StateGraph:
     # 条件分支：叙事后决定是否反思 / Conditional: reflect after narration?
     graph.add_conditional_edges(
         "dm_service.dm_narrate",
-        lambda s: "reflection_subgraph" if s.get("needs_reflection") else END,
+        lambda s: "reflection_service.reflect" if s.get("needs_reflection") else END,
     )
-    graph.add_edge("reflection_subgraph", END)
+    graph.add_edge("reflection_service.reflect", END)
 
     return graph

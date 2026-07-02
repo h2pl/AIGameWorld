@@ -2,42 +2,55 @@
 
 from langchain_core.runnables.config import RunnableConfig
 
-from ..engine.character import actor_decide as actor_engine
-from ..engine.character import pc_decide as pc_engine
-from ..engine.character.character_engine import process_characters
+from ..engine.decision import decision_engine
+from ..engine.exploration import exploration_engine
+from ..engine.perception import perception_engine
+from ..engine.talk import talk_engine
 from ..graph.state import OverallState
 
 
-async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
-    """加载角色 → LLM 决策 → 返回 character_actions."""
-    actions = await process_characters(
+async def perceive(state: OverallState, config: RunnableConfig = None) -> dict:
+    """组装角色感知上下文 / Build perceived context for characters."""
+    perceived_context = await perception_engine.perceive_characters(
         world_id=state.get("world_id", ""),
         tick=state.get("tick", 0),
+        scene_id=state.get("scene_id", ""),
         plot_brief=state.get("plot_brief", ""),
+        hints=state.get("hints", []),
+        config=config,
+    )
+    return {"perceived_character_contexts": perceived_context}
+
+
+async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
+    """基于角色感知上下文逐个决策 / Decide from perceived character contexts."""
+    contexts = state.get("perceived_character_contexts", [])
+    if not contexts:
+        return {"character_actions": []}
+
+    actions = await decision_engine.process_characters(
+        contexts=contexts,
+        tick=state.get("tick", 0),
         config=config,
     )
     return {"character_actions": actions}
 
 
-async def pc_decide(state: dict, config: RunnableConfig = None) -> dict:
-    """旧版 PC service 接口 / Legacy PC service entry point."""
-    actions = []
-    for pc_id in state.get("pc_ids", []):
-        result = await pc_engine.pc_decide(
-            pc_engine.PCDecideRequest(pc_id=pc_id, plot_brief=state.get("plot_brief", ""), tick=state.get("tick", 0)),
-            config,
-        )
-        actions.append({"character_id": result.character_id, "type": result.type, "description": result.description})
-    return {"character_actions": actions}
-
-
-async def actor_decide(state: dict, config: RunnableConfig = None) -> dict:
-    """旧版 Actor service 接口 / Legacy Actor service entry point."""
-    actions = []
-    for actor_id in state.get("actor_ids", []):
-        result = await actor_engine.actor_decide(
-            actor_engine.ActorDecideRequest(actor_id=actor_id, plot_brief=state.get("plot_brief", ""), tick=state.get("tick", 0)),
-            config,
-        )
-        actions.append({"character_id": result.character_id, "type": result.type, "description": result.description})
-    return {"character_actions": actions}
+async def act(state: OverallState, config: RunnableConfig = None) -> dict:
+    """执行角色动作 / Execute character actions."""
+    actions = state.get("character_actions", [])
+    tick_message_id = state.get("tick_message_id", "")
+    tick = state.get("tick", 0)
+    await talk_engine.process_talk_actions(
+        actions=actions,
+        tick_message_id=tick_message_id,
+        tick=tick,
+        config=config,
+    )
+    await exploration_engine.process_explore_actions(
+        actions=actions,
+        tick_message_id=tick_message_id,
+        tick=tick,
+        config=config,
+    )
+    return {}

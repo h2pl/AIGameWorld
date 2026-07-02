@@ -18,14 +18,7 @@ from ..repository.scene_repo import SceneRepo
 from ..repository.world_repo import WorldRepo
 from ..storage.chroma_client import ChromaClient
 from ..storage.sqlite_client import SQLiteClient
-from .deserialize import (
-    actor_from_yaml,
-    item_from_yaml,
-    pc_from_yaml,
-    scene_obj_from_yaml,
-)
-from .reader import read_pack
-from .validator import validate_pack_relations
+from . import deserialize, reader, validator
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +47,7 @@ class WorldLoader:
         if not pack_dir.exists():
             raise FileNotFoundError(f"Pack directory not found: {pack_dir}")
 
-        data = read_pack(pack_dir)
+        data = reader.read_pack(pack_dir)
 
         # ── Pack 标识：world_id 来自 meta.id，唯一关联字段 / world_id from meta.id ──
         world_id = data["meta"].get("id", pack_dir.name)
@@ -76,7 +69,7 @@ class WorldLoader:
         )
 
         # ── 关联关系校验 / FK validation ──
-        warnings = validate_pack_relations(data)
+        warnings = validator.validate_pack_relations(data)
         for w in warnings:
             logger.warning("[WorldLoader] FK warning: %s", w)
 
@@ -109,14 +102,14 @@ class WorldLoader:
 
     async def _write_items(self, items: list[dict], world_id: str, world_name: str) -> int:
         for i in items:
-            await self._item_repo.save(item_from_yaml(i, world_id, world_name))
+            await self._item_repo.save(deserialize.item_from_yaml(i, world_id, world_name))
         return len(items)
 
     # ── Scene Objects (SceneRepo) ──
 
     async def _write_scene_objects(self, objects: list[dict], world_id: str) -> int:
         for o in objects:
-            await self._scene_repo.save_object(scene_obj_from_yaml(o, world_id))
+            await self._scene_repo.save_object(deserialize.scene_obj_from_yaml(o, world_id))
         return len(objects)
 
     # ── PCs (CharacterRepo) ──
@@ -125,7 +118,9 @@ class WorldLoader:
         starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
         pcs = data.get("player_characters", [])
         for pc_data in pcs:
-            await self._char_repo.save_pc(pc_from_yaml(pc_data, starting_scene, world_id))
+            await self._char_repo.save_pc(
+                deserialize.pc_from_yaml(pc_data, starting_scene, world_id)
+            )
         return len(pcs)
 
     # ── Actors (CharacterRepo) ──
@@ -134,7 +129,9 @@ class WorldLoader:
         starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
         actors = data.get("actors", [])
         for a_data in actors:
-            await self._char_repo.save_actor(actor_from_yaml(a_data, starting_scene, world_id))
+            await self._char_repo.save_actor(
+                deserialize.actor_from_yaml(a_data, starting_scene, world_id)
+            )
         return len(actors)
 
     # ── ChromaDB ──

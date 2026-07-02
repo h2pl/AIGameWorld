@@ -4,7 +4,7 @@
 依赖 src/rules/dnd_rules.py 的 calculate_ac。
 """
 
-from .dnd_rules import calculate_ac
+from . import dnd_rules
 
 
 def attr_mod(value: int) -> int:
@@ -34,7 +34,7 @@ def compute_ac(
     shield: bool = False,
 ) -> int:
     """计算最终 AC / Compute final AC."""
-    return calculate_ac(
+    return dnd_rules.calculate_ac(
         base_ac=base_ac,
         dex_mod=attr_mod(dex_val),
         shield_bonus=2 if shield else 0,

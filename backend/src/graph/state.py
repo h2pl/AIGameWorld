@@ -13,6 +13,9 @@ class OverallState(TypedDict):
     tick: int  # 当前 tick 编号 / Current tick number
     world_id: str  # 世界 ID / World ID
     tick_message_id: str  # 消息 ID / Message ID
+    perceived_character_contexts: list[
+        dict[str, Any]
+    ]  # 每个角色的感知上下文 / Per-character perceived contexts
     hints: list[str]  # DM 环境提示 / DM environmental hints
     plot_brief: str  # 剧情梗概 / Plot brief
     scene_id: str  # 当前场景 ID / Current scene ID
@@ -31,6 +34,7 @@ class CharacterSubState(TypedDict):
 
     tick: int
     plot_brief: str
+    perceived_character_contexts: list[dict[str, Any]]
     character_actions: Annotated[list[dict[str, Any]], add]
 
 
