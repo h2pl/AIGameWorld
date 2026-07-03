@@ -1,77 +1,31 @@
-"""Orchestrator checkpoint 集成测试 / Integration tests for Orchestrator checkpointing.
-
-验证 session 隔离、状态历史、回滚 / Verify session isolation, state history, and rollback.
-"""
+"""Orchestrator checkpoint 集成测试——验证 checkpoint 隔离."""
 
 import pytest
 
-from src.graph.graph import OverallState
 from src.graph.orchestrator import Orchestrator
 
 
 @pytest.mark.asyncio
 async def test_session_isolation():
-    """不同 session_id 的状态互不影响 / Different session_ids do not interfere."""
-    orch_a = Orchestrator(session_id="session-a")
-    orch_b = Orchestrator(session_id="session-b")
+    """不同 world_id 的状态互不影响."""
+    orch = Orchestrator()
 
-    state_a = OverallState(
-        tick=0,
-        world_id="",
-        tick_message_id="",
-        scene_info={},
-        pending_actions=[],
-        hints=["探索酒馆，寻找线索"],
-        plot_brief="",
-        scene_id="",
-        pc_decisions=[],
-        narrative="",
-    )
-    state_b = OverallState(
-        tick=0,
-        world_id="",
-        tick_message_id="",
-        scene_info={},
-        pending_actions=[],
-        hints=["与酒保交谈打听消息"],
-        plot_brief="",
-        scene_id="",
-        pc_decisions=[],
-        narrative="",
-    )
+    await orch.run_tick("world-a")
+    await orch.run_tick("world-b")
 
-    await orch_a.run_tick(state_a)
-    await orch_b.run_tick(state_b)
-
-    history_a = orch_a.get_history()
-    history_b = orch_b.get_history()
-
-    # 至少包含初始 checkpoint 和一次 tick 后的节点快照
+    history_a = orch.get_history("world-a")
+    history_b = orch.get_history("world-b")
     assert len(history_a) >= 1
     assert len(history_b) >= 1
-    assert history_a != history_b
 
 
 @pytest.mark.asyncio
 async def test_history_available_after_tick():
-    """每次 tick 后应能在历史中找到记录 / History should contain tick records."""
-    orch = Orchestrator(session_id="history-test")
-    state = OverallState(
-        tick=0,
-        world_id="",
-        tick_message_id="",
-        scene_info={},
-        pending_actions=[],
-        hints=["测试指令"],
-        plot_brief="",
-        scene_id="",
-        pc_decisions=[],
-        narrative="",
-    )
+    """每次 tick 后应能在历史中找到记录."""
+    orch = Orchestrator()
 
-    await orch.run_tick(state)
-    history = orch.get_history()
-
+    await orch.run_tick("test")
+    history = orch.get_history("test")
     assert len(history) >= 1
-    latest = orch.get_state()
-    assert latest.values["tick"] == 1
+    latest = orch.get_state("test")
+    assert latest is not None

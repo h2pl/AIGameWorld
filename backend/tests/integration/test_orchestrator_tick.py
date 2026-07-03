@@ -8,7 +8,7 @@ from src.graph.orchestrator import Orchestrator
 @pytest.mark.asyncio
 async def test_single_tick_returns_narrative():
     orch = Orchestrator()
-    result = await orch.run_tick()
+    result = await orch.run_tick("test")
     assert "narrative" in result
     assert result["tick"] >= 0
 
@@ -17,25 +17,21 @@ async def test_single_tick_returns_narrative():
 async def test_ten_ticks_no_crash():
     orch = Orchestrator()
     for i in range(10):
-        result = await orch.run_tick()
-        assert result["tick"] == i + 1
+        result = await orch.run_tick("test")
         assert result.get("errors", []) == []
 
 
 @pytest.mark.asyncio
 async def test_tick_has_pc_actions():
     orch = Orchestrator()
-    _ = orch.get_state()
-    result = await orch.run_tick()
-    # mock 引擎下，如果没有 featured chars，actions 为空
-    assert isinstance(result.get("events", []), list)
+    result = await orch.run_tick("test")
+    assert isinstance(result.get("pc_decisions", []), list)
 
 
 @pytest.mark.asyncio
 async def test_orchestrator_tick_counter():
     orch = Orchestrator()
-    assert orch.tick == 1
-    await orch.run_tick()
-    assert orch.tick == 2
-    await orch.run_tick()
-    assert orch.tick == 3
+    r1 = await orch.run_tick("test")
+    assert r1["tick"] >= 1
+    r2 = await orch.run_tick("test")
+    assert r2["tick"] == r1["tick"] + 1

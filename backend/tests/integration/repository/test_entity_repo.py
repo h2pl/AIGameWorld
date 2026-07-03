@@ -153,7 +153,7 @@ class TestMessageEventRepo:
         evt = Event(type="dm_narrative", tick=1, payload={"text": "test"})
         await event_repo.insert_events(msg.id, msg.tick, [evt])
         await msg_repo.mark_ready(msg.id, msg.tick)
-        meta = await msg_repo.get_next_pending("aw_test")
+        meta = await msg_repo.get_next_pending("test")
         assert meta is not None
         assert meta["tick"] == 1
         events = await event_repo.load_by_message(meta["id"], meta["tick"])
@@ -165,7 +165,7 @@ class TestMessageEventRepo:
         await self._insert_msg(msg_repo, tick=1)
         await self._insert_msg(msg_repo, tick=2)
         await msg_repo.ack("aw_test", 1)
-        meta = await msg_repo.get_next_pending("aw_test")
+        meta = await msg_repo.get_next_pending("test")
         assert meta["tick"] == 2
 
     @pytest.mark.asyncio
@@ -177,5 +177,5 @@ class TestMessageEventRepo:
     async def test_ack_all_then_none(self, msg_repo):
         await self._insert_msg(msg_repo, tick=1)
         await msg_repo.ack("aw_test", 1)
-        meta = await msg_repo.get_next_pending("aw_test")
+        meta = await msg_repo.get_next_pending("test")
         assert meta is None

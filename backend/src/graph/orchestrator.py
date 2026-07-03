@@ -31,11 +31,17 @@ class Orchestrator:
         self._llm = llm
         self._reflection_interval = reflection_interval
         self._repos = repos
+        self._fallback_ticks: dict[str, int] = {}
 
     async def run_tick(self, world_id: str) -> dict:
         """对指定 world 执行一个完整 Tick——tick 号从 worlds 表读取并自增."""
         world_repo = self._repos.get("world") if self._repos else None
-        tick = await world_repo.increment_tick(world_id) if world_repo else 1
+        if world_repo:
+            tick = await world_repo.increment_tick(world_id)
+        else:
+            t = self._fallback_ticks.get(world_id, 0) + 1
+            self._fallback_ticks[world_id] = t
+            tick = t
 
         initial_state = OverallState(
             tick=tick,
@@ -58,7 +64,7 @@ class Orchestrator:
         config["callbacks"] = [TickGraphCallback(tick=tick)]
 
         t_start = time.monotonic()
-        result = await self._app.ainvoke(initial_state, config)
+        result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
         log_phase("tick", tick, elapsed=time.monotonic() - t_start)
 
         return {
@@ -88,3 +94,13 @@ class Orchestrator:
         world_repo = self._repos.get("world") if self._repos else None
         if world_repo:
             await world_repo.reset_tick(world_id)
+        else:
+            self._fallback_ticks[world_id] = 0
+
+    def rollback(self, world_id: str, tick: int) -> dict:
+        for state in self.get_history(world_id):
+            if state.metadata.get("tick") == tick:
+                self._app.update_state({"configurable": {"thread_id": world_id}}, state.values)
+                self._fallback_ticks[world_id] = tick
+                return state.values
+        raise ValueError(f"Tick {tick} not found in {world_id}")
