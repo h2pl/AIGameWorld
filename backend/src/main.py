@@ -56,15 +56,6 @@ def _set_db(db: SQLiteClient | None) -> None:
     app.state.db = db
 
 
-# 启动 seed test world / Seed test world on startup
-async def _seed(rep: WorldRepo):
-    rows = await rep.list_all()
-    # 无 test world 则创建 / Create test world if missing
-    if not any(r.id == "test" for r in rows):
-        await rep.create(World(id="test", name="测试世界", starting_scene="village_elderwood"))
-        logger.info("[Seed] test world created")
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时初始化共享资源 / Initialize shared resources on startup
@@ -73,7 +64,6 @@ async def lifespan(app: FastAPI):
     app.state.sessions = {}
     await db.connect()
     await db.init_schema()
-    await _seed(WorldRepo(db))
     yield
     # 关闭时回收 session 与 DB / Clean up sessions and DB on shutdown
     sessions = _get_sessions()

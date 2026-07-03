@@ -56,7 +56,7 @@ llm_purposes:
 
 # === 数据库 / Database ===
 database:
-  sqlite_path: "data/world.db"
+  sqlite_path: "data/world_db.db"
   chroma_path: "data/chroma/"
 
 # === 自动运行 / Auto Run ===

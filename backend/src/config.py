@@ -62,7 +62,7 @@ class LLMConfig(BaseModel):
 class DatabaseConfig(BaseModel):
     """数据库配置 / Database configuration."""
 
-    sqlite_path: str = "data/world.db"
+    sqlite_path: str = "data/world_db.db"
     chroma_path: str = "data/chroma/"
 
 

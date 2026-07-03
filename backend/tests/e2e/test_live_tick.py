@@ -20,7 +20,7 @@ async def client():
     from src.repository.world_repo import WorldRepo
     from src.storage.sqlite_client import SQLiteClient
 
-    db = SQLiteClient("data/live_test.db")
+    db = SQLiteClient("data/world_db.db")
     m._set_db(db)
     m.app.state.sessions = {}
     await db.connect()

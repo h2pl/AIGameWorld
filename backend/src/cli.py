@@ -25,64 +25,21 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.domain import (
-    Actor,
-    PlayerCharacter,
-)
 from src.graph.orchestrator import Orchestrator
 from src.repository.dm_record_repo import DMRecordRepo
 from src.repository.event_repo import TickEventRepo
 from src.repository.memory_repo import MemoryRepo
 from src.repository.message_repo import TickMessageRepo
+from src.repository.pc_repo import PcRepo
 from src.repository.scene_repo import SceneRepo
 from src.repository.world_repo import WorldRepo
 from src.storage.chroma_client import ChromaClient
 from src.storage.sqlite_client import SQLiteClient
 from src.utils.logging import setup_logging
 
-from .pc_repo import PcRepo
-
 # ═══════════════════════════════════════════════════════════════
 # 种子数据 / Seed data
 # ═══════════════════════════════════════════════════════════════
-
-
-def _seed_pcs() -> list[PlayerCharacter]:
-    return [
-        PlayerCharacter(
-            id="alex",
-            name="Alex",
-            role="fighter",
-            race="human",
-            scene_id="tavern",
-        ),
-        PlayerCharacter(
-            id="maya",
-            name="Maya",
-            role="rogue",
-            race="elf",
-            scene_id="tavern",
-        ),
-    ]
-
-
-def _seed_actors() -> list[Actor]:
-    return [
-        Actor(
-            id="innkeeper",
-            name="Greta",
-            role="innkeeper",
-            race="dwarf",
-            scene_id="tavern",
-        ),
-        Actor(
-            id="guard",
-            name="Sergeant Cole",
-            role="town_guard",
-            race="human",
-            scene_id="town_square",
-        ),
-    ]
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -123,7 +80,6 @@ async def run(args: argparse.Namespace) -> None:
     """CLI 参数 → _do_run / CLI args → _do_run."""
     await _do_run(
         ticks=args.ticks,
-        use_db=args.db,
         db_path="data/world_db.db",
         pack_id=args.pack_id or None,
         use_llm=args.llm,
@@ -133,65 +89,51 @@ async def run(args: argparse.Namespace) -> None:
 
 async def _do_run(
     ticks: int = 5,
-    use_db: bool = False,
     db_path: str = "data/world_db.db",
     pack_id: str | None = None,
     use_llm: bool = False,
     mock_dataset: str = "",
 ) -> None:
-    """核心运行逻辑 / Core run logic — 同时供 shell 和 CLI 参数调用."""
+    """核心运行逻辑——始终使用真实 DB 数据，LLM 默认 mock 模式."""
     n = ticks
     mode_parts = ["LLM" if use_llm else "Mock"]
-    mode_parts.append("+DB" if use_db else "(no DB)")
-    if pack_id:
-        mode_parts.append(f"[{pack_id}]")
-
+    mode_parts.append(f"[{pack_id or 'DB'}]")
     print(f"AIGameWorld -- {' '.join(mode_parts)}")
     print(f"Running {n} tick(s)...\n")
 
-    db = None
-    repos = None
-    llm = None
+    # -- DB：始终初始化 + 加载 pack 数据 / Always init DB and load pack data
+    db = SQLiteClient(db_path)
+    await db.connect()
+    await db.init_schema()
+    print("  [DB] initialized")
 
-    # -- DB：初始化 + 加载 pack 或种子 / DB: init + load pack or seed
-    if use_db:
-        db = SQLiteClient(db_path)
-        await db.connect()
-        await db.init_schema()
-        print("  [DB] initialized")
+    pc_repo = PcRepo(db)
+    record_repo = DMRecordRepo(db)
 
-        pc_repo = PcRepo(db)
-        record_repo = DMRecordRepo(db)
+    if pack_id:
+        pcs = await pc_repo.load_pcs(pack_id)
+        actors = await pc_repo.load_actors(pack_id)
+        print(f"  [DB] pack_id={pack_id}")
+    else:
+        pcs = await pc_repo.load_pcs()
+        actors = await pc_repo.load_actors()
+        print("  [DB] no pack_id specified")
+    print(f"  [DB] Loaded {len(pcs)} PCs, {len(actors)} Actors")
 
-        if pack_id:
-            pcs = await pc_repo.load_pcs(pack_id)
-            actors = await pc_repo.load_actors(pack_id)
-            print(f"  [DB] pack_id={pack_id}")
-            print(f"  [DB] Loaded {len(pcs)} PCs, {len(actors)} Actors")
-        else:
-            pcs = _seed_pcs()
-            actors = _seed_actors()
-            for pc in pcs:
-                await pc_repo.save_pc(pc)
-            for a in actors:
-                await pc_repo.save_actor(a)
-            await db.commit()
-            print(f"  [DB] Seeded {len(pcs)} PCs, {len(actors)} Actors")
+    repos = {
+        "dm_record": record_repo,
+        "char": pc_repo,
+        "scene": SceneRepo(db),
+        "world": WorldRepo(db),
+        "event": TickEventRepo(db),
+        "message": TickMessageRepo(db),
+    }
 
-        repos = {
-            "dm_record": record_repo,
-            "char": pc_repo,
-            "scene": SceneRepo(db),
-            "world": WorldRepo(db),
-            "event": TickEventRepo(db),
-            "message": TickMessageRepo(db),
-        }
-
-    # -- LLM：创建客户端（--llm 覆盖 mock 开关，dataset 默认读 config.yaml） / Create LLM client
+    # -- LLM：创建客户端（--llm 覆盖 mock 开关，dataset 默认读 config.yaml）
     from src.config import load_config
     from src.llm.llm_client import LLMClient
 
-    config = load_config("../config.yaml")
+    config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
     _use_mock = not use_llm if use_llm else config.mock.enabled
     _dataset = mock_dataset or config.mock.dataset
     llm = LLMClient(config.llm, mock=_use_mock, mock_dataset=_dataset)
@@ -202,10 +144,7 @@ async def _do_run(
         print(f"  [LLM] mock mode dataset={_dataset}")
 
     chroma = ChromaClient(persist_path="data/chroma")
-    if repos:
-        repos["memory"] = MemoryRepo(chroma=chroma)
-    else:
-        repos = {"memory": MemoryRepo(chroma=chroma)}
+    repos["memory"] = MemoryRepo(chroma=chroma)
 
     # -- Tick 循环 / Tick loop
     orch = Orchestrator(llm=llm, repos=repos)
@@ -217,8 +156,7 @@ async def _do_run(
         tick_events = result.get("tick_events", [])
         decisions = result.get("pc_decisions", [])
 
-        db_label = f"[DB] ticks {tick}" if use_db else ""
-        _print_tick(tick, narrative, decisions, tick_events, [], db_info=db_label)
+        _print_tick(tick, narrative, decisions, tick_events, [], db_info=f"[DB] ticks {tick}")
 
     # -- 收尾：统计 + 关闭 DB / cleanup: stats + close DB
     print(f"{'=' * 60}")
@@ -245,7 +183,7 @@ async def _test_client() -> None:
     from src.config import load_config
     from src.llm.llm_client import LLMClient
 
-    config = load_config("../config.yaml")
+    config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
     client = LLMClient(config.llm)
 
     print(f"\n{_SEP}")
@@ -272,7 +210,7 @@ async def _test_engine() -> None:
     from src.llm.llm_client import LLMClient
     from src.schemas.request import DMCreateRequest, DMNarrateRequest
 
-    config = load_config("../config.yaml")
+    config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
     client = LLMClient(config.llm)
     prompts = Environment(loader=FileSystemLoader(Path(__file__).parent / "prompts"))
 
@@ -340,7 +278,7 @@ async def _test_tick() -> None:
     from src.config import load_config
     from src.llm.llm_client import LLMClient
 
-    config = load_config("../config.yaml")
+    config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
     client = LLMClient(config.llm)
     orch = Orchestrator(llm=client)
 
@@ -583,7 +521,6 @@ async def shell(args: argparse.Namespace) -> None:
 
         await _do_run(
             ticks=int(t) if t else 5,
-            use_db=state.use_db,
             db_path=state.db_path,
             pack_id=state.pack_id or None,
             use_llm=state.use_llm,
@@ -616,7 +553,6 @@ async def shell(args: argparse.Namespace) -> None:
                     # 行内快捷模式 / inline shortcut
                     await _do_run(
                         ticks=int(inline_arg),
-                        use_db=state.use_db,
                         db_path=state.db_path,
                         pack_id=state.pack_id or None,
                         use_llm=state.use_llm,
@@ -866,7 +802,7 @@ def main() -> None:
     # run — 单次运行 / one-shot run
     run_parser = sub.add_parser("run", help="Run N ticks")
     run_parser.add_argument("--ticks", type=int, default=5, help="Number of ticks (default: 5)")
-    run_parser.add_argument("--db", action="store_true", help="Enable DB read/write + seed data")
+    run_parser.add_argument("--db", action="store_true", help="Enable DB mode (default: on)")
     run_parser.add_argument(
         "--pack-id", default="", help="Load pack data from DB (e.g. forgotten_realms)"
     )
