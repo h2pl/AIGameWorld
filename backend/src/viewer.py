@@ -11,11 +11,10 @@ from jinja2 import Environment, FileSystemLoader
 from src.repository.dm_record_repo import DMRecordRepo
 from src.repository.event_repo import TickEventRepo
 from src.repository.item_repo import ItemRepo
+from src.repository.pc_repo import PcRepo
 from src.repository.scene_repo import SceneRepo
 from src.repository.world_repo import WorldRepo
 from src.storage.sqlite_client import SQLiteClient
-
-from .pc_repo import PcRepo
 
 _PROJECT_ROOT = Path(__file__).parent.parent  # backend/
 _TEMPLATES_DIR = _PROJECT_ROOT.parent / "frontend" / "templates"  # frontend/templates/

@@ -8,9 +8,8 @@ from src.domain.message import Message
 from src.domain.player_character import PlayerCharacter
 from src.repository.event_repo import TickEventRepo
 from src.repository.message_repo import TickMessageRepo
+from src.repository.pc_repo import PcRepo
 from src.storage.sqlite_client import SQLiteClient
-
-from .pc_repo import PcRepo
 
 # ══ Fixtures / 夹具 ══
 

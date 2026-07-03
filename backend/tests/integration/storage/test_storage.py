@@ -80,8 +80,7 @@ class TestPcRepo:
         from src.domain import (
             PlayerCharacter,
         )
-
-        from .pc_repo import PcRepo
+        from src.repository.pc_repo import PcRepo
 
         repo = PcRepo(db)
         pc = PlayerCharacter(
@@ -99,8 +98,7 @@ class TestPcRepo:
 
     async def test_save_and_load_actor(self, db):
         from src.domain import Actor
-
-        from .pc_repo import PcRepo
+        from src.repository.pc_repo import PcRepo
 
         repo = PcRepo(db)
         actor = Actor(

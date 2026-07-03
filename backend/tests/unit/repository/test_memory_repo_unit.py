@@ -2,9 +2,8 @@
 
 from unittest.mock import Mock
 
-from src.domain.memory import importance_of
-
 from src.repository.memory_repo import MemoryRepo
+from src.schemas.memory_schema import importance_of
 
 
 class TestMemoryRepoUnit:

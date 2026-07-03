@@ -11,6 +11,8 @@
 import logging
 from pathlib import Path
 
+from src.repository.pc_repo import PcRepo
+
 from ..domain.world import World
 from ..repository.item_repo import ItemRepo
 from ..repository.scene_repo import SceneRepo
@@ -18,7 +20,6 @@ from ..repository.world_repo import WorldRepo
 from ..storage.chroma_client import ChromaClient
 from ..storage.sqlite_client import SQLiteClient
 from . import deserialize, reader, validator
-from .pc_repo import PcRepo
 
 logger = logging.getLogger(__name__)
 
