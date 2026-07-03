@@ -29,4 +29,3 @@ class Item(DomainModel):
     value: int = 0
     description: str = ""
     data: dict = Field(default_factory=dict)
-    world_name: str = ""

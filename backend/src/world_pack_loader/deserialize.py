@@ -7,11 +7,6 @@ import json
 
 from ..domain import (
     Actor,
-    Attributes,
-    CharacterArc,
-    CombatStats,
-    Equipment,
-    InventorySlot,
     Item,
     ItemType,
     PlayerCharacter,
@@ -35,15 +30,11 @@ def pc_from_yaml(data: dict, starting_scene: str, world_id: str) -> PlayerCharac
         attributes_json=json.dumps(attrs_from_yaml(data.get("attributes")), ensure_ascii=False),
         combat_json=json.dumps(combat_from_yaml(data.get("combat")) or {}, ensure_ascii=False),
         personality=data.get("personality", ""),
-        character_arc_json=json.dumps(
-            char_arc_from_yaml(data.get("character_arc")), ensure_ascii=False
-        ),
-        long_term_goal=(data.get("character_arc") or {}).get("goal", ""),
+        arc_json=json.dumps(char_arc_from_yaml(data.get("arc")), ensure_ascii=False),
+        long_term_goal=(data.get("arc") or {}).get("goal", ""),
         equipment_json=json.dumps(equip_from_yaml(data.get("equipment")), ensure_ascii=False),
         inventory_json=json.dumps(inventory_from_yaml(data.get("inventory")), ensure_ascii=False),
-        values_json=json.dumps(
-            (data.get("character_arc") or {}).get("values", []), ensure_ascii=False
-        ),
+        values_json=json.dumps((data.get("arc") or {}).get("values", []), ensure_ascii=False),
         world_id=world_id,
     )
 
@@ -68,7 +59,7 @@ def actor_from_yaml(data: dict, starting_scene: str = "", world_id: str = "") ->
     )
 
 
-def item_from_yaml(data: dict, world_id: str, world_name: str) -> Item:
+def item_from_yaml(data: dict, world_id: str) -> Item:
     """YAML dict → Item."""
     return Item(
         id=data.get("id", ""),
@@ -80,7 +71,6 @@ def item_from_yaml(data: dict, world_id: str, world_name: str) -> Item:
         description=data.get("description", ""),
         data=data.get("data", {}),
         world_id=world_id,
-        world_name=world_name,
     )
 
 
@@ -102,7 +92,7 @@ def scene_obj_from_yaml(data: dict, world_id: str = "") -> SceneObject:
 # ═══════════════════════════════════════════════════════════════
 
 
-def attrs_from_yaml(data: dict | None) -> Attributes:
+def attrs_from_yaml(data: dict | None) -> dict:
     if not data:
         return {}
     return {
@@ -115,7 +105,7 @@ def attrs_from_yaml(data: dict | None) -> Attributes:
     }
 
 
-def combat_from_yaml(data: dict | None) -> CombatStats | None:
+def combat_from_yaml(data: dict | None) -> dict | None:
     if not data:
         return None
     return {
@@ -129,7 +119,7 @@ def combat_from_yaml(data: dict | None) -> CombatStats | None:
     }
 
 
-def char_arc_from_yaml(data: dict | None) -> CharacterArc:
+def char_arc_from_yaml(data: dict | None) -> dict:
     if not data:
         return {}
     return {
@@ -139,7 +129,7 @@ def char_arc_from_yaml(data: dict | None) -> CharacterArc:
     }
 
 
-def equip_from_yaml(data: dict | None) -> Equipment:
+def equip_from_yaml(data: dict | None) -> dict:
     if not data:
         return {}
     return {
@@ -149,10 +139,10 @@ def equip_from_yaml(data: dict | None) -> Equipment:
     }
 
 
-def inventory_from_yaml(data: list | None) -> list[InventorySlot]:
+def inventory_from_yaml(data: list | None) -> list[dict]:
     if not data:
         return []
-    result: list[InventorySlot] = []
+    result: list[dict] = []
     for i in data:
         if not isinstance(i, dict):
             continue  # 跳过字符串等非 dict 项 / Skip non-dict entries

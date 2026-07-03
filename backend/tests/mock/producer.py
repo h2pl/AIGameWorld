@@ -3,7 +3,6 @@
 import asyncio
 import logging
 from collections.abc import Callable
-from datetime import UTC, datetime
 
 from src.domain.event import Event
 from src.domain.message import Message
@@ -28,7 +27,6 @@ async def run(
         id=world_id,
         tick=0,
         world_id=world_id,
-        timestamp=datetime.now(UTC).isoformat(),
     )
     await msg_repo.insert(msg)
     opening_evt = Event(type="opening", tick=0, payload={"text": "冒险开始了！"})
@@ -58,7 +56,7 @@ async def run(
                 Event(
                     type="character_move",
                     tick=tick,
-                    payload={"character_id": m["character_id"], "x": m["x"], "y": m["y"]},
+                    payload={"pc_id": m["pc_id"], "x": m["x"], "y": m["y"]},
                 )
                 for m in data.get("character_moves", [])
             )
@@ -66,7 +64,6 @@ async def run(
                 id=world_id,
                 tick=tick,
                 world_id=world_id,
-                timestamp=datetime.now(UTC).isoformat(),
             )
             await msg_repo.insert(msg)
             await evt_repo.insert_events(msg.id, msg.tick, events)

@@ -24,7 +24,7 @@ async def test_session_isolation():
         hints=["探索酒馆，寻找线索"],
         plot_brief="",
         scene_id="",
-        character_decisions=[],
+        pc_decisions=[],
         narrative="",
     )
     state_b = OverallState(
@@ -36,7 +36,7 @@ async def test_session_isolation():
         hints=["与酒保交谈打听消息"],
         plot_brief="",
         scene_id="",
-        character_decisions=[],
+        pc_decisions=[],
         narrative="",
     )
 
@@ -65,7 +65,7 @@ async def test_history_available_after_tick():
         hints=["测试指令"],
         plot_brief="",
         scene_id="",
-        character_decisions=[],
+        pc_decisions=[],
         narrative="",
     )
 

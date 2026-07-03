@@ -47,7 +47,7 @@ class Orchestrator:
                 hints=[],
                 plot_brief="",
                 scene_id="",
-                character_decisions=[],
+                pc_decisions=[],
                 narrative="",
             )
             # P2-5: 非首轮从 checkpoint 恢复 plot_brief，保证 DM 剧情跨 tick 连续 /
@@ -74,7 +74,7 @@ class Orchestrator:
         return {
             "tick": result["tick"],
             "narrative": result.get("narrative", ""),
-            "character_decisions": result.get("character_decisions", []),
+            "pc_decisions": result.get("pc_decisions", []),
         }
 
     def get_state(self) -> StateSnapshot:

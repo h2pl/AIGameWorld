@@ -23,7 +23,7 @@ async def test_ten_ticks_no_crash():
 
 
 @pytest.mark.asyncio
-async def test_tick_has_character_actions():
+async def test_tick_has_pc_actions():
     orch = Orchestrator()
     _ = orch.get_state()
     result = await orch.run_tick()

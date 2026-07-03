@@ -14,7 +14,7 @@ class TestMemoryRepoUnit:
     def test_store_short_term(self):
         repo = MemoryRepo(Mock())
         mem = repo.store("alex", "Found a rusty sword.", tick=1, importance=5)
-        assert mem.character_id == "alex"
+        assert mem.pc_id == "alex"
         assert mem.importance == 5
         assert repo.count("alex") == 1
 

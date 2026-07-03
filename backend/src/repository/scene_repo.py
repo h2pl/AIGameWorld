@@ -13,7 +13,7 @@ class SceneRepo:
         self._db = client
 
     async def list_scenes(self, world_id: str) -> list[dict]:
-        """按 world_id 加载场景摘要列表（id + name + description）."""
+        """按 world_id 加载场景摘要列表."""
         rows = await self._db.fetch_all(
             "SELECT id, name, type, description FROM scenes WHERE world_id = ?", (world_id,)
         )
@@ -23,10 +23,9 @@ class SceneRepo:
         ]
 
     async def get_scene(self, scene_id: str) -> dict | None:
-        """按 scene_id 直接加载单个场景（含 exits/landmarks）."""
+        """按 scene_id 加载单个场景."""
         row = await self._db.fetch_one(
-            "SELECT id, name, type, description, exits_json, landmarks_json "
-            "FROM scenes WHERE id = ?",
+            "SELECT id, name, type, description FROM scenes WHERE id = ?",
             (scene_id,),
         )
         if not row:
@@ -36,8 +35,6 @@ class SceneRepo:
             "name": row["name"],
             "type": row["type"],
             "description": row["description"],
-            "exits": json.loads(row.get("exits_json") or "[]"),
-            "landmarks": json.loads(row.get("landmarks_json") or "[]"),
         }
 
     async def get_object_ids(self, scene_id: str) -> list[str]:
@@ -47,29 +44,25 @@ class SceneRepo:
         )
         return [r["id"] for r in rows]
 
-    async def save_scene(self, scene: dict, world_id: str, world_name: str) -> None:
-        """写入单条场景 / Save single scene."""
+    async def save_scene(self, scene: dict, world_id: str) -> None:
+        """写入单条场景."""
         await self._db.execute(
-            "INSERT OR REPLACE INTO scenes "
-            "(id, name, type, description, exits_json, landmarks_json, world_id, world_name) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT OR REPLACE INTO scenes (id, name, type, description, world_id) "
+            "VALUES (?, ?, ?, ?, ?)",
             (
                 scene.get("id", ""),
                 scene.get("name", ""),
                 scene.get("type", ""),
                 scene.get("description", ""),
-                json.dumps(scene.get("exits", []), ensure_ascii=False),
-                json.dumps(scene.get("landmarks", []), ensure_ascii=False),
                 world_id,
-                world_name,
             ),
         )
 
     async def save_object(self, obj: SceneObject) -> None:
-        """写入单条场景对象 / Save single scene object."""
+        """写入单条场景对象."""
         await self._db.execute(
             "INSERT OR REPLACE INTO scene_objects "
-            "(id, name, object_type, scene_id, position_x, position_y, interactable, interact_data_json, world_id) "
+            "(id, name, object_type, scene_id, position_x, position_y, interactable, interact_data, world_id) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 obj.id,
@@ -85,11 +78,11 @@ class SceneRepo:
         )
 
     async def load_all(self) -> dict[str, SceneObject]:
-        """加载全部场景对象 / Load all scene objects."""
+        """加载全部场景对象."""
         rows = await self._db.fetch_all("SELECT * FROM scene_objects")
         result = {}
         for r in rows:
-            idata = r.get("interact_data_json")
+            idata = r.get("interact_data")
             result[r["id"]] = SceneObject(
                 id=r["id"],
                 name=r["name"],

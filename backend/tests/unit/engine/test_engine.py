@@ -25,12 +25,12 @@ def _event_repo_config():
 
 
 def _scene_char_config(scene_obj=None, pc=None):
-    """构造带 scene_repo/char_repo mock 的 config / Build config with scene_repo/char_repo mocks."""
+    """构造带 scene_repo/pc_repo mock 的 config / Build config with scene_repo/pc_repo mocks."""
     scene_repo = AsyncMock()
     scene_repo.load_all = AsyncMock(return_value={scene_obj.id: scene_obj} if scene_obj else {})
-    char_repo = AsyncMock()
-    char_repo.load_pc = AsyncMock(return_value=pc)
-    return {"configurable": {"repos": {"scene": scene_repo, "char": char_repo}}}
+    pc_repo = AsyncMock()
+    pc_repo.load_pc = AsyncMock(return_value=pc)
+    return {"configurable": {"repos": {"scene": scene_repo, "char": pc_repo}}}
 
 
 class TestCombatEngine:
@@ -133,7 +133,7 @@ class TestInteractEngine:
         r = resolve_interact(
             SceneObjectInteractRequest(
                 object_id="chest1",
-                character_id="pc1",
+                pc_id="pc1",
                 action_type="pick_lock",
                 attribute_mod=3,
                 dc=12,
@@ -151,7 +151,7 @@ class TestInteractEngine:
         r = resolve_interact(
             SceneObjectInteractRequest(
                 object_id="door1",
-                character_id="pc1",
+                pc_id="pc1",
                 action_type="break_door",
                 attribute_mod=4,
                 dc=15,
@@ -185,7 +185,7 @@ class TestInteractAction:
         event = await process_interact_action(
             decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
         )
-        assert event["kind"] == "character_interact"
+        assert event["kind"] == "pc_interact"
         assert event["object_id"] == "chest1"
         assert event["success"] is True
 
@@ -206,7 +206,7 @@ class TestInteractAction:
             decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
             config=config,
         )
-        assert event["kind"] == "character_interact"
+        assert event["kind"] == "pc_interact"
         assert event["result"]["action"] == "pick_lock"
         assert event["result"]["bonus"] == 4  # (18-10)//2
 
@@ -254,7 +254,7 @@ class TestCombatAction:
         event = await process_combat_action(
             decision={"type": "combat", "pc_id": "pc1", "target_id": "npc_goblin"},
         )
-        assert event["kind"] == "character_combat"
+        assert event["kind"] == "pc_combat"
         assert event["target_id"] == "npc_goblin"
         assert event["resolved"] is False
 
@@ -279,16 +279,16 @@ class TestReflectionEngine:
     @pytest.mark.asyncio
     async def test_reflect(self):
         r = await reflect(
-            ReflectionRequest(character_id="pc1", character_name="P1", character_type="pc"),
+            ReflectionRequest(pc_id="pc1", pc_name="P1", pc_type="pc"),
             None,
         )
         assert len(r.insights_out) == 1
-        assert r.insights_out[0]["character_id"] == "pc1"
+        assert r.insights_out[0]["pc_id"] == "pc1"
 
     @pytest.mark.asyncio
     async def test_reflect_unknown_character(self):
         r = await reflect(
-            ReflectionRequest(character_id="", character_name="Unknown", character_type="pc"),
+            ReflectionRequest(pc_id="", pc_name="Unknown", pc_type="pc"),
             None,
         )
         assert len(r.insights_out) == 1

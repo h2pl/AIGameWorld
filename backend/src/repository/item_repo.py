@@ -13,11 +13,11 @@ class ItemRepo:
         self._db = client
 
     async def save(self, item: Item) -> None:
-        """写入单条物品 / Save single item."""
+        """写入单条物品."""
         await self._db.execute(
             "INSERT OR REPLACE INTO items "
-            "(id, name, item_type, rarity, weight, value, description, data_json, world_id, world_name) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "(id, name, item_type, rarity, weight, value, description, data, world_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 item.id,
                 item.name,
@@ -28,12 +28,11 @@ class ItemRepo:
                 item.description,
                 json.dumps(item.data, ensure_ascii=False),
                 item.world_id,
-                item.world_name,
             ),
         )
 
     async def load_all(self) -> dict[str, Item]:
-        """加载全部物品 / Load all items."""
+        """加载全部物品."""
         rows = await self._db.fetch_all("SELECT * FROM items")
         return {
             r["id"]: Item(
@@ -44,9 +43,8 @@ class ItemRepo:
                 weight=r.get("weight", 0.0),
                 value=r.get("value", 0),
                 description=r.get("description", ""),
-                data=json.loads(r.get("data_json", "{}")),
+                data=json.loads(r.get("data", "{}")),
                 world_id=r["world_id"],
-                world_name=r.get("world_name", ""),
             )
             for r in rows
         }

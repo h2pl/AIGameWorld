@@ -4,8 +4,9 @@ from pydantic import BaseModel, ConfigDict
 
 
 class DomainModel(BaseModel):
-    """所有领域模型的基类，统一携带 world_id."""
+    """所有领域模型的基类，统一携带 world_id + ext_json."""
 
     model_config = ConfigDict(extra="forbid")
 
     world_id: str = ""
+    ext_json: str = "{}"

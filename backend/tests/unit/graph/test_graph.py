@@ -20,7 +20,7 @@ def _graph_input(**overrides):
         "hints": [],
         "plot_brief": "",
         "scene_id": "scene-1",
-        "character_decisions": [],
+        "pc_decisions": [],
         "narrative": "",
         **overrides,
     }
@@ -59,9 +59,9 @@ async def test_full_tick_graph_runs_current_flow():
     pc = SimpleNamespace(
         id="pc-1", scene_id="tavern", name="Alex", role="fighter", race="human", status="active"
     )
-    char_repo = AsyncMock()
-    char_repo.load_pcs = AsyncMock(return_value=[pc])
-    char_repo.load_actors = AsyncMock(return_value=[])
+    pc_repo = AsyncMock()
+    pc_repo.load_pcs = AsyncMock(return_value=[pc])
+    pc_repo.load_actors = AsyncMock(return_value=[])
     scene_repo = AsyncMock()
     scene_repo.get_scene = AsyncMock(return_value=None)
     scene_repo.get_object_ids = AsyncMock(return_value=[])
@@ -74,19 +74,19 @@ async def test_full_tick_graph_runs_current_flow():
             dm_create_result,
         ),
         patch(
-            "src.services.character_service.decision_engine.decide",
+            "src.services.pc_service.decision_engine.decide",
             AsyncMock(return_value={"pc_id": "pc-1", "type": "wait", "description": "观察"}),
         ),
         patch(
-            "src.services.character_service.talk_engine.process_talk_action",
+            "src.services.pc_service.talk_engine.process_talk_action",
             AsyncMock(return_value=None),
         ),
         patch(
-            "src.services.character_service.interact_engine.process_interact_action",
+            "src.services.pc_service.interact_engine.process_interact_action",
             AsyncMock(return_value=None),
         ),
         patch(
-            "src.services.character_service.combat_engine.process_combat_action",
+            "src.services.pc_service.combat_engine.process_combat_action",
             AsyncMock(return_value=None),
         ),
         patch(
@@ -104,7 +104,7 @@ async def test_full_tick_graph_runs_current_flow():
                 "configurable": {
                     "thread_id": "test-thread",
                     "reflection_interval": 5,
-                    "repos": {"char": char_repo, "scene": scene_repo, "message": message_repo},
+                    "repos": {"char": pc_repo, "scene": scene_repo, "message": message_repo},
                 }
             },
         )

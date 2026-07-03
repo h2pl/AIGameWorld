@@ -1,4 +1,4 @@
-"""Repository 集成测试——内存 SQLite 验证 TickMessageRepo / TickEventRepo / CharacterRepo 读写."""
+"""Repository 集成测试——内存 SQLite 验证 TickMessageRepo / TickEventRepo / PcRepo 读写."""
 
 import pytest
 
@@ -6,10 +6,11 @@ from src.domain.actor import Actor
 from src.domain.event import Event
 from src.domain.message import Message
 from src.domain.player_character import PlayerCharacter
-from src.repository.character_repo import CharacterRepo
 from src.repository.event_repo import TickEventRepo
 from src.repository.message_repo import TickMessageRepo
 from src.storage.sqlite_client import SQLiteClient
+
+from .pc_repo import PcRepo
 
 # ══ Fixtures / 夹具 ══
 
@@ -24,8 +25,8 @@ async def db():
 
 
 @pytest.fixture
-async def char_repo(db):
-    return CharacterRepo(db)
+async def pc_repo(db):
+    return PcRepo(db)
 
 
 @pytest.fixture
@@ -38,62 +39,62 @@ async def msg_repo(db):
     return TickMessageRepo(db)
 
 
-# ══ CharacterRepo 测试 / Character Repo Tests ══
+# ══ PcRepo 测试 / Character Repo Tests ══
 
 
-class TestCharacterRepo:
+class TestPcRepo:
     # 保存并加载 PC / Save and load PC
     @pytest.mark.asyncio
-    async def test_save_and_load_pc(self, char_repo):
+    async def test_save_and_load_pc(self, pc_repo):
         pc = PlayerCharacter(id="pc_test1", name="Hero")
-        await char_repo.save_pc(pc)
-        pcs = await char_repo.load_pcs()
+        await pc_repo.save_pc(pc)
+        pcs = await pc_repo.load_pcs()
         assert len(pcs) == 1
         assert pcs[0].id == "pc_test1"
         assert pcs[0].name == "Hero"
 
     @pytest.mark.asyncio
-    async def test_save_pc_updates_existing(self, char_repo):
+    async def test_save_pc_updates_existing(self, pc_repo):
         pc = PlayerCharacter(id="pc_test2", name="Hero", status="active")
-        await char_repo.save_pc(pc)
+        await pc_repo.save_pc(pc)
 
         pc.status = "injured"
         pc.scene_id = "forest_01"
-        await char_repo.save_pc(pc)
+        await pc_repo.save_pc(pc)
 
-        pcs = await char_repo.load_pcs()
+        pcs = await pc_repo.load_pcs()
         assert pcs[0].status == "injured"
         assert pcs[0].scene_id == "forest_01"
 
     @pytest.mark.asyncio
-    async def test_save_and_load_actor(self, char_repo):
+    async def test_save_and_load_actor(self, pc_repo):
         actor = Actor(id="npc_test1", name="Guard", role="guard")
-        await char_repo.save_actor(actor)
-        actors = await char_repo.load_actors()
+        await pc_repo.save_actor(actor)
+        actors = await pc_repo.load_actors()
         assert len(actors) == 1
         assert actors[0].id == "npc_test1"
 
     @pytest.mark.asyncio
-    async def test_save_actor_updates_existing(self, char_repo):
+    async def test_save_actor_updates_existing(self, pc_repo):
         actor = Actor(id="npc_test2", name="Vendor")
-        await char_repo.save_actor(actor)
+        await pc_repo.save_actor(actor)
 
         actor.dm_assigned = True
         actor.motivation_injected = "protect the village"
-        await char_repo.save_actor(actor)
+        await pc_repo.save_actor(actor)
 
-        actors = await char_repo.load_actors()
+        actors = await pc_repo.load_actors()
         assert actors[0].dm_assigned is True
         assert actors[0].motivation_injected == "protect the village"
 
     @pytest.mark.asyncio
-    async def test_multiple_characters(self, char_repo):
-        await char_repo.save_pc(PlayerCharacter(id="pc_a", name="Alice"))
-        await char_repo.save_pc(PlayerCharacter(id="pc_b", name="Bob"))
-        await char_repo.save_actor(Actor(id="npc_a", name="Carol"))
+    async def test_multiple_characters(self, pc_repo):
+        await pc_repo.save_pc(PlayerCharacter(id="pc_a", name="Alice"))
+        await pc_repo.save_pc(PlayerCharacter(id="pc_b", name="Bob"))
+        await pc_repo.save_actor(Actor(id="npc_a", name="Carol"))
 
-        pcs = await char_repo.load_pcs()
-        actors = await char_repo.load_actors()
+        pcs = await pc_repo.load_pcs()
+        actors = await pc_repo.load_actors()
         assert len(pcs) == 2
         assert len(actors) == 1
 
@@ -103,7 +104,9 @@ class TestMessageEventRepo:
 
     # 辅助：插入测试消息 / Helper: insert test msg
     async def _insert_msg(self, msg_repo, mid="aw_test", tick=1):
-        msg = Message(id=mid, tick=tick, world_id="test", timestamp="2026-07-01T12:00:00Z")
+        from src.domain.message import TickMessage
+
+        msg = TickMessage(id=mid, tick=tick, world_id="test")
         await msg_repo.insert(msg)
         await msg_repo.mark_ready(mid, tick)
 
@@ -112,13 +115,13 @@ class TestMessageEventRepo:
         await self._insert_msg(msg_repo)
         evts = [
             Event(type="dm_narrative", tick=1, payload={"text": "Hello world"}),
-            Event(type="character_talk", tick=1, payload={"character_id": "fighter", "text": "Hi"}),
+            Event(type="pc_talk", tick=1, payload={"pc_id": "fighter", "text": "Hi"}),
         ]
         await event_repo.insert_events("aw_test", 1, evts)
         loaded = await event_repo.load_by_message("aw_test", 1)
         assert len(loaded) == 2
         # character_talk (SEQUENCE idx=2) 排在 dm_narrative (idx=4) 前面
-        assert loaded[0].payload["character_id"] == "fighter"
+        assert loaded[0].payload["pc_id"] == "fighter"
         assert loaded[1].payload["text"] == "Hello world"
 
     @pytest.mark.asyncio
@@ -146,7 +149,6 @@ class TestMessageEventRepo:
             id="aw_test",
             tick=1,
             world_id="test",
-            timestamp="2026-07-01T12:00:00Z",
         )
         await msg_repo.insert(msg)
         evt = Event(type="dm_narrative", tick=1, payload={"text": "test"})

@@ -4,11 +4,11 @@
 因为它描述的是场景本身的信息，与谁来使用无关（不区分 PC，也不做距离限制，
 同场景的人和物都能看到），属于场景处理阶段的产物，不应该放进角色决策阶段。
 返回完整信息而非仅 id，供 decision_engine 等下游直接消费，无需再查 repo /
-This also builds and injects scene info (full scene/object/character info for
+This also builds and injects scene info (full scene/object/pc info for
 the current scene) into state, since it describes the scene itself
 (consumer-independent — not per-PC, no distance limit; anyone/anything in the
 same scene is visible) and belongs to the scene-processing phase, not the
-character-decision phase. Full info (not just ids) is returned so downstream
+pc-decision phase. Full info (not just ids) is returned so downstream
 consumers like decision_engine can use it directly without querying repos
 again.
 """
@@ -39,13 +39,13 @@ async def _build_scene_info(state: OverallState, config=None) -> dict[str, Any]:
     not per-PC, no distance limit)."""
     scene_id = state.get("scene_id", "")
     world_id = state.get("world_id", "")
-    char_repo = get_repo(config, "char")
+    pc_repo = get_repo(config, "char")
     scene_repo = get_repo(config, "scene")
-    if not char_repo or not scene_id:
+    if not pc_repo or not scene_id:
         return {}
 
-    pcs = await char_repo.load_pcs(world_id) if world_id else []
-    actors = await char_repo.load_actors(world_id) if world_id else []
+    pcs = await pc_repo.load_pcs(world_id) if world_id else []
+    actors = await pc_repo.load_actors(world_id) if world_id else []
     # 当前场景内的角色池 / Character pool limited to the current scene
     scene_pcs = [pc for pc in pcs if getattr(pc, "scene_id", "") == scene_id]
     scene_actors = [actor for actor in actors if getattr(actor, "scene_id", "") == scene_id]

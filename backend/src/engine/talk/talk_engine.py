@@ -49,7 +49,7 @@ async def process_talk_action(
 
     logger.info("[talk] %s ↔ %s : %d turns", char_id, target_id, len(turns))
     return {
-        "kind": "character_talk",
+        "kind": "pc_talk",
         "participants": [pid for pid in (char_id, target_id) if pid],
         "turns": turns,
     }
@@ -70,9 +70,9 @@ async def _generate_dialogue(
     if not llm or not target_id:
         return []
 
-    char_repo = get_repo(config, "char")
-    initiator = await char_repo.load_pc(char_id) if char_repo else None
-    target = await _load_target(char_repo, target_id, target_type)
+    pc_repo = get_repo(config, "char")
+    initiator = await pc_repo.load_pc(char_id) if pc_repo else None
+    target = await _load_target(pc_repo, target_id, target_type)
     scene = await _fetch_scene(scene_id, config)
 
     ctx = {
@@ -117,13 +117,13 @@ async def _fetch_scene(scene_id: str, config: RunnableConfig = None) -> dict:
     return scene or empty
 
 
-async def _load_target(char_repo, target_id: str, target_type: str):
+async def _load_target(pc_repo, target_id: str, target_type: str):
     """按 target_type 加载对话对象 / Load the dialogue target by its type."""
-    if not char_repo or not target_id:
+    if not pc_repo or not target_id:
         return None
     if target_type == "pc":
-        return await char_repo.load_pc(target_id)
-    return await char_repo.load_actor(target_id)
+        return await pc_repo.load_pc(target_id)
+    return await pc_repo.load_actor(target_id)
 
 
 def _character_ctx(char_id: str, char) -> dict:

@@ -13,7 +13,7 @@ def _val(data: dict[str, Any], key: str, default: Any = None) -> Any:
     return default if v is None else v
 
 
-class CharacterRepo:
+class PcRepo:
     """角色存取——PC + Actor."""
 
     def __init__(self, client: SQLiteClient):
@@ -24,7 +24,7 @@ class CharacterRepo:
         await self._db.execute(
             """
             INSERT INTO player_characters (id, name, role, race, status, scene_id,
-            position_x, position_y, attributes_json, combat_json, character_arc_json,
+            position_x, position_y, attributes_json, combat_json, arc_json,
             values_json, equipment_json, inventory_json, relationships_json, world_id, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
@@ -44,7 +44,7 @@ class CharacterRepo:
                 pc.position_y,
                 pc.attributes_json,
                 pc.combat_json,
-                pc.character_arc_json,
+                pc.arc_json,
                 pc.values_json,
                 pc.equipment_json,
                 pc.inventory_json,

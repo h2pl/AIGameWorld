@@ -28,18 +28,18 @@ async def reflect(req: ReflectionRequest, config: RunnableConfig = None) -> Refl
     if llm is None:
         return _fallback(req, ["LLM 不可用，使用降级输出 / LLM unavailable, fallback used"])
 
-    template = _PC_TEMPLATE if req.character_type == "pc" else _ACTOR_TEMPLATE
+    template = _PC_TEMPLATE if req.pc_type == "pc" else _ACTOR_TEMPLATE
     prompt = template.render(
-        character_name=req.character_name,
+        pc_name=req.pc_name,
         arc_stage=req.arc_stage,
         arc_description=req.arc_description,
-        memories=req.memories[-5:] if req.character_type == "pc" else req.memories[-3:],
+        memories=req.memories[-5:] if req.pc_type == "pc" else req.memories[-3:],
         recent_reflections=req.recent_reflections[-3:],
     )
 
     try:
         result = await llm.call_structured(
-            f"reflect_{req.character_type}",
+            f"reflect_{req.pc_type}",
             None,
             [{"role": "user", "content": prompt}],
             fallback=dict,
@@ -47,24 +47,24 @@ async def reflect(req: ReflectionRequest, config: RunnableConfig = None) -> Refl
         insight = _format_insight(req, result)
         return ReflectionResponse(insights_out=[insight])
     except Exception:
-        logger.exception("reflect failed for %s (%s)", req.character_id, req.character_type)
+        logger.exception("reflect failed for %s (%s)", req.pc_id, req.pc_type)
         return _fallback(req, ["LLM 调用失败，使用降级输出 / LLM call failed, fallback used"])
 
 
 def _format_insight(req: ReflectionRequest, result: dict) -> dict:
     """格式化反思输出 / Format reflection output."""
-    if req.character_type == "pc":
+    if req.pc_type == "pc":
         text = " ".join(
             filter(None, [result.get("arc_analysis"), result.get("personality_insight")])
         )
-        text = f"{req.character_name}: {text or '（无有效反思）'}"
+        text = f"{req.pc_name}: {text or '（无有效反思）'}"
         importance = 10
     else:
-        text = f"{req.character_name}: {result.get('behavior_summary', '（无有效总结）')}"
+        text = f"{req.pc_name}: {result.get('behavior_summary', '（无有效总结）')}"
         importance = 5
 
     return {
-        "character_id": req.character_id,
+        "pc_id": req.pc_id,
         "insight": text,
         "memory_type": "reflection",
         "importance": importance,
@@ -77,8 +77,8 @@ def _fallback(req: ReflectionRequest, errors: list[str] | None = None) -> Reflec
     return ReflectionResponse(
         insights_out=[
             {
-                "character_id": req.character_id,
-                "insight": f"{req.character_name}: 维持当前行为模式。",
+                "pc_id": req.pc_id,
+                "insight": f"{req.pc_name}: 维持当前行为模式。",
                 "memory_type": "reflection",
                 "importance": 0,
                 "tick": req.tick,

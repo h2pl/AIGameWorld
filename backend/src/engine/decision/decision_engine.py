@@ -43,7 +43,7 @@ async def decide(
     Decide for a single PC based on the scene info (scene_info is
     consumer-independent, not per-PC; "me" and "other PCs" are derived here
     from pc_id)."""
-    logger.info("[character] tick=%s processing pc %s", tick, pc_id)
+    logger.info("[pc] tick=%s processing pc %s", tick, pc_id)
 
     llm = get_llm(config)
     if llm is None:
@@ -101,7 +101,7 @@ async def decide(
             description=result.reasoning,
         ).model_dump()
     except Exception:
-        logger.exception("[character] failed for pc %s", pc_id)
+        logger.exception("[pc] failed for pc %s", pc_id)
         return PCDecideResponse(
             pc_id=pc_id,
             type="wait",

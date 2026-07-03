@@ -118,8 +118,8 @@ async def process_combat_action(decision: dict, config: RunnableConfig = None) -
     description = decision.get("description", "")
     logger.info("[combat] %s → %s（意图记录，未结算）", char_id, target_id)
     return {
-        "kind": "character_combat",
-        "character_id": char_id,
+        "kind": "pc_combat",
+        "pc_id": char_id,
         "target_id": target_id,
         "description": description,
         "resolved": False,

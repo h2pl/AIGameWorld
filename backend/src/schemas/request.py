@@ -83,9 +83,9 @@ class QuestRequest(BaseModel):
 class ReflectionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    character_id: str = ""
-    character_name: str = ""
-    character_type: str = "pc"  # "pc" | "actor"
+    pc_id: str = ""
+    pc_name: str = ""
+    pc_type: str = "pc"  # "pc" | "actor"
     arc_stage: str = ""
     arc_description: str = ""
     memories: list[dict[str, Any]] = []
@@ -107,7 +107,7 @@ class SummarizerRequest(BaseModel):
 class StoryAdvanceRequest(BaseModel):
     tick: int = 0
     narrative: str = ""
-    character_actions: list[dict[str, Any]] = []
+    pc_actions: list[dict[str, Any]] = []
 
 
 # === Domain: Item (M8+) ===
@@ -118,7 +118,7 @@ class ItemQueryRequest(BaseModel):
 # === Domain: SceneObject (M8+) ===
 class SceneObjectInteractRequest(BaseModel):
     object_id: str = ""
-    character_id: str = ""
+    pc_id: str = ""
     action_type: str = ""
     attribute_mod: int = 0  # 开锁=敏捷, 破门=力量, 拆陷阱=智力
     dc: int = 10
@@ -126,7 +126,7 @@ class SceneObjectInteractRequest(BaseModel):
 
 # === Domain: Character (Phase 3+) ===
 class CharacterLoadRequest(BaseModel):
-    character_id: str = ""
+    pc_id: str = ""
 
 
 MessageCreateRequest = TickMessageCreateRequest

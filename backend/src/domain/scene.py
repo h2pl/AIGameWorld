@@ -10,5 +10,3 @@ class Scene(DomainModel):
     name: str = ""
     type: str = ""  # outdoor / indoor / underground
     description: str = ""
-    exits: list[dict] = []
-    landmarks: list[str] = []

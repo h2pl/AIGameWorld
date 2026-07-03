@@ -17,6 +17,6 @@ def base_state() -> OverallState:
         hints=[],
         plot_brief="",
         scene_id="",
-        character_decisions=[],
+        pc_decisions=[],
         narrative="",
     )

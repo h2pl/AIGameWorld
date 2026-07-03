@@ -12,13 +12,13 @@ import logging
 from pathlib import Path
 
 from ..domain.world import World
-from ..repository.character_repo import CharacterRepo
 from ..repository.item_repo import ItemRepo
 from ..repository.scene_repo import SceneRepo
 from ..repository.world_repo import WorldRepo
 from ..storage.chroma_client import ChromaClient
 from ..storage.sqlite_client import SQLiteClient
 from . import deserialize, reader, validator
+from .pc_repo import PcRepo
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class WorldLoader:
         self._world_repo = WorldRepo(db)
         self._scene_repo = SceneRepo(db)
         self._item_repo = ItemRepo(db)
-        self._char_repo = CharacterRepo(db)
+        self._pc_repo = PcRepo(db)
 
     async def load(self, pack_dir: Path) -> dict[str, int]:
         """加载 world-pack 到数据库。
@@ -76,8 +76,8 @@ class WorldLoader:
         counts: dict[str, int] = {}
 
         # 按 FK 依赖顺序写入 / Write in FK dependency order
-        counts["scenes"] = await self._write_scenes(data.get("scenes", []), world_id, world_name)
-        counts["items"] = await self._write_items(data.get("items", []), world_id, world_name)
+        counts["scenes"] = await self._write_scenes(data.get("scenes", []), world_id)
+        counts["items"] = await self._write_items(data.get("items", []), world_id)
         counts["scene_objects"] = await self._write_scene_objects(
             data.get("scene_objects", []), world_id
         )
@@ -93,16 +93,16 @@ class WorldLoader:
 
     # ── Scenes (SceneRepo) ──
 
-    async def _write_scenes(self, scenes: list[dict], world_id: str, world_name: str) -> int:
+    async def _write_scenes(self, scenes: list[dict], world_id: str) -> int:
         for s in scenes:
-            await self._scene_repo.save_scene(s, world_id, world_name)
+            await self._scene_repo.save_scene(s, world_id)
         return len(scenes)
 
     # ── Items (ItemRepo) ──
 
-    async def _write_items(self, items: list[dict], world_id: str, world_name: str) -> int:
+    async def _write_items(self, items: list[dict], world_id: str) -> int:
         for i in items:
-            await self._item_repo.save(deserialize.item_from_yaml(i, world_id, world_name))
+            await self._item_repo.save(deserialize.item_from_yaml(i, world_id))
         return len(items)
 
     # ── Scene Objects (SceneRepo) ──
@@ -112,24 +112,22 @@ class WorldLoader:
             await self._scene_repo.save_object(deserialize.scene_obj_from_yaml(o, world_id))
         return len(objects)
 
-    # ── PCs (CharacterRepo) ──
+    # ── PCs (PcRepo) ──
 
     async def _write_pcs(self, data: dict, world_id: str) -> int:
         starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
         pcs = data.get("player_characters", [])
         for pc_data in pcs:
-            await self._char_repo.save_pc(
-                deserialize.pc_from_yaml(pc_data, starting_scene, world_id)
-            )
+            await self._pc_repo.save_pc(deserialize.pc_from_yaml(pc_data, starting_scene, world_id))
         return len(pcs)
 
-    # ── Actors (CharacterRepo) ──
+    # ── Actors (PcRepo) ──
 
     async def _write_actors(self, data: dict, world_id: str) -> int:
         starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
         actors = data.get("actors", [])
         for a_data in actors:
-            await self._char_repo.save_actor(
+            await self._pc_repo.save_actor(
                 deserialize.actor_from_yaml(a_data, starting_scene, world_id)
             )
         return len(actors)

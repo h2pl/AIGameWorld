@@ -21,7 +21,7 @@ async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
     scene_info = state.get("scene_info", {})
     pcs = scene_info.get("pcs", [])
     if not pcs:
-        return {"character_decisions": []}
+        return {"pc_decisions": []}
 
     plot_brief = state.get("plot_brief", "")
     hints = state.get("hints", [])
@@ -40,16 +40,16 @@ async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
         if decision:
             decisions.append(decision)
 
-    return {"character_decisions": decisions}
+    return {"pc_decisions": decisions}
 
 
 async def act(state: OverallState, config: RunnableConfig = None) -> dict:
     """执行角色决策，把各 engine 产生的原始结果统一格式化成
     {order, action_type, target_id, target_type, result} 交给 event_service /
-    Execute character decisions, formatting each engine's raw result into a
+    Execute pc decisions, formatting each engine's raw result into a
     uniform {order, action_type, target_id, target_type, result} dict for
     event_service."""
-    decisions = state.get("character_decisions", [])
+    decisions = state.get("pc_decisions", [])
     if not decisions:
         return {}
 
@@ -83,6 +83,7 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
         pending_actions.append(
             {
                 "order": order,
+                "pc_id": decision.get("pc_id", ""),
                 "action_type": decision.get("type", ""),
                 "target_id": decision.get("target_id", ""),
                 "target_type": decision.get("target_type", ""),

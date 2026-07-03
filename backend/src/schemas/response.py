@@ -102,7 +102,7 @@ class SceneObjectInteractResponse(BaseModel):
 class CharacterResponse(BaseModel):
     id: str = ""
     name: str = ""
-    character_type: str = "pc"
+    pc_type: str = "pc"
     attributes: dict[str, int] = {}
     level: int = 1
     hp: int = 10

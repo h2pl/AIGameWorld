@@ -120,7 +120,7 @@ class TestLiveTickE2E:
                 "scene_setup",
                 "scene_objects",
                 "character_move",
-                "character_talk",
+                "pc_talk",
                 "character_explore",
                 "dm_narrative",
             ), f"未知事件类型 {ev['type']}"

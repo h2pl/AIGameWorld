@@ -199,9 +199,6 @@ async def get_pack_state(world_id: str):
                 "name": r["name"],
                 "type": r["type"],
                 "description": r.get("description", ""),
-                "exits": json.loads(r.get("exits_json", "[]")),
-                "landmarks": json.loads(r.get("landmarks_json", "[]")),
-                "environment": json.loads(r.get("environment_json", "{}")),
             }
             for r in await db.fetch_all("SELECT * FROM scenes WHERE world_id = ?", (world_id,))
         ]
@@ -306,7 +303,7 @@ def _char_from_row(r: dict, is_pc: bool, pos_offset: int) -> dict:
         "attributes": json.loads(r["attributes_json"]),
         "combat": json.loads(cj) if cj else None,
         "personality": r.get("personality", ""),
-        "character_arc": json.loads(r.get("character_arc_json", "{}")) if is_pc else None,
+        "arc": json.loads(r.get("arc_json", "{}")) if is_pc else None,
         "functions": json.loads(r.get("functions_json", "[]")) if not is_pc else None,
         "is_pc": is_pc,
     }
@@ -319,13 +316,14 @@ async def _graph_producer(
 ) -> None:
     """Graph 生产者——Orchestrator 循环 / Graph producer: Orchestrator loop."""
     from src.graph.orchestrator import Orchestrator
-    from src.repository.character_repo import CharacterRepo
     from src.repository.dm_record_repo import DMRecordRepo
 
+    from .pc_repo import PcRepo
+
     db = _get_db()
-    char_repo = CharacterRepo(db)
+    pc_repo = PcRepo(db)
     record_repo = DMRecordRepo(db)
-    orch = Orchestrator(session_id=world_id, repos={"char": char_repo, "dm_record": record_repo})
+    orch = Orchestrator(session_id=world_id, repos={"char": pc_repo, "dm_record": record_repo})
     try:
         while True:
             while _get_sessions().get(world_id, {}).get("paused"):

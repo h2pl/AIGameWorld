@@ -75,26 +75,19 @@ class TestSQLiteClient:
 
 
 # ── Character Repo 集成测试 / Character Repository integration tests ──
-class TestCharacterRepo:
+class TestPcRepo:
     async def test_save_and_load_pc(self, db):
         from src.domain import (
-            Attributes,
-            CharacterArc,
-            CombatStats,
-            Location,
             PlayerCharacter,
         )
-        from src.repository.character_repo import CharacterRepo
 
-        repo = CharacterRepo(db)
+        from .pc_repo import PcRepo
+
+        repo = PcRepo(db)
         pc = PlayerCharacter(
             id="test_pc",
             name="TestHero",
             role="fighter",
-            location=Location(scene_id="tavern"),
-            attributes=Attributes(),
-            combat=CombatStats(hp=20, max_hp=20),
-            character_arc=CharacterArc(),
         )
         await repo.save_pc(pc)
         await db.commit()
@@ -105,16 +98,15 @@ class TestCharacterRepo:
         assert pcs[0].name == "TestHero"
 
     async def test_save_and_load_actor(self, db):
-        from src.domain import Actor, Attributes, Location
-        from src.repository.character_repo import CharacterRepo
+        from src.domain import Actor
 
-        repo = CharacterRepo(db)
+        from .pc_repo import PcRepo
+
+        repo = PcRepo(db)
         actor = Actor(
             id="test_actor",
             name="Greta",
             role="innkeeper",
-            location=Location(scene_id="tavern"),
-            attributes=Attributes(),
         )
         await repo.save_actor(actor)
         await db.commit()

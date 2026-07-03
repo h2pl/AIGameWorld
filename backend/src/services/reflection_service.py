@@ -21,16 +21,16 @@ _ACTOR_THRESHOLD = 200
 
 async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> dict:
     """Phase 7: 遍历所有角色执行反思 / Reflect on all characters."""
-    char_repo = get_repo(config, "char")
+    pc_repo = get_repo(config, "char")
     memory_repo = get_repo(config, "memory")
-    if not char_repo or not memory_repo:
-        return {"reflected_characters": []}
+    if not pc_repo or not memory_repo:
+        return {"reflected_pcs": []}
 
     insights = []
     tick = state.get("tick", 0)
 
     # PC 反思 / PC reflection
-    for pc in await char_repo.load_pcs():
+    for pc in await pc_repo.load_pcs():
         if _needs_reflection(memory_repo, pc.id, _PC_THRESHOLD):
             insight = await _reflect_one(
                 reflection_engine,
@@ -47,10 +47,10 @@ async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> d
                 insights.append(insight)
                 memory_repo.store_reflection(pc.id, insight["insight"], tick)
                 pc.importance_accumulator = 0.0
-                await char_repo.save_pc(pc)
+                await pc_repo.save_pc(pc)
 
     # Actor 反思 / Actor reflection
-    for actor in await char_repo.load_actors():
+    for actor in await pc_repo.load_actors():
         if _needs_reflection(memory_repo, actor.id, _ACTOR_THRESHOLD):
             insight = await _reflect_one(
                 reflection_engine,
@@ -67,14 +67,14 @@ async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> d
                 insights.append(insight)
                 memory_repo.store_reflection(actor.id, insight["insight"], tick)
                 actor.importance_accumulator = 0.0
-                await char_repo.save_actor(actor)
+                await pc_repo.save_actor(actor)
 
-    return {"reflected_characters": [i["character_id"] for i in insights]}
+    return {"reflected_pcs": [i["pc_id"] for i in insights]}
 
 
-def _needs_reflection(memory_repo, character_id: str, threshold: int) -> bool:
+def _needs_reflection(memory_repo, pc_id: str, threshold: int) -> bool:
     """判断是否触发反思 / Check if reflection should trigger."""
-    recent = list(memory_repo._short_queue(character_id))
+    recent = list(memory_repo._short_queue(pc_id))
     return sum(m.importance for m in recent) >= threshold
 
 
@@ -96,9 +96,9 @@ async def _reflect_one(
 
     result = await engine.reflect(
         ReflectionRequest(
-            character_id=char_id,
-            character_name=name,
-            character_type=char_type,
+            pc_id=char_id,
+            pc_name=name,
+            pc_type=char_type,
             arc_stage=arc_stage,
             arc_description=arc_desc,
             memories=[{"content": m.content, "importance": m.importance} for m in recent_mems],

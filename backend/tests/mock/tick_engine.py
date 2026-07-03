@@ -74,7 +74,7 @@ class MockTickEngine:
             ny = max(0, min(39, old["y"] + dy))
             self._positions[cid] = {"x": nx, "y": ny}
             if dx != 0 or dy != 0:
-                char_moves.append({"character_id": cid, "x": nx, "y": ny})
+                char_moves.append({"pc_id": cid, "x": nx, "y": ny})
 
         # 事件 / Events (2-4 per tick)
         n_events = random.randint(2, 4)

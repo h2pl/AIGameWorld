@@ -39,7 +39,7 @@ def resolve_interact(req: SceneObjectInteractRequest) -> SceneObjectInteractResp
             success=True,
             result={
                 "object_id": req.object_id,
-                "character_id": req.character_id,
+                "pc_id": req.pc_id,
                 "action": req.action_type,
                 "action_cn": action_cn,
                 "roll": None,
@@ -55,7 +55,7 @@ def resolve_interact(req: SceneObjectInteractRequest) -> SceneObjectInteractResp
         success=result.success,
         result={
             "object_id": req.object_id,
-            "character_id": req.character_id,
+            "pc_id": req.pc_id,
             "action": req.action_type,
             "action_cn": action_cn,
             "roll": result.roll,
@@ -86,7 +86,7 @@ async def process_interact_action(decision: dict, config: RunnableConfig = None)
     result = resolve_interact(
         SceneObjectInteractRequest(
             object_id=object_id,
-            character_id=char_id,
+            pc_id=char_id,
             action_type=action_type,
             attribute_mod=attribute_mod,
             dc=dc,
@@ -96,8 +96,8 @@ async def process_interact_action(decision: dict, config: RunnableConfig = None)
         "[interact] %s → %s : %s", char_id, object_id, "success" if result.success else "fail"
     )
     return {
-        "kind": "character_interact",
-        "character_id": char_id,
+        "kind": "pc_interact",
+        "pc_id": char_id,
         "object_id": object_id,
         "success": result.success,
         "result": result.result if result else {},
@@ -134,11 +134,11 @@ def _interact_requirements(obj: SceneObject | None) -> tuple[str, str, int]:
     return "interact", "dex", 0
 
 
-async def _ability_mod_for(char_repo, char_id: str, ability: str) -> int:
+async def _ability_mod_for(pc_repo, char_id: str, ability: str) -> int:
     """加载 PC 属性并计算检定加值 / Load PC attributes and compute the check bonus."""
-    if not char_repo or not char_id:
+    if not pc_repo or not char_id:
         return 0
-    pc = await char_repo.load_pc(char_id)
+    pc = await pc_repo.load_pc(char_id)
     if not pc:
         return 0
     try:

@@ -1,6 +1,6 @@
 """Graph State 测试 / Graph State tests."""
 
-from src.graph.state import CharacterSubState, OverallState, ReflectionSubState
+from src.graph.state import OverallState, PcSubState, ReflectionSubState
 
 # ══ OverallState 测试 / Main state tests ══
 
@@ -19,26 +19,26 @@ class TestOverallState:
             "hints": [],
             "plot_brief": "",
             "scene_id": "",
-            "character_decisions": [],
+            "pc_decisions": [],
             "narrative": "",
         }
         assert s["tick"] == 0
 
 
-# ══ CharacterSubState 测试 ══
+# ══ PcSubState 测试 ══
 
 
-class TestCharacterSubState:
+class TestPcSubState:
     """角色子图状态测试 / Character subgraph state tests."""
 
     def test_character_substate(self):
         """角色子状态构造 / Character subgraph state construction."""
-        s: CharacterSubState = {
+        s: PcSubState = {
             "tick": 1,
             "plot_brief": "test",
             "scene_info": {},
             "pending_actions": [],
-            "character_decisions": [],
+            "pc_decisions": [],
         }
         assert s["tick"] == 1
         assert s["plot_brief"] == "test"
@@ -54,10 +54,10 @@ class TestReflectionSubState:
         """反思子状态构造 / Reflection subgraph state construction."""
         s: ReflectionSubState = {
             "tick": 5,
-            "character_id": "pc1",
+            "pc_id": "pc1",
             "memories": [{"text": "m1"}],
             "tick_events": [],
-            "reflected_characters": [],
+            "reflected_pcs": [],
             "summary_compressed": False,
         }
         assert s["tick"] == 5

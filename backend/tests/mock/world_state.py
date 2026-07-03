@@ -77,7 +77,7 @@ MOCK_WORLD = {
                 "initiative": 2,
             },
             "personality": "Brave but impulsive.",
-            "character_arc": {"stage": "growth", "description": "Prove himself"},
+            "arc": {"stage": "growth", "description": "Prove himself"},
             "is_pc": True,
         },
         {
@@ -106,7 +106,7 @@ MOCK_WORLD = {
                 "initiative": 4,
             },
             "personality": "Sly and curious.",
-            "character_arc": {"stage": "crisis", "description": "Trust issues"},
+            "arc": {"stage": "crisis", "description": "Trust issues"},
             "is_pc": True,
         },
         {
@@ -135,7 +135,7 @@ MOCK_WORLD = {
                 "initiative": 1,
             },
             "personality": "Calm and devout.",
-            "character_arc": {"stage": "growth", "description": "Seeking signs"},
+            "arc": {"stage": "growth", "description": "Seeking signs"},
             "is_pc": True,
         },
         {
@@ -164,7 +164,7 @@ MOCK_WORLD = {
                 "initiative": 2,
             },
             "personality": "Brilliant but aloof.",
-            "character_arc": {"stage": "setup", "description": "Uncover ancient lore"},
+            "arc": {"stage": "setup", "description": "Uncover ancient lore"},
             "is_pc": True,
         },
         {

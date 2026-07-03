@@ -30,7 +30,6 @@ from src.domain import (
     PlayerCharacter,
 )
 from src.graph.orchestrator import Orchestrator
-from src.repository.character_repo import CharacterRepo
 from src.repository.dm_record_repo import DMRecordRepo
 from src.repository.event_repo import TickEventRepo
 from src.repository.memory_repo import MemoryRepo
@@ -40,6 +39,8 @@ from src.repository.world_repo import WorldRepo
 from src.storage.chroma_client import ChromaClient
 from src.storage.sqlite_client import SQLiteClient
 from src.utils.logging import setup_logging
+
+from .pc_repo import PcRepo
 
 # ═══════════════════════════════════════════════════════════════
 # 种子数据 / Seed data
@@ -103,7 +104,7 @@ def _print_tick(
     if narrative:
         print(f"  [DM] {narrative}")
     for a in decisions:
-        cid = a.get("character_id", "?")
+        cid = a.get("pc_id", "?")
         atype = a.get("action_type", a.get("type", "?"))
         desc = a.get("reasoning", a.get("description", ""))
         print(f"  [Act] {cid}({atype}): {desc}")
@@ -157,27 +158,27 @@ async def _do_run(
         await db.init_schema()
         print("  [DB] initialized")
 
-        char_repo = CharacterRepo(db)
+        pc_repo = PcRepo(db)
         record_repo = DMRecordRepo(db)
 
         if pack_id:
-            pcs = await char_repo.load_pcs(pack_id)
-            actors = await char_repo.load_actors(pack_id)
+            pcs = await pc_repo.load_pcs(pack_id)
+            actors = await pc_repo.load_actors(pack_id)
             print(f"  [DB] pack_id={pack_id}")
             print(f"  [DB] Loaded {len(pcs)} PCs, {len(actors)} Actors")
         else:
             pcs = _seed_pcs()
             actors = _seed_actors()
             for pc in pcs:
-                await char_repo.save_pc(pc)
+                await pc_repo.save_pc(pc)
             for a in actors:
-                await char_repo.save_actor(a)
+                await pc_repo.save_actor(a)
             await db.commit()
             print(f"  [DB] Seeded {len(pcs)} PCs, {len(actors)} Actors")
 
         repos = {
             "dm_record": record_repo,
-            "char": char_repo,
+            "char": pc_repo,
             "scene": SceneRepo(db),
             "world": WorldRepo(db),
             "event": TickEventRepo(db),
@@ -208,7 +209,7 @@ async def _do_run(
         tick = result["tick"]
         narrative = result.get("narrative", "")
         tick_events = result.get("tick_events", [])
-        decisions = result.get("character_decisions", [])
+        decisions = result.get("pc_decisions", [])
 
         db_label = f"[DB] ticks {tick}" if use_db else ""
         _print_tick(tick, narrative, decisions, tick_events, [], db_info=db_label)
@@ -345,8 +346,8 @@ async def _test_tick() -> None:
     result = await orch.run_tick()
     print(f"  [OUTPUT] Tick {result['tick']}")
     print(f"  [OUTPUT] DM narrative: {result.get('narrative', '')}")
-    for a in result.get("character_decisions", [])[:5]:
-        print(f"  [OUTPUT] Act: {a.get('character_id', '?')}({a.get('action_type', '?')})")
+    for a in result.get("pc_decisions", [])[:5]:
+        print(f"  [OUTPUT] Act: {a.get('pc_id', '?')}({a.get('action_type', '?')})")
     print(_SUB)
     print("  Full Tick OK")
 

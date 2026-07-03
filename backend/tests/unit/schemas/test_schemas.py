@@ -82,7 +82,7 @@ class TestRequestSchemas:
         assert len(r.quests) == 1
 
     def test_reflection_request(self):
-        r = ReflectionRequest(character_id="pc1", memories=[{"text": "met dragon"}])
+        r = ReflectionRequest(pc_id="pc1", memories=[{"text": "met dragon"}])
         assert len(r.memories) == 1
 
     def test_summarizer_request(self):
@@ -98,12 +98,12 @@ class TestRequestSchemas:
         assert r.item_id == "sword_01"
 
     def test_scene_object_interact_request(self):
-        r = SceneObjectInteractRequest(object_id="door_1", character_id="pc1", action_type="open")
+        r = SceneObjectInteractRequest(object_id="door_1", pc_id="pc1", action_type="open")
         assert r.object_id == "door_1"
 
     def test_character_load_request(self):
-        r = CharacterLoadRequest(character_id="hero_1")
-        assert r.character_id == "hero_1"
+        r = CharacterLoadRequest(pc_id="hero_1")
+        assert r.pc_id == "hero_1"
 
 
 # ============================================================
@@ -149,7 +149,7 @@ class TestResponseSchemas:
 
     def test_character_response_defaults(self):
         r = CharacterResponse()
-        assert r.character_type == "pc"
+        assert r.pc_type == "pc"
         assert r.alive is True
         assert r.hp == 10
 

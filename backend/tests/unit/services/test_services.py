@@ -6,10 +6,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.services import (
-    character_service,
     dm_service,
     event_service,
     message_service,
+    pc_service,
     reflection_service,
     scene_service,
     summarizer_service,
@@ -27,18 +27,18 @@ def _overall_state(**overrides):
         "hints": [],
         "plot_brief": "",
         "scene_id": "scene-1",
-        "character_decisions": [],
+        "pc_decisions": [],
         "narrative": "",
         **overrides,
     }
 
 
-def _char_repo_config(pcs: list, object_ids: list[str] | None = None) -> dict:
-    """构造带 char_repo/scene_repo 的 config / Build config with char/scene repo mocks."""
+def _pc_repo_config(pcs: list, object_ids: list[str] | None = None) -> dict:
+    """构造带 pc_repo/scene_repo 的 config / Build config with char/scene repo mocks."""
     object_ids = object_ids or []
-    char_repo = AsyncMock()
-    char_repo.load_pcs = AsyncMock(return_value=pcs)
-    char_repo.load_actors = AsyncMock(return_value=[])
+    pc_repo = AsyncMock()
+    pc_repo.load_pcs = AsyncMock(return_value=pcs)
+    pc_repo.load_actors = AsyncMock(return_value=[])
     scene_repo = AsyncMock()
     scene_repo.get_scene = AsyncMock(return_value=None)
     scene_repo.get_object_ids = AsyncMock(return_value=object_ids)
@@ -49,7 +49,7 @@ def _char_repo_config(pcs: list, object_ids: list[str] | None = None) -> dict:
         for oid in object_ids
     }
     scene_repo.load_all = AsyncMock(return_value=scene_objects)
-    return {"configurable": {"repos": {"char": char_repo, "scene": scene_repo}}}
+    return {"configurable": {"repos": {"char": pc_repo, "scene": scene_repo}}}
 
 
 class TestCharacterService:
@@ -58,8 +58,8 @@ class TestCharacterService:
     @pytest.mark.asyncio
     async def test_decide_returns_empty_when_no_pcs_in_scene(self):
         """没有 PC 时直接返回空 / Decide returns empty when there are no PCs in the scene."""
-        result = await character_service.decide(_overall_state())
-        assert result == {"character_decisions": []}
+        result = await pc_service.decide(_overall_state())
+        assert result == {"pc_decisions": []}
 
     @pytest.mark.asyncio
     async def test_decide_delegates_each_pc_to_decision_engine(self):
@@ -67,11 +67,11 @@ class TestCharacterService:
         scene_info = {"pcs": [{"id": "pc-1"}], "scene_objects": [{"id": "obj-1"}]}
         decision = {"pc_id": "pc-1", "type": "talk", "description": "先交涉"}
         with patch.object(
-            character_service.decision_engine,
+            pc_service.decision_engine,
             "decide",
             AsyncMock(return_value=decision),
         ) as mock_decide:
-            result = await character_service.decide(
+            result = await pc_service.decide(
                 _overall_state(
                     tick=3,
                     plot_brief="战斗开始",
@@ -85,7 +85,7 @@ class TestCharacterService:
         assert mock_decide.call_args.kwargs["plot_brief"] == "战斗开始"
         assert mock_decide.call_args.kwargs["scene_id"] == "scene-1"
         assert mock_decide.call_args.kwargs["tick"] == 3
-        assert result == {"character_decisions": [decision]}
+        assert result == {"pc_decisions": [decision]}
 
     @pytest.mark.asyncio
     async def test_act_dispatches_talk_and_interact(self):
@@ -94,26 +94,26 @@ class TestCharacterService:
         state = _overall_state(
             tick=2,
             tick_message_id="msg-2",
-            character_decisions=[decision],
+            pc_decisions=[decision],
         )
         with (
             patch.object(
-                character_service.talk_engine,
+                pc_service.talk_engine,
                 "process_talk_action",
                 AsyncMock(return_value=None),
             ) as mock_talk,
             patch.object(
-                character_service.interact_engine,
+                pc_service.interact_engine,
                 "process_interact_action",
                 AsyncMock(return_value=None),
             ) as mock_interact,
             patch.object(
-                character_service.combat_engine,
+                pc_service.combat_engine,
                 "process_combat_action",
                 AsyncMock(return_value=None),
             ) as mock_combat,
         ):
-            result = await character_service.act(state)
+            result = await pc_service.act(state)
         mock_talk.assert_awaited_once_with(
             decision=decision,
             plot_brief="",
@@ -137,26 +137,26 @@ class TestCharacterService:
         """把命中的 engine 结果格式化成 {order, action_type, target_id, target_type, result} /
         Format the matching engine's result into {order, action_type, target_id, target_type, result}."""
         decision = {"pc_id": "pc-1", "type": "talk", "target_id": "pc-2", "target_type": "pc"}
-        talk_result = {"kind": "character_talk", "participants": ["pc-1", "pc-2"], "turns": []}
-        state = _overall_state(character_decisions=[decision])
+        talk_result = {"kind": "pc_talk", "participants": ["pc-1", "pc-2"], "turns": []}
+        state = _overall_state(pc_decisions=[decision])
         with (
             patch.object(
-                character_service.talk_engine,
+                pc_service.talk_engine,
                 "process_talk_action",
                 AsyncMock(return_value=talk_result),
             ),
             patch.object(
-                character_service.interact_engine,
+                pc_service.interact_engine,
                 "process_interact_action",
                 AsyncMock(return_value=None),
             ),
             patch.object(
-                character_service.combat_engine,
+                pc_service.combat_engine,
                 "process_combat_action",
                 AsyncMock(return_value=None),
             ),
         ):
-            result = await character_service.act(state)
+            result = await pc_service.act(state)
         assert result == {
             "pending_actions": [
                 {
@@ -190,7 +190,7 @@ class TestSceneAndMessageService:
 
     @pytest.mark.asyncio
     async def test_build_scene_info_returns_empty_without_repo(self):
-        """没有 char_repo/scene_id 时返回空场景信息 / Returns empty scene info without char_repo/scene_id."""
+        """没有 pc_repo/scene_id 时返回空场景信息 / Returns empty scene info without pc_repo/scene_id."""
         state = _overall_state(
             tick=1, world_id="world-x", scene_id="scene-x", tick_message_id="msg-x"
         )
@@ -208,7 +208,7 @@ class TestSceneAndMessageService:
             race="human",
             status="active",
         )
-        config = _char_repo_config([pc], object_ids=["obj-1"])
+        config = _pc_repo_config([pc], object_ids=["obj-1"])
         state = _overall_state(tick=1, world_id="world-1", scene_id="scene-1")
         result = await scene_service.build_scene_info(state, config)
         info = result["scene_info"]
@@ -250,14 +250,14 @@ class TestDMAndReflectionService:
             result = await reflection_service.reflect(
                 {
                     "tick": 5,
-                    "character_id": "pc-1",
+                    "pc_id": "pc-1",
                     "memories": [],
                     "tick_events": [],
-                    "reflected_characters": [],
+                    "reflected_pcs": [],
                     "summary_compressed": False,
                 }
             )
-        assert result == {"reflected_characters": []}
+        assert result == {"reflected_pcs": []}
 
 
 class TestSummarizerService:
@@ -284,9 +284,7 @@ class TestSummarizerService:
         llm = AsyncMock()
         llm.call_structured = AsyncMock(return_value={"summary": "酒馆里发生了冲突。"})
         config = {"configurable": {"llm": llm}}
-        result = await summarizer_service.summarize(
-            {"tick_events": [{"type": "character_talk"}]}, config
-        )
+        result = await summarizer_service.summarize({"tick_events": [{"type": "pc_talk"}]}, config)
         assert result["summary_compressed"] is True
         assert result["summary_text"] == "酒馆里发生了冲突。"
 
@@ -308,7 +306,7 @@ class TestEventService:
                     "action_type": "talk",
                     "target_id": "",
                     "target_type": "",
-                    "result": {"kind": "character_talk"},
+                    "result": {"kind": "pc_talk"},
                 }
             ],
         )
@@ -332,7 +330,7 @@ class TestEventService:
                     "action_type": "talk",
                     "target_id": "pc-2",
                     "target_type": "pc",
-                    "result": {"kind": "character_talk", "character_id": "pc-1"},
+                    "result": {"kind": "pc_talk", "pc_id": "pc-1"},
                 }
             ],
         )
@@ -342,9 +340,9 @@ class TestEventService:
             3,
             [
                 {
-                    "type": "character_talk",
+                    "type": "pc_talk",
                     "payload": {
-                        "character_id": "pc-1",
+                        "pc_id": "pc-1",
                         "order": 0,
                         "target_id": "pc-2",
                         "target_type": "pc",
@@ -445,7 +443,7 @@ class TestEventService:
                     "action_type": "combat",
                     "target_id": "npc-1",
                     "target_type": "actor",
-                    "result": {"kind": "character_combat", "character_id": "pc-1"},
+                    "result": {"kind": "pc_combat", "pc_id": "pc-1"},
                 }
             ],
         )

@@ -19,43 +19,41 @@ class OverallState(TypedDict):
     scene_info: dict[
         str, Any
     ]  # 当前场景的信息（与谁使用无关，不区分 PC）/ Current scene info (consumer-independent, not per-PC)
-    character_decisions: Annotated[
+    pc_decisions: Annotated[
         list[dict[str, Any]], add
     ]  # 角色决策（累加） / Character decisions (accumulated)
-    pending_actions: Annotated[
-        list[dict[str, Any]], add
-    ]  # character_subgraph 产生的行动结果（累加）
+    pending_actions: Annotated[list[dict[str, Any]], add]  # pc_subgraph 产生的行动结果（累加）
     narrative: str  # DM 叙事文本 / DM narrative text
 
 
-class CharacterSubState(TypedDict):
+class PcSubState(TypedDict):
     """角色子图状态 / Character subgraph state."""
 
     tick: int
     plot_brief: str
     scene_info: dict[str, Any]
     pending_actions: Annotated[list[dict[str, Any]], add]
-    character_decisions: Annotated[list[dict[str, Any]], add]
+    pc_decisions: Annotated[list[dict[str, Any]], add]
 
 
-class CharacterAgentState(TypedDict):
+class PcAgentState(TypedDict):
     """单角色代理状态 / Single character agent state."""
 
-    character_id: str
-    character_type: str  # pc / actor / Player character or NPC
+    pc_id: str
+    pc_type: str  # pc / actor / Player character or NPC
     plot_brief: str
     tick: int
-    character_decisions: Annotated[list[dict[str, Any]], add]
+    pc_decisions: Annotated[list[dict[str, Any]], add]
 
 
 class ReflectionSubState(TypedDict):
     """反思子图状态 / Reflection subgraph state."""
 
     tick: int
-    character_id: str
+    pc_id: str
     memories: list[dict[str, Any]]
     tick_events: list[dict[str, Any]]
-    reflected_characters: list[str]
+    reflected_pcs: list[str]
     summary_compressed: bool
 
 

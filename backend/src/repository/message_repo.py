@@ -22,7 +22,7 @@ class TickMessageRepo:
             (msg.id, msg.tick, msg.world_id),
         )
         await self._db.commit()
-        log_msg("insert", msg.id, msg.tick, event_count=len(msg.tick_events))
+        log_msg("insert", msg.id, msg.tick)
 
     async def get_next_pending(self, mid: str) -> dict | None:
         """读取下一条 pending 消息 / Fetch next pending message."""

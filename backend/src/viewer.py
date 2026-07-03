@@ -8,13 +8,14 @@ from pathlib import Path
 from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
 
-from src.repository.character_repo import CharacterRepo
 from src.repository.dm_record_repo import DMRecordRepo
 from src.repository.event_repo import TickEventRepo
 from src.repository.item_repo import ItemRepo
 from src.repository.scene_repo import SceneRepo
 from src.repository.world_repo import WorldRepo
 from src.storage.sqlite_client import SQLiteClient
+
+from .pc_repo import PcRepo
 
 _PROJECT_ROOT = Path(__file__).parent.parent  # backend/
 _TEMPLATES_DIR = _PROJECT_ROOT.parent / "frontend" / "templates"  # frontend/templates/
@@ -92,11 +93,11 @@ async def render_index(db_path: str) -> HTMLResponse:
 async def render_pack(pack_id: str, db_path: str) -> HTMLResponse:
     client = await _get_client(db_path)
     try:
-        char_repo = CharacterRepo(client)
+        pc_repo = PcRepo(client)
         record_repo = DMRecordRepo(client)
 
-        pcs = await _load_pcs(char_repo, pack_id)
-        actors = await _load_actors(char_repo, pack_id)
+        pcs = await _load_pcs(pc_repo, pack_id)
+        actors = await _load_actors(pc_repo, pack_id)
         scenes = await _load_scenes(client, pack_id)
         items = await _load_items(client, pack_id)
         objects = await _load_objects(client, pack_id)
@@ -290,10 +291,10 @@ async def render_global_meta(db_path: str) -> HTMLResponse:
 # ═══════════════════════════════════════════════════════════════
 
 
-async def _load_pcs(repo: CharacterRepo, pack_id: str) -> list[dict]:
+async def _load_pcs(repo: PcRepo, pack_id: str) -> list[dict]:
     rows = await repo._db.fetch_all(
         "SELECT id, name, role, race, scene_id, personality, attributes_json, combat_json, "
-        "character_arc_json, equipment_json, inventory_json, values_json, long_term_goal "
+        "arc_json, equipment_json, inventory_json, values_json, long_term_goal "
         "FROM player_characters WHERE pack_id = ?",
         (pack_id,),
     )
@@ -303,7 +304,7 @@ async def _load_pcs(repo: CharacterRepo, pack_id: str) -> list[dict]:
         for k in [
             "attributes_json",
             "combat_json",
-            "character_arc_json",
+            "arc_json",
             "equipment_json",
             "inventory_json",
             "values_json",
@@ -311,13 +312,13 @@ async def _load_pcs(repo: CharacterRepo, pack_id: str) -> list[dict]:
             if d.get(k):
                 with contextlib.suppress(json.JSONDecodeError, TypeError):
                     d[k.replace("_json", "")] = json.loads(d[k])
-        for k in ["attributes", "combat", "character_arc", "equipment", "inventory", "values"]:
+        for k in ["attributes", "combat", "arc", "equipment", "inventory", "values"]:
             d.setdefault(k, {} if k != "inventory" else [])
         result.append(d)
     return result
 
 
-async def _load_actors(repo: CharacterRepo, pack_id: str) -> list[dict]:
+async def _load_actors(repo: PcRepo, pack_id: str) -> list[dict]:
     rows = await repo._db.fetch_all(
         "SELECT id, name, role, race, scene_id, personality, attributes_json, combat_json, "
         "functions_json, function_data_json, dm_assigned, motivation_injected "
@@ -341,33 +342,24 @@ async def _load_actors(repo: CharacterRepo, pack_id: str) -> list[dict]:
 
 async def _load_scenes(client: SQLiteClient, pack_id: str) -> list[dict]:
     rows = await client.fetch_all(
-        "SELECT id, name, type, description, exits_json, landmarks_json, environment_json "
-        "FROM scenes WHERE pack_id = ?",
+        "SELECT id, name, type, description FROM scenes WHERE pack_id = ?",
         (pack_id,),
     )
-    result = []
-    for r in rows:
-        d = dict(r)
-        for k in ["exits_json", "landmarks_json", "environment_json"]:
-            if d.get(k):
-                with contextlib.suppress(json.JSONDecodeError, TypeError):
-                    d[k.replace("_json", "")] = json.loads(d[k])
-        result.append(d)
-    return result
+    return [dict(r) for r in rows]
 
 
 async def _load_items(client: SQLiteClient, pack_id: str) -> list[dict]:
     rows = await client.fetch_all(
-        "SELECT id, name, item_type, rarity, weight, value, description, data_json "
+        "SELECT id, name, item_type, rarity, weight, value, description, data "
         "FROM items WHERE pack_id = ?",
         (pack_id,),
     )
     result = []
     for r in rows:
         d = dict(r)
-        if d.get("data_json"):
+        if d.get("data"):
             try:
-                d["data"] = json.loads(d["data_json"])
+                d["data"] = json.loads(d["data"])
             except (json.JSONDecodeError, TypeError):
                 d["data"] = {}
         result.append(d)
@@ -376,16 +368,16 @@ async def _load_items(client: SQLiteClient, pack_id: str) -> list[dict]:
 
 async def _load_objects(client: SQLiteClient, pack_id: str) -> list[dict]:
     rows = await client.fetch_all(
-        "SELECT id, name, object_type, scene_id, position_x, position_y, interactable, interact_data_json "
+        "SELECT id, name, object_type, scene_id, position_x, position_y, interactable, interact_data "
         "FROM scene_objects WHERE pack_id = ?",
         (pack_id,),
     )
     result = []
     for r in rows:
         d = dict(r)
-        if d.get("interact_data_json"):
+        if d.get("interact_data"):
             with contextlib.suppress(json.JSONDecodeError, TypeError):
-                d["interact_data"] = json.loads(d["interact_data_json"])
+                d["interact_data"] = json.loads(d["interact_data"])
         result.append(d)
     return result
 
