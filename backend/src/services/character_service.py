@@ -44,8 +44,11 @@ async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
 
 
 async def act(state: OverallState, config: RunnableConfig = None) -> dict:
-    """执行角色决策，收集各 engine 产生的事件，交给 event_service 统一落盘 /
-    Execute character decisions and collect events for event_service to persist."""
+    """执行角色决策，把各 engine 产生的原始结果统一格式化成
+    {order, action_type, target_id, target_type, result} 交给 event_service /
+    Execute character decisions, formatting each engine's raw result into a
+    uniform {order, action_type, target_id, target_type, result} dict for
+    event_service."""
     decisions = state.get("character_decisions", [])
     if not decisions:
         return {}
@@ -54,9 +57,9 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
     plot_brief = state.get("plot_brief", "")
     hints = state.get("hints", [])
     scene_id = state.get("scene_id", "")
-    pending_events: list[dict] = []
-    for decision in decisions:
-        talk_event = await talk_engine.process_talk_action(
+    pending_actions: list[dict] = []
+    for order, decision in enumerate(decisions):
+        talk_result = await talk_engine.process_talk_action(
             decision=decision,
             plot_brief=plot_brief,
             hints=hints,
@@ -64,15 +67,26 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
             tick=tick,
             config=config,
         )
-        interact_event = await interact_engine.process_interact_action(
+        interact_result = await interact_engine.process_interact_action(
             decision=decision,
             config=config,
         )
         # combat 目前只记录意图，完整结算见 combat_engine.py 顶部 TODO
         # combat only records intent for now, see TODO atop combat_engine.py
-        combat_event = await combat_engine.process_combat_action(
+        combat_result = await combat_engine.process_combat_action(
             decision=decision,
             config=config,
         )
-        pending_events.extend(e for e in (talk_event, interact_event, combat_event) if e)
-    return {"pending_events": pending_events}
+        result = talk_result or interact_result or combat_result
+        if result is None:
+            continue
+        pending_actions.append(
+            {
+                "order": order,
+                "action_type": decision.get("type", ""),
+                "target_id": decision.get("target_id", ""),
+                "target_type": decision.get("target_type", ""),
+                "result": result,
+            }
+        )
+    return {"pending_actions": pending_actions}

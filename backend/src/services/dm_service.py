@@ -31,21 +31,19 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
         "hints": result.hints,
         "plot_brief": result.plot_brief,
         "scene_id": result.scene_id,
-        "errors": result.errors,
     }
 
 
 async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict:
     """Phase 6: DM 叙事 / DM narrates the scene_engine."""
     t0 = time.monotonic()
-    interval = config.get("configurable", {}).get("reflection_interval", 5) if config else 5
     result = await dm_engine.dm_narrate(
         DMNarrateRequest(
             tick=state.get("tick", 0),
             world_id=state.get("world_id", ""),
             plot_brief=state.get("plot_brief", ""),
             hints=state.get("hints", []),
-            events=[],
+            tick_message_id=state.get("tick_message_id", ""),
         ),
         config=config,
     )
@@ -54,6 +52,4 @@ async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict
     )
     return {
         "narrative": result.narrative_out,
-        "errors": result.errors,
-        "needs_reflection": state.get("tick", 0) % interval == 0,
     }

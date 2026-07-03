@@ -15,7 +15,7 @@ class TestOverallState:
             "world_id": "",
             "tick_message_id": "",
             "scene_info": {},
-            "pending_events": [],
+            "pending_actions": [],
             "hints": [],
             "plot_brief": "",
             "scene_id": "",
@@ -35,7 +35,7 @@ class TestOverallState:
             "world_id": "",
             "tick_message_id": "",
             "scene_info": {},
-            "pending_events": [],
+            "pending_actions": [],
             "hints": [],
             "plot_brief": "",
             "scene_id": "",
@@ -61,7 +61,7 @@ class TestCharacterSubState:
             "tick": 1,
             "plot_brief": "test",
             "scene_info": {},
-            "pending_events": [],
+            "pending_actions": [],
             "character_decisions": [],
         }
         assert s["tick"] == 1

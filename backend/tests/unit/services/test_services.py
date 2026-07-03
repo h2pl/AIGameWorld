@@ -8,6 +8,7 @@ import pytest
 from src.services import (
     character_service,
     dm_service,
+    event_service,
     message_service,
     reflection_service,
     scene_service,
@@ -22,6 +23,7 @@ def _overall_state(**overrides):
         "world_id": "world-1",
         "tick_message_id": "tick-msg-1",
         "scene_info": {},
+        "pending_actions": [],
         "hints": [],
         "plot_brief": "",
         "scene_id": "scene-1",
@@ -132,7 +134,44 @@ class TestCharacterService:
             decision=decision,
             config=None,
         )
-        assert result == {"pending_events": []}
+        assert result == {"pending_actions": []}
+
+    @pytest.mark.asyncio
+    async def test_act_formats_action_result_uniformly(self):
+        """把命中的 engine 结果格式化成 {order, action_type, target_id, target_type, result} /
+        Format the matching engine's result into {order, action_type, target_id, target_type, result}."""
+        decision = {"pc_id": "pc-1", "type": "talk", "target_id": "pc-2", "target_type": "pc"}
+        talk_result = {"kind": "character_talk", "participants": ["pc-1", "pc-2"], "turns": []}
+        state = _overall_state(character_decisions=[decision])
+        with (
+            patch.object(
+                character_service.talk_engine,
+                "process_talk_action",
+                AsyncMock(return_value=talk_result),
+            ),
+            patch.object(
+                character_service.interact_engine,
+                "process_interact_action",
+                AsyncMock(return_value=None),
+            ),
+            patch.object(
+                character_service.combat_engine,
+                "process_combat_action",
+                AsyncMock(return_value=None),
+            ),
+        ):
+            result = await character_service.act(state)
+        assert result == {
+            "pending_actions": [
+                {
+                    "order": 0,
+                    "action_type": "talk",
+                    "target_id": "pc-2",
+                    "target_type": "pc",
+                    "result": talk_result,
+                }
+            ]
+        }
 
 
 class TestSceneAndMessageService:
@@ -258,3 +297,187 @@ class TestSummarizerService:
         )
         assert result["summary_compressed"] is True
         assert result["summary_text"] == "酒馆里发生了冲突。"
+
+
+class TestEventService:
+    """事件服务测试 / Event service tests."""
+
+    @pytest.mark.asyncio
+    async def test_flush_events_noop_without_tick_message_id(self):
+        """没有 tick_message_id 时不做任何事 / No-op without a tick_message_id."""
+        event_repo = AsyncMock()
+        message_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        state = _overall_state(
+            tick_message_id="",
+            pending_actions=[
+                {
+                    "order": 0,
+                    "action_type": "talk",
+                    "target_id": "",
+                    "target_type": "",
+                    "result": {"kind": "character_talk"},
+                }
+            ],
+        )
+        await event_service.flush_events(state, config)
+        event_repo.insert_tick_events.assert_not_awaited()
+        message_repo.mark_ready.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_flush_events_persists_events_then_marks_ready(self):
+        """先落盘事件，再把消息标记为可消费 / Persist events first, then mark the message ready."""
+        event_repo = AsyncMock()
+        message_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        state = _overall_state(
+            tick=3,
+            tick_message_id="tick-msg-1",
+            scene_id="",
+            pending_actions=[
+                {
+                    "order": 0,
+                    "action_type": "talk",
+                    "target_id": "pc-2",
+                    "target_type": "pc",
+                    "result": {"kind": "character_talk", "character_id": "pc-1"},
+                }
+            ],
+        )
+        await event_service.flush_events(state, config)
+        event_repo.insert_tick_events.assert_awaited_once_with(
+            "tick-msg-1",
+            3,
+            [
+                {
+                    "type": "character_talk",
+                    "payload": {
+                        "character_id": "pc-1",
+                        "order": 0,
+                        "target_id": "pc-2",
+                        "target_type": "pc",
+                    },
+                }
+            ],
+        )
+        message_repo.mark_ready.assert_awaited_once_with("tick-msg-1", 3)
+
+    @pytest.mark.asyncio
+    async def test_flush_events_marks_ready_even_without_pending_events(self):
+        """没有待落盘事件也要标记消息可消费（如纯叙事 tick）/
+        Mark the message ready even with no pending events (e.g. narrative-only ticks)."""
+        event_repo = AsyncMock()
+        message_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        state = _overall_state(
+            tick=4, tick_message_id="tick-msg-1", scene_id="", pending_actions=[]
+        )
+        await event_service.flush_events(state, config)
+        event_repo.insert_tick_events.assert_not_awaited()
+        message_repo.mark_ready.assert_awaited_once_with("tick-msg-1", 4)
+
+    @pytest.mark.asyncio
+    async def test_flush_events_builds_scene_setup_from_scene_info(self):
+        """从 scene_service 写入的 scene_info 构造 scene_setup 事件 /
+        Build a scene_setup event from the scene_info scene_service wrote."""
+        event_repo = AsyncMock()
+        message_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        state = _overall_state(
+            tick=1,
+            tick_message_id="tick-msg-1",
+            scene_id="",
+            scene_info={
+                "scene": {"id": "scene-1", "name": "Tavern"},
+                "scene_objects": [{"id": "obj-1", "name": "Chest", "object_type": "container"}],
+            },
+            pending_actions=[],
+        )
+        await event_service.flush_events(state, config)
+        event_repo.insert_tick_events.assert_awaited_once_with(
+            "tick-msg-1",
+            1,
+            [
+                {
+                    "type": "scene_setup",
+                    "payload": {"scene_id": "scene-1", "description": "进入场景"},
+                },
+            ],
+        )
+
+    @pytest.mark.asyncio
+    async def test_flush_events_builds_dm_create_from_state(self):
+        """从 dm_service.dm_create 写入的 plot_brief/hints/scene_id 构造 dm_create 事件 /
+        Build a dm_create event from the plot_brief/hints/scene_id dm_service.dm_create wrote."""
+        event_repo = AsyncMock()
+        message_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        state = _overall_state(
+            tick=0,
+            tick_message_id="tick-msg-1",
+            scene_id="scene-1",
+            plot_brief="酒馆冲突一触即发。",
+            hints=["注意角落里的陌生人"],
+            pending_actions=[],
+        )
+        await event_service.flush_events(state, config)
+        event_repo.insert_tick_events.assert_awaited_once_with(
+            "tick-msg-1",
+            0,
+            [
+                {
+                    "type": "dm_create",
+                    "payload": {
+                        "scene_id": "scene-1",
+                        "plot_brief": "酒馆冲突一触即发。",
+                        "hints": ["注意角落里的陌生人"],
+                    },
+                },
+            ],
+        )
+
+    @pytest.mark.asyncio
+    async def test_flush_events_drops_unknown_kinds(self):
+        """未在 5 种已知类型内的原始结果（如未结算的 character_combat）不落盘 /
+        Raw results outside the 5 known kinds (e.g. unresolved character_combat) are dropped."""
+        event_repo = AsyncMock()
+        message_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        state = _overall_state(
+            tick=1,
+            tick_message_id="tick-msg-1",
+            scene_id="",
+            pending_actions=[
+                {
+                    "order": 0,
+                    "action_type": "combat",
+                    "target_id": "npc-1",
+                    "target_type": "actor",
+                    "result": {"kind": "character_combat", "character_id": "pc-1"},
+                }
+            ],
+        )
+        await event_service.flush_events(state, config)
+        event_repo.insert_tick_events.assert_not_awaited()
+        message_repo.mark_ready.assert_awaited_once_with("tick-msg-1", 1)
+
+    @pytest.mark.asyncio
+    async def test_flush_events_builds_narrative_event_from_state(self):
+        """从 dm_service.dm_narrate 写入的 narrative 构造 dm_narrative 事件 /
+        Build a dm_narrative event from the narrative dm_service.dm_narrate wrote."""
+        event_repo = AsyncMock()
+        message_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        state = _overall_state(
+            tick=2,
+            tick_message_id="tick-msg-1",
+            scene_id="",
+            pending_actions=[],
+            narrative="夜幕降临，酒馆里灯火通明。",
+        )
+        await event_service.flush_events(state, config)
+        event_repo.insert_tick_events.assert_awaited_once_with(
+            "tick-msg-1",
+            2,
+            [{"type": "dm_narrative", "payload": {"text": "夜幕降临，酒馆里灯火通明。"}}],
+        )

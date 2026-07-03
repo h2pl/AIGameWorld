@@ -105,20 +105,19 @@ class TestMessageEventRepo:
     async def _insert_msg(self, msg_repo, mid="aw_test", tick=1):
         msg = Message(id=mid, tick=tick, world_id="test", timestamp="2026-07-01T12:00:00Z")
         await msg_repo.insert(msg)
+        await msg_repo.mark_ready(mid, tick)
 
     @pytest.mark.asyncio
     async def test_insert_and_load_events(self, msg_repo, event_repo):
         await self._insert_msg(msg_repo)
         evts = [
             Event(type="dm_narrative", tick=1, payload={"text": "Hello world"}),
-            Event(
-                type="character_move", tick=1, payload={"character_id": "fighter", "x": 5, "y": 8}
-            ),
+            Event(type="character_talk", tick=1, payload={"character_id": "fighter", "text": "Hi"}),
         ]
         await event_repo.insert_events("aw_test", 1, evts)
         loaded = await event_repo.load_by_message("aw_test", 1)
         assert len(loaded) == 2
-        # character_move (SEQUENCE idx=3) 排在 dm_narrative (idx=6) 前面
+        # character_talk (SEQUENCE idx=2) 排在 dm_narrative (idx=4) 前面
         assert loaded[0].payload["character_id"] == "fighter"
         assert loaded[1].payload["text"] == "Hello world"
 
@@ -152,6 +151,7 @@ class TestMessageEventRepo:
         await msg_repo.insert(msg)
         evt = Event(type="dm_narrative", tick=1, payload={"text": "test"})
         await event_repo.insert_events(msg.id, msg.tick, [evt])
+        await msg_repo.mark_ready(msg.id, msg.tick)
         meta = await msg_repo.get_next_pending("aw_test")
         assert meta is not None
         assert meta["tick"] == 1

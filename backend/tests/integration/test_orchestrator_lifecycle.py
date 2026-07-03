@@ -87,7 +87,7 @@ class TestFullTickRun:
             world_id="",
             tick_message_id="",
             scene_info={},
-            pending_events=[],
+            pending_actions=[],
             hints=[],
             plot_brief="Custom start",
             scene_id="",

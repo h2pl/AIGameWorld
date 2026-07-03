@@ -29,7 +29,7 @@ class DMNarrateRequest(BaseModel):
     world_id: str = ""
     plot_brief: str = ""
     hints: list[str] = []
-    events: list[dict[str, Any]] = []
+    tick_message_id: str = ""
 
 
 # === Phase 2: World ===

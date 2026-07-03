@@ -12,7 +12,7 @@ START
  scene_service.build_scene_info    [node]      构建场景信息  build_scene_info
  |
  v
- character_subgraph             [subgraph]  角色决策+事件   character_subgraph
+ character_subgraph             [subgraph]  角色决策+行动   character_subgraph
  |
  v
  dm_service.dm_narrate             [node]      DM 叙事       dm_narrate

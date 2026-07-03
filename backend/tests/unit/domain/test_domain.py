@@ -55,7 +55,7 @@ class TestEvent:
 
     def test_sequence_order(self):
         """事件顺序常量测试 / Event sequence constant test."""
-        assert SEQUENCE[0] == "opening"
+        assert SEQUENCE[0] == "dm_create"
         assert SEQUENCE[-1] == "dm_narrative"
 
 

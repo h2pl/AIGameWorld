@@ -17,14 +17,10 @@ class TickEvent(BaseModel):
 
 # 事件播放顺序 / Event playback sequence
 TICK_EVENT_SEQUENCE: list[str] = [
-    "opening",
+    "dm_create",
     "scene_setup",
-    "scene_objects",
-    "character_move",
     "character_talk",
-    "character_explore",
     "character_interact",
-    "character_combat",
     "dm_narrative",
 ]
 

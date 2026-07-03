@@ -33,6 +33,7 @@ async def run(
     await msg_repo.insert(msg)
     opening_evt = Event(type="opening", tick=0, payload={"text": "冒险开始了！"})
     await evt_repo.insert_events(msg.id, msg.tick, [opening_evt])
+    await msg_repo.mark_ready(msg.id, msg.tick)
 
     try:
         while True:
@@ -69,6 +70,7 @@ async def run(
             )
             await msg_repo.insert(msg)
             await evt_repo.insert_events(msg.id, msg.tick, events)
+            await msg_repo.mark_ready(msg.id, msg.tick)
             logger.info("[Mock] %s tick=%d events=%d", world_id, msg.tick, len(events))
     except Exception:
         logger.error("[Mock] %s error", world_id, exc_info=True)

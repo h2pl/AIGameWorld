@@ -36,6 +36,16 @@ class TickMessageRepo:
             log_msg("next_pending", mid, row["tick"])
         return row
 
+    async def mark_ready(self, mid: str, tick: int) -> None:
+        """事件落盘后标记消息为可消费 / Mark a message consumable once its events are persisted."""
+        await self._db.execute(
+            "UPDATE tick_messages SET status = 'pending', updated_at = datetime('now') "
+            "WHERE id = ? AND tick = ?",
+            (mid, tick),
+        )
+        await self._db.commit()
+        log_msg("ready", mid, tick)
+
     async def ack(self, mid: str, tick: int) -> None:
         """标记已消费 / Mark as consumed."""
         await self._db.execute(

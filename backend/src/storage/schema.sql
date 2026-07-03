@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS tick_messages (
     id         TEXT    NOT NULL,                               -- 消息标识 / Message identifier
     tick       INTEGER NOT NULL,                               -- tick 序号 / Tick number
     world_id   TEXT    NOT NULL,                               -- FK → worlds.id
-    status     TEXT    NOT NULL DEFAULT 'pending',             -- pending | consumed
+    status     TEXT    NOT NULL DEFAULT 'building',            -- building | pending | consumed
     created_at TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT    NOT NULL DEFAULT (datetime('now')),
     acked_at   TEXT                                            -- ACK 时间
