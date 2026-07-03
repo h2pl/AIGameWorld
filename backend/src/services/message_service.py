@@ -4,15 +4,15 @@
 Creating a message is a simple repo write, no separate engine layer is needed.
 """
 
-import logging
-
 from ..domain.message import TickMessage
 from ..graph.state import OverallState
 from ..utils.helpers import get_repo
+from ..utils.logging import get_logger, trace_node
 
-logger = logging.getLogger("aw.svc")
+logger = get_logger(__name__)
 
 
+@trace_node("msg.create")
 async def create_tick_message(state: OverallState, config=None) -> dict:
     """Phase 0: 创建消息，后续节点用 tick_message_id 写入事件."""
     tick = state.get("tick", 0)

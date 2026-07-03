@@ -1,12 +1,12 @@
 """Event 仓储 / Event Repository——写入 + 按tick范围加载."""
 
 import json
-import logging
 
 from ..domain.event import TICK_EVENT_SEQUENCE, TickEvent, TickEventType
 from ..storage.sqlite_client import SQLiteClient
+from ..utils.logging import get_logger
 
-logger = logging.getLogger("aw.repo.event")
+logger = get_logger(__name__)
 
 
 class TickEventRepo:

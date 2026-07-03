@@ -14,8 +14,10 @@ from ..engine.decision import decision_engine
 from ..engine.interact import interact_engine
 from ..engine.talk import talk_engine
 from ..graph.state import OverallState
+from ..utils.logging import trace_node
 
 
+@trace_node("pc.decide")
 async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
     """基于场景信息为场景内每个 PC 决策 / Decide for each PC in the scene, based on the scene info."""
     scene_info = state.get("scene_info", {})
@@ -43,6 +45,7 @@ async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
     return {"pc_decisions": decisions}
 
 
+@trace_node("pc.act")
 async def act(state: OverallState, config: RunnableConfig = None) -> dict:
     """执行角色决策，把各 engine 产生的原始结果统一格式化成
     {order, action_type, target_id, target_type, result} 交给 event_service /

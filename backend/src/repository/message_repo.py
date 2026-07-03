@@ -1,12 +1,10 @@
 """消息仓储——tick_messages 表 CRUD / Message repository: insert / get pending / ack."""
 
-import logging
-
 from ..domain.message import TickMessage
 from ..storage.sqlite_client import SQLiteClient
-from ..utils.logging import log_msg
+from ..utils.logging import get_logger, log_msg
 
-logger = logging.getLogger("aw.repo.msg")
+logger = get_logger(__name__)
 
 
 class TickMessageRepo:

@@ -4,7 +4,6 @@ PC: 深度反思（弧线分析 + 性格洞察 + 下一步方向）
 Actor: 浅层反思（行为模式总结）
 """
 
-import logging
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -13,8 +12,9 @@ from langchain_core.runnables.config import RunnableConfig
 from ...schemas.request import ReflectionRequest
 from ...schemas.response import ReflectionResponse
 from ...utils.helpers import get_llm
+from ...utils.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts" / "reflection"
 _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))

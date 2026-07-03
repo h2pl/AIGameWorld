@@ -3,7 +3,6 @@
 依赖 src/rules/dnd_rules.py 做 D20 判定。
 """
 
-import logging
 import random
 
 from langchain_core.runnables.config import RunnableConfig
@@ -11,13 +10,14 @@ from langchain_core.runnables.config import RunnableConfig
 from ...rules.dnd_rules import attack_roll, roll_initiative
 from ...schemas.request import CombatRequest
 from ...schemas.response import CombatResponse
+from ...utils.logging import get_logger
 
-logger = logging.getLogger("aw.eng.combat")
+logger = get_logger(__name__)
 _MAX_ROUNDS = 20
 
 
 def resolve_combat(req: CombatRequest) -> CombatResponse:
-    logging.getLogger("aw.eng").info("[combat]")
+    get_logger(__name__).info("[combat]")
     """战斗裁决主入口 / Combat resolution entry point."""
     participants = [p.model_copy() for p in req.participants]
     if not participants:

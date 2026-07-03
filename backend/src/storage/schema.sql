@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS player_characters (
     position_y          INTEGER NOT NULL DEFAULT 0,
     attributes_json     TEXT NOT NULL,
     combat_json         TEXT NOT NULL,
-    character_arc_json  TEXT NOT NULL,
+    arc_json            TEXT NOT NULL,
     long_term_goal      TEXT,
     values_json         TEXT NOT NULL DEFAULT '[]',
     personality         TEXT,
@@ -174,24 +174,6 @@ CREATE INDEX IF NOT EXISTS idx_tick_events_msg ON tick_events(tick_message_id, t
 
 
 -- ============================================================
---  narratives: 旧版叙事表 / Legacy narratives table
--- ============================================================
-CREATE TABLE IF NOT EXISTS narratives (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    tick        INTEGER NOT NULL,
-    content     TEXT NOT NULL,
-    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- ============================================================
---  world_meta: 旧版世界元信息表 / Legacy world meta key-value table
--- ============================================================
-CREATE TABLE IF NOT EXISTS world_meta (
-    key         TEXT PRIMARY KEY,
-    value       TEXT NOT NULL DEFAULT ''
-);
-
--- ============================================================
 --  dm_records: DM 产出记录 / DM output records
 -- ============================================================
 CREATE TABLE IF NOT EXISTS dm_records (
@@ -222,20 +204,3 @@ CREATE TABLE IF NOT EXISTS story_summaries (
     UNIQUE(world_id, tick_start)
 );
 CREATE INDEX IF NOT EXISTS idx_summaries_world ON story_summaries(world_id);
-
--- ============================================================
---  quests: 任务 / Quests
--- ============================================================
-CREATE TABLE IF NOT EXISTS quests (
-    id              TEXT PRIMARY KEY,
-    arc_id          TEXT,
-    title           TEXT NOT NULL,
-    description     TEXT,
-    status          TEXT NOT NULL DEFAULT 'inactive',
-    progress_json   TEXT NOT NULL DEFAULT '{}',
-    assigned_pcs_json TEXT NOT NULL DEFAULT '[]',
-    created_tick    INTEGER,
-    completed_tick  INTEGER,
-    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
-);

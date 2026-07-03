@@ -4,7 +4,6 @@
 并把对话存入双方记忆。
 """
 
-import logging
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -13,8 +12,9 @@ from langchain_core.runnables.config import RunnableConfig
 
 from ...schemas.llm_output import DialogueSchema
 from ...utils.helpers import get_llm, get_repo
+from ...utils.logging import get_logger
 
-logger = logging.getLogger("aw.eng.talk")
+logger = get_logger(__name__)
 
 _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))

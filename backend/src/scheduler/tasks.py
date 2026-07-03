@@ -10,14 +10,14 @@
 """
 
 import asyncio
-import logging
 
 from ..domain.dm_record import DMRecord
 from ..domain.story_summary import StorySummary
 from ..repository.dm_record_repo import DMRecordRepo
 from ..storage.chroma_client import ChromaClient
+from ..utils.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _SUMMARY_INTERVAL = 10
 

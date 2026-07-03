@@ -8,7 +8,6 @@
   world-pack     = aw-studio generate 输出的实例 YAML 合集（含填充值的完整世界包）
 """
 
-import logging
 from pathlib import Path
 
 from src.repository.pc_repo import PcRepo
@@ -19,9 +18,10 @@ from ..repository.scene_repo import SceneRepo
 from ..repository.world_repo import WorldRepo
 from ..storage.chroma_client import ChromaClient
 from ..storage.sqlite_client import SQLiteClient
+from ..utils.logging import get_logger
 from . import deserialize, reader, validator
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class WorldLoader:

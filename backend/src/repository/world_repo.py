@@ -1,12 +1,11 @@
 """World CRUD——worlds 表读写 / World repository: create, list."""
 # get(id) 用于引擎加载世界观注入 system prompt
 
-import logging
-
 from ..domain.world import World
 from ..storage.sqlite_client import SQLiteClient
+from ..utils.logging import get_logger
 
-logger = logging.getLogger("aw.repo.world")
+logger = get_logger(__name__)
 
 
 class WorldRepo:

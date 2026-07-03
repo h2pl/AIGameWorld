@@ -63,6 +63,7 @@ class DatabaseConfig(BaseModel):
     """数据库配置 / Database configuration."""
 
     sqlite_path: str = "data/world_db.db"
+    test_sqlite_path: str = "data/test.db"
     chroma_path: str = "data/chroma/"
 
 
@@ -99,6 +100,34 @@ class ObservabilityConfig(BaseModel):
     langfuse: LangfuseConfig = LangfuseConfig()
 
 
+class ConsoleLoggingConfig(BaseModel):
+    """控制台日志开关 / Console logging toggles."""
+
+    main: bool = True
+    api: bool = True
+    orchestrator: bool = True
+    graph: bool = True
+    service: bool = True
+    engine: bool = True
+    repo: bool = True
+    storage: bool = True
+    performance: bool = True
+    tick: bool = True
+    llm: bool = True
+    msg: bool = True
+    db: bool = True
+    scheduler: bool = True
+    utils: bool = True
+    loader: bool = True
+    viewer: bool = True
+
+
+class LoggingConfig(BaseModel):
+    """日志配置 / Logging configuration."""
+
+    console: ConsoleLoggingConfig = ConsoleLoggingConfig()
+
+
 class MockConfig(BaseModel):
     """Mock 模式配置 / Mock mode configuration."""
 
@@ -114,6 +143,7 @@ class Config(BaseSettings):
     llm: LLMConfig
     database: DatabaseConfig = DatabaseConfig()
     auto_run: AutoRunConfig = AutoRunConfig()
+    logging: LoggingConfig = LoggingConfig()
     mock: MockConfig = MockConfig()
     observability: ObservabilityConfig = ObservabilityConfig()
 

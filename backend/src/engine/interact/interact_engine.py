@@ -1,7 +1,6 @@
 """Interact Engine——场景对象交互裁决 / Scene object interaction resolution."""
 
 import json
-import logging
 
 from langchain_core.runnables.config import RunnableConfig
 
@@ -10,8 +9,9 @@ from ...rules.dnd_rules import ability_modifier, resolve_check
 from ...schemas.request import SceneObjectInteractRequest
 from ...schemas.response import SceneObjectInteractResponse
 from ...utils.helpers import get_repo
+from ...utils.logging import get_logger
 
-logger = logging.getLogger("aw.eng.interact")
+logger = get_logger(__name__)
 
 # object_type/interact_data → (action_type, 检定属性, 默认 dc) / → (action_type, check ability, default dc)
 _TRAP_DC = 12

@@ -4,15 +4,15 @@
 Just rendering a prompt and calling the LLM — no separate engine layer is needed.
 """
 
-import logging
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.runnables.config import RunnableConfig
 
 from ..utils.helpers import get_llm
+from ..utils.logging import get_logger
 
-logger = logging.getLogger("aw.svc")
+logger = get_logger(__name__)
 
 _PROMPTS_ROOT = Path(__file__).parent.parent / "prompts" / "reflection"
 _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))

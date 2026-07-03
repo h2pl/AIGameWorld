@@ -4,16 +4,15 @@
 反思后 importance_accumulator 归零，insight 存入 MemoryRepo。
 """
 
-import logging
-
 from langchain_core.runnables.config import RunnableConfig
 
 from ..engine.reflection import reflection_engine
 from ..graph.state import ReflectionSubState
 from ..schemas.request import ReflectionRequest
 from ..utils.helpers import get_repo
+from ..utils.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _PC_THRESHOLD = 100
 _ACTOR_THRESHOLD = 200

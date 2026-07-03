@@ -56,13 +56,38 @@ llm_purposes:
 
 # === 数据库 / Database ===
 database:
-  sqlite_path: "data/world_db.db"
+  sqlite_path: "data/test.db"         # src 代码生产 DB
+  test_sqlite_path: "data/test.db"        # 测试专用 DB
   chroma_path: "data/chroma/"
 
 # === 自动运行 / Auto Run ===
 auto_run:
   default_interval: 2000
   reflection_interval: 5
+
+# === 日志 / Logging ===
+logging:
+  console:                          # 控制台输出开关（true=开启）
+    # 主流程
+    main: true                      #   应用入口
+    api: true                       #   FastAPI 请求
+    orchestrator: true              #   编排器
+    graph: true                     #   Graph 节点
+    service: true                   #   业务服务层
+    engine: true                    #   引擎层
+    repo: true                      #   数据仓储层
+    storage: true                   #   存储层
+    # 性能
+    performance: true               #   node 耗时
+    tick: true                      #   tick 总耗时
+    # 额外
+    llm: true                       #   LLM 调用
+    msg: true                       #   消息队列
+    db: true                        #   数据库操作
+    scheduler: true                 #   定时任务
+    utils: true                     #   工具模块
+    loader: true                    #   World Pack 加载
+    viewer: true                    #   DB 查看器
 
 # === Mock 模式 / Mock mode ===
 mock:

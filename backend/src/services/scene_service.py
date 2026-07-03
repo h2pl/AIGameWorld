@@ -13,15 +13,16 @@ consumers like decision_engine can use it directly without querying repos
 again.
 """
 
-import logging
 from typing import Any
 
 from ..graph.state import OverallState
 from ..utils.helpers import get_repo
+from ..utils.logging import get_logger, trace_node
 
-logger = logging.getLogger("aw.svc")
+logger = get_logger(__name__)
 
 
+@trace_node("scene.build")
 async def build_scene_info(state: OverallState, config=None) -> dict:
     """Phase 1.5: 构建当前场景的完整信息并注入 state /
     Build the current scene's full info and inject it into state."""

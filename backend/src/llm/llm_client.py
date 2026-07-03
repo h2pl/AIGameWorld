@@ -1,7 +1,6 @@
 """LLM 客户端——多模型路由，支持 langchain(ChatOpenAI) 和 requests(RequestsChatModel) 双后端."""
 
 import asyncio
-import logging
 import os
 import re
 import time
@@ -16,8 +15,9 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, ValidationError
 
 from ..config import LLMConfig, LLMModelConfig
+from ..utils.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # ============================================================
 # 企业级日志辅助

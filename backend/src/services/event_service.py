@@ -1,6 +1,5 @@
 """Event Service: 统一构造 TickEvent → 落盘 → 消息就绪."""
 
-import logging
 from typing import Any
 
 from langchain_core.runnables.config import RunnableConfig
@@ -8,8 +7,9 @@ from langchain_core.runnables.config import RunnableConfig
 from ..domain.event import TickEvent, TickEventType
 from ..graph.state import OverallState
 from ..utils.helpers import get_repo
+from ..utils.logging import get_logger, trace_node
 
-logger = logging.getLogger("aw.svc")
+logger = get_logger(__name__)
 
 
 def _dm_create_event(state: OverallState) -> TickEvent | None:
@@ -93,6 +93,7 @@ def _pick(*evs: TickEvent | None) -> list[TickEvent]:
     return [e for e in evs if e is not None]
 
 
+@trace_node("event.flush")
 async def flush_events(state: OverallState, config: RunnableConfig = None) -> dict:
     """从 state 各阶段产出统一构造 TickEvent → 写 tick_events → 标记消息可消费."""
     tick_message_id = state.get("tick_message_id", "")

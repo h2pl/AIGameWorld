@@ -5,7 +5,6 @@ World CRUD + 消息队列 API + DB Viewer.
 
 import asyncio
 import json
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query
@@ -17,7 +16,7 @@ from src.repository.event_repo import TickEventRepo
 from src.repository.message_repo import TickMessageRepo
 from src.repository.world_repo import WorldRepo
 from src.storage.sqlite_client import SQLiteClient
-from src.utils.logging import log_api, log_msg, setup_logging
+from src.utils.logging import get_logger, log_api, log_msg, setup_logging
 from src.viewer import (
     render_global_events,
     render_global_items,
@@ -28,8 +27,17 @@ from src.viewer import (
     render_pack,
 )
 
-logger = logging.getLogger("aw.main")
+logger = get_logger(__name__)
 setup_logging()
+# 从 config.yaml 读取控制台日志类型配置
+try:
+    from .config import load_config
+    from .utils.logging import configure_console
+
+    config = load_config("../config.yaml")
+    configure_console(config.logging.console.model_dump())
+except Exception:
+    configure_console(None)
 
 app = FastAPI(title="AIGameWorld API", version="0.1.0")
 

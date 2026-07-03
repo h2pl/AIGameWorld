@@ -78,9 +78,13 @@ def _print_tick(
 
 async def run(args: argparse.Namespace) -> None:
     """CLI 参数 → _do_run / CLI args → _do_run."""
+    from src.config import load_config
+
+    config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
+    db_path = args.db_path or config.database.sqlite_path
     await _do_run(
         ticks=args.ticks,
-        db_path="data/world_db.db",
+        db_path=db_path,
         pack_id=args.pack_id or None,
         use_llm=args.llm,
         mock_dataset=args.mock_dataset or "",
@@ -96,9 +100,8 @@ async def _do_run(
 ) -> None:
     """核心运行逻辑——始终使用真实 DB 数据，LLM 默认 mock 模式."""
     n = ticks
-    mode_parts = ["LLM" if use_llm else "Mock"]
-    mode_parts.append(f"[{pack_id or 'DB'}]")
-    print(f"AIGameWorld -- {' '.join(mode_parts)}")
+    llm_mode = "LLM" if use_llm else "LLM(mock)"
+    print(f"AIGameWorld -- {llm_mode} | DB={pack_id or 'world_db.db'}")
     print(f"Running {n} tick(s)...\n")
 
     # -- DB：始终初始化 + 加载 pack 数据 / Always init DB and load pack data
@@ -785,7 +788,16 @@ async def view_server(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    from src.config import load_config
+    from src.utils.logging import configure_console
+
     setup_logging()
+    try:
+        config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
+        configure_console(config.logging.console.model_dump())
+    except Exception:
+        configure_console(None)
+
     parser = argparse.ArgumentParser(
         prog="aw",
         description="AIGameWorld CLI — DM-driven DND world simulation",
@@ -802,7 +814,7 @@ def main() -> None:
     # run — 单次运行 / one-shot run
     run_parser = sub.add_parser("run", help="Run N ticks")
     run_parser.add_argument("--ticks", type=int, default=5, help="Number of ticks (default: 5)")
-    run_parser.add_argument("--db", action="store_true", help="Enable DB mode (default: on)")
+    run_parser.add_argument("--db-path", default="", help="DB file path (default: config.yaml)")
     run_parser.add_argument(
         "--pack-id", default="", help="Load pack data from DB (e.g. forgotten_realms)"
     )

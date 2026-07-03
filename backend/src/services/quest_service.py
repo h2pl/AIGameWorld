@@ -1,14 +1,13 @@
 """Quest Service: State ↔ Engine adapter."""
 
-import logging
-
 from ..engine.quest import quest_engine
 from ..graph.state import EngineSubState
 from ..schemas.request import QuestRequest
+from ..utils.logging import get_logger
 
 
 def quest(state: EngineSubState) -> dict:
-    logging.getLogger("aw.svc").info("[quest]")
+    get_logger(__name__).info("[quest]")
     """Phase 4: 任务检查."""
     result = quest_engine.check_quests(
         QuestRequest(

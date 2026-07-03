@@ -1,14 +1,13 @@
 """Combat Service: State ↔ Engine adapter."""
 
-import logging
-
 from ..engine.combat import combat_engine
 from ..graph.state import EngineSubState
 from ..schemas.request import CombatParticipant, CombatRequest
+from ..utils.logging import get_logger
 
 
 def combat(state: EngineSubState) -> dict:
-    logging.getLogger("aw.svc").info("[combat]")
+    get_logger(__name__).info("[combat]")
     """Phase 4: 战斗裁决 / Combat resolution."""
     raw = state.get("participants", [])
     if raw and isinstance(raw[0], str):

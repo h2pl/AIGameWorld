@@ -1,4 +1,4 @@
-"""编排器 / Orchestrator: 主图入口 + run_tick() 控制."""
+"""编排器 / Orchestrator: 主图入口 + run_tick() 控制，含全链路日志回调."""
 
 import time
 from typing import Any
@@ -6,13 +6,14 @@ from typing import Any
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.types import StateSnapshot
 
+from ..utils.graph_callbacks import TickGraphCallback
 from ..utils.logging import log_phase
 from . import checkpoints
 from .graph import OverallState, build_tick_graph
 
 
 class Orchestrator:
-    """TickGraph 编排器 / TickGraph orchestrator."""
+    """TickGraph 编排器——含全链路日志回调 / TickGraph orchestrator with full-chain logging callbacks."""
 
     def __init__(
         self,
@@ -21,6 +22,7 @@ class Orchestrator:
         llm: Any = None,
         reflection_interval: int = 5,
         repos: Any = None,
+        debug: bool = False,
     ):
         self._graph = build_tick_graph()
         self._checkpointer = checkpointer or checkpoints.create_dev_checkpointer()
@@ -30,13 +32,18 @@ class Orchestrator:
         self._llm = llm
         self._reflection_interval = reflection_interval
         self._repos = repos
+        self._debug = debug
 
     @property
     def tick(self) -> int:
         return self._tick
 
     async def run_tick(self, initial_state: OverallState | None = None) -> dict:
-        """执行一个完整 Tick（7 Phase） / Run one complete tick (7 phases)."""
+        """执行一个完整 Tick / Run one complete tick with full-chain callbacks.
+
+        如果 self._debug=True，同时输出 astream_events 逐事件日志。
+        If debug mode, also output astream_events verbosely.
+        """
         if initial_state is None:
             initial_state = OverallState(
                 tick=self._tick,
@@ -50,8 +57,7 @@ class Orchestrator:
                 pc_decisions=[],
                 narrative="",
             )
-            # P2-5: 非首轮从 checkpoint 恢复 plot_brief，保证 DM 剧情跨 tick 连续 /
-            #       non-first tick: restore plot_brief from checkpoint for continuity
+            # 非首轮从 checkpoint 恢复 / Restore from checkpoint for non-first ticks
             if self._tick > 1:
                 prev = self._app.get_state(self._config)
                 if prev and prev.values:
@@ -66,8 +72,25 @@ class Orchestrator:
         if self._repos:
             config["configurable"]["repos"] = self._repos
 
+        # ── 全链路日志回调 / Full-chain logging callback ──
+        callback = TickGraphCallback(tick=self._tick, debug=self._debug)
+        config["callbacks"] = [callback]
+
+        # ── 执行图 / Execute graph ──
         t_start = time.monotonic()
-        result = await self._app.ainvoke(initial_state, config)
+        if self._debug:
+            # debug 模式：逐事件流式输出 / Debug mode: stream events one-by-one
+            result: OverallState = initial_state
+            async for event in self._app.astream_events(initial_state, config, version="v2"):
+                _log_debug_event(event, self._tick)
+                # 保持 state 追踪 / Keep track of state
+                if event.get("event") == "on_chain_end" and event.get("name") == "LangGraph":
+                    output = event.get("data", {}).get("output", {})
+                    if isinstance(output, dict):
+                        result = output
+        else:
+            result = await self._app.ainvoke(initial_state, config)
+
         log_phase("tick", self._tick, elapsed=time.monotonic() - t_start)
         self._tick += 1
 
@@ -86,6 +109,7 @@ class Orchestrator:
         return list(self._app.get_state_history(self._config))
 
     def rollback(self, tick: int) -> dict:
+        """回滚到指定 tick / Rollback to specified tick."""
         for state in self.get_history():
             if state.metadata.get("tick") == tick:
                 self._app.update_state(self._config, state.values)
@@ -94,4 +118,34 @@ class Orchestrator:
         raise ValueError(f"Tick {tick} not found in session history")
 
     def reset(self) -> None:
+        """重置 tick 计数 / Reset tick counter."""
         self._tick = 1
+
+
+# ═══════════════════════════════════════════════════════════════
+# Debug 辅助 / Debug helpers
+# ═══════════════════════════════════════════════════════════════
+
+
+def _log_debug_event(event: dict[str, Any], tick: int) -> None:
+    """输出 astream_events 中的关键事件 / Log key events from astream_events."""
+    import logging
+
+    logger = logging.getLogger("graph.debug")
+    event_type = event.get("event", "")
+    name = event.get("name", "")
+    run_id = event.get("run_id", "")
+
+    if event_type == "on_chain_start":
+        logger.debug(f"[tick={tick}] ▶ {name} ({run_id})")
+    elif event_type == "on_chain_end":
+        logger.debug(f"[tick={tick}] ◀ {name} ({run_id})")
+    elif event_type == "on_llm_start":
+        logger.debug(f"[tick={tick}] 🤖 LLM start: {name} ({run_id})")
+    elif event_type == "on_llm_end":
+        logger.debug(f"[tick={tick}] ✅ LLM done: {name} ({run_id})")
+    elif event_type == "on_chain_stream":
+        chunk = event.get("data", {}).get("chunk", "")
+        if chunk and hasattr(chunk, "content"):
+            content = str(chunk.content)[:80]
+            logger.debug(f"[tick={tick}] 📝 stream: {content}")

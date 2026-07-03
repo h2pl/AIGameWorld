@@ -1,36 +1,133 @@
 """结构化日志辅助 / Structured logging helpers.
 
-按 common-observability skill: 用 extra= 传结构化数据。
-Windows 下通过 setup_logging() 强制 stdout/stderr 为 UTF-8。
+对齐业界推荐：
+- extra 始终包含 event 字段
+- latency_ms 统一命名
+- 性能日志 → logs/perf.log，业务日志 → logs/app.log
+- 控制台输出类别由 config.yaml logging.console 开关控制
+- get_logger(__name__) 自动去除 src. 前缀
 """
 
 import contextlib
+import functools
 import logging
 import sys
+import time as _time
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+_LOG_DIR = Path(__file__).parent.parent.parent / "logs"
+_LOG_DIR.mkdir(exist_ok=True)
+
+# 模块路径 → 类别名 转换，对齐 config.yaml console 下的 key
+_MODULE_RENAME: dict[str, str] = {
+    "graph.orchestrator": "orchestrator",
+    "repository": "repo",
+    "services": "service",
+    "world_pack_loader": "loader",
+}
+
+# 性能日志 logger 名
+_PERF_LOGGERS = {"performance", "tick"}
+
+# 控制台开关，category_name → bool
+_console_toggles: dict[str, bool] = {}
+
+
+def get_logger(name: str) -> logging.Logger:
+    """获取 logger，去掉 src. 前缀并转换模块路径为类别名.
+
+    services.* → service.*
+    repository.* → repo.*
+    world_pack_loader.* → loader.*
+    graph.orchestrator → orchestrator
+    """
+    name = name.removeprefix("src.")
+    # 全路径匹配优先
+    if name in _MODULE_RENAME:
+        return logging.getLogger(_MODULE_RENAME[name])
+    # 首段替换
+    parts = name.split(".")
+    if parts[0] in _MODULE_RENAME:
+        parts[0] = _MODULE_RENAME[parts[0]]
+    return logging.getLogger(".".join(parts))
+
+
+def configure_console(toggles: dict[str, bool] | None) -> None:
+    """设置控制台开关，key=类别名 value=True/False."""
+    _console_toggles.clear()
+    if toggles:
+        _console_toggles.update(toggles)
+
+
+class _PerfFilter(logging.Filter):
+    def filter(self, record):
+        return record.name in _PERF_LOGGERS
+
+
+class _BizFilter(logging.Filter):
+    def filter(self, record):
+        return record.name not in _PERF_LOGGERS
+
+
+class _ConsoleFilter(logging.Filter):
+    def filter(self, record):
+        if not _console_toggles:
+            return True
+        name = record.name
+        for cat, enabled in _console_toggles.items():
+            if enabled and (name == cat or name.startswith(cat + ".")):
+                return True
+        return False
 
 
 def setup_logging(level: int = logging.INFO) -> None:
-    """初始化日志 / Initialize logging with UTF-8 encoding on Windows."""
-    # Windows sys.stdout 默认 cp936(GBK)，logging 中文全乱码，强制 UTF-8
+    """初始化日志——控制台可配置 + 文件分流."""
     for stream in (sys.stdout, sys.stderr):
         with contextlib.suppress(Exception):
-            stream.reconfigure(encoding="utf-8", errors="replace")  # pyright: ignore[reportAttributeAccessIssue]
+            stream.reconfigure(encoding="utf-8", errors="replace")
 
-    # 只配置 root handler，避免重复
     root = logging.getLogger()
     root.setLevel(level)
-    if not any(isinstance(h, logging.StreamHandler) for h in root.handlers):
-        h = logging.StreamHandler(sys.stderr)
-        h.setLevel(level)
-        h.setFormatter(
-            logging.Formatter(
-                fmt="%(asctime)s | %(name)-24s | %(levelname)-8s | %(message)s",
-                datefmt="%H:%M:%S",
-            )
-        )
-        root.addHandler(h)
+    if any(isinstance(h, logging.StreamHandler) for h in root.handlers):
+        return
 
-    # 降噪——第三方库日志只显示 WARNING+
+    fmt = logging.Formatter(
+        fmt="%(asctime)s | %(name)-24s | %(levelname)-8s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    # ── 控制台：按类别过滤 ──
+    console = logging.StreamHandler(sys.stderr)
+    console.setLevel(level)
+    console.setFormatter(fmt)
+    console.addFilter(_ConsoleFilter())
+    root.addHandler(console)
+
+    # ── 性能日志文件 ──
+    perf_file = RotatingFileHandler(
+        str(_LOG_DIR / "perf.log"),
+        maxBytes=10 * 1024 * 1024,
+        backupCount=3,
+        encoding="utf-8",
+    )
+    perf_file.setLevel(logging.DEBUG)
+    perf_file.setFormatter(fmt)
+    perf_file.addFilter(_PerfFilter())
+    root.addHandler(perf_file)
+
+    # ── 业务日志文件 ──
+    biz_file = RotatingFileHandler(
+        str(_LOG_DIR / "app.log"),
+        maxBytes=50 * 1024 * 1024,
+        backupCount=5,
+        encoding="utf-8",
+    )
+    biz_file.setLevel(logging.DEBUG)
+    biz_file.setFormatter(fmt)
+    biz_file.addFilter(_BizFilter())
+    root.addHandler(biz_file)
+
     for noisy in (
         "httpx",
         "httpcore",
@@ -43,69 +140,125 @@ def setup_logging(level: int = logging.INFO) -> None:
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
-def log_phase(phase: str, tick: int, elapsed: float | None = None, **extra) -> None:
-    """记录 Graph Phase 执行 / Log Graph phase execution."""
-    data = {"phase": phase, "tick": tick, **extra}
+# ═══════════════════════════════════════════════════════════════
+# 性能日志 / Performance logs → logger: performance / tick
+# ═══════════════════════════════════════════════════════════════
+
+
+def log_phase(event: str, tick: int, elapsed: float | None = None, **extra) -> None:
+    data = {"event": event, "tick": tick, **extra}
     if elapsed is not None:
-        data["elapsed_ms"] = round(elapsed * 1000, 1)
-    logging.getLogger("phase").info(f"[{phase}] tick={tick}", extra=data)
+        data["latency_ms"] = round(elapsed * 1000, 1)
+    logging.getLogger("tick").info(f"[{event}] tick={tick}", extra=data)
+
+
+def log_node(name: str, tick: int, latency_ms: float, **extra) -> None:
+    logging.getLogger("performance").info(
+        f"[perf] {name} tick={tick} {latency_ms}ms",
+        extra={"event": name, "tick": tick, "latency_ms": latency_ms, **extra},
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# 业务日志 / Business logs
+# ═══════════════════════════════════════════════════════════════
 
 
 def log_llm(purpose: str, action: str, elapsed: float, extra: dict | None = None) -> None:
-    """记录 LLM 调用 / Log LLM call."""
-    data = {"purpose": purpose, "action": action, "elapsed_ms": round(elapsed * 1000, 1)}
+    data = {
+        "event": f"llm.{purpose}",
+        "purpose": purpose,
+        "action": action,
+        "latency_ms": round(elapsed * 1000, 1),
+    }
     if extra:
         data.update(extra)
     logger = logging.getLogger("llm")
     if action == "error":
-        logger.error(f"[{purpose}] 失败 / failed", extra=data)
+        logger.error(f"[llm] {purpose} 失败", extra=data)
     else:
-        logger.info(f"[{purpose}] ok", extra=data)
+        logger.info(f"[llm] {purpose} ok", extra=data)
 
 
 def log_api(action: str, world_id: str, **extra) -> None:
-    """记录 API 调用 / Log API call."""
     logging.getLogger("api").info(
-        f"[{action}] world={world_id}", extra={"action": action, "world_id": world_id, **extra}
+        f"[api] {action} world={world_id}",
+        extra={"event": f"api.{action}", "action": action, "world_id": world_id, **extra},
     )
 
 
 def log_msg(op: str, tick_message_id: str, tick: int, **extra) -> None:
-    """记录消息队列操作 / Log message queue operation."""
     logging.getLogger("msg").info(
-        f"[{op}] id={tick_message_id} tick={tick}",
-        extra={"op": op, "tick_message_id": tick_message_id, "tick": tick, **extra},
+        f"[msg] {op} id={tick_message_id} tick={tick}",
+        extra={
+            "event": f"msg.{op}",
+            "op": op,
+            "tick_message_id": tick_message_id,
+            "tick": tick,
+            **extra,
+        },
     )
 
 
-def log_db(table: str, op: str, rows: int = 0) -> None:
-    """记录 DB 操作 / Log DB operation."""
+def log_db(table: str, op: str, rows: int = 0, **extra) -> None:
     logging.getLogger("db").info(
-        f"[{table}] {op} rows={rows}", extra={"table": table, "op": op, "rows": rows}
+        f"[db] {table} {op} rows={rows}",
+        extra={"event": f"db.{table}.{op}", "table": table, "op": op, "rows": rows, **extra},
     )
 
 
-def log_graph(node: str, tick: int, **extra) -> None:
-    """记录 Graph 节点 / Log Graph node execution."""
-    logging.getLogger("graph").info(
-        f"[graph] {node} tick={tick}", extra={"node": node, "tick": tick, **extra}
-    )
+def log_graph(node: str, tick: int, latency_ms: float | None = None, **extra) -> None:
+    data = {"event": f"graph.{node}", "node": node, "tick": tick, **extra}
+    if latency_ms is not None:
+        data["latency_ms"] = latency_ms
+    logging.getLogger("graph").info(f"[graph] {node} tick={tick}", extra=data)
 
 
 def log_svc(svc: str, tick: int, **extra) -> None:
-    """记录 Service 调用 / Log service call."""
     logging.getLogger("svc").info(
-        f"[svc] {svc} tick={tick}", extra={"svc": svc, "tick": tick, **extra}
+        f"[svc] {svc} tick={tick}",
+        extra={"event": f"svc.{svc}", "svc": svc, "tick": tick, **extra},
     )
 
 
 def log_eng(eng: str, tick: int, **extra) -> None:
-    """记录 Engine 调用 / Log engine call."""
     logging.getLogger("eng").info(
-        f"[eng] {eng} tick={tick}", extra={"eng": eng, "tick": tick, **extra}
+        f"[eng] {eng} tick={tick}",
+        extra={"event": f"eng.{eng}", "eng": eng, "tick": tick, **extra},
     )
 
 
 def log_repo(repo: str, op: str, **extra) -> None:
-    """记录 Repository 操作 / Log repo operation."""
-    logging.getLogger("repo").info(f"[repo] {repo}.{op}", extra={"repo": repo, "op": op, **extra})
+    logging.getLogger("repo").info(
+        f"[repo] {repo}.{op}",
+        extra={"event": f"repo.{repo}.{op}", "repo": repo, "op": op, **extra},
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# 全链路日志装饰器
+# ═══════════════════════════════════════════════════════════════
+
+
+def trace_node(name: str = ""):
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            node_name = name or func.__name__
+            tick = 0
+            if args and isinstance(args[0], dict):
+                tick = args[0].get("tick", 0)
+            t0 = _time.monotonic()
+            try:
+                result = await func(*args, **kwargs)
+                latency_ms = round((_time.monotonic() - t0) * 1000, 1)
+                log_node(node_name, tick, latency_ms, status="ok")
+                return result
+            except Exception:
+                latency_ms = round((_time.monotonic() - t0) * 1000, 1)
+                log_node(node_name, tick, latency_ms, status="error")
+                raise
+
+        return wrapper
+
+    return decorator

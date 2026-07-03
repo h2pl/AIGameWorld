@@ -4,7 +4,6 @@
 Service 负责 State↔Request 适配，Engine 负责业务逻辑 + 从 config 取 repos 调用 Repository。
 """
 
-import logging
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -16,9 +15,10 @@ from ...schemas.llm_output import DMNarrativeSchema, DMOutput
 from ...schemas.request import DMCreateRequest, DMNarrateRequest
 from ...schemas.response import DMCreateResponse, DMNarrateResponse
 from ...utils.helpers import get_llm, get_repo
+from ...utils.logging import get_logger
 
 # 模块日志 / Module logger
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Jinja2 模板环境 / Jinja2 template environment
 _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
