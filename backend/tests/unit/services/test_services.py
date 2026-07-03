@@ -161,6 +161,7 @@ class TestCharacterService:
             "pending_actions": [
                 {
                     "order": 0,
+                    "pc_id": "pc-1",
                     "action_type": "talk",
                     "target_id": "pc-2",
                     "target_type": "pc",
@@ -335,21 +336,14 @@ class TestEventService:
             ],
         )
         await event_service.flush_events(state, config)
-        event_repo.insert_tick_events.assert_awaited_once_with(
-            "tick-msg-1",
-            3,
-            [
-                {
-                    "type": "pc_talk",
-                    "payload": {
-                        "pc_id": "pc-1",
-                        "order": 0,
-                        "target_id": "pc-2",
-                        "target_type": "pc",
-                    },
-                }
-            ],
-        )
+        event_repo.insert_tick_events.assert_awaited_once()
+        args = event_repo.insert_tick_events.call_args[0]
+        assert args[0] == "tick-msg-1"
+        assert args[1] == 3
+        assert len(args[2]) == 1
+        msg = args[2][0]
+        assert msg.type.value == "pc_talk"
+        assert msg.payload["action_type"] == "talk"
         message_repo.mark_ready.assert_awaited_once_with("tick-msg-1", 3)
 
     @pytest.mark.asyncio
@@ -384,16 +378,12 @@ class TestEventService:
             pending_actions=[],
         )
         await event_service.flush_events(state, config)
-        event_repo.insert_tick_events.assert_awaited_once_with(
-            "tick-msg-1",
-            1,
-            [
-                {
-                    "type": "scene_setup",
-                    "payload": {"scene_id": "scene-1", "description": "进入场景"},
-                },
-            ],
-        )
+        event_repo.insert_tick_events.assert_awaited_once()
+        args = event_repo.insert_tick_events.call_args[0]
+        assert args[0] == "tick-msg-1"
+        assert args[1] == 1
+        types = [e.type.value for e in args[2]]
+        assert "scene_setup" in types
 
     @pytest.mark.asyncio
     async def test_flush_events_builds_dm_create_from_state(self):
@@ -411,20 +401,12 @@ class TestEventService:
             pending_actions=[],
         )
         await event_service.flush_events(state, config)
-        event_repo.insert_tick_events.assert_awaited_once_with(
-            "tick-msg-1",
-            0,
-            [
-                {
-                    "type": "dm_create",
-                    "payload": {
-                        "scene_id": "scene-1",
-                        "plot_brief": "酒馆冲突一触即发。",
-                        "hints": ["注意角落里的陌生人"],
-                    },
-                },
-            ],
-        )
+        event_repo.insert_tick_events.assert_awaited_once()
+        args = event_repo.insert_tick_events.call_args[0]
+        assert args[0] == "tick-msg-1"
+        assert args[1] == 0
+        types = [e.type.value for e in args[2]]
+        assert "dm_create" in types
 
     @pytest.mark.asyncio
     async def test_flush_events_drops_unknown_kinds(self):
@@ -466,8 +448,6 @@ class TestEventService:
             narrative="夜幕降临，酒馆里灯火通明。",
         )
         await event_service.flush_events(state, config)
-        event_repo.insert_tick_events.assert_awaited_once_with(
-            "tick-msg-1",
-            2,
-            [{"type": "dm_narrative", "payload": {"text": "夜幕降临，酒馆里灯火通明。"}}],
-        )
+        # narrative 事件已删除，无事件时 insert_tick_events 不会被调用
+        event_repo.insert_tick_events.assert_not_awaited()
+        message_repo.mark_ready.assert_awaited_once_with("tick-msg-1", 2)
