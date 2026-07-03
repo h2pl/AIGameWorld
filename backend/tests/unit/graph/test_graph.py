@@ -16,15 +16,12 @@ def _graph_input(**overrides):
         "world_id": "world-1",
         "tick_message_id": "",
         "scene_info": {},
+        "pending_actions": [],
         "hints": [],
         "plot_brief": "",
         "scene_id": "scene-1",
         "character_decisions": [],
         "narrative": "",
-        "reflected_characters": [],
-        "summary_compressed": False,
-        "errors": [],
-        "needs_reflection": False,
         **overrides,
     }
 
@@ -48,14 +45,14 @@ async def test_full_tick_graph_runs_current_flow():
         return_value=type(
             "DMCreateResult",
             (),
-            {"hints": ["去吧台"], "plot_brief": "酒馆有事", "scene_id": "tavern", "errors": []},
+            {"hints": ["去吧台"], "plot_brief": "酒馆有事", "scene_id": "tavern"},
         )()
     )
     dm_narrate_result = AsyncMock(
         return_value=type(
             "DMNarrateResult",
             (),
-            {"narrative_out": "夜幕降临。", "errors": []},
+            {"narrative_out": "夜幕降临。"},
         )()
     )
     # 场景内唯一一个 PC / The only PC in the scene
@@ -114,4 +111,3 @@ async def test_full_tick_graph_runs_current_flow():
     assert result["tick_message_id"] == "tick_5"
     assert result["scene_id"] == "tavern"
     assert result["narrative"] == "夜幕降临。"
-    assert result["reflected_characters"] == []

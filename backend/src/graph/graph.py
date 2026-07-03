@@ -64,17 +64,7 @@ def build_tick_graph() -> StateGraph:
     graph.add_edge("dm_service.dm_create", "scene_service.build_scene_info")
     graph.add_edge("scene_service.build_scene_info", "character_subgraph")
     graph.add_edge("character_subgraph", "dm_service.dm_narrate")
-
-    # 条件分支：叙事后决定是否反思，最终都汇入 event_service 统一落盘事件 /
-    # Conditional: reflect after narration?  Both branches converge on event_service to flush events.
-    graph.add_conditional_edges(
-        "dm_service.dm_narrate",
-        lambda s: (
-            "reflection_service.reflect"
-            if s.get("needs_reflection")
-            else "event_service.flush_events"
-        ),
-    )
+    graph.add_edge("dm_service.dm_narrate", "reflection_service.reflect")
     graph.add_edge("reflection_service.reflect", "event_service.flush_events")
     graph.add_edge("event_service.flush_events", END)
 

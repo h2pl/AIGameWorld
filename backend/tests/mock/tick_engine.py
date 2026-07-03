@@ -90,5 +90,4 @@ class MockTickEngine:
             "narrative": narrative,
             "character_moves": char_moves,
             "events": events,
-            "errors": [],
         }

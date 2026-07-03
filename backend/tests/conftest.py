@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.graph.graph import OverallState
+from src.graph.state import OverallState
 
 
 @pytest.fixture
@@ -19,8 +19,4 @@ def base_state() -> OverallState:
         scene_id="",
         character_decisions=[],
         narrative="",
-        reflected_characters=[],
-        summary_compressed=False,
-        errors=[],
-        needs_reflection=False,
     )

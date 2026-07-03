@@ -93,10 +93,6 @@ class TestFullTickRun:
             scene_id="",
             character_decisions=[],
             narrative="",
-            reflected_characters=[],
-            summary_compressed=False,
-            errors=[],
-            needs_reflection=False,
         )
         result = await orch.run_tick(state)
         assert result["tick"] == 1

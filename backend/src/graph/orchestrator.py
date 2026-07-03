@@ -49,10 +49,6 @@ class Orchestrator:
                 scene_id="",
                 character_decisions=[],
                 narrative="",
-                reflected_characters=[],
-                summary_compressed=False,
-                errors=[],
-                needs_reflection=False,
             )
             # P2-5: 非首轮从 checkpoint 恢复 plot_brief，保证 DM 剧情跨 tick 连续 /
             #       non-first tick: restore plot_brief from checkpoint for continuity
@@ -72,19 +68,13 @@ class Orchestrator:
 
         t_start = time.monotonic()
         result = await self._app.ainvoke(initial_state, config)
-        log_phase(
-            "tick",
-            self._tick,
-            elapsed=time.monotonic() - t_start,
-            errors=len(result.get("errors", [])),
-        )
+        log_phase("tick", self._tick, elapsed=time.monotonic() - t_start)
         self._tick += 1
 
         return {
             "tick": result["tick"],
             "narrative": result.get("narrative", ""),
             "character_decisions": result.get("character_decisions", []),
-            "errors": result.get("errors", []),
         }
 
     def get_state(self) -> StateSnapshot:

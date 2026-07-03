@@ -29,10 +29,6 @@ def _overall_state(**overrides):
         "scene_id": "scene-1",
         "character_decisions": [],
         "narrative": "",
-        "reflected_characters": [],
-        "summary_compressed": False,
-        "errors": [],
-        "needs_reflection": False,
         **overrides,
     }
 
@@ -230,26 +226,22 @@ class TestDMAndReflectionService:
             hints=["去酒馆"],
             plot_brief="今晚有冲突",
             scene_id="tavern",
-            errors=[],
         )
         with patch.object(dm_service.dm_engine, "dm_create", AsyncMock(return_value=engine_result)):
             result = await dm_service.dm_create(_overall_state(tick=4, world_id="w-1"))
         assert result["hints"] == ["去酒馆"]
         assert result["plot_brief"] == "今晚有冲突"
         assert result["scene_id"] == "tavern"
-        assert result["errors"] == []
 
     @pytest.mark.asyncio
-    async def test_dm_narrate_sets_needs_reflection_by_interval(self):
-        """DM narrate 根据 interval 产生 needs_reflection / DM narrate sets reflection flag."""
-        engine_result = SimpleNamespace(narrative_out="战斗爆发。", errors=[])
-        config = {"configurable": {"reflection_interval": 5}}
+    async def test_dm_narrate_returns_narrative(self):
+        """DM narrate 返回叙事文本 / DM narrate returns narrative text."""
+        engine_result = SimpleNamespace(narrative_out="战斗爆发。")
         with patch.object(
             dm_service.dm_engine, "dm_narrate", AsyncMock(return_value=engine_result)
         ):
-            result = await dm_service.dm_narrate(_overall_state(tick=10), config)
+            result = await dm_service.dm_narrate(_overall_state(tick=10))
         assert result["narrative"] == "战斗爆发。"
-        assert result["needs_reflection"] is True
 
     @pytest.mark.asyncio
     async def test_reflect_returns_empty_when_repos_missing(self):

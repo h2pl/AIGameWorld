@@ -209,10 +209,9 @@ async def _do_run(
         narrative = result.get("narrative", "")
         tick_events = result.get("tick_events", [])
         decisions = result.get("character_decisions", [])
-        errors = result.get("errors", [])
 
         db_label = f"[DB] ticks {tick}" if use_db else ""
-        _print_tick(tick, narrative, decisions, tick_events, errors, db_info=db_label)
+        _print_tick(tick, narrative, decisions, tick_events, [], db_info=db_label)
 
     # -- 收尾：统计 + 关闭 DB / cleanup: stats + close DB
     print(f"{'=' * 60}")
@@ -307,12 +306,11 @@ async def _test_engine() -> None:
         tick=0,
         plot_brief="The party encounters a strange traveler.",
         hints=[],
-        events=[{"type": "explore", "description": "alex searches the area"}],
     )
     prompt_n = prompts.get_template("dm/dm_narrate.jinja").render(
         plot_brief=narrate_req.plot_brief,
         hints=narrate_req.hints,
-        events=narrate_req.events,
+        events=[],
     )
     print(f"  [INPUT]  plot_brief: {narrate_req.plot_brief}")
     print(f"  [INPUT]  prompt:\n{prompt_n[:300]}...")
@@ -349,9 +347,6 @@ async def _test_tick() -> None:
     print(f"  [OUTPUT] DM narrative: {result.get('narrative', '')}")
     for a in result.get("character_decisions", [])[:5]:
         print(f"  [OUTPUT] Act: {a.get('character_id', '?')}({a.get('action_type', '?')})")
-    errs = result.get("errors", [])
-    if errs:
-        print(f"  [OUTPUT] errors: {errs}")
     print(_SUB)
     print("  Full Tick OK")
 

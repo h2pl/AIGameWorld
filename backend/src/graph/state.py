@@ -26,10 +26,6 @@ class OverallState(TypedDict):
         list[dict[str, Any]], add
     ]  # character_subgraph 产生的行动结果（累加）
     narrative: str  # DM 叙事文本 / DM narrative text
-    reflected_characters: list[str]  # 已反思角色 / Reflected character IDs
-    summary_compressed: bool  # 是否已摘要压缩 / Whether summary compressed
-    errors: Annotated[list[str], add]  # 错误列表（累加） / Error list (accumulated)
-    needs_reflection: bool  # 是否需要反思 / Whether reflection is needed
 
 
 class CharacterSubState(TypedDict):

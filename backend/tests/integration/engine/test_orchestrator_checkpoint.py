@@ -26,10 +26,6 @@ async def test_session_isolation():
         scene_id="",
         character_decisions=[],
         narrative="",
-        reflected_characters=[],
-        summary_compressed=False,
-        errors=[],
-        needs_reflection=False,
     )
     state_b = OverallState(
         tick=0,
@@ -42,10 +38,6 @@ async def test_session_isolation():
         scene_id="",
         character_decisions=[],
         narrative="",
-        reflected_characters=[],
-        summary_compressed=False,
-        errors=[],
-        needs_reflection=False,
     )
 
     await orch_a.run_tick(state_a)
@@ -75,10 +67,6 @@ async def test_history_available_after_tick():
         scene_id="",
         character_decisions=[],
         narrative="",
-        reflected_characters=[],
-        summary_compressed=False,
-        errors=[],
-        needs_reflection=False,
     )
 
     await orch.run_tick(state)

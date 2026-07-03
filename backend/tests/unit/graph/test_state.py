@@ -21,32 +21,8 @@ class TestOverallState:
             "scene_id": "",
             "character_decisions": [],
             "narrative": "",
-            "reflected_characters": [],
-            "summary_compressed": False,
-            "errors": [],
-            "needs_reflection": False,
         }
         assert s["tick"] == 0
-
-    def test_errors_annotated_add(self):
-        """errors 字段使用 Annotated[add] 累加 / errors field uses Annotated[add]."""
-        s: OverallState = {
-            "tick": 0,
-            "world_id": "",
-            "tick_message_id": "",
-            "scene_info": {},
-            "pending_actions": [],
-            "hints": [],
-            "plot_brief": "",
-            "scene_id": "",
-            "character_decisions": [],
-            "narrative": "",
-            "reflected_characters": [],
-            "summary_compressed": False,
-            "errors": ["error1", "error2"],
-            "needs_reflection": False,
-        }
-        assert len(s["errors"]) == 2
 
 
 # ══ CharacterSubState 测试 ══
