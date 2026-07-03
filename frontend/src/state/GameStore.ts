@@ -11,7 +11,7 @@ import type {
 } from "../types";
 
 export interface GameState {
-  pack_id: string;
+  world_id: string;
   scenes: SceneData[];
   characters: CharacterData[];
   items: ItemData[];
@@ -32,7 +32,7 @@ class GameStore {
 
   constructor() {
     this.state = {
-      pack_id: "",
+      world_id: "",
       scenes: [],
       characters: [],
       items: [],
@@ -53,13 +53,13 @@ class GameStore {
 
   /** 设置初始世界状态 / Set initial world state */
   setWorldState(
-    pack_id: string,
+    world_id: string,
     scenes: SceneData[],
     characters: CharacterData[],
     items: ItemData[],
     scene_objects: SceneObjectData[],
   ): void {
-    this.state.pack_id = pack_id;
+    this.state.world_id = world_id;
     this.state.scenes = scenes;
     this.state.characters = characters;
     this.state.items = items;
@@ -70,7 +70,7 @@ class GameStore {
     }
     console.log(
       "[Store] setWorldState pack=%s chars=%d scenes=%d items=%d objs=%d",
-      pack_id, characters.length, scenes.length, items.length, scene_objects.length,
+      world_id, characters.length, scenes.length, items.length, scene_objects.length,
     );
     for (const ch of characters) {
       const p = this.state.character_positions[ch.id];
@@ -127,6 +127,7 @@ class GameStore {
   appendEvent(ev: { type: string; payload?: Record<string, unknown> }): void {
     this.state.events.push({
       type: ev.type,
+      tick: this.state.current_tick,
       description: JSON.stringify(ev.payload || {}).slice(0, 120),
     } as EventData);
     if (this.state.events.length > 50) {

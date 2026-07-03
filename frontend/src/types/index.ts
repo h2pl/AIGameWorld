@@ -100,6 +100,7 @@ export interface ActionData {
 
 export interface EventData {
   type: string;
+  tick?: number;
   description?: string;
   source?: string;
   target?: string;
@@ -124,7 +125,7 @@ export interface SceneObjectData {
 
 /** 初始世界状态 / Initial world state (HTTP API 返回) */
 export interface InitialWorldState {
-  pack_id: string;
+  world_id: string;
   scenes: SceneData[];
   characters: CharacterData[];
   items: ItemData[];

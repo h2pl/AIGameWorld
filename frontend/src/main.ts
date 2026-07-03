@@ -27,7 +27,7 @@ async function loadWorldState(packId: string): Promise<InitialWorldState | null>
       return null;
     }
     const data = await resp.json() as InitialWorldState;
-    console.log(`${L} API OK: pack=${data.pack_id} chars=${data.characters?.length || 0}`);
+    console.log(`${L} API OK: pack=${data.world_id} chars=${data.characters?.length || 0}`);
     return data;
   } catch (e) {
     console.warn(`${L} Backend unreachable, using mock`, e instanceof Error ? e.message : e);
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
   console.log(`${L} === main() START ===`);
   const params = new URLSearchParams(window.location.search);
   const packId = params.get("pack") || "forgotten_realms";
-  console.log(`${L} pack_id=${packId}`);
+  console.log(`${L} world_id=${packId}`);
 
   // 加载世界数据 / Load world data — 全部依赖后端，失败则提示
   const world = await loadWorldState(packId);
@@ -52,7 +52,7 @@ async function main(): Promise<void> {
   }
   console.log(`${L} world loaded: ${world.scenes.length} scenes, ${world.characters.length} chars`);
   gameStore.setWorldState(
-    world.pack_id,
+    world.world_id,
     world.scenes,
     world.characters,
     world.items,
@@ -142,7 +142,7 @@ async function main(): Promise<void> {
       position_x: spawn.x + (i % 3) - 1,
       position_y: spawn.y + Math.floor(i / 3) - 1,
     }));
-    gameStore.setWorldState(st.pack_id, st.scenes, updated, st.items, st.scene_objects);
+    gameStore.setWorldState(st.world_id, st.scenes, updated, st.items, st.scene_objects);
     console.log(`${L} 🗺 switched to ${sceneId}`);
   };
 
@@ -169,7 +169,7 @@ async function main(): Promise<void> {
 
   // ── TickPlayer (HTTP 轮询，替换 WebSocket) ──
   const { TickPlayer } = await import("./net/TickPlayer");
-  const player = new TickPlayer(CONFIG.API.base, world.pack_id);
+  const player = new TickPlayer(CONFIG.API.base, world.world_id);
 
   // 事件 → Store 桥接 / Event → Store bridge
   window.addEventListener("tick-event", ((e: CustomEvent) => {

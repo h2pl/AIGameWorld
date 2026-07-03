@@ -46,7 +46,7 @@ export class EventPanel extends Panel {
     if (!state.events || state.events.length === 0) return;
     let changed = false;
     for (const ev of state.events) {
-      const key = `${ev.type}:${ev.description || ""}:${ev.source || ""}`;
+      const key = `${ev.tick || 0}:${ev.type}:${ev.description || ""}`;
       if (this.seenIds.has(key)) continue;
       this.seenIds.add(key);
       this.appendEvent(ev);
@@ -65,12 +65,29 @@ export class EventPanel extends Panel {
   }
 
   private appendEvent(ev: EventData): void {
-    const icon = EVENT_ICONS[ev.type] || "•";
-    const desc = ev.description || ev.type;
+    const icon = EVENT_ICONS[ev.type] || "📌";
+    const tick = ev.tick ? `[Tick ${ev.tick}]` : "";
     const el = document.createElement("div");
     el.className = "event-line";
-    el.textContent = `${icon} ${desc}`;
+    el.textContent = `${tick} ${icon} ${_readableType(ev.type)}`;
     this.listEl.appendChild(el);
     this.listEl.scrollTop = this.listEl.scrollHeight;
   }
+}
+
+/** 事件类型中文名 / Readable event type names */
+function _readableType(t: string): string {
+  const map: Record<string, string> = {
+    dm_create: "DM 创建情境",
+    dm_narrative: "DM 叙事",
+    scene_setup: "场景设置",
+    scene_objects: "场景物体",
+    character_move: "角色移动",
+    character_talk: "角色对话",
+    character_explore: "角色探索",
+    combat_event: "战斗事件",
+    game_event: "游戏事件",
+    state_change: "状态变更",
+  };
+  return map[t] || t;
 }
