@@ -18,7 +18,7 @@ class DMRecordRepo:
 
     async def save_plot_brief(self, record: DMRecord) -> None:
         """写入 plot_brief + hints + ext（dm_create 阶段）."""
-        logger.info("[DMRecordRepo] save_plot_brief tick=%s", record.tick)
+        logger.info("[repo] save_plot_brief tick=%s", record.tick)
         await self._db.execute(
             """INSERT INTO dm_records (world_id, tick, plot_brief, hint_list, dm_narrative, ext_json)
                VALUES (?, ?, ?, ?, '', ?)
@@ -35,7 +35,7 @@ class DMRecordRepo:
 
     async def update_narrative(self, record: DMRecord) -> None:
         """更新 dm_narrative + ext（dm_narrate 阶段）."""
-        logger.info("[DMRecordRepo] update_narrative tick=%s", record.tick)
+        logger.info("[repo] update_narrative tick=%s", record.tick)
         await self._db.execute(
             """UPDATE dm_records SET dm_narrative = ?, ext_json = ?, updated_at = datetime('now')
                WHERE world_id = ? AND tick = ?""",
@@ -71,9 +71,7 @@ class DMRecordRepo:
 
     async def insert_summary(self, summary: StorySummary) -> None:
         """插入一条故事摘要."""
-        logger.info(
-            "[DMRecordRepo] insert_summary ticks=%s-%s", summary.tick_start, summary.tick_end
-        )
+        logger.info("[repo] insert_summary ticks=%s-%s", summary.tick_start, summary.tick_end)
         await self._db.execute(
             """INSERT OR REPLACE INTO story_summaries (world_id, tick_start, tick_end, summary)
                VALUES (?, ?, ?, ?)""",

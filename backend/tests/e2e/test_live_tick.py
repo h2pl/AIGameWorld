@@ -10,13 +10,13 @@ import time
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from src.main import app
+from src.server import app
 
 
 @pytest.fixture
 async def client():
     """真实 SQLite + 真实 App / Real SQLite + real app."""
-    import src.main as m
+    import src.server as m
     from src.repository.world_repo import WorldRepo
     from src.storage.sqlite_client import SQLiteClient
 
@@ -82,7 +82,7 @@ class TestLiveTickE2E:
             print(f"   [{ev['type']}] {text}")
 
         # 3. 验证 DB 写入 / Verify DB write
-        import src.main as m
+        import src.server as m
 
         db = m._get_db()
 

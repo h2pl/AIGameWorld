@@ -47,7 +47,7 @@ async def process_talk_action(
 
     _store_dialogue_memory(char_id, target_id, turns, tick, config)
 
-    logger.info("[talk] %s ↔ %s : %d turns", char_id, target_id, len(turns))
+    logger.info("[engine] %s ↔ %s : %d turns", char_id, target_id, len(turns))
     return {
         "kind": "pc_talk",
         "participants": [pid for pid in (char_id, target_id) if pid],
@@ -87,7 +87,7 @@ async def _generate_dialogue(
         system = _PROMPTS.get_template("talk/_dialogue_system.jinja").render(**ctx)
         prompt = _PROMPTS.get_template("talk/dialogue.jinja").render(**ctx)
     except Exception:
-        logger.exception("[talk] dialogue prompt render failed")
+        logger.exception("[engine] dialogue prompt render failed")
         return []
 
     try:
@@ -101,7 +101,7 @@ async def _generate_dialogue(
             fallback=lambda: DialogueSchema(turns=[]),
         )
     except Exception:
-        logger.exception("[talk] dialogue generation failed for %s -> %s", char_id, target_id)
+        logger.exception("[engine] dialogue generation failed for %s -> %s", char_id, target_id)
         return []
 
     return [t.model_dump() for t in result.turns]

@@ -43,6 +43,7 @@ async def dm_create(
         scenes = await scene_repo.list_scenes(req.world_id)
 
     try:
+        logger.info("[engine] dm_create tick=%s world=%s", req.tick, req.world_id or "-")
         system_prompt = await _render_dm_system(config, req.world_id)
         prompt = _PROMPTS.get_template("dm/dm_create.jinja").render(
             scenes=scenes,
@@ -75,7 +76,7 @@ async def dm_create(
                     ext=result.model_dump(),
                 )
             )
-            logger.info("[dm_create] saved to dm_records tick=%s", req.tick)
+            logger.info("[engine] dm_create saved to dm_records tick=%s", req.tick)
 
         return DMCreateResponse(
             hints=result.hints,
@@ -116,7 +117,7 @@ async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DM
         narrative = result.narrative
         if not narrative or not narrative.strip():
             narrative = "（DM 沉默了...）"
-        logger.info("[dm_narrate] tick=%s narrative_len=%s", req.tick, len(narrative))
+        logger.info("[engine] dm_narrate tick=%s narrative_len=%s", req.tick, len(narrative))
 
         # 更新 dm_records 叙事字段 / Update narrative field in dm_records
         record_repo = get_repo(config, "dm_record")
@@ -129,7 +130,7 @@ async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DM
                     ext={"narrative": narrative},
                 )
             )
-            logger.info("[dm_narrate] updated narrative in dm_records tick=%s", req.tick)
+            logger.info("[engine] dm_narrate updated narrative in dm_records tick=%s", req.tick)
 
         return DMNarrateResponse(narrative_out=narrative)
     except Exception:

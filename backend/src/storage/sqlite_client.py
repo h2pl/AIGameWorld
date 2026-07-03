@@ -6,6 +6,10 @@ from typing import Any
 
 import aiosqlite
 
+from ..utils.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 class SQLiteClient:
     """SQLite 连接管理 + 裸 SQL 执行."""
@@ -18,17 +22,20 @@ class SQLiteClient:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._db = await aiosqlite.connect(str(self._db_path))
         self._db.row_factory = aiosqlite.Row
+        logger.info("[storage] connected %s", self._db_path.name)
 
     async def close(self) -> None:
         if self._db:
             await self._db.close()
             self._db = None
+            logger.info("[storage] closed")
 
     async def init_schema(self) -> None:
-        """执行 schema.sql / Run schema.sql."""
+        """执行 schema.sql."""
         schema = (Path(__file__).parent / "schema.sql").read_text(encoding="utf-8")
         await self._db.executescript(schema)
         await self._db.commit()
+        logger.info("[storage] schema initialized")
 
     @property
     def db(self) -> aiosqlite.Connection:

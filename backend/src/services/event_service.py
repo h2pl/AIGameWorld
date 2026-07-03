@@ -110,7 +110,7 @@ async def flush_events(state: OverallState, config: RunnableConfig = None) -> di
     if events and event_repo:
         await event_repo.insert_tick_events(tick_message_id, tick, events)
         logger.info(
-            "[event] flushed tick=%s tick_message_id=%s count=%d",
+            "[service] flushed tick=%s tick_message_id=%s count=%d",
             tick,
             tick_message_id,
             len(events),
@@ -119,5 +119,5 @@ async def flush_events(state: OverallState, config: RunnableConfig = None) -> di
     message_repo = get_repo(config, "message")
     if message_repo:
         await message_repo.mark_ready(tick_message_id, tick)
-        logger.info("[event] message ready tick=%s tick_message_id=%s", tick, tick_message_id)
+        logger.info("[service] message ready tick=%s tick_message_id=%s", tick, tick_message_id)
     return {}

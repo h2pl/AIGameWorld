@@ -7,7 +7,7 @@ from ..utils.logging import get_logger
 
 
 def combat(state: EngineSubState) -> dict:
-    get_logger(__name__).info("[combat]")
+    get_logger(__name__).info("[service]")
     """Phase 4: 战斗裁决 / Combat resolution."""
     raw = state.get("participants", [])
     if raw and isinstance(raw[0], str):

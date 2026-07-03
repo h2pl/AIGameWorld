@@ -789,11 +789,15 @@ async def view_server(args: argparse.Namespace) -> None:
 
 def main() -> None:
     from src.config import load_config
-    from src.utils.logging import configure_console
+    from src.utils.logging import configure_console, configure_format
 
-    setup_logging()
     try:
         config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
+        configure_format(config.logging.json_format)
+    except Exception:
+        configure_format(True)
+    setup_logging()
+    try:
         configure_console(config.logging.console.model_dump())
     except Exception:
         configure_console(None)

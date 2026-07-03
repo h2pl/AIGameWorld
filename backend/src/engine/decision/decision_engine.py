@@ -38,12 +38,8 @@ async def decide(
     tick: int,
     config: RunnableConfig = None,
 ) -> dict | None:
-    """基于场景信息为单个 PC 决策（scene_info 与谁来用无关，不区分 PC，这里按
-    pc_id 从中取出"me"和"其他 PC"）/
-    Decide for a single PC based on the scene info (scene_info is
-    consumer-independent, not per-PC; "me" and "other PCs" are derived here
-    from pc_id)."""
-    logger.info("[pc] tick=%s processing pc %s", tick, pc_id)
+    """基于场景信息为单个 PC 决策."""
+    logger.info("[engine] decide tick=%s pc=%s", tick, pc_id or "-")
 
     llm = get_llm(config)
     if llm is None:
@@ -101,7 +97,7 @@ async def decide(
             description=result.reasoning,
         ).model_dump()
     except Exception:
-        logger.exception("[pc] failed for pc %s", pc_id)
+        logger.exception("[engine] failed for pc %s", pc_id)
         return PCDecideResponse(
             pc_id=pc_id,
             type="wait",

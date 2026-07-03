@@ -19,7 +19,7 @@ class WorldRepo:
             (w.id, w.name, w.description, w.version, w.rule_set, w.author, w.starting_scene),
         )
         await self._db.commit()
-        logger.info("[world] create id=%s name=%s", w.id, w.name)
+        logger.info("[repo] create id=%s name=%s", w.id, w.name)
 
     async def get(self, world_id: str) -> World | None:
         """按 id 获取单个 world."""

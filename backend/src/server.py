@@ -28,15 +28,17 @@ from src.viewer import (
 )
 
 logger = get_logger(__name__)
-setup_logging()
-# 从 config.yaml 读取控制台日志类型配置
+# 从 config.yaml 读取日志配置
 try:
     from .config import load_config
-    from .utils.logging import configure_console
+    from .utils.logging import configure_console, configure_format
 
     config = load_config("../config.yaml")
+    configure_format(config.logging.json_format)
+    setup_logging()
     configure_console(config.logging.console.model_dump())
 except Exception:
+    setup_logging()
     configure_console(None)
 
 app = FastAPI(title="AIGameWorld API", version="0.1.0")
@@ -93,6 +95,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 @app.get("/api/world")
 async def world_list():
+    log_api("world.list", "-")
     return [w.model_dump() for w in await WorldRepo(_get_db()).list_all()]
 
 
@@ -107,6 +110,7 @@ async def world_create(w: World):
 
 @app.post("/api/world/{world_id}/session/start")
 async def session_start(world_id: str):
+    log_api("session.start", world_id)
     sessions = _get_sessions()
     if world_id in sessions:
         return {"status": "error", "detail": "session already exists"}
@@ -329,7 +333,7 @@ async def _graph_producer(
     config = load_config("../config.yaml")
     if config.mock.enabled:
         llm = LLMClient(config.llm, mock=True, mock_dataset=config.mock.dataset)
-        logger.info("[Producer] mock mode dataset=%s", config.mock.dataset)
+        logger.info("[main] mock mode dataset=%s", config.mock.dataset)
 
     orch = Orchestrator(
         session_id=world_id,
@@ -342,7 +346,7 @@ async def _graph_producer(
                 await asyncio.sleep(0.5)
             await orch.run_tick()
     except Exception as e:
-        logger.error("[Producer] %s error: %s", world_id, e, exc_info=True)
+        logger.error("[main] %s error: %s", world_id, e, exc_info=True)
     finally:
         sessions = _get_sessions()
         if world_id in sessions:

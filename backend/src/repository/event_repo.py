@@ -29,7 +29,7 @@ class TickEventRepo:
                 (tick_message_id, tick, ev_type, json.dumps(ev_payload, default=str)),
             )
         await self._db.commit()
-        logger.info("[event] insert %s tick=%s count=%d", tick_message_id, tick, len(tick_events))
+        logger.info("[repo] insert %s tick=%s count=%d", tick_message_id, tick, len(tick_events))
 
     async def insert_events(
         self, tick_message_id: str, tick: int, events: list[dict | TickEvent]

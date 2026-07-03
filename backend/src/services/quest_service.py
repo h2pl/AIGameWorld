@@ -7,7 +7,7 @@ from ..utils.logging import get_logger
 
 
 def quest(state: EngineSubState) -> dict:
-    get_logger(__name__).info("[quest]")
+    get_logger(__name__).info("[service]")
     """Phase 4: 任务检查."""
     result = quest_engine.check_quests(
         QuestRequest(

@@ -53,7 +53,7 @@ class WorldLoader:
         # ── Pack 标识：world_id 来自 meta.id，唯一关联字段 / world_id from meta.id ──
         world_id = data["meta"].get("id", pack_dir.name)
         world_name = data["meta"].get("name", pack_dir.name)
-        logger.info("[WorldLoader] world_id=%s world_name=%s", world_id, world_name)
+        logger.info("[loader] world_id=%s world_name=%s", world_id, world_name)
 
         # ── 创建 world / Create world ──
         meta = data["meta"]
@@ -72,7 +72,7 @@ class WorldLoader:
         # ── 关联关系校验 / FK validation ──
         warnings = validator.validate_pack_relations(data)
         for w in warnings:
-            logger.warning("[WorldLoader] FK warning: %s", w)
+            logger.warning("[loader] FK warning: %s", w)
 
         counts: dict[str, int] = {}
 

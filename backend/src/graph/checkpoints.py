@@ -16,6 +16,10 @@ from typing import Literal
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import MemorySaver
 
+from ..utils.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 def create_checkpointer(
     saver_type: Literal["memory", "sqlite", "postgres", "redis"] = "memory",
@@ -36,6 +40,7 @@ def create_checkpointer(
     Raises:
         ValueError: 不支持的 saver_type / unsupported saver_type
     """
+    logger.info("[graph] checkpointer type=%s", saver_type)
     if saver_type == "memory":
         return MemorySaver()
 

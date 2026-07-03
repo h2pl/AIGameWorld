@@ -34,13 +34,13 @@ class RecordArchiver:
         self._last = 0
 
     async def run(self, interval: float = 2.0) -> None:
-        logger.info("[RecordArchiver] started world=%s", self._world_id)
+        logger.info("[scheduler] started world=%s", self._world_id)
         self._last = self._restore_last()
         while True:
             try:
                 await self._poll()
             except Exception:
-                logger.exception("[RecordArchiver] poll error")
+                logger.exception("[scheduler] poll error")
             await asyncio.sleep(interval)
 
     async def _poll(self) -> None:
@@ -65,7 +65,7 @@ class RecordArchiver:
         metas = [{"world_id": self._world_id, "tick": r.tick, "type": "record"} for r in records]
         self._chroma.add(self._collection, ids=ids, documents=docs, metadatas=metas)
         self._last = max_tick
-        logger.info("[RecordArchiver] archived %d-%d (%d records)", start, max_tick, len(records))
+        logger.info("[scheduler] archived %d-%d (%d records)", start, max_tick, len(records))
 
     def _restore_last(self) -> int:
         try:
@@ -76,7 +76,7 @@ class RecordArchiver:
             if res and res["metadatas"]:
                 return max(m.get("tick", 0) for m in res["metadatas"])
         except Exception:
-            logger.warning("[RecordArchiver] restore failed, starting from 0")
+            logger.warning("[scheduler] restore failed, starting from 0")
         return 0
 
 
@@ -95,12 +95,12 @@ class Summarizer:
         self._last_summarized = 0
 
     async def run(self, interval: float = 3.0) -> None:
-        logger.info("[Summarizer] started world=%s", self._world_id)
+        logger.info("[scheduler] started world=%s", self._world_id)
         while True:
             try:
                 await self._poll()
             except Exception:
-                logger.exception("[Summarizer] poll error")
+                logger.exception("[scheduler] poll error")
             await asyncio.sleep(interval)
 
     async def _poll(self) -> None:
@@ -134,7 +134,7 @@ class Summarizer:
             ],
         )
         self._last_summarized = tick_end
-        logger.info("[Summarizer] summarized %d-%d", tick_start, tick_end)
+        logger.info("[scheduler] summarized %d-%d", tick_start, tick_end)
 
     async def _generate(self, tick_start: int, tick_end: int) -> str:
         records = await self._repo.load_range(self._world_id, tick_start, tick_end)
@@ -170,7 +170,7 @@ class Summarizer:
                 )
                 return result.strip() if result else text[:200]
             except Exception:
-                logger.exception("[Summarizer] llm failed, using truncation")
+                logger.exception("[scheduler] llm failed, using truncation")
         return text[:200]
 
 

@@ -17,7 +17,7 @@ _MAX_ROUNDS = 20
 
 
 def resolve_combat(req: CombatRequest) -> CombatResponse:
-    get_logger(__name__).info("[combat]")
+    get_logger(__name__).info("[engine]")
     """战斗裁决主入口 / Combat resolution entry point."""
     participants = [p.model_copy() for p in req.participants]
     if not participants:
@@ -116,7 +116,7 @@ async def process_combat_action(decision: dict, config: RunnableConfig = None) -
 
     char_id = decision.get("pc_id", "")
     description = decision.get("description", "")
-    logger.info("[combat] %s → %s（意图记录，未结算）", char_id, target_id)
+    logger.info("[engine] %s → %s（意图记录，未结算）", char_id, target_id)
     return {
         "kind": "pc_combat",
         "pc_id": char_id,

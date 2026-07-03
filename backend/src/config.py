@@ -112,10 +112,7 @@ class ConsoleLoggingConfig(BaseModel):
     repo: bool = True
     storage: bool = True
     performance: bool = True
-    tick: bool = True
     llm: bool = True
-    msg: bool = True
-    db: bool = True
     scheduler: bool = True
     utils: bool = True
     loader: bool = True
@@ -125,6 +122,7 @@ class ConsoleLoggingConfig(BaseModel):
 class LoggingConfig(BaseModel):
     """日志配置 / Logging configuration."""
 
+    json_format: bool = True
     console: ConsoleLoggingConfig = ConsoleLoggingConfig()
 
 

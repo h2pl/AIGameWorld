@@ -36,6 +36,7 @@ from langgraph.graph import END, StateGraph
 
 # 服务层 / Service layer
 from ..services import dm_service, event_service, message_service, scene_service
+from ..utils.logging import get_logger
 
 # 根状态定义 / Root state definition
 from .state import OverallState
@@ -43,10 +44,12 @@ from .state import OverallState
 # 子图 / Subgraphs
 from .subgraphs import pc_subgraph as pc_subgraph_module
 
+logger = get_logger(__name__)
+
 
 def build_tick_graph() -> StateGraph:
-    """构建主 tick 图：7 节点 + 条件分支 / Build main tick graph: 7 nodes + conditional edge."""
-    # 创建状态图 / Create state graph
+    """构建主 tick 图：5 节点 / Build main tick graph: 5 nodes."""
+    logger.info("[graph] building tick graph")
     graph = StateGraph(OverallState)
 
     # 注册 7 个节点 / Register 7 nodes

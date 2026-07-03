@@ -29,7 +29,7 @@ async def build_scene_info(state: OverallState, config=None) -> dict:
     tick = state.get("tick", 0)
     scene_id = state.get("scene_id", "")
     tick_message_id = state.get("tick_message_id", "")
-    logger.info("[scene] tick=%s scene_id=%s tick_message_id=%s", tick, scene_id, tick_message_id)
+    logger.info("[service] tick=%s scene_id=%s tick_message_id=%s", tick, scene_id, tick_message_id)
     info = await _build_scene_info(state, config)
     return {"scene_info": info}
 

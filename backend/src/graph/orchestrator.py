@@ -7,13 +7,15 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.types import StateSnapshot
 
 from ..utils.graph_callbacks import TickGraphCallback
-from ..utils.logging import log_phase
+from ..utils.logging import get_logger, log_phase
 from . import checkpoints
 from .graph import OverallState, build_tick_graph
 
+logger = get_logger(__name__)
+
 
 class Orchestrator:
-    """TickGraph 编排器——含全链路日志回调 / TickGraph orchestrator with full-chain logging callbacks."""
+    """TickGraph 编排器——含全链路日志回调."""
 
     def __init__(
         self,
@@ -24,6 +26,7 @@ class Orchestrator:
         repos: Any = None,
         debug: bool = False,
     ):
+        logger.info("[orchestrator] init session=%s debug=%s", session_id, debug)
         self._graph = build_tick_graph()
         self._checkpointer = checkpointer or checkpoints.create_dev_checkpointer()
         self._app = self._graph.compile(checkpointer=self._checkpointer)

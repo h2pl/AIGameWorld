@@ -6,6 +6,7 @@
 - 性能日志 → logs/perf.log，业务日志 → logs/app.log
 - 控制台输出类别由 config.yaml logging.console 开关控制
 - get_logger(__name__) 自动去除 src. 前缀
+- JSON 格式输出，兼容 ELK/Splunk
 """
 
 import contextlib
@@ -16,19 +17,24 @@ import time as _time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from pythonjsonlogger.json import JsonFormatter
+
 _LOG_DIR = Path(__file__).parent.parent.parent / "logs"
 _LOG_DIR.mkdir(exist_ok=True)
+
+_json_format: bool = True
 
 # 模块路径 → 类别名 转换，对齐 config.yaml console 下的 key
 _MODULE_RENAME: dict[str, str] = {
     "graph.orchestrator": "orchestrator",
     "repository": "repo",
     "services": "service",
+    "server": "main",
     "world_pack_loader": "loader",
 }
 
 # 性能日志 logger 名
-_PERF_LOGGERS = {"performance", "tick"}
+_PERF_LOGGERS = {"performance"}
 
 # 控制台开关，category_name → bool
 _console_toggles: dict[str, bool] = {}
@@ -60,6 +66,29 @@ def configure_console(toggles: dict[str, bool] | None) -> None:
         _console_toggles.update(toggles)
 
 
+def configure_format(json_fmt: bool = True) -> None:
+    """设置日志格式：True=JSON, False=文本."""
+    globals()["_json_format"] = json_fmt
+
+
+# ═══════════════════════════════════════════════════════════════
+# JSON Formatter / 结构化 JSON 格式化
+# ═══════════════════════════════════════════════════════════════
+
+_TEXT_FMT = "%(asctime)s | %(name)-24s | %(levelname)-8s | %(message)s"
+_JSON_FMT = "%(asctime)s %(name)s %(levelname)s %(message)s"
+
+
+def _make_formatter() -> logging.Formatter:
+    if _json_format:
+        return JsonFormatter(
+            _JSON_FMT,
+            datefmt="%Y-%m-%dT%H:%M:%S",
+            json_ensure_ascii=False,
+        )
+    return logging.Formatter(fmt=_TEXT_FMT, datefmt="%Y-%m-%d %H:%M:%S")
+
+
 class _PerfFilter(logging.Filter):
     def filter(self, record):
         return record.name in _PERF_LOGGERS
@@ -82,7 +111,7 @@ class _ConsoleFilter(logging.Filter):
 
 
 def setup_logging(level: int = logging.INFO) -> None:
-    """初始化日志——控制台可配置 + 文件分流."""
+    """初始化日志——控制台可配置 + 文件分流 + JSON 格式."""
     for stream in (sys.stdout, sys.stderr):
         with contextlib.suppress(Exception):
             stream.reconfigure(encoding="utf-8", errors="replace")
@@ -92,10 +121,7 @@ def setup_logging(level: int = logging.INFO) -> None:
     if any(isinstance(h, logging.StreamHandler) for h in root.handlers):
         return
 
-    fmt = logging.Formatter(
-        fmt="%(asctime)s | %(name)-24s | %(levelname)-8s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    fmt: logging.Formatter = _make_formatter()
 
     # ── 控制台：按类别过滤 ──
     console = logging.StreamHandler(sys.stderr)
@@ -149,12 +175,12 @@ def log_phase(event: str, tick: int, elapsed: float | None = None, **extra) -> N
     data = {"event": event, "tick": tick, **extra}
     if elapsed is not None:
         data["latency_ms"] = round(elapsed * 1000, 1)
-    logging.getLogger("tick").info(f"[{event}] tick={tick}", extra=data)
+    logging.getLogger("performance").info(f"[performance] {event} tick={tick}", extra=data)
 
 
 def log_node(name: str, tick: int, latency_ms: float, **extra) -> None:
     logging.getLogger("performance").info(
-        f"[perf] {name} tick={tick} {latency_ms}ms",
+        f"[performance] {name} tick={tick} {latency_ms}ms",
         extra={"event": name, "tick": tick, "latency_ms": latency_ms, **extra},
     )
 
@@ -188,10 +214,10 @@ def log_api(action: str, world_id: str, **extra) -> None:
 
 
 def log_msg(op: str, tick_message_id: str, tick: int, **extra) -> None:
-    logging.getLogger("msg").info(
-        f"[msg] {op} id={tick_message_id} tick={tick}",
+    logging.getLogger("service").info(
+        f"[service] msg.{op} id={tick_message_id} tick={tick}",
         extra={
-            "event": f"msg.{op}",
+            "event": f"service.msg.{op}",
             "op": op,
             "tick_message_id": tick_message_id,
             "tick": tick,
@@ -201,9 +227,9 @@ def log_msg(op: str, tick_message_id: str, tick: int, **extra) -> None:
 
 
 def log_db(table: str, op: str, rows: int = 0, **extra) -> None:
-    logging.getLogger("db").info(
-        f"[db] {table} {op} rows={rows}",
-        extra={"event": f"db.{table}.{op}", "table": table, "op": op, "rows": rows, **extra},
+    logging.getLogger("storage").info(
+        f"[storage] {table} {op} rows={rows}",
+        extra={"event": f"storage.{table}.{op}", "table": table, "op": op, "rows": rows, **extra},
     )
 
 

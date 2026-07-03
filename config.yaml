@@ -67,9 +67,9 @@ auto_run:
 
 # === 日志 / Logging ===
 logging:
+  json_format: true                 # true=JSON输出 false=文本输出
   console:                          # 控制台输出开关（true=开启）
     # 主流程
-    main: true                      #   应用入口
     api: true                       #   FastAPI 请求
     orchestrator: true              #   编排器
     graph: true                     #   Graph 节点
@@ -77,17 +77,16 @@ logging:
     engine: true                    #   引擎层
     repo: true                      #   数据仓储层
     storage: true                   #   存储层
-    # 性能
-    performance: true               #   node 耗时
-    tick: true                      #   tick 总耗时
+
     # 额外
     llm: true                       #   LLM 调用
-    msg: true                       #   消息队列
-    db: true                        #   数据库操作
     scheduler: true                 #   定时任务
     utils: true                     #   工具模块
     loader: true                    #   World Pack 加载
     viewer: true                    #   DB 查看器
+
+    # 性能
+    performance: false               #   node 耗时 + tick 总耗时
 
 # === Mock 模式 / Mock mode ===
 mock:

@@ -15,6 +15,9 @@ from src.repository.pc_repo import PcRepo
 from src.repository.scene_repo import SceneRepo
 from src.repository.world_repo import WorldRepo
 from src.storage.sqlite_client import SQLiteClient
+from src.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 _PROJECT_ROOT = Path(__file__).parent.parent  # backend/
 _TEMPLATES_DIR = _PROJECT_ROOT.parent / "frontend" / "templates"  # frontend/templates/
@@ -41,6 +44,7 @@ async def _get_client(db_path: str) -> SQLiteClient:
 
 
 async def render_index(db_path: str) -> HTMLResponse:
+    logger.info("[viewer] index db=%s", db_path)
     if not Path(db_path).exists():
         html = _JINJA.get_template("index_db.html").render(
             packs=[], db_error=f"DB not found: {db_path}"
@@ -90,6 +94,7 @@ async def render_index(db_path: str) -> HTMLResponse:
 
 
 async def render_pack(pack_id: str, db_path: str) -> HTMLResponse:
+    logger.info("[viewer] pack=%s", pack_id)
     client = await _get_client(db_path)
     try:
         pc_repo = PcRepo(client)
