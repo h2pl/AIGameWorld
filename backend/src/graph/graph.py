@@ -65,7 +65,7 @@ def build_tick_graph() -> StateGraph:
     graph.add_edge("scene_service.build_scene_info", "pc_subgraph")
     # graph.add_edge("pc_subgraph", "dm_service.dm_narrate")
     # graph.add_edge("dm_service.dm_narrate", "reflection_service.reflect")
-    graph.add_edge("reflection_service.reflect", "event_service.flush_events")
+    graph.add_edge("pc_subgraph", "event_service.flush_events")
     graph.add_edge("event_service.flush_events", END)
 
     return graph

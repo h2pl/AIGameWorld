@@ -64,6 +64,11 @@ auto_run:
   default_interval: 2000
   reflection_interval: 5
 
+# === Mock 模式 / Mock mode ===
+mock:
+  enabled: true               # 开启后所有 LLM 调用返回预定义 mock 数据
+  dataset: "tavern"           # 数据集名称：tavern / combat
+
 # === 可观测性 / Observability ===
 observability:
   langfuse:

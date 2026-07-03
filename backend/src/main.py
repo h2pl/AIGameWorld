@@ -315,7 +315,9 @@ async def _graph_producer(
     evt_repo: TickEventRepo,
 ) -> None:
     """Graph 生产者——Orchestrator 循环 / Graph producer: Orchestrator loop."""
+    from src.config import load_config
     from src.graph.orchestrator import Orchestrator
+    from src.llm.llm_client import LLMClient
     from src.repository.dm_record_repo import DMRecordRepo
 
     from .pc_repo import PcRepo
@@ -323,7 +325,19 @@ async def _graph_producer(
     db = _get_db()
     pc_repo = PcRepo(db)
     record_repo = DMRecordRepo(db)
-    orch = Orchestrator(session_id=world_id, repos={"char": pc_repo, "dm_record": record_repo})
+
+    # 根据 config.yaml mock 配置创建对应的 LLMClient / Create LLMClient based on config.yaml mock settings
+    llm = None
+    config = load_config("../config.yaml")
+    if config.mock.enabled:
+        llm = LLMClient(config.llm, mock=True, mock_dataset=config.mock.dataset)
+        logger.info("[Producer] mock mode dataset=%s", config.mock.dataset)
+
+    orch = Orchestrator(
+        session_id=world_id,
+        llm=llm,
+        repos={"char": pc_repo, "dm_record": record_repo},
+    )
     try:
         while True:
             while _get_sessions().get(world_id, {}).get("paused"):

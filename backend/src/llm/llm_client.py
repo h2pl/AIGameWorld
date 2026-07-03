@@ -146,7 +146,23 @@ class RequestsChatModel(BaseChatModel):
 
 
 # ============================================================
-# JSON 提取
+# Proxy JSON 提示 / Proxy JSON hint
+# ============================================================
+
+
+def _prep_proxy(tick_messages: list[BaseMessage], schema: type[BaseModel]) -> list[BaseMessage]:
+    """Proxy 模式：末尾追加 JSON 格式提示 / Append JSON format hint for proxy backends."""
+    fields = schema.model_fields
+    field_desc = ", ".join(
+        f"{k}({v.annotation.__name__ if hasattr(v.annotation, '__name__') else str(v.annotation)})"
+        for k, v in fields.items()
+    )
+    json_hint = HumanMessage(content=f"请只输出一个 JSON 对象，字段：{{{field_desc}}}")
+    return list(tick_messages) + [json_hint]
+
+
+# ============================================================
+# JSON 提取 / JSON extraction
 # ============================================================
 
 
@@ -233,9 +249,11 @@ def _build_fallback_model(
 
 
 class LLMClient:
-    """多模型 LLM 客户端."""
+    """多模型 LLM 客户端——统一 mock 开关 + 数据集切换."""
 
-    def __init__(self, config: LLMConfig):
+    def __init__(self, config: LLMConfig, *, mock: bool = False, mock_dataset: str = ""):
+        self._mock = mock
+        self._mock_dataset = mock_dataset
         key_env = config.providers.primary.api_key_env
         primary_key = os.environ.get(key_env, "") if key_env else ""
         primary_url = config.providers.primary.base_url
@@ -264,6 +282,12 @@ class LLMClient:
     # --------------------------------------------------------
 
     async def call(self, purpose: str, tick_messages: list[BaseMessage]) -> str | None:
+        if self._mock:
+            from .mock_data import get_mock
+
+            data = get_mock(purpose, self._mock_dataset)
+            return data.get("narrative", data.get("summary", str(data)))
+
         model = self._models[purpose]
         timeout = self._timeouts[purpose]
         max_attempts = self._retries[purpose] + 1
@@ -347,19 +371,26 @@ class LLMClient:
         tick_messages: list[BaseMessage],
         fallback: Callable[[], BaseModel],
     ) -> BaseModel:
-        """结构化调用——纯文本请求 + 手动解析 JSON（兼容 Zen Proxy 免费模型）."""
+        """结构化调用——标准用 response_format，Proxy 用 JSON 提示."""
+        if self._mock:
+            from .mock_data import get_mock
+
+            data = get_mock(purpose, self._mock_dataset)
+            try:
+                return schema(**data)
+            except Exception:
+                return fallback()
+
         model = self._models[purpose]
         timeout = self._timeouts[purpose]
         max_attempts = self._retries[purpose] + 1
 
-        # 注入 JSON 格式要求
-        fields = schema.model_fields
-        field_desc = ", ".join(
-            f"{k}({v.annotation.__name__ if hasattr(v.annotation, '__name__') else str(v.annotation)})"
-            for k, v in fields.items()
-        )
-        json_hint = HumanMessage(content=f"请只输出一个 JSON 对象，字段：{{{field_desc}}}")
-        augmented = list(tick_messages) + [json_hint]
+        # 标准 API 用 response_format，Proxy 用末尾 JSON 提示 / Standard uses response_format, Proxy appends JSON hint
+        if isinstance(model, RequestsChatModel):
+            augmented, generate_kwargs = _prep_proxy(tick_messages, schema), {}
+        else:
+            augmented = tick_messages
+            generate_kwargs = {"response_format": {"type": "json_object"}}
 
         logger.info(
             f"[{purpose}] 开始结构化调用",
@@ -380,7 +411,7 @@ class LLMClient:
             t_start = time.monotonic()
             try:
                 result = await asyncio.wait_for(
-                    model._agenerate(augmented),
+                    model._agenerate(augmented, **generate_kwargs),
                     timeout=timeout,
                 )
                 elapsed = time.monotonic() - t_start
@@ -463,3 +494,6 @@ class LLMClient:
             extra=_log_ctx(purpose, max_attempts - 1, max_attempts, result="degraded"),
         )
         return fallback()
+
+
+# Mock 数据已统一迁移至 mock_data.py / Mock data centralized in mock_data.py

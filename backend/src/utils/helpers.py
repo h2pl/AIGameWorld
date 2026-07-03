@@ -26,3 +26,10 @@ def get_repo(config: RunnableConfig | None, name: str):
     """按名取单个 Repo / Get single repo by name (e.g. 'story', 'char', 'memory')."""
     repos = get_repos(config)
     return repos.get(name) if repos else None
+
+
+def is_mock(config: RunnableConfig | None) -> bool:
+    """是否 mock 模式 / Whether mock mode is enabled."""
+    if config and "configurable" in config:
+        return config["configurable"].get("mock", False)
+    return False

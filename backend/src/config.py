@@ -99,6 +99,13 @@ class ObservabilityConfig(BaseModel):
     langfuse: LangfuseConfig = LangfuseConfig()
 
 
+class MockConfig(BaseModel):
+    """Mock 模式配置 / Mock mode configuration."""
+
+    enabled: bool = True
+    dataset: str = "tavern"
+
+
 class Config(BaseSettings):
     """全局配置根 / Global config root."""
 
@@ -107,6 +114,7 @@ class Config(BaseSettings):
     llm: LLMConfig
     database: DatabaseConfig = DatabaseConfig()
     auto_run: AutoRunConfig = AutoRunConfig()
+    mock: MockConfig = MockConfig()
     observability: ObservabilityConfig = ObservabilityConfig()
 
     @classmethod

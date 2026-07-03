@@ -127,6 +127,7 @@ async def run(args: argparse.Namespace) -> None:
         db_path="data/world_db.db",
         pack_id=args.pack_id or None,
         use_llm=args.llm,
+        mock_dataset=args.mock_dataset or "",
     )
 
 
@@ -136,6 +137,7 @@ async def _do_run(
     db_path: str = "data/world_db.db",
     pack_id: str | None = None,
     use_llm: bool = False,
+    mock_dataset: str = "",
 ) -> None:
     """核心运行逻辑 / Core run logic — 同时供 shell 和 CLI 参数调用."""
     n = ticks
@@ -185,21 +187,25 @@ async def _do_run(
             "message": TickMessageRepo(db),
         }
 
-    # -- LLM：创建客户端 + MemoryRepo / LLM: create client + MemoryRepo
-    if use_llm:
-        from src.config import load_config
-        from src.llm.llm_client import LLMClient
+    # -- LLM：创建客户端（--llm 覆盖 mock 开关，dataset 默认读 config.yaml） / Create LLM client
+    from src.config import load_config
+    from src.llm.llm_client import LLMClient
 
-        config = load_config("../config.yaml")
-        llm = LLMClient(config.llm)
+    config = load_config("../config.yaml")
+    _use_mock = not use_llm if use_llm else config.mock.enabled
+    _dataset = mock_dataset or config.mock.dataset
+    llm = LLMClient(config.llm, mock=_use_mock, mock_dataset=_dataset)
+    if use_llm:
         provider_url = config.llm.providers.primary.base_url or "(default)"
         print(f"  [LLM] provider: {provider_url}")
+    elif _use_mock:
+        print(f"  [LLM] mock mode dataset={_dataset}")
 
-        chroma = ChromaClient(persist_path="data/chroma")
-        if repos:
-            repos["memory"] = MemoryRepo(chroma=chroma)
-        else:
-            repos = {"memory": MemoryRepo(chroma=chroma)}
+    chroma = ChromaClient(persist_path="data/chroma")
+    if repos:
+        repos["memory"] = MemoryRepo(chroma=chroma)
+    else:
+        repos = {"memory": MemoryRepo(chroma=chroma)}
 
     # -- Tick 循环 / Tick loop
     orch = Orchestrator(llm=llm, repos=repos)
@@ -865,6 +871,9 @@ def main() -> None:
         "--pack-id", default="", help="Load pack data from DB (e.g. forgotten_realms)"
     )
     run_parser.add_argument("--llm", action="store_true", help="Use real LLM instead of mock")
+    run_parser.add_argument(
+        "--mock-dataset", default="", help="Mock dataset name (tavern|combat) / Mock 数据集名称"
+    )
 
     # test — LLM 诊断 / LLM diagnostics
     test_parser = sub.add_parser("test", help="LLM component diagnostics")
