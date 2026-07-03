@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS worlds (
     rule_set        TEXT NOT NULL DEFAULT 'dnd_5e_srd',
     author          TEXT NOT NULL DEFAULT '',
     starting_scene  TEXT NOT NULL DEFAULT '',
+    current_tick    INTEGER NOT NULL DEFAULT 0,
     ext_json        TEXT NOT NULL DEFAULT '{}',
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT NOT NULL DEFAULT (datetime('now'))

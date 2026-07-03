@@ -22,16 +22,16 @@ class TickMessageRepo:
         await self._db.commit()
         log_msg("insert", msg.id, msg.tick)
 
-    async def get_next_pending(self, mid: str) -> dict | None:
+    async def get_next_pending(self, world_id: str) -> dict | None:
         """读取下一条 pending 消息 / Fetch next pending message."""
         row = await self._db.fetch_one(
             "SELECT id, tick, world_id, status, created_at FROM tick_messages "
-            "WHERE id = ? AND status = 'pending' "
+            "WHERE world_id = ? AND status = 'pending' "
             "ORDER BY tick LIMIT 1",
-            (mid,),
+            (world_id,),
         )
         if row:
-            log_msg("next_pending", mid, row["tick"])
+            log_msg("next_pending", row["id"], row["tick"])
         return row
 
     async def mark_ready(self, mid: str, tick: int) -> None:

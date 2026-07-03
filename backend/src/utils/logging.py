@@ -278,7 +278,9 @@ def trace_node(name: str = ""):
             try:
                 result = await func(*args, **kwargs)
                 latency_ms = round((_time.monotonic() - t0) * 1000, 1)
-                log_node(node_name, tick, latency_ms, status="ok")
+                log_node(
+                    node_name, tick, latency_ms, status="ok", output=_node_out(node_name, result)
+                )
                 return result
             except Exception:
                 latency_ms = round((_time.monotonic() - t0) * 1000, 1)
@@ -288,3 +290,37 @@ def trace_node(name: str = ""):
         return wrapper
 
     return decorator
+
+
+def _node_out(name: str, result: object) -> dict:
+    """提取节点返回值关键字段."""
+    if not isinstance(result, dict):
+        return {}
+    out: dict[str, object] = {}
+    if name in ("msg.create",):
+        out["tick_message_id"] = result.get("tick_message_id", "")
+    elif name in ("dm.create",):
+        out["scene_id"] = result.get("scene_id", "")
+        out["hints"] = len(result.get("hints", []))
+        brief = result.get("plot_brief", "")
+        if isinstance(brief, str):
+            out["plot_brief"] = brief[:80]
+    elif name in ("scene.build",):
+        info = result.get("scene_info", {})
+        out["scene_id"] = info.get("scene", {}).get("id", "")
+        out["pcs"] = len(info.get("pcs", []))
+        out["actors"] = len(info.get("actors", []))
+        out["objects"] = len(info.get("scene_objects", []))
+    elif name in ("pc.decide",):
+        decs = result.get("pc_decisions", [])
+        out["decisions"] = len(decs)
+        out["actions"] = [d.get("type") for d in decs[:5]]
+    elif name in ("pc.act",):
+        acts = result.get("pending_actions", [])
+        out["actions"] = len(acts)
+        out["types"] = [a.get("action_type") for a in acts[:5]]
+    elif name in ("dm.narrate",):
+        narrative = result.get("narrative", "")
+        if isinstance(narrative, str):
+            out["narrative_len"] = len(narrative)
+    return out

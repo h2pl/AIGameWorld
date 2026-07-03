@@ -1,24 +1,14 @@
-/** 前端配置 / Frontend Configuration */
-
+/** 前端配置 / Frontend Configuration — HTTP API（已移除 WebSocket）*/
 const DEFAULT_API_ORIGIN = `${window.location.protocol}//${window.location.hostname}:8000`;
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_ORIGIN).replace(/\/$/, "");
-const WS_BASE = API_BASE.replace(/^http/, "ws");
 
+/** 画布 / Canvas */
+/** 瓦片 / Tile */
+/** 颜色 / Colors */
+/** API / API */
 export const CONFIG = {
-  /** 画布 / Canvas */
-  CANVAS: {
-    width: 960,
-    height: 640,
-  },
-
-  /** 瓦片地图 / Tile map */
-  TILE: {
-    size: 32,          // 格子像素 / Tile pixel size
-    cols: 30,           // 列数 / Columns (=960/32)
-    rows: 20,           // 行数 / Rows (=640/32)
-  },
-
-  /** 颜色主题 / Color theme */
+  CANVAS: { width: 960, height: 640 },
+  TILE: { size: 32, cols: 30, rows: 20 },
   COLOR: {
     background: 0x1a1a2e as number,
     tile_empty: 0x16213e as number,
@@ -28,18 +18,9 @@ export const CONFIG = {
     tile_outdoor: 0x2e4a2e as number,
     pc_border: 0xffd700 as number,
     pc_color: 0x3498db as number,
-    actor_colors: [
-      0xe74c3c, 0x2ecc71, 0xf39c12, 0x9b59b6, 0x1abc9c,
-    ] as number[],
+    actor_colors: [0xe74c3c, 0x2ecc71, 0xf39c12, 0x9b59b6, 0x1abc9c] as number[],
     text: "#ffffff" as string,
     text_dim: "#8899aa" as string,
   },
-
-  /** 后端 API / Backend API */
-  API: {
-    base: API_BASE,
-    ws: `${WS_BASE}/ws`,
-    health: "/health",
-    worldState: "/api/world",
-  },
+  API: { base: API_BASE, health: "/health", worldState: "/api/world" },
 };

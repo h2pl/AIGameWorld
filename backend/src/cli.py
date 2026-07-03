@@ -91,6 +91,11 @@ async def run(args: argparse.Namespace) -> None:
     )
 
 
+async def _get_first_world_id(db: SQLiteClient) -> str:
+    rows = await db.fetch_all("SELECT id FROM worlds LIMIT 1")
+    return rows[0]["id"] if rows else "default"
+
+
 async def _do_run(
     ticks: int = 5,
     db_path: str = "data/world_db.db",
@@ -150,10 +155,11 @@ async def _do_run(
     repos["memory"] = MemoryRepo(chroma=chroma)
 
     # -- Tick 循环 / Tick loop
+    world_id = pack_id or await _get_first_world_id(db)
     orch = Orchestrator(llm=llm, repos=repos)
 
     for _ in range(n):
-        result = await orch.run_tick()
+        result = await orch.run_tick(world_id)
         tick = result["tick"]
         narrative = result.get("narrative", "")
         tick_events = result.get("tick_events", [])
@@ -638,7 +644,7 @@ async def serve(args: argparse.Namespace) -> None:
             sys.executable,
             "-m",
             "uvicorn",
-            "src.main:app",
+            "src.server:app",
             "--host",
             args.host,
             "--port",
@@ -647,7 +653,7 @@ async def serve(args: argparse.Namespace) -> None:
             "info",
         ]
         print(
-            f"[serve] Starting backend: uvicorn src.main:app --host {args.host} --port {args.port}"
+            f"[serve] Starting backend: uvicorn src.server:app --host {args.host} --port {args.port}"
         )
         backend_proc = subprocess.Popen(  # noqa: S603
             backend_cmd,
@@ -665,7 +671,7 @@ async def serve(args: argparse.Namespace) -> None:
 
         print(f"[serve] ✓ Backend running at http://localhost:{args.port}")
         print(f"[serve]   API: http://localhost:{args.port}/api/world/forgotten_realms/state")
-        print(f"[serve]   WS:  ws://localhost:{args.port}/ws/aw")
+
         print(f"[serve]   Viewer: http://localhost:{args.port}/view")
 
         # ── 2. 启动前端 / Start frontend ──
@@ -763,7 +769,7 @@ async def view_server(args: argparse.Namespace) -> None:
         sys.executable,
         "-m",
         "uvicorn",
-        "src.main:app",
+        "src.server:app",
         "--host",
         args.host,
         "--port",

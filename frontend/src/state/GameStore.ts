@@ -117,6 +117,24 @@ class GameStore {
     // notify() 由 applyTickUpdate 统一触发，避免 sync 双次调用
   }
 
+  /** 设置当前 tick */
+  setTick(tick: number): void {
+    this.state.current_tick = tick;
+    this.notify();
+  }
+
+  /** 追加事件到列表 */
+  appendEvent(ev: { type: string; payload?: Record<string, unknown> }): void {
+    this.state.events.push({
+      type: ev.type,
+      description: JSON.stringify(ev.payload || {}).slice(0, 120),
+    } as EventData);
+    if (this.state.events.length > 50) {
+      this.state.events = this.state.events.slice(-50);
+    }
+    this.notify();
+  }
+
   /** 添加叙事 / Add narrative */
   addNarrative(text: string): void {
     this.state.narrative = text;

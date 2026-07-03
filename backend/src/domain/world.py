@@ -11,3 +11,4 @@ class World(BaseModel):
     rule_set: str = "dnd_5e_srd"
     author: str = ""
     starting_scene: str = ""
+    current_tick: int = 0

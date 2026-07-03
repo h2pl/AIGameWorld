@@ -167,107 +167,74 @@ async function main(): Promise<void> {
   }
   updateButtons();
 
-  // ── WebSocket 客户端 / WebSocket Client ──
-  const { WSClient } = await import("./net/WSClient");
-  const ws = new WSClient("aw");
+  // ── TickPlayer (HTTP 轮询，替换 WebSocket) ──
+  const { TickPlayer } = await import("./net/TickPlayer");
+  const player = new TickPlayer(CONFIG.API.base, world.pack_id);
 
-  // 进度追踪 / Progress tracking
-  let totalRequested = 0;
-  let lastTick = 0;
-  let doneResolve: (() => void) | null = null;
-  const progressUnsub = gameStore.subscribe((s) => {
-    if (s.current_tick !== lastTick) {
-      lastTick = s.current_tick;
-      statusEl.textContent = `Running: Tick ${lastTick}/${totalRequested}`;
+  // 事件 → Store 桥接 / Event → Store bridge
+  window.addEventListener("tick-event", ((e: CustomEvent) => {
+    const { type, payload } = e.detail;
+    if (type === "dm_narrative" && payload.text) {
+      gameStore.addNarrative(payload.text as string);
     }
-  });
+    gameStore.appendEvent({ type, payload } as any);
+  }) as EventListener);
 
-  // 叙事转发保持 / Narrative relay to GameScene
+  // 叙事转发 / Narrative relay to GameScene
   gameStore.subscribe((s) => {
-    const gs = game.scene.getScene("Game") as import("./scenes/GameScene").GameScene;
+    const gs = game.scene.scenes.find(sc => sc.scene.key === "Game") as import("./scenes/GameScene").GameScene | undefined;
     if (gs?.setNarrative && s.narrative) gs.setNarrative(s.narrative);
   });
 
   // ── 按钮行为 / Button behaviors ──
-
-  /** 执行一次 N tick / Execute N ticks once */
-  async function doRun(n: number): Promise<void> {
-    totalRequested = n; lastTick = 0;
-    statusEl.textContent = `运行中: Tick 0/${n}`;
-    ws.runTicks(n);
-    await new Promise<void>((resolve) => { doneResolve = resolve; });
-  }
 
   btnRun.onclick = async () => {
     if (runState !== "idle") return;
     const n = parseInt(tInput.value) || 1;
     console.log(`${L} ▶ 运行: ticks=${n}`);
     runState = "connecting"; updateButtons();
-    statusEl.textContent = "连接中...";
     try {
-      await ws.connect(world.pack_id);
-      console.log(`${L} WS connected`);
       runState = "running"; updateButtons();
-      await doRun(n);
-      statusEl.textContent = `完成: ${lastTick} tick`;
+      statusEl.textContent = "运行中...";
+      const delivered = await player.runTicks(n, (tick, events) => {
+        statusEl.textContent = `Tick ${tick}/${n} (${events.length} events)`;
+        gameStore.setTick(tick);
+        console.log(`${L} tick=${tick} events=${events.map(e => e.type).join(',')}`);
+      });
+      statusEl.textContent = `完成: ${delivered} tick`;
     } catch (e) {
-      statusEl.textContent = "错误: 后端未启动";
-      console.error(`${L} Run failed:`, e instanceof Error ? e.message : e);
+      statusEl.textContent = "错误";
+      console.error(`${L} run failed:`, e);
     } finally {
       runState = "idle"; updateButtons();
-      doneResolve = null;
     }
   };
 
   btnAuto.onclick = async () => {
     if (runState === "idle") {
-      // 启动自动模式 / Start auto mode
-      const n = parseInt(tInput.value) || 1;
-      console.log(`${L} ⏭ 自动: ticks=${n}（每批）`);
       autoMode = true;
       runState = "connecting"; updateButtons();
-      statusEl.textContent = "连接中...";
       try {
-        await ws.connect(world.pack_id);
-        console.log(`${L} WS connected（自动）`);
         runState = "running"; updateButtons();
-        while (autoMode && runState === "running") {
-          await doRun(n);
-        }
-        autoMode = false; updateButtons();
-        statusEl.textContent = `完成: ${lastTick} tick`;
+        await player.runAuto((tick, events) => {
+          statusEl.textContent = `自动中: Tick ${tick}`;
+          gameStore.setTick(tick);
+        });
       } catch (e) {
-        autoMode = false; updateButtons();
-        statusEl.textContent = "错误: 后端未启动";
-        console.error(`${L} Auto failed:`, e instanceof Error ? e.message : e);
+        console.error(`${L} auto failed:`, e);
       } finally {
-        runState = "idle"; updateButtons();
-        doneResolve = null;
+        autoMode = false; runState = "idle"; updateButtons();
+        statusEl.textContent = "已停止";
       }
-    } else if (runState === "running" && !autoMode) {
-      // 运行中切换到自动 / Switch to auto while running
-      console.log(`${L} ⏭ 自动: 切换到自动模式`);
-      autoMode = true; updateButtons();
-      statusEl.textContent = `自动中: Tick ${lastTick}/${totalRequested}`;
     }
   };
 
   btnStop.onclick = () => {
-    console.log(`${L} ⏸ 停止`);
+    player.stop();
     autoMode = false;
-    ws.close();
-    if (doneResolve) doneResolve();
     runState = "idle"; updateButtons();
     statusEl.textContent = "已停止";
   };
-
-  // WS done 检测 / Detect completion by watching lastTick >= totalRequested
-  const pollDone = setInterval(() => {
-    if (runState === "running" && totalRequested > 0 && lastTick >= totalRequested && doneResolve) {
-      console.log(`${L} WS done detected: tick=${lastTick}/${totalRequested}`);
-      doneResolve(); doneResolve = null;
-    }
-  }, 300);
 
 
   console.log(`${L} === main() DONE ===`);
