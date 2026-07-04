@@ -11,6 +11,65 @@ MockDataset = dict[str, dict]
 
 
 # ═══════════════════════════════════════════════════════════════
+# PC 决策轮转池 / PC decision rotation pool
+# 每次调用 get_mock("pc_decision") 按顺序轮转，保证测试覆盖所有动作类型
+# ═══════════════════════════════════════════════════════════════
+_PC_DECISIONS: list[dict] = [
+    {
+        "action_type": "talk",
+        "target_id": "merchant",
+        "target_type": "actor",
+        "reasoning": "Greta 的眼神暗示她有话要说，先打听一下最近镇上有什么异常。",
+    },
+    {
+        "action_type": "explore",
+        "target_id": None,
+        "target_type": None,
+        "reasoning": "也许应该在酒馆周围四处看看，说不定能发现什么线索。",
+    },
+    {
+        "action_type": "talk",
+        "target_id": "blacksmith",
+        "target_type": "actor",
+        "reasoning": "铁匠看起来是个有故事的人，去和他聊聊也许能打听到什么。",
+    },
+    {
+        "action_type": "interact",
+        "target_id": "chest_1",
+        "target_type": "scene_object",
+        "reasoning": "角落里那个箱子看起来有点可疑，让我检查一下里面有什么。",
+    },
+    {
+        "action_type": "explore",
+        "target_id": None,
+        "target_type": None,
+        "reasoning": "这个酒馆的布局让人在意，到处巡视一下看看有没有暗门或隐藏的线索。",
+    },
+    {
+        "action_type": "talk",
+        "target_id": "guard",
+        "target_type": "actor",
+        "reasoning": "门口的守卫似乎欲言又止，去和他打探一下消息。",
+    },
+]
+
+
+class _PcDecisionRotator:
+    """PC 决策轮转器 / PC decision rotator."""
+
+    def __init__(self) -> None:
+        self._idx = 0
+
+    def next(self) -> dict:
+        decision = _PC_DECISIONS[self._idx % len(_PC_DECISIONS)]
+        self._idx += 1
+        return decision
+
+
+_pc_rotator = _PcDecisionRotator()
+
+
+# ═══════════════════════════════════════════════════════════════
 # 数据集 1：酒馆线 / Tavern storyline
 # ═══════════════════════════════════════════════════════════════
 DATASET_TAVERN: MockDataset = {
@@ -26,12 +85,7 @@ DATASET_TAVERN: MockDataset = {
     "dm_narrate": {
         "narrative": "推开厚重的橡木门，暖黄色的烛光洒在冒险者们身上。酒馆里比往常安静，几个常客低头啜饮，似乎都在刻意避开彼此的目光。吧台后面，老板娘 Greta 擦拭着一只锡杯，朝新来的客人们点了点头——那眼神好像在说：「你们来得正是时候。」",
     },
-    "pc_decision": {
-        "action_type": "talk",
-        "target_id": "merchant",
-        "target_type": "actor",
-        "reasoning": "Greta 的眼神暗示她有话要说，先打听一下最近镇上有什么异常。",
-    },
+    # pc_decision 使用轮转池 / pc_decision uses rotation pool
     "actor_decision": {
         "action_type": "talk",
         "target_id": "cleric",
@@ -125,6 +179,12 @@ def get_dataset(name: str = "") -> MockDataset:
 
 
 def get_mock(purpose: str, dataset_name: str = "") -> dict:
-    """获取某个 purpose 的 mock 数据 / Get mock data for a specific purpose."""
+    """获取某个 purpose 的 mock 数据 / Get mock data for a specific purpose.
+
+    pc_decision 使用轮转池，每次调用返回不同的动作类型，
+    确保测试覆盖 talk / explore / interact 等全部场景。
+    """
+    if purpose == "pc_decision":
+        return _pc_rotator.next()
     ds = get_dataset(dataset_name)
     return ds.get(purpose, {})
