@@ -27,10 +27,19 @@ _VALID_TARGET_TYPES = {"pc", "actor", "scene_object"}
 class CharacterActionSchema(BaseModel):
     """PC/Actor 行动决策输出。per design/04-agent-layer.md §6."""
 
-    action_type: str = Field(description="talk / interact / combat / wait")
+    action_type: str = Field(description="talk / interact / combat / explore / wait")
     target_id: str | None = Field(default=None, description="目标 id（pc/actor/场景物体）")
     target_type: str | None = Field(default=None, description="pc / actor / scene_object")
     reasoning: str = Field(description="决策理由（2-3句中文，结合当前场景和附近的人）")
+
+
+class PCDecideListSchema(BaseModel):
+    """PC 多行动决策列表——每 tick 可执行 1~3 个动作 / PC multi-action decision list."""
+
+    actions: list[CharacterActionSchema] = Field(
+        default_factory=list,
+        description="按顺序执行的行动列表，通常 1~3 个",
+    )
 
 
 # === Phase 4: 双人对话 / Two-character Dialogue ===

@@ -55,39 +55,34 @@ DM 提示：
 {% endif %}
 
 {# === 输出约束 / Output spec === #}
-严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
+严格按以下 JSON 格式输出。你可以输出 1~3 个动作，放在 actions 数组中。不要输出任何其他内容（不要 markdown 代码块标记）：
 
 字段说明：
-- action_type: talk / interact / combat / explore / wait 之一
-  - talk: 与人交谈，必须提供 target_id + target_type（pc 或 actor）
-  - interact: 与场景物体互动，必须提供 target_id + target_type（scene_object），且该物体必须标注"可交互"
-  - combat: 向敌人发起战斗（combat 尚未接入完整战斗结算，仅记录意图），必须提供 target_id + target_type（pc 或 actor）
-  - explore: 四处探索巡视，寻找线索或观察环境，target_id 和 target_type 都必须是 null
-  - wait: 观望等待，target_id 和 target_type 都必须是 null
-- target_id: 目标 id（必须使用上文括号内列出的 id，不要使用名字）；action_type 为 wait / explore 时必须是 null
-- target_type: pc / actor / scene_object 之一，需与 action_type 匹配；action_type 为 wait / explore 时必须是 null
-- reasoning: 你的决策理由（2-3 句中文，结合当前场景和附近的人）
+- actions: 行动列表，包含 1~3 个动作对象，按计划执行顺序排列
+  - action_type: talk / interact / combat / explore / wait 之一
+    - talk: 与人交谈，必须提供 target_id + target_type（pc 或 actor）
+    - interact: 与场景物体互动，必须提供 target_id + target_type（scene_object），且该物体必须标注"可交互"
+    - combat: 向敌人发起战斗，必须提供 target_id + target_type（pc 或 actor）
+    - explore: 四处探索巡视，target_id 和 target_type 都必须是 null
+    - wait: 观望等待，target_id 和 target_type 都必须是 null
+  - target_id: 目标 id（必须使用上文括号内列出的 id）；wait / explore 时必须是 null
+  - target_type: pc / actor / scene_object 之一；wait / explore 时必须是 null
+  - reasoning: 该动作的决策理由（1-2 句中文）
 
 输出格式：
 {
-  "action_type": "talk",
-  "target_id": "npc_greta",
-  "target_type": "actor",
-  "reasoning": "我想了解这个小镇发生了什么，Greta 看起来知道很多。"
-}
-
-示例1（对话）：
-{
-  "action_type": "talk",
-  "target_id": "npc_greta",
-  "target_type": "actor",
-  "reasoning": "Greta 的眼神暗示她有话要说，酒馆里的气氛也有些不对劲。我的直觉告诉我应该打听一下最近镇上发生了什么异常。"
-}
-
-示例2（探索）：
-{
-  "action_type": "explore",
-  "target_id": null,
-  "target_type": null,
-  "reasoning": "这个区域的布局让我觉得可能有隐藏的线索，我想到处走走看看有没有遗漏的东西。"
+  "actions": [
+    {
+      "action_type": "talk",
+      "target_id": "npc_greta",
+      "target_type": "actor",
+      "reasoning": "先向 Greta 打听最近镇上发生了什么异常。"
+    },
+    {
+      "action_type": "explore",
+      "target_id": null,
+      "target_type": null,
+      "reasoning": "然后四处走走，看看有没有可疑的地方。"
+    }
+  ]
 }

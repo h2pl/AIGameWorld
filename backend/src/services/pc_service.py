@@ -20,7 +20,8 @@ from ..utils.logging import trace_node
 
 @trace_node("pc.decide")
 async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
-    """基于场景信息为场景内每个 PC 决策 / Decide for each PC in the scene, based on the scene info."""
+    """基于场景信息为场景内每个 PC 决策（每 PC 可多个动作）/
+    Decide for each PC in the scene (each PC may have multiple actions)."""
     scene_info = state.get("scene_info", {})
     pcs = scene_info.get("pcs", [])
     if not pcs:
@@ -31,7 +32,7 @@ async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
     scene_id = state.get("scene_id", "")
     decisions: list[dict] = []
     for pc in pcs:
-        decision = await decision_engine.decide(
+        pc_decisions = await decision_engine.decide(
             pc_id=pc.get("id", ""),
             scene_info=scene_info,
             plot_brief=plot_brief,
@@ -40,8 +41,7 @@ async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
             tick=state.get("tick", 0),
             config=config,
         )
-        if decision:
-            decisions.append(decision)
+        decisions.extend(pc_decisions)
 
     return {"pc_decisions": decisions}
 

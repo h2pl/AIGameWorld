@@ -55,15 +55,18 @@ _PC_DECISIONS: list[dict] = [
 
 
 class _PcDecisionRotator:
-    """PC 决策轮转器 / PC decision rotator."""
+    """PC 决策轮转器——每次返回 2 个动作 / PC decision rotator — returns 2 actions per call."""
 
     def __init__(self) -> None:
         self._idx = 0
 
     def next(self) -> dict:
-        decision = _PC_DECISIONS[self._idx % len(_PC_DECISIONS)]
+        """返回 {actions: [dict, dict]} 格式，每 PC 每次 2 个动作."""
+        a1 = _PC_DECISIONS[self._idx % len(_PC_DECISIONS)]
         self._idx += 1
-        return decision
+        a2 = _PC_DECISIONS[self._idx % len(_PC_DECISIONS)]
+        self._idx += 1
+        return {"actions": [a1, a2]}
 
 
 _pc_rotator = _PcDecisionRotator()

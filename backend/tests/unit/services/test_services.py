@@ -63,7 +63,7 @@ class TestCharacterService:
     async def test_decide_delegates_each_pc_to_decision_engine(self):
         """decide 逐个把场景内的 PC 交给 decision_engine / decide delegates each PC in the scene to decision_engine."""
         scene_info = {"pcs": [{"id": "pc-1"}], "scene_objects": [{"id": "obj-1"}]}
-        decision = {"pc_id": "pc-1", "type": "talk", "description": "先交涉"}
+        decision = [{"pc_id": "pc-1", "type": "talk", "description": "先交涉"}]
         with patch.object(
             pc_service.decision_engine,
             "decide",
@@ -83,7 +83,7 @@ class TestCharacterService:
         assert mock_decide.call_args.kwargs["plot_brief"] == "战斗开始"
         assert mock_decide.call_args.kwargs["scene_id"] == "scene-1"
         assert mock_decide.call_args.kwargs["tick"] == 3
-        assert result == {"pc_decisions": [decision]}
+        assert result == {"pc_decisions": decision}
 
     @pytest.mark.asyncio
     async def test_act_dispatches_talk_and_interact(self):
