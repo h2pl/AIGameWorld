@@ -214,26 +214,20 @@ class GameStore {
         }
       }
 
-      // 探索事件：提取路径点并更新角色坐标 / Explore event: extract waypoints & update position
+      // 探索事件：只存路径点，坐标由前端走完动画后回调更新
+      // / Explore event: only store waypoints, position updated after animation completes
       if (ev.type === "pc_explore") {
         const pcId = String(payload.pc_id || "");
         const waypoints = payload.waypoints as Array<{ x: number; y: number }> | undefined;
         const finalX = Number(payload.final_x ?? 0);
         const finalY = Number(payload.final_y ?? 0);
-        if (pcId) {
-          if (waypoints?.length) {
-            this.state.explore_routes = { ...this.state.explore_routes, [pcId]: [...waypoints] };
-            console.log("[Store] explore route for %s: %d waypoints", pcId, waypoints.length);
-          }
-          // 最终坐标 / Final position
-          this.state.character_positions[pcId] = { x: finalX, y: finalY };
-          // 更新角色数据坐标 / Update character data position
-          const ch = this.state.characters.find((c) => c.id === pcId);
-          if (ch) {
-            ch.position_x = finalX;
-            ch.position_y = finalY;
-          }
-          console.log("[Store] explore finish %s → (%d,%d)", pcId, finalX, finalY);
+        if (pcId && waypoints?.length) {
+          this.state.explore_routes = {
+            ...this.state.explore_routes,
+            [pcId]: [...waypoints, { x: finalX, y: finalY }],
+          };
+          console.log("[Store] explore route for %s: %d waypoints → final (%d,%d)",
+            pcId, waypoints.length, finalX, finalY);
         }
       }
 

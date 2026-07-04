@@ -339,14 +339,25 @@ export class GameScene extends Phaser.Scene {
       const sprite = this.charManager?.getSprite(pcId);
       if (!sprite || !waypoints.length) continue;
       const ts = this.ts;
-      // 将 waypoints 转成世界坐标 / Convert waypoints to world coords
+      // 将 waypoints 转成世界坐标（最后一个是终点）/ Convert waypoints to world coords (last is final pos)
       const worldWaypoints = waypoints.map((wp) => {
         const { wx, wy } = gridToWorld(wp.x, wp.y, ts);
         return { wx, wy };
       });
+      const last = waypoints[waypoints.length - 1];
+      const finalX = last.x;
+      const finalY = last.y;
       sprite.cancelWalk();
-      sprite.walkPath(worldWaypoints, 200);
-      console.log("[Scene] explore: %s through %d waypoints", pcId, waypoints.length);
+      sprite.walkPath(worldWaypoints, 200, () => {
+        // 走完后同步坐标到 store，避免下次 sync 瞬移 / Sync final pos to store after walk
+        const st = gameStore.getState();
+        st.character_positions[pcId] = { x: finalX, y: finalY };
+        const ch = st.characters.find((c) => c.id === pcId);
+        if (ch) { ch.position_x = finalX; ch.position_y = finalY; }
+        console.log("[Scene] explore done: %s → (%d,%d)", pcId, finalX, finalY);
+      });
+      console.log("[Scene] explore: %s through %d waypoints → (%d,%d)",
+        pcId, waypoints.length - 1, finalX, finalY);
     }
   }
 

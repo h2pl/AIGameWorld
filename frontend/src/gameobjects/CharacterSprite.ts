@@ -58,18 +58,24 @@ export class CharacterSprite {
   private walkSteps: { wx: number; wy: number }[] = [];
   private walkSpeed = 200;
   private walkIdx = 0;
+  private walkOnComplete: (() => void) | null = null; // 全部走完回调 / Path complete callback
 
   /** 逐格行走 / Step-by-step walk — 参考 Phaser official complete delay.js 双方法交替模式 */
-  walkPath(steps: { wx: number; wy: number }[], speed: number): void {
+  walkPath(steps: { wx: number; wy: number }[], speed: number, onComplete?: () => void): void {
     this.walkSteps = steps;
     this.walkSpeed = speed;
     this.walkIdx = 0;
+    this.walkOnComplete = onComplete ?? null;
     this.walkNext();
   }
 
   /** 走下一步 / Walk next step — 与 complete delay.js 相同风格 */
   private walkNext(): void {
-    if (this.walkIdx >= this.walkSteps.length) return;
+    if (this.walkIdx >= this.walkSteps.length) {
+      this.walkOnComplete?.();
+      this.walkOnComplete = null;
+      return;
+    }
     const s = this.walkSteps[this.walkIdx++];
     this.scene.tweens.add({
       targets: this.sprite,
