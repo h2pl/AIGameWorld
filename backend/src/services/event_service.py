@@ -53,7 +53,6 @@ def _scene_event(state: OverallState) -> TickEvent | None:
 _EVENT_TYPE_MAP: dict[str, TickEventType] = {
     "talk": TickEventType.PC_TALK,
     "interact": TickEventType.PC_INTERACT,
-    "search": TickEventType.PC_INTERACT,
     "explore": TickEventType.PC_EXPLORE,
 }
 
@@ -83,6 +82,15 @@ def _action_events(state: OverallState) -> list[TickEvent]:
             "target_type": action.get("target_type", ""),
             "result": result,
         }
+        # explore 事件扁平化 result 字段到顶层，前端直接读 payload.waypoints
+        # / Flatten explore result fields to top-level for frontend direct access
+        if event_type == TickEventType.PC_EXPLORE:
+            payload["waypoints"] = result.get("waypoints", [])
+            payload["final_x"] = result.get("final_x", 0)
+            payload["final_y"] = result.get("final_y", 0)
+            payload["start_x"] = result.get("start_x", 0)
+            payload["start_y"] = result.get("start_y", 0)
+
         # talk 事件附上双方坐标，供前端做"走过去再对话"动画
         # / Attach both positions for talk events, so frontend can walk-then-talk
         if event_type == TickEventType.PC_TALK:
