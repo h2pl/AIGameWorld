@@ -1,8 +1,6 @@
 """TickGraph 主图测试——对齐当前主图结构。"""
 
-from unittest.mock import AsyncMock, patch
 
-import pytest
 from langgraph.checkpoint.memory import MemorySaver
 
 from src.graph.graph import build_tick_graph

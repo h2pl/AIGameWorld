@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.services import (
-    data_service,
     dm_service,
     event_service,
     pc_service,
@@ -212,12 +211,14 @@ class TestDMAndReflectionService:
             hints=["去酒馆"],
             plot_brief="今晚有冲突",
             scene_id="tavern",
+            ext=None,
         )
         with patch.object(dm_service.dm_engine, "dm_create", AsyncMock(return_value=engine_result)):
             result = await dm_service.dm_create(_overall_state(tick=4, world_id="w-1"))
         assert result["hints"] == ["去酒馆"]
         assert result["plot_brief"] == "今晚有冲突"
         assert result["scene_id"] == "tavern"
+        assert result["_dm_ext"] is None
 
     @pytest.mark.asyncio
     async def test_dm_narrate_returns_narrative(self):
@@ -298,7 +299,8 @@ class TestEventService:
             ],
         )
         result = event_service.flush_events(state, config)
-        events = result.get("_pending_events", []); assert len(events) > 0
+        events = result.get("_pending_events", [])
+        assert len(events) > 0
 
     @pytest.mark.asyncio
     async def test_flush_events_marks_ready_even_without_pending_events(self):
@@ -310,7 +312,8 @@ class TestEventService:
             tick=4, scene_id="", pending_actions=[]
         )
         result = event_service.flush_events(state, config)
-        events = result.get("_pending_events", []); assert events == []
+        events = result.get("_pending_events", [])
+        assert events == []
 
     @pytest.mark.asyncio
     async def test_flush_events_builds_scene_setup_from_scene_info(self):
@@ -328,7 +331,8 @@ class TestEventService:
             pending_actions=[],
         )
         result = event_service.flush_events(state, config)
-        events = result.get("_pending_events", []); assert len(events) > 0
+        events = result.get("_pending_events", [])
+        assert len(events) > 0
 
     @pytest.mark.asyncio
     async def test_flush_events_builds_dm_create_from_state(self):
@@ -344,7 +348,8 @@ class TestEventService:
             pending_actions=[],
         )
         result = event_service.flush_events(state, config)
-        events = result.get("_pending_events", []); assert len(events) > 0
+        events = result.get("_pending_events", [])
+        assert len(events) > 0
 
     @pytest.mark.asyncio
     async def test_flush_events_drops_unknown_kinds(self):
@@ -366,7 +371,8 @@ class TestEventService:
             ],
         )
         result = event_service.flush_events(state, config)
-        events = result.get("_pending_events", []); assert events == []
+        events = result.get("_pending_events", [])
+        assert events == []
 
     @pytest.mark.asyncio
     async def test_flush_events_builds_narrative_event_from_state(self):
@@ -382,4 +388,5 @@ class TestEventService:
         )
         result = event_service.flush_events(state, config)
         # narrative 事件已删除，无事件时 insert_tick_events 不会被调用
-        events = result.get("_pending_events", []); assert events == []
+        events = result.get("_pending_events", [])
+        assert events == []

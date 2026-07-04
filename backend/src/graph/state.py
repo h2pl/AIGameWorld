@@ -30,6 +30,8 @@ class OverallState(TypedDict, total=False):
     pc_state_map: dict[str, dict[str, Any]]
     # flush_events 产出的待持久化事件列表 / Pending events for persistence
     _pending_events: list[dict[str, Any]]
+    # dm_create 产出的 LLM 原始输出，供 persist_tick 落 dm_records
+    _dm_ext: dict[str, Any] | None
 
 
 class PcSubState(TypedDict):

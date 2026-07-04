@@ -26,6 +26,7 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
         "hints": result.hints,
         "plot_brief": result.plot_brief,
         "scene_id": result.scene_id,
+        "_dm_ext": result.ext,  # LLM 原始输出，供 persist_tick 落 dm_records
     }
 
 

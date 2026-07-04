@@ -64,24 +64,13 @@ async def dm_create(
         if len(result.hints) > 4:
             result.hints = result.hints[:4]
 
-        # 写入 dm_records 表 / Write to dm_records table
-        record_repo = get_repo(config, "dm_record")
-        if record_repo and req.world_id:
-            await record_repo.save_plot_brief(
-                DMRecord(
-                    world_id=req.world_id,
-                    tick=req.tick,
-                    plot_brief=result.plot_brief,
-                    hints=result.hints,
-                    ext=result.model_dump(),
-                )
-            )
-            logger.info("[engine] dm_create saved to dm_records tick=%s", req.tick)
-
+        # dm_records 写入已移至 data_service.persist_tick，这里只返回数据
+        # / dm_records write moved to data_service.persist_tick, engine only returns data
         return DMCreateResponse(
             hints=result.hints,
             plot_brief=result.plot_brief,
             scene_id=result.scene_id,
+            ext=result.model_dump(),  # 原始 LLM 输出，供 persist_tick 落盘 / Raw LLM output for persistence
         )
     except Exception:
         logger.exception("dm_create failed, using fallback")

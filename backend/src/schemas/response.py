@@ -25,6 +25,7 @@ class DMCreateResponse(EngineResponse):
     hints: list[str] = Field(default_factory=list)
     plot_brief: str = ""
     scene_id: str = ""
+    ext: dict | None = None  # 原始 LLM 输出，供 persist_tick 落 dm_records
 
 
 class DMNarrateResponse(EngineResponse):

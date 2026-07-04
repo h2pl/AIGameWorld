@@ -114,9 +114,8 @@ async def _assign_pc_positions(
         pc.position_x = x
         pc.position_y = y
         positions[pc.id] = {"x": x, "y": y}
-        # 持久化新坐标 / Persist updated position
-        if pc_repo:
-            await pc_repo.save_pc(pc)
+        # 坐标不入库，由 data_service.persist_tick 统一持久化
+        # / Position persisted by data_service.persist_tick at tick end
 
     return positions
 
