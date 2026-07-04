@@ -1,6 +1,7 @@
 /** 角色精灵 / Character Sprite — 世界坐标 + 名字标签 + 血条 + 点击 */
 
 import Phaser from "phaser";
+import { DialogueBubble } from "./DialogueBubble";
 import type { CharacterData } from "../types";
 
 export class CharacterSprite {
@@ -11,6 +12,7 @@ export class CharacterSprite {
   private nameTag: Phaser.GameObjects.Text;             // 名字标签 / Name label
   private hpBar: Phaser.GameObjects.Graphics;           // 血条 / HP bar
   private ring: Phaser.GameObjects.Graphics | null = null; // PC 金环 / Gold ring
+  private bubble: DialogueBubble | null = null; // 当前对话泡泡 / Current dialogue bubble
   private tileSize = 32;
 
   constructor(scene: Phaser.Scene, data: CharacterData, wx: number, wy: number, tileSize: number) {
@@ -87,6 +89,17 @@ export class CharacterSprite {
     this.scene.tweens.killTweensOf(this.sprite);
   }
 
+  /** 显示对话泡泡 / Show dialogue bubble above character */
+  say(text: string, onHide?: () => void): void {
+    if (this.bubble) {
+      this.bubble.destroy();
+      this.bubble = null;
+    }
+    const x = this.sprite.x;
+    const y = this.sprite.y - this.tileSize * 0.75;
+    this.bubble = new DialogueBubble(this.scene, x, y, text, this.data.name, onHide);
+  }
+
   /** 名字标签、血条、金环跟随精灵 / Followers update with sprite position */
   updateFollowers(): void {
     const x = this.sprite.x, y = this.sprite.y, ts = this.tileSize;
@@ -98,6 +111,9 @@ export class CharacterSprite {
     if (this.data.combat) {
       this.hpBar.clear();
       this.drawHpBar(x, y, this.data.combat.hp, this.data.combat.max_hp, ts);
+    }
+    if (this.bubble) {
+      this.bubble.setPosition(x, y - ts * 0.75);
     }
   }
 
@@ -113,6 +129,7 @@ export class CharacterSprite {
     this.nameTag.destroy();
     this.hpBar.destroy();
     this.ring?.destroy();
+    this.bubble?.destroy();
   }
 
   /** 画血条 / Draw HP bar */

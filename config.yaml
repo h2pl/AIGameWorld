@@ -49,6 +49,10 @@ llm_purposes:
     temperature: 0.7
     timeout: 8
     retries: 1
+  talk:
+    temperature: 0.8
+    timeout: 15
+    retries: 1
   reflection:
     temperature: 0.5
     timeout: 15

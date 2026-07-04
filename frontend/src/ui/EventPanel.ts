@@ -11,6 +11,7 @@ const EVENT_ICONS: Record<string, string> = {
   scene_objects: "📦",
   character_move: "🚶",
   character_talk: "🗣️",
+  pc_talk: "🗣️",
   character_explore: "🔍",
   combat_event: "⚔️",
   game_event: "🎮",
@@ -124,6 +125,7 @@ function _readableType(t: string): string {
     scene_objects: "场景物体",
     character_move: "角色移动",
     character_talk: "角色对话",
+    pc_talk: "角色对话",
     character_explore: "角色探索",
     combat_event: "战斗事件",
     game_event: "游戏事件",
@@ -134,13 +136,10 @@ function _readableType(t: string): string {
 
 /** 格式化 payload 为可读文本 / Format payload to readable text */
 function _formatPayload(ev: EventData): string {
-  // 优先用 description 字段 / Prefer description field
-  if (ev.description) return ev.description;
+  let payload: Record<string, unknown> = ev.payload || {};
 
-  // 从 description 字段解析 payload（appendEvent 存的是 JSON 字符串）
-  // / Parse payload from description (stored as JSON string by appendEvent)
-  let payload: Record<string, unknown> = {};
-  if (ev.description) {
+  // appendEvent 会把 payload 序列化到 description；优先用原始 payload / Raw payload preferred
+  if (!payload && ev.description) {
     try {
       payload = JSON.parse(ev.description);
     } catch {
@@ -156,11 +155,16 @@ function _formatPayload(ev: EventData): string {
       return String(payload.text || payload.narrative || "");
     case "scene_setup":
       return String(payload.scene_id || "");
-    case "character_talk": {
-      const pc = payload.pc_id || payload.character_id || "";
+    case "character_talk":
+    case "pc_talk": {
       const result = payload.result as Record<string, unknown> | undefined;
-      const text = result?.text || result?.content || "";
-      return `${pc}: ${text}`;
+      const turns = (result?.turns ?? []) as Array<{ speaker_id: string; text: string }>;
+      if (turns.length) {
+        return turns.map((t) => `${t.speaker_id}: ${t.text}`).join("；");
+      }
+      const pc = payload.pc_id || payload.character_id || "";
+      const fallback = result?.text || result?.content || "";
+      return `${pc}: ${fallback}`;
     }
     case "character_move": {
       const pc = payload.pc_id || "";

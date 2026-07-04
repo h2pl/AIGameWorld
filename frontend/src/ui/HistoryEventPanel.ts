@@ -13,6 +13,7 @@ const EVENT_ICONS: Record<string, string> = {
   scene_objects: "📦",
   character_move: "🚶",
   character_talk: "🗣️",
+  pc_talk: "🗣️",
   character_explore: "🔍",
   combat_event: "⚔️",
   game_event: "🎮",
@@ -216,6 +217,7 @@ function _readableType(t: string): string {
     scene_objects: "场景物体",
     character_move: "角色移动",
     character_talk: "角色对话",
+    pc_talk: "角色对话",
     character_explore: "角色探索",
     combat_event: "战斗事件",
     game_event: "游戏事件",
@@ -226,10 +228,27 @@ function _readableType(t: string): string {
 
 /** 格式化 payload 为可读文本 — 与事件列表面板保持完全一致 */
 function _formatPayload(ev: EventData): string {
-  // store 中的事件用 description（即 JSON 化的 payload）
-  if (ev.description) return ev.description;
-
-  // API 返回的事件直接用 JSON 字符串，保证和事件列表面板完全一致
   const payload = ev.payload || {};
-  return JSON.stringify(payload).slice(0, 500);
+
+  switch (ev.type) {
+    case "dm_create":
+      return String(payload.plot_brief || payload.scene_id || "");
+    case "dm_narrative":
+      return String(payload.text || payload.narrative || "");
+    case "scene_setup":
+      return String(payload.scene_id || "");
+    case "character_talk":
+    case "pc_talk": {
+      const result = payload.result as Record<string, unknown> | undefined;
+      const turns = (result?.turns ?? []) as Array<{ speaker_id: string; text: string }>;
+      if (turns.length) {
+        return turns.map((t) => `${t.speaker_id}: ${t.text}`).join("；");
+      }
+      const pc = payload.pc_id || payload.character_id || "";
+      const fallback = result?.text || result?.content || "";
+      return `${pc}: ${fallback}`;
+    }
+    default:
+      return JSON.stringify(payload).slice(0, 500);
+  }
 }

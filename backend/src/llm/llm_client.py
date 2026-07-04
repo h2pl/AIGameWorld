@@ -269,6 +269,7 @@ class LLMClient:
             ("dm_narrate", config.dm_narrate),
             ("pc_decision", config.pc_decision),
             ("actor_decision", config.actor_decision),
+            ("talk", config.talk),
             ("reflection", config.reflection),
         ]:
             model_url = cfg.base_url or primary_url

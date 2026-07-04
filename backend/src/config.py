@@ -51,6 +51,7 @@ class LLMConfig(BaseModel):
     dm_narrate: LLMModelConfig  # Phase 6: 叙事渲染（中模型）/ Narrate
     pc_decision: LLMModelConfig  # PC 深层决策（中模型）/ PC deep decision
     actor_decision: LLMModelConfig  # Actor 浅层决策（快模型）/ Actor shallow decision
+    talk: LLMModelConfig  # 对话生成（结构化）/ Dialogue generation
     reflection: LLMModelConfig  # 反思洞察（强模型）/ Reflection insight
 
     @property

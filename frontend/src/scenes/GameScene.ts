@@ -61,6 +61,9 @@ export class GameScene extends Phaser.Scene {
   private unsubscribe: (() => void) | null = null;
   private mapKey!: string;
   private sceneBuilt = false;
+  private dialogueQueue: Array<{ speaker_id: string; text: string }> = [];
+  private isPlayingDialogue = false;
+  private dialogueTimer?: number;
 
   constructor() { super({ key: "Game" }); }
 
@@ -96,6 +99,47 @@ export class GameScene extends Phaser.Scene {
     // 如果已经有 scene_ready（例如热更新后），直接构建
     if (st.scene_ready) {
       this.buildScene(st.current_scene_id);
+    }
+
+    // 监听 tick 事件，处理对话 / Listen to tick events for dialogues
+    window.addEventListener("tick-event", this.handleTickEvent as EventListener);
+    window.addEventListener("dialogue-replay", this.handleTickEvent as EventListener);
+  }
+
+  /** 处理 tick 事件 / Handle tick event */
+  private handleTickEvent = (e: CustomEvent): void => {
+    const { type, payload } = e.detail;
+    if (type !== "pc_talk") return;
+    const result = payload?.result as Record<string, unknown> | undefined;
+    const turns = result?.turns as Array<{ speaker_id: string; text: string }> | undefined;
+    if (!turns?.length) return;
+    this.dialogueQueue.push(...turns);
+    this.playNextDialogue();
+  };
+
+  /** 播放队列中下一句对话 / Play next dialogue in queue */
+  private playNextDialogue(): void {
+    if (this.isPlayingDialogue || this.dialogueQueue.length === 0) return;
+    this.isPlayingDialogue = true;
+    const turn = this.dialogueQueue.shift()!;
+    const sprite = this.charManager?.getSprite(turn.speaker_id);
+    const advance = () => {
+      this.isPlayingDialogue = false;
+      this.playNextDialogue();
+    };
+    if (sprite) {
+      sprite.say(turn.text, advance);
+    } else if (!this.sceneBuilt) {
+      // 场景尚未构建完成，稍等重试 / Scene not ready yet, retry shortly
+      this.dialogueTimer = window.setTimeout(() => {
+        this.dialogueQueue.unshift(turn);
+        this.isPlayingDialogue = false;
+        this.playNextDialogue();
+      }, 200);
+    } else {
+      console.warn("[Scene] dialogue speaker not found:", turn.speaker_id);
+      // 找不到说话者时短暂停留后继续 / Brief pause if speaker missing
+      this.dialogueTimer = window.setTimeout(advance, 600);
     }
   }
 
@@ -266,6 +310,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   shutdown(): void {
+    window.removeEventListener("tick-event", this.handleTickEvent as EventListener);
+    window.removeEventListener("dialogue-replay", this.handleTickEvent as EventListener);
+    if (this.dialogueTimer) window.clearTimeout(this.dialogueTimer);
+    this.dialogueQueue = [];
     if (this.unsubscribe) this.unsubscribe();
     this.charManager?.destroy();
   }

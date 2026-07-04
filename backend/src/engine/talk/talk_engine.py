@@ -44,6 +44,10 @@ async def process_talk_action(
     if not turns:
         # 降级：没有 LLM/目标时只保留发起者一句话 / fallback: initiator-only line
         turns = [{"speaker_id": char_id, "text": reason or f"{char_id} 发起交谈。"}]
+    else:
+        # 规范化 speaker_id：LLM/mock 可能使用占位名，按出现顺序映射为真实 id
+        # Normalize speaker_id: LLM/mock may use placeholder names; map by appearance order
+        turns = _normalize_speaker_ids(turns, char_id, target_id)
 
     _store_dialogue_memory(char_id, target_id, turns, tick, config)
 
@@ -92,7 +96,7 @@ async def _generate_dialogue(
 
     try:
         result = await llm.call_structured(
-            "dialogue",
+            "talk",
             DialogueSchema,
             [
                 SystemMessage(content=system),
@@ -136,6 +140,33 @@ def _character_ctx(char_id: str, char) -> dict:
         "role": getattr(char, "role", ""),
         "personality": getattr(char, "personality", ""),
     }
+
+
+def _normalize_speaker_ids(turns: list[dict], char_id: str, target_id: str) -> list[dict]:
+    """把 LLM 返回的 speaker_id 映射为真实角色 id / Map LLM speaker_ids to real character ids."""
+    if not turns:
+        return turns
+    distinct = []
+    seen = set()
+    for t in turns:
+        sid = t.get("speaker_id", "")
+        if sid and sid not in seen:
+            seen.add(sid)
+            distinct.append(sid)
+
+    # 如果所有 speaker_id 已经是真实 id，无需映射
+    # If all speaker_ids are already real ids, skip mapping
+    valid = {char_id, target_id}
+    if all(sid in valid for sid in distinct):
+        return turns
+
+    mapping: dict[str, str] = {}
+    if distinct:
+        mapping[distinct[0]] = char_id
+    if len(distinct) > 1:
+        mapping[distinct[1]] = target_id
+
+    return [{**t, "speaker_id": mapping.get(t.get("speaker_id", ""), t.get("speaker_id", ""))} for t in turns]
 
 
 def _store_dialogue_memory(

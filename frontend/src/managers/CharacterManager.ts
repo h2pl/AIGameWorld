@@ -77,6 +77,11 @@ export class CharacterManager {
     return { sx: mx - canvasW / 2, sy: my - canvasH / 2 };
   }
 
+  /** 按 id 获取角色精灵 / Get character sprite by id */
+  getSprite(id: string): CharacterSprite | undefined {
+    return this.sprites.get(id);
+  }
+
   /** 销毁所有 / Destroy all */
   destroy(): void {
     this.sprites.forEach(sp => sp.destroy());

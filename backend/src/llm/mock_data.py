@@ -28,13 +28,13 @@ DATASET_TAVERN: MockDataset = {
     },
     "pc_decision": {
         "action_type": "talk",
-        "target_id": "innkeeper",
+        "target_id": "merchant",
         "target_type": "actor",
         "reasoning": "Greta 的眼神暗示她有话要说，先打听一下最近镇上有什么异常。",
     },
     "actor_decision": {
         "action_type": "talk",
-        "target_id": "alex",
+        "target_id": "cleric",
         "target_type": "pc",
         "reasoning": "这些冒险者装备精良，生意来了。DM 让我留意打听商队消息的人。",
     },

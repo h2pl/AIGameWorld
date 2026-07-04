@@ -245,6 +245,13 @@ async function main(): Promise<void> {
   if (displayTick > 0) {
     statusEl.textContent = `已展示到 Tick ${displayTick}`;
     await player.loadHistory(displayTick);
+    // 重放当前展示 tick 的对话事件，确保刷新后人物头顶仍有泡泡 / Replay current tick dialogues so bubbles show after refresh
+    const currentTickTalks = gameStore.getState().events.filter(
+      (ev) => ev.tick === displayTick && ev.type === "pc_talk",
+    );
+    for (const ev of currentTickTalks) {
+      window.dispatchEvent(new CustomEvent("dialogue-replay", { detail: { type: ev.type, payload: ev.payload } }));
+    }
   }
 
   // 事件 → Store 桥接 / Event → Store bridge
