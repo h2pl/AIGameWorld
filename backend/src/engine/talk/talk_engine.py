@@ -166,7 +166,10 @@ def _normalize_speaker_ids(turns: list[dict], char_id: str, target_id: str) -> l
     if len(distinct) > 1:
         mapping[distinct[1]] = target_id
 
-    return [{**t, "speaker_id": mapping.get(t.get("speaker_id", ""), t.get("speaker_id", ""))} for t in turns]
+    return [
+        {**t, "speaker_id": mapping.get(t.get("speaker_id", ""), t.get("speaker_id", ""))}
+        for t in turns
+    ]
 
 
 def _store_dialogue_memory(

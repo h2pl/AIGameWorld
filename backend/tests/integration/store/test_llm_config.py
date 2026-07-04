@@ -70,7 +70,7 @@ class TestProviderPurposeMerge:
         """每个 purpose 都有 model, temperature, timeout, retries, client_backend."""
         os.environ["LLM_PROVIDER"] = "deepseek"
         config = load_config(CONFIG_PATH)
-        for name in ["dm_create", "dm_narrate", "pc_decision", "actor_decision", "reflection"]:
+        for name in ["dm_create", "dm_narrate", "pc_decision", "actor_decision", "talk", "reflection"]:
             pur = getattr(config.llm, name)
             assert pur.model, f"{name}.model is empty"
             assert pur.temperature > 0, f"{name}.temperature is zero"
@@ -85,17 +85,18 @@ class TestLLMClientInit:
     """验证 LLMClient 从真实 config 初始化不出错."""
 
     def test_init_with_provider(self, monkeypatch):
-        """LLMClient 初始化应创建 5 个 model."""
+        """LLMClient 初始化应创建 6 个 model."""
         monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
         monkeypatch.setenv("LLM_PROVIDER", "deepseek")
         config = load_config(CONFIG_PATH)
         client = LLMClient(config.llm)
-        assert len(client._models) == 5
+        assert len(client._models) == 6
         assert set(client._models.keys()) == {
             "dm_create",
             "dm_narrate",
             "pc_decision",
             "actor_decision",
+            "talk",
             "reflection",
         }
 
