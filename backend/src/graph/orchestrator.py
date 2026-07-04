@@ -53,7 +53,7 @@ class Orchestrator:
         result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
         log_phase("tick", tick, elapsed=time.monotonic() - t_start)
 
-        return {"tick": result["tick"], "tick_message_id": result.get("tick_message_id", "")}
+        return {"tick": result["tick"]}
 
     def _make_config(self, world_id: str, tick: int) -> dict:
         """构造 LangGraph 执行配置 / Build LangGraph run config."""

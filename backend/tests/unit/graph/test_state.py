@@ -13,8 +13,7 @@ class TestOverallState:
         s: OverallState = {
             "tick": 0,
             "world_id": "",
-            "tick_message_id": "",
-            "scene_info": {},
+                        "scene_info": {},
             "pending_actions": [],
             "hints": [],
             "plot_brief": "",

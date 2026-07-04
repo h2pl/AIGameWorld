@@ -47,36 +47,35 @@ class TestSQLiteClient:
         assert row["name"] == "Test World"
 
     async def test_narrative_insert(self, db):
-        # narratives 表已删除，改用 tick_messages 表测试 insert
+        # 用 tick_events 表测试 insert / Use tick_events table for insert test
         await db.execute(
-            "INSERT INTO tick_messages (id, tick, world_id) VALUES (?, ?, ?)",
-            ("narr_test", 0, "test"),
+            "INSERT INTO tick_events (tick, type, payload, world_id) VALUES (?, ?, ?, ?)",
+            (1, "dm_create", "{}", "test"),
         )
         await db.commit()
-        rows = await db.fetch_all("SELECT * FROM tick_messages WHERE id = ?", ("narr_test",))
+        rows = await db.fetch_all("SELECT * FROM tick_events WHERE world_id = ?", ("test",))
         assert len(rows) == 1
-        assert rows[0]["world_id"] == "test"
 
     async def test_transaction_context(self, db):
         async with db.transaction():
             await db.execute(
-                "INSERT INTO tick_messages (id, tick, world_id) VALUES (?, ?, ?)",
-                ("txn_test_1", 1, "test"),
+                "INSERT INTO tick_events (tick, type, payload, world_id) VALUES (?, ?, ?, ?)",
+                (2, "pc_talk", "{}", "test_txn"),
             )
-        rows = await db.fetch_all("SELECT * FROM tick_messages WHERE id = ?", ("txn_test_1",))
+        rows = await db.fetch_all("SELECT * FROM tick_events WHERE world_id = ?", ("test_txn",))
         assert len(rows) == 1
 
     async def test_transaction_rollback(self, db):
         try:
             async with db.transaction():
                 await db.execute(
-                    "INSERT INTO tick_messages (id, tick, world_id) VALUES (?, ?, ?)",
-                    ("txn_test_2", 2, "test"),
+                    "INSERT INTO tick_events (tick, type, payload, world_id) VALUES (?, ?, ?, ?)",
+                    (3, "scene_setup", "{}", "test_rollback"),
                 )
                 raise RuntimeError("forced error")
         except RuntimeError:
             pass
-        rows = await db.fetch_all("SELECT * FROM tick_messages WHERE id = ?", ("txn_test_2",))
+        rows = await db.fetch_all("SELECT * FROM tick_events WHERE world_id = ?", ("test_rollback",))
         assert len(rows) == 0
 
 

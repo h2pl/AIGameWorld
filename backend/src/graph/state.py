@@ -14,22 +14,22 @@ class OverallState(TypedDict, total=False):
     """
 
     tick: int  # 当前 tick 编号 / Current tick number
-    tick_message_id: str  # 消息 ID / Message ID
     world_id: str  # 世界 ID / World ID
     hints: list[str]  # DM 环境提示 / DM environmental hints
     plot_brief: str  # 剧情梗概 / Plot brief
     scene_id: str  # 当前场景 ID / Current scene ID
     scene_info: dict[
         str, Any
-    ]  # 当前场景的信息（与谁使用无关，不区分 PC）/ Current scene info (consumer-independent, not per-PC)
+    ]  # 当前场景的信息 / Current scene info
     pc_decisions: Annotated[
         list[dict[str, Any]], add
     ]  # 角色决策（累加） / Character decisions (accumulated)
     pending_actions: Annotated[list[dict[str, Any]], add]  # pc_subgraph 产生的行动结果（累加）
     narrative: str  # DM 叙事文本 / DM narrative text
     # PC 运行时状态——tick 内引擎修改此 map，末尾统一入库
-    # / PC runtime state map — engines mutate this during the tick, persisted at tick end
     pc_state_map: dict[str, dict[str, Any]]
+    # flush_events 产出的待持久化事件列表 / Pending events for persistence
+    _pending_events: list[dict[str, Any]]
 
 
 class PcSubState(TypedDict):

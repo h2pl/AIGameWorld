@@ -9,7 +9,6 @@ from .base import DomainModel
 from .dm_record import DMRecord
 from .event import SEQUENCE, TICK_EVENT_SEQUENCE, Event, TickEvent, TickEventType
 from .item import Item, ItemType
-from .message import Message, TickMessage
 from .player_character import PlayerCharacter
 from .scene import Scene
 from .scene_object import SceneObject, SceneObjectType
@@ -25,8 +24,6 @@ __all__ = [
     "TickEventType",
     "Item",
     "ItemType",
-    "Message",
-    "TickMessage",
     "PlayerCharacter",
     "Scene",
     "SceneObject",

@@ -145,39 +145,18 @@ CREATE INDEX IF NOT EXISTS idx_scene_objects_scene ON scene_objects(scene_id);
 
 
 -- ============================================================
---  tick_messages: 消息元数据 / Message metadata
--- ============================================================
-CREATE TABLE IF NOT EXISTS tick_messages (
-    id          TEXT    NOT NULL,
-    tick        INTEGER NOT NULL,
-    world_id    TEXT    NOT NULL,
-    status      TEXT    NOT NULL DEFAULT 'building',
-    is_last     INTEGER NOT NULL DEFAULT 0,
-    ext_json    TEXT    NOT NULL DEFAULT '{}',
-    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-    updated_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-    acked_at    TEXT
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_tick_message_id_tick ON tick_messages(id, tick);
-CREATE INDEX IF NOT EXISTS idx_msg_status ON tick_messages(id, status);
-CREATE INDEX IF NOT EXISTS idx_msg_world ON tick_messages(world_id);
-
--- ============================================================
---  tick_events: 消息事件明细 / Message event details
+--  tick_events: tick 事件明细 / Tick event details
 -- ============================================================
 CREATE TABLE IF NOT EXISTS tick_events (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    tick_message_id TEXT    NOT NULL,
     tick            INTEGER NOT NULL,
     type            TEXT    NOT NULL,
     payload         TEXT    NOT NULL,
     world_id        TEXT    NOT NULL DEFAULT '',
     ext_json        TEXT    NOT NULL DEFAULT '{}',
     created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
-    updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (tick_message_id, tick) REFERENCES tick_messages(id, tick)
+    updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
 );
-CREATE INDEX IF NOT EXISTS idx_tick_events_msg ON tick_events(tick_message_id, tick);
 CREATE INDEX IF NOT EXISTS idx_tick_events_world_tick ON tick_events(world_id, tick);
 
 

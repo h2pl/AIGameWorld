@@ -1,9 +1,6 @@
-"""TickGraph 主图 — Phase 顺序执行 + 条件分支.
+"""TickGraph 主图 — Phase 顺序执行 / Sequential phase execution.
 
 START
- |
- v
- message_service.create_tick_message     [node]      创建消息       create_tick_message
  |
  v
  dm_service.dm_create              [node]      DM 创造情境   dm_create
@@ -12,20 +9,13 @@ START
  scene_service.build_scene_info    [node]      构建场景信息  build_scene_info
  |
  v
- pc_subgraph             [subgraph]  角色决策+行动   pc_subgraph
+ pc_subgraph                       [subgraph]  角色决策+行动   pc_subgraph
  |
  v
- dm_service.dm_narrate             [node]      DM 叙事       dm_narrate
- |
- +-- needs_reflection? --False--> event_service.flush_events
- |
- True
+ event_service.flush_events        [node]      构造事件     flush_events
  |
  v
- reflection_service.reflect        [node]      角色反思     reflect
- |
- v
- event_service.flush_events        [node]      落盘事件     flush_events
+ data_service.persist_tick         [node]      数据持久化   persist_tick
  |
  v
  END
@@ -35,7 +25,7 @@ START
 from langgraph.graph import END, StateGraph
 
 # 服务层 / Service layer
-from ..services import dm_service, event_service, message_service, scene_service
+from ..services import data_service, dm_service, event_service, scene_service
 from ..utils.logging import get_logger
 
 # 根状态定义 / Root state definition
@@ -52,23 +42,17 @@ def build_tick_graph() -> StateGraph:
     logger.info("[graph] building tick graph")
     graph = StateGraph(OverallState)
 
-    # 注册 7 个节点 / Register 7 nodes
-    graph.add_node("message_service.create_tick_message", message_service.create_tick_message)
     graph.add_node("dm_service.dm_create", dm_service.dm_create)
     graph.add_node("scene_service.build_scene_info", scene_service.build_scene_info)
     graph.add_node("pc_subgraph", pc_subgraph_module.pc_subgraph)
-    # graph.add_node("dm_service.dm_narrate", dm_service.dm_narrate)
-    # graph.add_node("reflection_service.reflect", reflection_service.reflect)
     graph.add_node("event_service.flush_events", event_service.flush_events)
+    graph.add_node("data_service.persist_tick", data_service.persist_tick)
 
-    # 顺序边 / Sequential edges
-    graph.set_entry_point("message_service.create_tick_message")
-    graph.add_edge("message_service.create_tick_message", "dm_service.dm_create")
+    graph.set_entry_point("dm_service.dm_create")
     graph.add_edge("dm_service.dm_create", "scene_service.build_scene_info")
     graph.add_edge("scene_service.build_scene_info", "pc_subgraph")
-    # graph.add_edge("pc_subgraph", "dm_service.dm_narrate")
-    # graph.add_edge("dm_service.dm_narrate", "reflection_service.reflect")
     graph.add_edge("pc_subgraph", "event_service.flush_events")
-    graph.add_edge("event_service.flush_events", END)
+    graph.add_edge("event_service.flush_events", "data_service.persist_tick")
+    graph.add_edge("data_service.persist_tick", END)
 
     return graph

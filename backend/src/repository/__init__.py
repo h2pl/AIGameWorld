@@ -12,9 +12,6 @@ from .item_repo import ItemRepo
 # 记忆 / Memory (ChromaDB)
 from .memory_repo import MemoryRepo
 
-# 消息 / Messages
-from .message_repo import MessageRepo, TickMessageRepo
-
 # PC/Actor 角色 / Character repository
 from .pc_repo import PcRepo
 
@@ -31,8 +28,6 @@ __all__ = [
     "EventRepo",
     "ItemRepo",
     "MemoryRepo",
-    "TickMessageRepo",
-    "MessageRepo",
     "SceneRepo",
     "WorldRepo",
 ]

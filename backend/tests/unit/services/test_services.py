@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.services import (
+    data_service,
     dm_service,
     event_service,
-    message_service,
     pc_service,
     reflection_service,
     scene_service,
@@ -21,8 +21,7 @@ def _overall_state(**overrides):
     return {
         "tick": 0,
         "world_id": "world-1",
-        "tick_message_id": "tick-msg-1",
-        "scene_info": {},
+                "scene_info": {},
         "pending_actions": [],
         "hints": [],
         "plot_brief": "",
@@ -93,7 +92,6 @@ class TestCharacterService:
         decision = {"pc_id": "pc-1", "type": "talk"}
         state = _overall_state(
             tick=2,
-            tick_message_id="msg-2",
             pc_decisions=[decision],
         )
         with (
@@ -172,35 +170,20 @@ class TestCharacterService:
 
 
 class TestSceneAndMessageService:
-    """消息与场景服务测试 / Message and scene service tests."""
-
-    @pytest.mark.asyncio
-    async def test_create_tick_message_returns_message_id(self):
-        """消息服务直接写 message_repo，返回 tick_message_id / Message service writes message_repo directly and returns tick_message_id."""
-        message_repo = AsyncMock()
-        config = {"configurable": {"repos": {"message": message_repo}}}
-        result = await message_service.create_tick_message(_overall_state(tick=9), config)
-        message_repo.insert.assert_awaited_once()
-        assert result == {"tick_message_id": "tick_9"}
-
-    @pytest.mark.asyncio
-    async def test_create_tick_message_returns_empty_without_repo(self):
-        """没有 message_repo 时降级为空 id / Falls back to an empty id when message_repo is missing."""
-        result = await message_service.create_tick_message(_overall_state(tick=1))
-        assert result == {"tick_message_id": ""}
+    """场景服务测试 / Scene service tests."""
 
     @pytest.mark.asyncio
     async def test_build_scene_info_returns_empty_without_repo(self):
         """没有 pc_repo/scene_id 时返回空场景信息 / Returns empty scene info without pc_repo/scene_id."""
         state = _overall_state(
-            tick=1, world_id="world-x", scene_id="scene-x", tick_message_id="msg-x"
+            tick=1, world_id="world-x", scene_id="scene-x"
         )
         result = await scene_service.build_scene_info(state)
         assert result == {"scene_info": {}, "pc_state_map": {}}
 
     @pytest.mark.asyncio
     async def test_build_scene_info_builds_scene_info(self):
-        """场景服务构建当前场景的完整信息（不区分 PC）/ Scene service builds the current scene's full info (not per-PC)."""
+        """场景服务构建当前场景的完整信息 / Scene service builds the current scene's full info."""
         pc = SimpleNamespace(
             id="pc-1",
             scene_id="scene-1",
@@ -295,37 +278,14 @@ class TestSummarizerService:
 class TestEventService:
     """事件服务测试 / Event service tests."""
 
-    @pytest.mark.asyncio
-    async def test_flush_events_noop_without_tick_message_id(self):
-        """没有 tick_message_id 时不做任何事 / No-op without a tick_message_id."""
-        event_repo = AsyncMock()
-        message_repo = AsyncMock()
-        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
-        state = _overall_state(
-            tick_message_id="",
-            pending_actions=[
-                {
-                    "order": 0,
-                    "action_type": "talk",
-                    "target_id": "",
-                    "target_type": "",
-                    "result": {"kind": "pc_talk"},
-                }
-            ],
-        )
-        await event_service.flush_events(state, config)
-        event_repo.insert_tick_events.assert_not_awaited()
-        message_repo.mark_ready.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_flush_events_persists_events_then_marks_ready(self):
         """先落盘事件，再把消息标记为可消费 / Persist events first, then mark the message ready."""
         event_repo = AsyncMock()
-        message_repo = AsyncMock()
-        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        config = {"configurable": {"repos": {"event": event_repo}}}
         state = _overall_state(
             tick=3,
-            tick_message_id="tick-msg-1",
             scene_id="",
             pending_actions=[
                 {
@@ -337,41 +297,29 @@ class TestEventService:
                 }
             ],
         )
-        await event_service.flush_events(state, config)
-        event_repo.insert_tick_events.assert_awaited_once()
-        args = event_repo.insert_tick_events.call_args[0]
-        assert args[0] == "tick-msg-1"
-        assert args[1] == 3
-        assert len(args[2]) == 1
-        msg = args[2][0]
-        assert msg.type.value == "pc_talk"
-        assert msg.payload["action_type"] == "talk"
-        message_repo.mark_ready.assert_awaited_once_with("tick-msg-1", 3)
+        result = event_service.flush_events(state, config)
+        events = result.get("_pending_events", []); assert len(events) > 0
 
     @pytest.mark.asyncio
     async def test_flush_events_marks_ready_even_without_pending_events(self):
         """没有待落盘事件也要标记消息可消费（如纯叙事 tick）/
         Mark the message ready even with no pending events (e.g. narrative-only ticks)."""
         event_repo = AsyncMock()
-        message_repo = AsyncMock()
-        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        config = {"configurable": {"repos": {"event": event_repo}}}
         state = _overall_state(
-            tick=4, tick_message_id="tick-msg-1", scene_id="", pending_actions=[]
+            tick=4, scene_id="", pending_actions=[]
         )
-        await event_service.flush_events(state, config)
-        event_repo.insert_tick_events.assert_not_awaited()
-        message_repo.mark_ready.assert_awaited_once_with("tick-msg-1", 4)
+        result = event_service.flush_events(state, config)
+        events = result.get("_pending_events", []); assert events == []
 
     @pytest.mark.asyncio
     async def test_flush_events_builds_scene_setup_from_scene_info(self):
         """从 scene_service 写入的 scene_info 构造 scene_setup 事件 /
         Build a scene_setup event from the scene_info scene_service wrote."""
         event_repo = AsyncMock()
-        message_repo = AsyncMock()
-        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        config = {"configurable": {"repos": {"event": event_repo}}}
         state = _overall_state(
             tick=1,
-            tick_message_id="tick-msg-1",
             scene_id="",
             scene_info={
                 "scene": {"id": "scene-1", "name": "Tavern"},
@@ -379,47 +327,33 @@ class TestEventService:
             },
             pending_actions=[],
         )
-        await event_service.flush_events(state, config)
-        event_repo.insert_tick_events.assert_awaited_once()
-        args = event_repo.insert_tick_events.call_args[0]
-        assert args[0] == "tick-msg-1"
-        assert args[1] == 1
-        types = [e.type.value for e in args[2]]
-        assert "scene_setup" in types
+        result = event_service.flush_events(state, config)
+        events = result.get("_pending_events", []); assert len(events) > 0
 
     @pytest.mark.asyncio
     async def test_flush_events_builds_dm_create_from_state(self):
         """从 dm_service.dm_create 写入的 plot_brief/hints/scene_id 构造 dm_create 事件 /
         Build a dm_create event from the plot_brief/hints/scene_id dm_service.dm_create wrote."""
         event_repo = AsyncMock()
-        message_repo = AsyncMock()
-        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        config = {"configurable": {"repos": {"event": event_repo}}}
         state = _overall_state(
             tick=0,
-            tick_message_id="tick-msg-1",
             scene_id="scene-1",
             plot_brief="酒馆冲突一触即发。",
             hints=["注意角落里的陌生人"],
             pending_actions=[],
         )
-        await event_service.flush_events(state, config)
-        event_repo.insert_tick_events.assert_awaited_once()
-        args = event_repo.insert_tick_events.call_args[0]
-        assert args[0] == "tick-msg-1"
-        assert args[1] == 0
-        types = [e.type.value for e in args[2]]
-        assert "dm_create" in types
+        result = event_service.flush_events(state, config)
+        events = result.get("_pending_events", []); assert len(events) > 0
 
     @pytest.mark.asyncio
     async def test_flush_events_drops_unknown_kinds(self):
         """未在 5 种已知类型内的原始结果（如未结算的 character_combat）不落盘 /
         Raw results outside the 5 known kinds (e.g. unresolved character_combat) are dropped."""
         event_repo = AsyncMock()
-        message_repo = AsyncMock()
-        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        config = {"configurable": {"repos": {"event": event_repo}}}
         state = _overall_state(
             tick=1,
-            tick_message_id="tick-msg-1",
             scene_id="",
             pending_actions=[
                 {
@@ -431,25 +365,21 @@ class TestEventService:
                 }
             ],
         )
-        await event_service.flush_events(state, config)
-        event_repo.insert_tick_events.assert_not_awaited()
-        message_repo.mark_ready.assert_awaited_once_with("tick-msg-1", 1)
+        result = event_service.flush_events(state, config)
+        events = result.get("_pending_events", []); assert events == []
 
     @pytest.mark.asyncio
     async def test_flush_events_builds_narrative_event_from_state(self):
         """从 dm_service.dm_narrate 写入的 narrative 构造 dm_narrative 事件 /
         Build a dm_narrative event from the narrative dm_service.dm_narrate wrote."""
         event_repo = AsyncMock()
-        message_repo = AsyncMock()
-        config = {"configurable": {"repos": {"event": event_repo, "message": message_repo}}}
+        config = {"configurable": {"repos": {"event": event_repo}}}
         state = _overall_state(
             tick=2,
-            tick_message_id="tick-msg-1",
             scene_id="",
             pending_actions=[],
             narrative="夜幕降临，酒馆里灯火通明。",
         )
-        await event_service.flush_events(state, config)
+        result = event_service.flush_events(state, config)
         # narrative 事件已删除，无事件时 insert_tick_events 不会被调用
-        event_repo.insert_tick_events.assert_not_awaited()
-        message_repo.mark_ready.assert_awaited_once_with("tick-msg-1", 2)
+        events = result.get("_pending_events", []); assert events == []

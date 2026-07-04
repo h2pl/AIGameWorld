@@ -16,7 +16,6 @@ from fastapi.responses import HTMLResponse
 
 from src.domain.world import World
 from src.repository.event_repo import TickEventRepo
-from src.repository.message_repo import TickMessageRepo
 from src.repository.world_repo import WorldRepo
 from src.storage.sqlite_client import SQLiteClient
 from src.utils.logging import get_logger, log_api, setup_logging
@@ -174,7 +173,6 @@ def _get_orch():
                 "scene": SceneRepo(db),
                 "world": WorldRepo(db),
                 "event": TickEventRepo(db),
-                "message": TickMessageRepo(db),
             },
         )
     return app.state.orchestrator
@@ -304,15 +302,10 @@ async def tick_next(world_id: str):
     """运行一个 tick 并返回事件（data_tick 推进）."""
     orch = _get_orch()
     result = await orch.run_tick(world_id)
-    events = await _load_tick_events(result["tick_message_id"], result["tick"])
     world_repo = WorldRepo(_get_db())
     display_tick = await world_repo.get_display_tick(world_id)
     return {
         "tick": result["tick"],
-        "tick_message_id": result["tick_message_id"],
-        "narrative": result.get("narrative", ""),
-        "events": [_event_to_dict(ev) for ev in events],
-        "data_tick": result["tick"],
         "display_tick": display_tick,
     }
 
@@ -399,7 +392,6 @@ async def world_reset(world_id: str):
     db = _get_db()
     # 清理 tick_events / tick_messages / dm_records / story_summaries
     await TickEventRepo(db).delete_by_world(world_id)
-    await TickMessageRepo(db).delete_by_world(world_id)
     await db.execute("DELETE FROM dm_records WHERE world_id = ?", (world_id,))
     await db.execute("DELETE FROM story_summaries WHERE world_id = ?", (world_id,))
     await db.commit()
@@ -565,16 +557,4 @@ def _char_from_row(r: dict, is_pc: bool, pos_offset: int) -> dict:
     }
 
 
-async def _load_tick_events(tick_message_id: str, tick: int) -> list:
-    """加载一个 tick 的事件列表."""
-    if not tick_message_id:
-        return []
-    db = _get_db()
-    evt_repo = TickEventRepo(db)
-    return await evt_repo.load_by_message(tick_message_id, tick)
 
-
-def _event_to_dict(ev) -> dict:
-    if isinstance(ev, dict):
-        return ev
-    return ev.model_dump()

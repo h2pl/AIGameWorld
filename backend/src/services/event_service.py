@@ -1,13 +1,12 @@
-"""Event Service: 统一构造 TickEvent → 落盘 → 消息就绪."""
+"""Event Service: 从 state 构造 TickEvent，不负责持久化."""
 
 from typing import Any
 
-from langchain_core.runnables.config import RunnableConfig
+from langchain_core.runnables.config import RunnableConfig  # noqa: F401  # type annotation
 
 from ..domain.event import TickEvent, TickEventType
 from ..graph.state import OverallState
-from ..utils.helpers import get_repo
-from ..utils.logging import get_logger, trace_node
+from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -20,7 +19,6 @@ def _dm_create_event(state: OverallState) -> TickEvent | None:
     return TickEvent(
         type=TickEventType.DM_CREATE,
         tick=state.get("tick", 0),
-        tick_message_id=state.get("tick_message_id", ""),
         world_id=state.get("world_id", ""),
         payload={
             "scene_id": scene_id,
@@ -40,7 +38,6 @@ def _scene_event(state: OverallState) -> TickEvent | None:
     return TickEvent(
         type=TickEventType.SCENE_SETUP,
         tick=state.get("tick", 0),
-        tick_message_id=state.get("tick_message_id", ""),
         world_id=state.get("world_id", ""),
         payload={
             "scene_id": scene_id,
@@ -63,9 +60,7 @@ def _action_events(state: OverallState) -> list[TickEvent]:
     if not pending_actions:
         return []
     tick = state.get("tick", 0)
-    msg_id = state.get("tick_message_id", "")
     scene_info: dict[str, Any] = state.get("scene_info", {}) or {}
-    # 按 order 排序 / Sort by order
     sorted_actions = sorted(pending_actions, key=lambda a: a.get("order", 0))
     events: list[TickEvent] = []
     for action in sorted_actions:
@@ -82,28 +77,21 @@ def _action_events(state: OverallState) -> list[TickEvent]:
             "target_type": action.get("target_type", ""),
             "result": result,
         }
-        # explore 事件扁平化 result 字段到顶层，前端直接读 payload.waypoints
-        # / Flatten explore result fields to top-level for frontend direct access
         if event_type == TickEventType.PC_EXPLORE:
             payload["waypoints"] = result.get("waypoints", [])
             payload["final_x"] = result.get("final_x", 0)
             payload["final_y"] = result.get("final_y", 0)
             payload["start_x"] = result.get("start_x", 0)
             payload["start_y"] = result.get("start_y", 0)
-
-        # talk 事件附上双方坐标，供前端做"走过去再对话"动画
-        # / Attach both positions for talk events, so frontend can walk-then-talk
         if event_type == TickEventType.PC_TALK:
             pc_id = action.get("pc_id", "")
             target_id = action.get("target_id", "")
             payload["pc_position"] = _get_char_position(pc_id, scene_info)
             payload["target_position"] = _get_char_position(target_id, scene_info)
-        # explore 事件的 waypoints 在 result 里
         events.append(
             TickEvent(
                 type=event_type,
                 tick=tick,
-                tick_message_id=msg_id,
                 world_id=state.get("world_id", ""),
                 payload=payload,
             )
@@ -117,69 +105,26 @@ def _pick(*evs: TickEvent | None) -> list[TickEvent]:
 
 
 def _get_char_position(char_id: str, scene_info: dict[str, Any]) -> dict[str, int]:
-    """从 scene_info 中获取角色坐标 / Get character position from scene_info."""
+    """从 scene_info 中获取角色坐标."""
     if not char_id:
         return {"x": 0, "y": 0}
-    # 先从 pc_positions 查 / Check pc_positions first
     positions = scene_info.get("pc_positions", {})
     if char_id in positions:
         pos = positions[char_id]
         return {"x": pos.get("x", 0), "y": pos.get("y", 0)}
-    # 再从 pcs / actors 查 / Then check pcs / actors
     for lst_key in ("pcs", "actors"):
         for ch in scene_info.get(lst_key, []):
             if ch.get("id") == char_id:
-                return {
-                    "x": ch.get("position_x", 0),
-                    "y": ch.get("position_y", 0),
-                }
+                return {"x": ch.get("position_x", 0), "y": ch.get("position_y", 0)}
     return {"x": 0, "y": 0}
 
 
-@trace_node("event.flush")
-async def flush_events(state: OverallState, config: RunnableConfig = None) -> dict:
-    """从 state 各阶段产出统一构造 TickEvent → 写 tick_events → 持久化 PC 状态 → 标记消息可消费."""
-    tick_message_id = state.get("tick_message_id", "")
-    if not tick_message_id:
-        return {}
-
-    tick = state.get("tick", 0)
+def flush_events(state: OverallState, config: RunnableConfig = None) -> dict:
+    """从 state 各阶段产出统一构造 TickEvent 列表，存入 _pending_events 供 data_service 落盘."""
     events = [
         *_pick(_dm_create_event(state), _scene_event(state)),
         *_action_events(state),
     ]
-
-    event_repo = get_repo(config, "event")
-    if events and event_repo:
-        await event_repo.insert_tick_events(
-            tick_message_id, tick, events, world_id=state.get("world_id", "")
-        )
-        logger.info(
-            "[service] flushed tick=%s tick_message_id=%s count=%d",
-            tick,
-            tick_message_id,
-            len(events),
-        )
-
-    # tick 末尾：将 pc_state_map 中变更的 PC 坐标统一入库
-    # / At tick end: persist changed PC positions from pc_state_map to DB
-    pc_state_map: dict[str, dict[str, Any]] = state.get("pc_state_map", {})
-    if pc_state_map:
-        pc_repo = get_repo(config, "char")
-        if pc_repo:
-            for pc_id, info in pc_state_map.items():
-                pc = await pc_repo.load_pc(pc_id)
-                if pc:
-                    pc.position_x = info.get("position_x", 0)
-                    pc.position_y = info.get("position_y", 0)
-                    await pc_repo.save_pc(pc)
-            logger.info(
-                "[service] persisted pc_state_map count=%d tick=%s",
-                len(pc_state_map), tick,
-            )
-
-    message_repo = get_repo(config, "message")
-    if message_repo:
-        await message_repo.mark_ready(tick_message_id, tick)
-        logger.info("[service] message ready tick=%s tick_message_id=%s", tick, tick_message_id)
-    return {}
+    tick = state.get("tick", 0)
+    logger.info("[service] flushed events tick=%s count=%d", tick, len(events))
+    return {"_pending_events": events}
