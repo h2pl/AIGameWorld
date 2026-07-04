@@ -20,8 +20,9 @@ _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
 # combat 预留：战斗结算尚未接入 act 执行层 / combat reserved: not yet wired into the act phase
 # TODO: 实现 combat 动作在 act 阶段的执行（调用 combat_engine）
-_VALID_ACTIONS = {"talk", "interact", "combat", "wait"}
+_VALID_ACTIONS = {"talk", "interact", "combat", "explore", "wait"}
 # action_type 对应允许的 target_type / Allowed target_type per action_type
+# explore 不需要 target，走空判定
 _ACTION_TARGET_TYPES = {
     "talk": {"pc", "actor"},
     "interact": {"scene_object"},
@@ -110,13 +111,13 @@ def _validate(result: CharacterActionSchema) -> CharacterActionSchema:
     if result.action_type not in _VALID_ACTIONS:
         result.action_type = "wait"
 
-    if result.action_type == "wait":
-        # wait 不需要 target，强制清空 / wait needs no target, force clear it
+    if result.action_type in ("wait", "explore"):
+        # wait / explore 不需要 target，强制清空 / wait/explore need no target, force clear it
         result.target_id = None
         result.target_type = None
     else:
-        # 非 wait 动作必须有合法且与 action_type 匹配的 target，否则降级为 wait
-        # non-wait actions must have a valid target matching action_type, else fall back to wait
+        # 非 wait/explore 动作必须有合法且与 action_type 匹配的 target，否则降级为 wait
+        # non-wait/explore actions must have a valid target matching action_type, else fall back to wait
         allowed_types = _ACTION_TARGET_TYPES.get(result.action_type, set())
         if not result.target_id or result.target_type not in allowed_types:
             result.action_type = "wait"

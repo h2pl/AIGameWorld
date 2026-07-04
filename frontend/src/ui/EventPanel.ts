@@ -19,6 +19,7 @@ const EVENT_ICONS: Record<string, string> = {
   scene_setup: "🗺️",
   scene_objects: "📦",
   character_move: "🚶",
+  pc_explore: "🔍",
   character_talk: "🗣️",
   pc_talk: "🗣️",
   character_explore: "🔍",
@@ -133,6 +134,7 @@ function _readableType(t: string): string {
     scene_setup: "场景设置",
     scene_objects: "场景物体",
     character_move: "角色移动",
+    pc_explore: "角色探索",
     character_talk: "角色对话",
     pc_talk: "角色对话",
     character_explore: "角色探索",
@@ -164,6 +166,16 @@ function _formatPayload(ev: EventData): string {
       return String(payload.text || payload.narrative || "");
     case "scene_setup":
       return String(payload.scene_id || "");
+    case "pc_explore":
+    case "character_explore": {
+      const wp = payload.waypoints as Array<{ x: number; y: number }> | undefined;
+      if (wp?.length) {
+        return `(${payload.start_x},${payload.start_y}) → ${wp.map((p) => `(${p.x},${p.y})`).join(" → ")}`;
+      }
+      const fx = payload.final_x ?? payload.x ?? "?";
+      const fy = payload.final_y ?? payload.y ?? "?";
+      return `移动到 (${fx}, ${fy})`;
+    }
     case "character_talk":
     case "pc_talk": {
       const result = payload.result as Record<string, unknown> | undefined;

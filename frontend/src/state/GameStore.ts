@@ -30,6 +30,15 @@ export interface GameState {
   events: EventData[];
   errors: string[];
   character_positions: Record<string, { x: number; y: number }>;
+  /** 当前待播放的探索路径 / Pending explore waypoints: pc_id → [{x, y}, ...] */
+  explore_routes: Record<string, Array<{ x: number; y: number }>>;
+  /** 当前待播放的走位对话 / Pending walk-to-talk: {pc_id, target_id, pc_pos, target_pos} */
+  walk_to_talk: Array<{
+    pc_id: string;
+    target_id: string;
+    pc_position: { x: number; y: number };
+    target_position: { x: number; y: number };
+  }>;
 }
 
 type Listener = (state: GameState) => void;
@@ -60,6 +69,8 @@ class GameStore {
       events: [],
       errors: [],
       character_positions: {},
+      explore_routes: {},
+      walk_to_talk: [],
     };
   }
 
@@ -202,6 +213,45 @@ class GameStore {
           console.log("[Store] dm_plot_brief updated: %s", brief.slice(0, 60));
         }
       }
+
+      // 探索事件：提取路径点并更新角色坐标 / Explore event: extract waypoints & update position
+      if (ev.type === "pc_explore") {
+        const pcId = String(payload.pc_id || "");
+        const waypoints = payload.waypoints as Array<{ x: number; y: number }> | undefined;
+        const finalX = Number(payload.final_x ?? 0);
+        const finalY = Number(payload.final_y ?? 0);
+        if (pcId) {
+          if (waypoints?.length) {
+            this.state.explore_routes = { ...this.state.explore_routes, [pcId]: [...waypoints] };
+            console.log("[Store] explore route for %s: %d waypoints", pcId, waypoints.length);
+          }
+          // 最终坐标 / Final position
+          this.state.character_positions[pcId] = { x: finalX, y: finalY };
+          // 更新角色数据坐标 / Update character data position
+          const ch = this.state.characters.find((c) => c.id === pcId);
+          if (ch) {
+            ch.position_x = finalX;
+            ch.position_y = finalY;
+          }
+          console.log("[Store] explore finish %s → (%d,%d)", pcId, finalX, finalY);
+        }
+      }
+
+      // 走位对话事件：记录双方坐标供场景动画 / Walk-to-talk: record both positions for scene animation
+      if (ev.type === "pc_talk") {
+        const pcId = String(payload.pc_id || "");
+        const targetId = String(payload.target_id || "");
+        const pcPos = payload.pc_position as { x: number; y: number } | undefined;
+        const targetPos = payload.target_position as { x: number; y: number } | undefined;
+        if (pcId && targetId && pcPos && targetPos) {
+          this.state.walk_to_talk = [
+            ...this.state.walk_to_talk,
+            { pc_id: pcId, target_id: targetId, pc_position: pcPos, target_position: targetPos },
+          ];
+          console.log("[Store] walk-to-talk: %s→%s (%d,%d)→(%d,%d)",
+            pcId, targetId, pcPos.x, pcPos.y, targetPos.x, targetPos.y);
+        }
+      }
     }
   }
 
@@ -257,7 +307,28 @@ class GameStore {
     this.state.actions = [];
     this.state.events = [];
     this.state.errors = [];
+    this.state.explore_routes = {};
+    this.state.walk_to_talk = [];
     this.notify();
+  }
+
+  /** 消费并清空探索路径 / Consume and clear explore routes */
+  consumeExploreRoutes(): Record<string, Array<{ x: number; y: number }>> {
+    const routes = { ...this.state.explore_routes };
+    this.state.explore_routes = {};
+    return routes;
+  }
+
+  /** 消费并清空走位对话 / Consume and clear walk-to-talk list */
+  consumeWalkToTalk(): Array<{
+    pc_id: string;
+    target_id: string;
+    pc_position: { x: number; y: number };
+    target_position: { x: number; y: number };
+  }> {
+    const items = [...this.state.walk_to_talk];
+    this.state.walk_to_talk = [];
+    return items;
   }
 
   subscribe(listener: Listener): () => void {

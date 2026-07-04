@@ -95,6 +95,10 @@ export class GameScene extends Phaser.Scene {
       if (this.sceneBuilt) {
         this.charManager?.sync(s.characters, s.character_positions);
         if (s.narrative && this.narrativeText) this.narrativeText.setText(s.narrative);
+        // 播放探索路径动画 / Play explore waypoint animations
+        this._playExploreRoutes();
+        // 播放走位对话动画 / Play walk-to-talk animations
+        this._playWalkToTalk();
       }
     });
 
@@ -324,6 +328,61 @@ export class GameScene extends Phaser.Scene {
 
   setNarrative(text: string): void {
     if (this.narrativeText) this.narrativeText.setText(text);
+  }
+
+  /** 播放探索路径动画 / Play explore waypoint traversal animation */
+  private _playExploreRoutes(): void {
+    const routes = gameStore.consumeExploreRoutes();
+    const entries = Object.entries(routes);
+    if (!entries.length) return;
+    for (const [pcId, waypoints] of entries) {
+      const sprite = this.charManager?.getSprite(pcId);
+      if (!sprite || !waypoints.length) continue;
+      const ts = this.ts;
+      // 将 waypoints 转成世界坐标 / Convert waypoints to world coords
+      const worldWaypoints = waypoints.map((wp) => {
+        const { wx, wy } = gridToWorld(wp.x, wp.y, ts);
+        return { wx, wy };
+      });
+      sprite.cancelWalk();
+      sprite.walkPath(worldWaypoints, 200);
+      console.log("[Scene] explore: %s through %d waypoints", pcId, waypoints.length);
+    }
+  }
+
+  /** 播放走位对话动画：PC 走到目标旁边 / Walk PC to target before dialogue */
+  private _playWalkToTalk(): void {
+    const wtList = gameStore.consumeWalkToTalk();
+    if (!wtList.length) return;
+    for (const wt of wtList) {
+      const sprite = this.charManager?.getSprite(wt.pc_id);
+      if (!sprite) continue;
+      // 走到目标旁边（相邻格）/ Walk to adjacent tile of target
+      const targetTx = wt.target_position.x;
+      const targetTy = wt.target_position.y;
+      // 找离 PC 最近的相邻格 / Find nearest adjacent tile
+      const pcTx = wt.pc_position.x;
+      const pcTy = wt.pc_position.y;
+      const adjacent = [
+        { tx: targetTx + 1, ty: targetTy },
+        { tx: targetTx - 1, ty: targetTy },
+        { tx: targetTx, ty: targetTy + 1 },
+        { tx: targetTx, ty: targetTy - 1 },
+      ].filter((a) => a.tx >= 0 && a.ty >= 0);
+      let best = adjacent[0];
+      let bestDist = Infinity;
+      for (const a of adjacent) {
+        const d = Math.abs(a.tx - pcTx) + Math.abs(a.ty - pcTy);
+        if (d < bestDist) { best = a; bestDist = d; }
+      }
+      if (best) {
+        const { wx, wy } = gridToWorld(best.tx, best.ty, this.ts);
+        sprite.cancelWalk();
+        sprite.walkPath([{ wx, wy }], 200);
+        console.log("[Scene] walk-to-talk: %s → (%d,%d) near target (%d,%d)",
+          wt.pc_id, best.tx, best.ty, targetTx, targetTy);
+      }
+    }
   }
 
   shutdown(): void {

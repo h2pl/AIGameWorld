@@ -11,6 +11,7 @@ from langchain_core.runnables.config import RunnableConfig
 
 from ..engine.combat import combat_engine
 from ..engine.decision import decision_engine
+from ..engine.explore import explore_engine
 from ..engine.interact import interact_engine
 from ..engine.talk import talk_engine
 from ..graph.state import OverallState
@@ -60,6 +61,7 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
     plot_brief = state.get("plot_brief", "")
     hints = state.get("hints", [])
     scene_id = state.get("scene_id", "")
+    scene_info = state.get("scene_info", {})
     pending_actions: list[dict] = []
     for order, decision in enumerate(decisions):
         talk_result = await talk_engine.process_talk_action(
@@ -80,7 +82,12 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
             decision=decision,
             config=config,
         )
-        result = talk_result or interact_result or combat_result
+        explore_result = await explore_engine.process_explore_action(
+            decision=decision,
+            scene_info=scene_info,
+            config=config,
+        )
+        result = talk_result or interact_result or combat_result or explore_result
         if result is None:
             continue
         pending_actions.append(

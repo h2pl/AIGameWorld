@@ -20,7 +20,7 @@ class DMNarrativeSchema(BaseModel):
 # === Phase 3: 角色决策 / Character Decision ===
 # combat 预留：战斗结算尚未接入 act 执行层 / combat reserved: not yet wired into the act phase
 # TODO: 实现 combat 动作在 act 阶段的执行（调用 combat_engine）
-_VALID_ACTIONS = {"talk", "interact", "combat", "wait"}
+_VALID_ACTIONS = {"talk", "interact", "combat", "explore", "wait"}
 _VALID_TARGET_TYPES = {"pc", "actor", "scene_object"}
 
 
