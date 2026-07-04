@@ -56,11 +56,16 @@ export class EventPanel extends Panel {
 
   private onStateChange(state: GameState): void {
     // tick 切换时清空面板，重置已渲染 seq / Clear panel on tick change
-    if (state.current_tick !== this.currentTick) {
-      this.currentTick = state.current_tick;
+    if (state.display_tick !== this.currentTick) {
+      this.currentTick = state.display_tick;
       this.listEl.innerHTML = "";
       this.renderedSeq = 0;
-      this.titleEl.textContent = `Tick ${this.currentTick}`;
+      this.titleEl.textContent = this.currentTick === 0
+        ? "Tick 0 (未开始)"
+        : `Tick ${this.currentTick}`;
+      if (this.currentTick === 0) {
+        this.listEl.innerHTML = `<div class="event-empty">等待开始...</div>`;
+      }
     }
 
     if (!state.events || state.events.length === 0) return;
@@ -70,6 +75,11 @@ export class EventPanel extends Panel {
       (ev) => ev.tick === this.currentTick && (ev.seq ?? 0) > this.renderedSeq,
     );
     if (newEvents.length === 0) return;
+
+    // 首次有事件时移除空状态提示 / Remove empty state on first event
+    if (this.listEl.querySelector(".event-empty")) {
+      this.listEl.innerHTML = "";
+    }
 
     const frag = document.createDocumentFragment();
     for (const ev of newEvents) {

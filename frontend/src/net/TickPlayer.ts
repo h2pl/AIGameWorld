@@ -1,7 +1,7 @@
-/** HTTP TickPlayer — Orchestrator 直接驱动，无后台任务 / Orchestrator-driven, no background tasks.
+/** HTTP TickPlayer — 前端按 display_tick 顺序消费事件 / Frontend consumes events by display_tick.
  *
- * GET /tick/next → orch.run_tick() → { tick, narrative, events[] }
- * 无 ack/pause/resume 概念。
+ * 后端生成 data_tick，前端展示 display_tick，展示完一个 tick 后同步到后端。
+ * Backend generates data_tick; frontend presents display_tick and syncs progress back.
  */
 
 import { gameStore } from "../state/GameStore";
@@ -13,6 +13,8 @@ interface TickResponse {
   tick_message_id: string;
   narrative: string;
   events: TickEvent[];
+  data_tick: number;
+  display_tick: number;
 }
 
 interface TickEvent {
@@ -21,13 +23,19 @@ interface TickEvent {
   payload: Record<string, unknown>;
 }
 
+interface EventsResponse {
+  events: TickEvent[];
+  display_tick: number;
+  data_tick: number;
+}
+
 export type PlayerState = "idle" | "running" | "stopped";
 
 export class TickPlayer {
   private _state: PlayerState = "idle";
   private _autoMode = false;
   private _pollTimer: number | null = null;
-  private _lastTick = 0;
+  private _lastTick = 0; // 前端已展示到的 tick / display_tick
 
   constructor(private _baseUrl: string, private _worldId: string) {}
 
@@ -37,32 +45,32 @@ export class TickPlayer {
     this._lastTick = tick;
   }
 
-  /** 加载历史事件（从 0 到 targetTick）并追加到 store，不播放动画 */
+  /** 加载历史事件（从 1 到 targetTick）并追加到 store，不播放动画 */
   async loadHistory(targetTick: number): Promise<void> {
     let since = 0;
     while (this._state === "idle" && since < targetTick) {
       try {
         const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${since}`);
         if (!resp.ok) break;
-        const data = await resp.json() as { events: TickEvent[]; current_tick: number };
+        const data = await resp.json() as EventsResponse;
         if (data.events && data.events.length > 0) {
           for (const ev of data.events) {
-            // 用事件自身的 tick，而不是 current_tick / Use event's own tick
             gameStore.appendEventAt(ev.tick, { type: ev.type, payload: ev.payload });
           }
+          since = data.display_tick;
+        } else {
+          break;
         }
-        since = data.current_tick;
-        if (since >= targetTick) break;
-        await _sleep(200);
       } catch (e) {
         console.warn(`${L} loadHistory failed`, e);
         break;
       }
     }
-    gameStore.setTick(targetTick);
+    this._lastTick = targetTick;
+    gameStore.setDisplayTick(targetTick);
   }
 
-  /** 运行 N 个 tick：通知后端批量生成，前端主动拉取，全部到齐后按顺序展示 */
+  /** 运行 N 个 tick：通知后端批量生成，前端按 display_tick 顺序展示 */
   async runTicks(n: number, onTick: (tick: number, events: TickEvent[]) => void): Promise<number> {
     if (this._state === "running") return 0;
     this._state = "running";
@@ -80,37 +88,30 @@ export class TickPlayer {
       throw e;
     }
 
-    // 2. 主动轮询 /events，直到 N 个 tick 的数据都生成完毕
+    // 2. 主动轮询 /events，按 display_tick 顺序展示，展示完一个 tick 同步一次
     let delivered = 0;
-    let lastPolledTick = startTick;
     let emptyPolls = 0;
-    while (this._state === "running" && lastPolledTick < targetTick) {
+    while (this._state === "running" && this._lastTick < targetTick) {
       try {
-        const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${lastPolledTick}`);
+        const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${this._lastTick}`);
         if (!resp.ok) {
           await _sleep(500);
           continue;
         }
-        const data = await resp.json() as { events: TickEvent[]; current_tick: number };
+        const data = await resp.json() as EventsResponse;
         if (data.events && data.events.length > 0) {
           emptyPolls = 0;
-          // 按 tick 分组并排序
-          const eventsByTick: Record<number, TickEvent[]> = {};
-          for (const ev of data.events) {
-            // 只接收 startTick < tick <= targetTick 范围内的事件
-            if (ev.tick <= startTick || ev.tick > targetTick) continue;
-            if (!eventsByTick[ev.tick]) eventsByTick[ev.tick] = [];
-            eventsByTick[ev.tick].push(ev);
+          const tick = this._lastTick + 1;
+          // 只应拿到下一个展示 tick 的事件
+          const events = data.events.filter(ev => ev.tick === tick);
+          if (events.length === 0) {
+            await _sleep(500);
+            continue;
           }
-          const ticks = Object.keys(eventsByTick).map(Number).sort((a, b) => a - b);
-          for (const tick of ticks) {
-            if (this._state !== "running") break;
-            if (tick > targetTick) break;
-            this._lastTick = tick;
-            lastPolledTick = tick;
-            await this._playTick(tick, eventsByTick[tick], onTick);
-            delivered++;
-          }
+          this._lastTick = tick;
+          await this._playTick(tick, events, onTick);
+          await this._syncDisplayTick(tick);
+          delivered++;
         } else {
           emptyPolls++;
           // 连续空轮询 5 次，检查 batch 是否已完成
@@ -125,7 +126,7 @@ export class TickPlayer {
           }
         }
 
-        if (lastPolledTick >= targetTick) break;
+        if (this._lastTick >= targetTick) break;
         await _sleep(500);
       } catch (e) {
         console.warn(`${L} runTicks poll failed`, e);
@@ -141,7 +142,7 @@ export class TickPlayer {
   async startLoop(onTick: (tick: number, events: TickEvent[]) => void): Promise<void> {
     if (this._state === "running") return;
     this._state = "running";
-    
+
     // 通知后端开始
     try {
       const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/start`, { method: "POST" });
@@ -150,7 +151,7 @@ export class TickPlayer {
       this._state = "idle";
       throw e;
     }
-    
+
     // 开始轮询
     this._startPolling(onTick);
   }
@@ -160,7 +161,7 @@ export class TickPlayer {
     if (this._state !== "running") return;
     this._state = "idle";
     this._stopPolling();
-    
+
     // 通知后端暂停
     try {
       await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/pause`, { method: "POST" });
@@ -173,7 +174,7 @@ export class TickPlayer {
   async resumeLoop(onTick: (tick: number, events: TickEvent[]) => void): Promise<void> {
     if (this._state === "running") return;
     this._state = "running";
-    
+
     // 通知后端恢复
     try {
       const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/resume`, { method: "POST" });
@@ -182,7 +183,7 @@ export class TickPlayer {
       this._state = "idle";
       throw e;
     }
-    
+
     // 开始轮询
     this._startPolling(onTick);
   }
@@ -206,40 +207,32 @@ export class TickPlayer {
 
   private _startPolling(onTick: (tick: number, events: TickEvent[]) => void) {
     if (this._pollTimer) return;
-    
+
     const poll = async () => {
       if (this._state !== "running") return;
-      
+
       try {
         const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${this._lastTick}`);
-        const data = await resp.json();
-        
+        const data = await resp.json() as EventsResponse;
+
         if (data.events && data.events.length > 0) {
-          // 按 tick 分组事件
-          const eventsByTick: Record<number, TickEvent[]> = {};
-          for (const ev of data.events) {
-            if (!eventsByTick[ev.tick]) eventsByTick[ev.tick] = [];
-            eventsByTick[ev.tick].push(ev);
-          }
-          
-          const ticks = Object.keys(eventsByTick).map(Number).sort((a, b) => a - b);
-          for (const tick of ticks) {
-            if (this._state !== "running") break;
+          const tick = this._lastTick + 1;
+          const events = data.events.filter(ev => ev.tick === tick);
+          if (events.length > 0) {
             this._lastTick = tick;
-            await this._playTick(tick, eventsByTick[tick], onTick);
+            await this._playTick(tick, events, onTick);
+            await this._syncDisplayTick(tick);
           }
-        } else if (data.current_tick > this._lastTick) {
-           this._lastTick = data.current_tick;
         }
       } catch (e) {
         console.warn(`${L} poll events failed`, e);
       }
-      
+
       if (this._state === "running") {
         this._pollTimer = window.setTimeout(poll, 1000);
       }
     };
-    
+
     this._pollTimer = window.setTimeout(poll, 500);
   }
 
@@ -273,6 +266,15 @@ export class TickPlayer {
       if (this._state !== "running" && !this._autoMode) break;
       this._emitEvent(events[i].type, events[i].payload);
       if (i < events.length - 1) await _sleep(300);
+    }
+  }
+
+  /** 同步 display_tick 到后端 / Sync display_tick to backend */
+  private async _syncDisplayTick(tick: number): Promise<void> {
+    try {
+      await fetch(`${this._baseUrl}/api/world/${this._worldId}/tick/display/${tick}`, { method: "POST" });
+    } catch (e) {
+      console.warn(`${L} sync display_tick failed`, e);
     }
   }
 

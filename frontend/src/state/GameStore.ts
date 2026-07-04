@@ -16,7 +16,7 @@ export interface GameState {
   characters: CharacterData[];
   items: ItemData[];
   scene_objects: SceneObjectData[];
-  current_tick: number;
+  display_tick: number;
   narrative: string;
   actions: ActionData[];
   events: EventData[];
@@ -38,7 +38,7 @@ class GameStore {
       characters: [],
       items: [],
       scene_objects: [],
-      current_tick: 0,
+      display_tick: 0,
       narrative: "",
       actions: [],
       events: [],
@@ -84,9 +84,7 @@ class GameStore {
   applyTickUpdate(update: TickUpdate): void {
     const d = update.data;
     console.log("[Store] applyTickUpdate type=%s tick=%d", update.type, d.tick);
-    if (d.tick) {
-      this.state.current_tick = d.tick;
-    }
+    // display_tick 由 TickPlayer 按展示进度统一控制，这里不更新
     if (update.type === "dm_narrative" && d.narrative) {
       this.state.narrative = d.narrative;
       this._appendEvents(d.events || []);
@@ -129,9 +127,9 @@ class GameStore {
     // notify() 由 applyTickUpdate 统一触发，避免 sync 双次调用
   }
 
-  /** 设置当前 tick */
-  setTick(tick: number): void {
-    this.state.current_tick = tick;
+  /** 设置前端展示 tick */
+  setDisplayTick(tick: number): void {
+    this.state.display_tick = tick;
     this.notify();
   }
 
@@ -139,7 +137,7 @@ class GameStore {
   appendEvent(ev: { type: string; payload?: Record<string, unknown> }): void {
     this.state.events.push({
       type: ev.type,
-      tick: this.state.current_tick,
+      tick: this.state.display_tick,
       description: JSON.stringify(ev.payload || {}).slice(0, 120),
       seq: ++this._eventSeq,
     } as EventData);
@@ -171,7 +169,7 @@ class GameStore {
 
   /** 清空运行时数据 / Clear runtime data */
   clear(): void {
-    this.state.current_tick = 0;
+    this.state.display_tick = 0;
     this.state.narrative = "";
     this.state.actions = [];
     this.state.events = [];

@@ -102,6 +102,7 @@ export interface EventData {
   type: string;
   tick?: number;
   description?: string;
+  payload?: Record<string, unknown>;
   source?: string;
   target?: string;
   /** 全局递增序号，用于面板去重 / Global monotonic seq for dedup */
@@ -128,7 +129,8 @@ export interface SceneObjectData {
 /** 初始世界状态 / Initial world state (HTTP API 返回) */
 export interface InitialWorldState {
   world_id: string;
-  current_tick: number;
+  data_tick: number;
+  display_tick: number;
   scenes: SceneData[];
   characters: CharacterData[];
   items: ItemData[];

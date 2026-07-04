@@ -207,7 +207,7 @@ export class GameScene extends Phaser.Scene {
     }).setScrollFactor(0).setDepth(DEPTH.HUD);
 
     this.narrativeText = this.add.text(10, CONFIG.CANVAS.height - 40,
-      "连接后端后点 [▶] 开始",
+      "",
       { fontFamily: "Segoe UI, sans-serif", fontSize: "13px", color: "#ffd700",
         backgroundColor: "rgba(0,0,0,0.7)", padding: { x: 10, y: 6 } },
     ).setScrollFactor(0).setDepth(DEPTH.HUD);

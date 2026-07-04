@@ -188,6 +188,37 @@ async def lifespan(app: FastAPI):
         )
         await db.commit()
         logger.info("[migration] Added world_id column to tick_events")
+
+    # Migration: worlds.current_tick -> data_tick + display_tick
+    world_cols = await db.fetch_all("PRAGMA table_info(worlds)")
+    if world_cols and any(c["name"] == "current_tick" for c in world_cols):
+        await db.execute("ALTER TABLE worlds RENAME COLUMN current_tick TO data_tick")
+        await db.execute("ALTER TABLE worlds ADD COLUMN display_tick INTEGER NOT NULL DEFAULT 0")
+        await db.commit()
+        logger.info("[migration] Renamed current_tick to data_tick, added display_tick")
+
+    # 自动导入默认 world-pack（DB 为空时）/ Auto-import default pack when DB is empty
+    worlds_count = await db.fetch_all("SELECT 1 FROM worlds LIMIT 1")
+    if not worlds_count:
+        from pathlib import Path
+
+        from .config import load_config
+        from .storage.chroma_client import ChromaClient
+        from .world_pack_loader.loader import WorldLoader
+
+        cfg = load_config("../config.yaml")
+        pack_id = cfg.world.default_pack
+        pack_dir = Path(__file__).parent.parent.parent / "world-pack" / pack_id
+        if pack_dir.exists():
+            logger.info("[lifespan] worlds table empty, auto-importing pack=%s", pack_id)
+            chroma = ChromaClient(persist_path=cfg.database.chroma_path)
+            loader = WorldLoader(db, chroma)
+            counts = await loader.load(pack_dir)
+            await db.commit()
+            logger.info("[lifespan] auto-imported pack=%s counts=%s", pack_id, counts)
+        else:
+            logger.warning("[lifespan] default pack not found: %s", pack_dir)
+
     yield
     if app.state.db:
         await app.state.db.close()
@@ -218,15 +249,19 @@ async def world_create(w: World):
 
 @app.get("/api/world/{world_id}/tick/next")
 async def tick_next(world_id: str):
-    """运行一个 tick 并返回事件."""
+    """运行一个 tick 并返回事件（data_tick 推进）."""
     orch = _get_orch()
     result = await orch.run_tick(world_id)
     events = await _load_tick_events(result["tick_message_id"], result["tick"])
+    world_repo = WorldRepo(_get_db())
+    display_tick = await world_repo.get_display_tick(world_id)
     return {
         "tick": result["tick"],
         "tick_message_id": result["tick_message_id"],
         "narrative": result.get("narrative", ""),
         "events": [_event_to_dict(ev) for ev in events],
+        "data_tick": result["tick"],
+        "display_tick": display_tick,
     }
 
 
@@ -276,20 +311,32 @@ async def tick_batch(world_id: str, n: int):
 
 
 @app.get("/api/world/{world_id}/events")
-async def get_events(world_id: str, since_tick: int = Query(0)):
-    """获取指定 tick 之后的事件."""
+async def get_events(
+    world_id: str,
+    since_tick: int = Query(0),
+    tick_limit: int = Query(1),
+):
+    """获取 since_tick 之后的 tick 事件，支持按 tick 数量分页.
+
+    事件面板用 tick_limit=1 保证一次只取一个展示 tick；
+    历史面板用 tick_limit=N 实现分页加载。
+    """
     db = _get_db()
     repo = TickEventRepo(db)
+    world_repo = WorldRepo(db)
 
-    # 直接查询大于 since_tick 的事件，不依赖 world.current_tick，避免竞态条件
-    # 查询范围：since_tick + 1 到 since_tick + 100 (限制单次返回数量)
-    events = await repo.load_by_tick_range(world_id, since_tick + 1, since_tick + 100)
+    tick_limit = max(1, min(tick_limit, 20))
+    start_tick = since_tick + 1
+    end_tick = since_tick + tick_limit
+    events = await repo.load_by_tick_range(world_id, start_tick, end_tick)
+    data_tick = await world_repo.get_data_tick(world_id)
+    display_tick = await world_repo.get_display_tick(world_id)
 
     if not events:
-        return {"events": [], "current_tick": since_tick}
+        return {"events": [], "display_tick": display_tick, "data_tick": data_tick}
 
     max_tick = max(e["tick"] for e in events)
-    return {"events": events, "current_tick": max_tick}
+    return {"events": events, "display_tick": max_tick, "data_tick": data_tick}
 
 
 @app.post("/api/world/{world_id}/reset")
@@ -306,6 +353,17 @@ async def world_reset(world_id: str):
     await db.commit()
     log_api("world.reset", world_id)
     return {"status": "ok"}
+
+
+@app.post("/api/world/{world_id}/tick/display/{tick}")
+async def set_display_tick(world_id: str, tick: int):
+    """前端展示完一个 tick 后，更新 display_tick."""
+    if tick < 0:
+        raise HTTPException(status_code=400, detail="tick must be non-negative")
+    world_repo = WorldRepo(_get_db())
+    await world_repo.set_display_tick(world_id, tick)
+    log_api("tick.display", f"{world_id}:{tick}")
+    return {"status": "ok", "world_id": world_id, "display_tick": tick}
 
 
 # ── World State + Health ──
@@ -364,11 +422,15 @@ async def get_pack_state(world_id: str):
             }
             for r in await db.fetch_all("SELECT * FROM scene_objects")
         ]
-        world_row = await db.fetch_one("SELECT current_tick FROM worlds WHERE id = ?", (world_id,))
-        current_tick = world_row["current_tick"] if world_row else 0
+        world_row = await db.fetch_one(
+            "SELECT data_tick, display_tick FROM worlds WHERE id = ?", (world_id,)
+        )
+        data_tick = world_row["data_tick"] if world_row else 0
+        display_tick = world_row["display_tick"] if world_row else 0
         return {
             "world_id": world_id,
-            "current_tick": current_tick,
+            "data_tick": data_tick,
+            "display_tick": display_tick,
             "scenes": scenes,
             "characters": pcs + actors,
             "items": items,

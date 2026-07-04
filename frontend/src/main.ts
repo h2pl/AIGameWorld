@@ -43,12 +43,19 @@ async function main(): Promise<void> {
   console.log(`${L} world_id=${packId}`);
 
   // 加载世界数据 / Load world data — 全部依赖后端，失败则提示
-  const world = await loadWorldState(packId);
+  let world = await loadWorldState(packId);
+  const backendReady = !!world;
   if (!world) {
-    const msg = "❌ 后端未启动。请先运行 aw serve 或 make backend-dev";
-    console.error(`${L} ${msg}`);
-    document.body.innerHTML = `<div style="color:#ff6b6b;font:16px sans-serif;padding:40px;text-align:center">${msg}</div>`;
-    return;
+    console.error(`${L} backend unreachable, rendering UI with disabled controls`);
+    world = {
+      world_id: packId,
+      data_tick: 0,
+      display_tick: 0,
+      scenes: [],
+      characters: [],
+      items: [],
+      scene_objects: [],
+    };
   }
   console.log(`${L} world loaded: ${world.scenes.length} scenes, ${world.characters.length} chars`);
   gameStore.setWorldState(
@@ -118,7 +125,7 @@ async function main(): Promise<void> {
 
   const statusEl = document.createElement("span");
   statusEl.style.cssText = "padding:6px 14px;border-radius:4px;background:rgba(0,0,0,0.7);color:#ffd700;font-size:13px;font-weight:bold;min-width:140px;text-align:center;border:1px solid rgba(255,215,0,0.3);";
-  statusEl.textContent = "就绪";
+  statusEl.textContent = backendReady ? "就绪" : "后端未就绪";
 
   bar.appendChild(tInput);
   bar.appendChild(btnRunN);
@@ -170,22 +177,25 @@ async function main(): Promise<void> {
     const idle = runState === "idle";
     const running = runState === "running";
     const paused = runState === "paused";
-    
-    btnRunN.disabled = !idle;
-    btnRunN.style.opacity = idle ? "1" : "0.4";
-    
-    btnStart.disabled = !idle;
+    const controlsEnabled = backendReady && idle;
+
+    btnRunN.disabled = !controlsEnabled;
+    btnRunN.style.opacity = controlsEnabled ? "1" : "0.4";
+
+    btnStart.disabled = !controlsEnabled;
     btnStart.style.display = (idle || running) ? "inline-block" : "none";
-    btnStart.style.opacity = idle ? "1" : "0.4";
-    
-    btnPause.disabled = !running;
+    btnStart.style.opacity = controlsEnabled ? "1" : "0.4";
+
+    btnPause.disabled = !running || !backendReady;
     btnPause.style.display = (idle || running) ? "inline-block" : "none";
-    btnPause.style.opacity = running ? "1" : "0.4";
-    
+    btnPause.style.opacity = running && backendReady ? "1" : "0.4";
+
     btnResume.style.display = paused ? "inline-block" : "none";
-    
-    btnReset.disabled = running;
-    btnReset.style.opacity = running ? "0.4" : "1";
+    btnResume.disabled = !backendReady;
+    btnResume.style.opacity = backendReady ? "1" : "0.4";
+
+    btnReset.disabled = running || !backendReady;
+    btnReset.style.opacity = running || !backendReady ? "0.4" : "1";
   }
   updateButtons();
 
@@ -194,11 +204,11 @@ async function main(): Promise<void> {
   const player = new TickPlayer(CONFIG.API.base, world.world_id);
 
   // 同步当前 tick 并加载历史事件 / Sync current tick and load history
-  const initialTick = world.current_tick || 0;
-  player.setLastTick(initialTick);
-  if (initialTick > 0) {
-    statusEl.textContent = `已运行到 Tick ${initialTick}`;
-    await player.loadHistory(initialTick);
+  const displayTick = world.display_tick || 0;
+  player.setLastTick(displayTick);
+  if (displayTick > 0) {
+    statusEl.textContent = `已展示到 Tick ${displayTick}`;
+    await player.loadHistory(displayTick);
   }
 
   // 事件 → Store 桥接 / Event → Store bridge
@@ -215,7 +225,7 @@ async function main(): Promise<void> {
   const historyPanel = new HistoryEventPanel(world.world_id);
   historyPanel.mount(document.body);
   window.addEventListener("show-event-history", () => {
-    historyPanel.open(gameStore.getState().current_tick);
+    historyPanel.open(gameStore.getState().display_tick);
   });
 
   // 叙事转发 / Narrative relay to GameScene
@@ -227,9 +237,9 @@ async function main(): Promise<void> {
   // ── 按钮行为 / Button behaviors ──
 
   const onTickCallback = (tick: number, events: any[]) => {
-    statusEl.textContent = `Tick ${tick} (${events.length} events)`;
-    gameStore.setTick(tick);
-    console.log(`${L} tick=${tick} events=${events.map(e => e.type).join(',')}`);
+    statusEl.textContent = `展示 Tick ${tick} (${events.length} events)`;
+    gameStore.setDisplayTick(tick);
+    console.log(`${L} display_tick=${tick} events=${events.map(e => e.type).join(',')}`);
   };
 
   btnRunN.onclick = async () => {
@@ -295,7 +305,7 @@ async function main(): Promise<void> {
       await player.reset();
       runState = "idle"; updateButtons();
       statusEl.textContent = "已重置";
-      gameStore.setTick(0);
+      gameStore.setDisplayTick(0);
       // 重新加载世界状态
       window.location.reload();
     } catch (e) {

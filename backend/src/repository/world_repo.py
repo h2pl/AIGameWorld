@@ -13,8 +13,8 @@ class WorldRepo:
 
     async def create(self, w: World) -> None:
         await self._db.execute(
-            "INSERT INTO worlds (id, name, description, version, rule_set, author, starting_scene, current_tick) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO worlds (id, name, description, version, rule_set, author, starting_scene, data_tick, display_tick) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 w.id,
                 w.name,
@@ -23,7 +23,8 @@ class WorldRepo:
                 w.rule_set,
                 w.author,
                 w.starting_scene,
-                w.current_tick,
+                w.data_tick,
+                w.display_tick,
             ),
         )
         await self._db.commit()
@@ -31,7 +32,7 @@ class WorldRepo:
 
     async def get(self, world_id: str) -> World | None:
         row = await self._db.fetch_one(
-            "SELECT id, name, description, version, rule_set, author, starting_scene, current_tick "
+            "SELECT id, name, description, version, rule_set, author, starting_scene, data_tick, display_tick "
             "FROM worlds WHERE id = ?",
             (world_id,),
         )
@@ -39,35 +40,51 @@ class WorldRepo:
 
     async def list_all(self) -> list[World]:
         rows = await self._db.fetch_all(
-            "SELECT id, name, description, version, rule_set, author, starting_scene, current_tick FROM worlds"
+            "SELECT id, name, description, version, rule_set, author, starting_scene, data_tick, display_tick FROM worlds"
         )
         return [_row_to_world(r) for r in rows]
 
-    async def get_tick(self, world_id: str) -> int:
-        """获取当前 tick，world 不存在返回 0."""
+    async def get_data_tick(self, world_id: str) -> int:
+        """获取后端已生成的最新 data_tick，world 不存在返回 0."""
         row = await self._db.fetch_one(
-            "SELECT current_tick FROM worlds WHERE id = ?",
+            "SELECT data_tick FROM worlds WHERE id = ?",
             (world_id,),
         )
-        return row["current_tick"] if row else 0
+        return row["data_tick"] if row else 0
 
-    async def increment_tick(self, world_id: str) -> int:
-        """tick+1 并返回新值."""
+    async def get_display_tick(self, world_id: str) -> int:
+        """获取前端已展示到的 tick，world 不存在返回 0."""
+        row = await self._db.fetch_one(
+            "SELECT display_tick FROM worlds WHERE id = ?",
+            (world_id,),
+        )
+        return row["display_tick"] if row else 0
+
+    async def increment_data_tick(self, world_id: str) -> int:
+        """data_tick +1 并返回新值."""
         await self._db.execute(
-            "UPDATE worlds SET current_tick = current_tick + 1 WHERE id = ?",
+            "UPDATE worlds SET data_tick = data_tick + 1 WHERE id = ?",
             (world_id,),
         )
         await self._db.commit()
         row = await self._db.fetch_one(
-            "SELECT current_tick FROM worlds WHERE id = ?",
+            "SELECT data_tick FROM worlds WHERE id = ?",
             (world_id,),
         )
-        return row["current_tick"] if row else 0
+        return row["data_tick"] if row else 0
+
+    async def set_display_tick(self, world_id: str, tick: int) -> None:
+        """更新前端已展示到的 tick."""
+        await self._db.execute(
+            "UPDATE worlds SET display_tick = ? WHERE id = ?",
+            (tick, world_id),
+        )
+        await self._db.commit()
 
     async def reset_tick(self, world_id: str) -> None:
-        """重置 tick 为 0."""
+        """重置 data_tick 和 display_tick 为 0."""
         await self._db.execute(
-            "UPDATE worlds SET current_tick = 0 WHERE id = ?",
+            "UPDATE worlds SET data_tick = 0, display_tick = 0 WHERE id = ?",
             (world_id,),
         )
         await self._db.commit()
@@ -82,5 +99,6 @@ def _row_to_world(row: dict) -> World:
         rule_set=row.get("rule_set", "dnd_5e_srd"),
         author=row.get("author", ""),
         starting_scene=row.get("starting_scene", ""),
-        current_tick=row.get("current_tick", 0),
+        data_tick=row.get("data_tick", 0),
+        display_tick=row.get("display_tick", 0),
     )
