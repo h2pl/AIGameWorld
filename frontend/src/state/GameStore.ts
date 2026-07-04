@@ -149,6 +149,20 @@ class GameStore {
     this.notify();
   }
 
+  /** 追加事件到列表，指定 tick（用于历史加载）/ Append event at specific tick (for history) */
+  appendEventAt(tick: number, ev: { type: string; payload?: Record<string, unknown> }): void {
+    this.state.events.push({
+      type: ev.type,
+      tick,
+      description: JSON.stringify(ev.payload || {}).slice(0, 120),
+      seq: ++this._eventSeq,
+    } as EventData);
+    if (this.state.events.length > 200) {
+      this.state.events = this.state.events.slice(-200);
+    }
+    this.notify();
+  }
+
   /** 添加叙事 / Add narrative */
   addNarrative(text: string): void {
     this.state.narrative = text;

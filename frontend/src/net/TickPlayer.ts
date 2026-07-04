@@ -47,7 +47,8 @@ export class TickPlayer {
         const data = await resp.json() as { events: TickEvent[]; current_tick: number };
         if (data.events && data.events.length > 0) {
           for (const ev of data.events) {
-            gameStore.appendEvent({ type: ev.type, payload: ev.payload });
+            // 用事件自身的 tick，而不是 current_tick / Use event's own tick
+            gameStore.appendEventAt(ev.tick, { type: ev.type, payload: ev.payload });
           }
         }
         since = data.current_tick;
@@ -69,10 +70,14 @@ export class TickPlayer {
     const targetTick = startTick + n;
 
     // 1. 通知后端跑 N 个 tick（不等待返回数据）
-    const notify = await fetch(`${this._baseUrl}/api/world/${this._worldId}/tick/batch/${n}`, { method: "POST" });
-    if (!notify.ok) {
+    try {
+      const notify = await fetch(`${this._baseUrl}/api/world/${this._worldId}/tick/batch/${n}`, { method: "POST" });
+      if (!notify.ok) {
+        throw new Error(`${L} batch/${n} failed: ${notify.status}`);
+      }
+    } catch (e) {
       this._state = "idle";
-      throw new Error(`${L} batch/${n} failed: ${notify.status}`);
+      throw e;
     }
 
     // 2. 主动轮询 /events，直到 N 个 tick 的数据都生成完毕
@@ -81,35 +86,26 @@ export class TickPlayer {
     let emptyPolls = 0;
     while (this._state === "running" && lastPolledTick < targetTick) {
       try {
-        const [eventsResp, statusResp] = await Promise.all([
-          fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${lastPolledTick}`),
-          fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/status`),
-        ]);
-
-        let batchDone = false;
-        let batchCompleted = 0;
-        if (statusResp.ok) {
-          const status = await statusResp.json() as { batch_running: boolean; batch_completed?: number };
-          batchDone = !status.batch_running;
-          batchCompleted = status.batch_completed || 0;
-        }
-
-        if (!eventsResp.ok) {
+        const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${lastPolledTick}`);
+        if (!resp.ok) {
           await _sleep(500);
           continue;
         }
-        const data = await eventsResp.json() as { events: TickEvent[]; current_tick: number };
+        const data = await resp.json() as { events: TickEvent[]; current_tick: number };
         if (data.events && data.events.length > 0) {
           emptyPolls = 0;
           // 按 tick 分组并排序
           const eventsByTick: Record<number, TickEvent[]> = {};
           for (const ev of data.events) {
+            // 只接收 startTick < tick <= targetTick 范围内的事件
+            if (ev.tick <= startTick || ev.tick > targetTick) continue;
             if (!eventsByTick[ev.tick]) eventsByTick[ev.tick] = [];
             eventsByTick[ev.tick].push(ev);
           }
           const ticks = Object.keys(eventsByTick).map(Number).sort((a, b) => a - b);
           for (const tick of ticks) {
             if (this._state !== "running") break;
+            if (tick > targetTick) break;
             this._lastTick = tick;
             lastPolledTick = tick;
             await this._playTick(tick, eventsByTick[tick], onTick);
@@ -117,9 +113,15 @@ export class TickPlayer {
           }
         } else {
           emptyPolls++;
-          // batch 已完成且连续空轮询，说明没有更多事件要消费
-          if (batchDone && (batchCompleted >= n || emptyPolls >= 2)) {
-            break;
+          // 连续空轮询 5 次，检查 batch 是否已完成
+          if (emptyPolls >= 5) {
+            try {
+              const statusResp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/status`);
+              if (statusResp.ok) {
+                const status = await statusResp.json() as { batch_running: boolean };
+                if (!status.batch_running) break;
+              }
+            } catch { /* ignore */ }
           }
         }
 
@@ -141,7 +143,13 @@ export class TickPlayer {
     this._state = "running";
     
     // 通知后端开始
-    await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/start`, { method: "POST" });
+    try {
+      const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/start`, { method: "POST" });
+      if (!resp.ok) throw new Error(`${L} loop/start failed: ${resp.status}`);
+    } catch (e) {
+      this._state = "idle";
+      throw e;
+    }
     
     // 开始轮询
     this._startPolling(onTick);
@@ -154,7 +162,11 @@ export class TickPlayer {
     this._stopPolling();
     
     // 通知后端暂停
-    await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/pause`, { method: "POST" });
+    try {
+      await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/pause`, { method: "POST" });
+    } catch (e) {
+      console.warn(`${L} loop/pause failed`, e);
+    }
   }
 
   /** 恢复持续循环 */
@@ -163,7 +175,13 @@ export class TickPlayer {
     this._state = "running";
     
     // 通知后端恢复
-    await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/resume`, { method: "POST" });
+    try {
+      const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/resume`, { method: "POST" });
+      if (!resp.ok) throw new Error(`${L} loop/resume failed: ${resp.status}`);
+    } catch (e) {
+      this._state = "idle";
+      throw e;
+    }
     
     // 开始轮询
     this._startPolling(onTick);
