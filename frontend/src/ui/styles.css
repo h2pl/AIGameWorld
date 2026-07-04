@@ -101,12 +101,19 @@
 .event-body { max-height: 220px; }
 
 .event-line {
-  padding: 2px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 3px 0;
   line-height: 1.4;
   color: #a0aec0;
   font-size: 11px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
+
+.event-icon { font-size: 12px; flex-shrink: 0; }
+.event-type { color: #ffd700; font-weight: 500; flex-shrink: 0; }
+.event-content { color: #c8d6e5; flex: 1; word-break: break-all; }
 
 .panel-history-btn {
   background: rgba(255, 255, 255, 0.1);
