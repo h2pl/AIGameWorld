@@ -1,11 +1,16 @@
+# Elderwood Village 场景定义 / Scene definition
+# 对应 tilemap: tuxemon-town.json (40x40 tiles, 32px)
 id: "village_elderwood"
 name: "Elderwood Village"
 type: "village"
 description: "A quiet border village, smoke rising from the blacksmith's chimney."
-grid:
-  width: 20
-  height: 15
-  tile_size: 48
+spawn:  # 出生点 / Spawn point
+  x: 20
+  y: 20
+grid:  # 地图尺寸 / Map dimensions
+  width: 40
+  height: 40
+  tile_size: 32
 landmarks:
   - id: "blacksmith_shop"
     name: "Blacksmith"

@@ -86,8 +86,10 @@ async def _seed_scenes(scene_repo: SceneRepo, world_id: str) -> None:
             "type": "village",
             "description": "A quiet border village, smoke rising from the blacksmith's chimney.",
             "map_key": "tuxemon-map",
-            "spawn_x": 10,
-            "spawn_y": 7,
+            "spawn_x": 20,
+            "spawn_y": 20,
+            "map_width": 40,
+            "map_height": 40,
         }
     ]
     for s in scenes:
@@ -189,8 +191,8 @@ async def _seed_scene_objects(scene_repo: SceneRepo, world_id: str) -> None:
             name="Wooden Chest",
             object_type=SceneObjectType.CONTAINER,
             scene_id="village_elderwood",
-            position_x=6,
-            position_y=6,
+            position_x=16,
+            position_y=16,
             world_id=world_id,
         ),
         SceneObject(
@@ -198,8 +200,8 @@ async def _seed_scene_objects(scene_repo: SceneRepo, world_id: str) -> None:
             name="Cellar Door",
             object_type=SceneObjectType.DOOR,
             scene_id="village_elderwood",
-            position_x=13,
-            position_y=4,
+            position_x=24,
+            position_y=20,
             world_id=world_id,
         ),
     ]
@@ -349,8 +351,8 @@ async def _seed_actors(pc_repo: PcRepo, world_id: str) -> None:
             "role": "blacksmith",
             "race": "dwarf",
             "disposition": "neutral",
-            "x": 5,
-            "y": 7,
+            "x": 15,
+            "y": 17,
             "attributes": {
                 "strength": 16,
                 "dexterity": 10,
@@ -369,8 +371,8 @@ async def _seed_actors(pc_repo: PcRepo, world_id: str) -> None:
             "role": "guard",
             "race": "human",
             "disposition": "friendly",
-            "x": 10,
-            "y": 5,
+            "x": 22,
+            "y": 18,
             "attributes": {
                 "strength": 14,
                 "dexterity": 12,
@@ -389,8 +391,8 @@ async def _seed_actors(pc_repo: PcRepo, world_id: str) -> None:
             "role": "merchant",
             "race": "human",
             "disposition": "neutral",
-            "x": 10,
-            "y": 8,
+            "x": 26,
+            "y": 20,
             "attributes": {
                 "strength": 8,
                 "dexterity": 10,
