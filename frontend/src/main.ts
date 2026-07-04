@@ -99,9 +99,8 @@ async function main(): Promise<void> {
 
 
   // ── 控制器 / Controller (P5-4: 状态机 + ▶运行 ⏭自动 ⏸停止) ──
-  type RunState = "idle" | "connecting" | "running";
+  type RunState = "idle" | "connecting" | "running" | "paused";
   let runState: RunState = "idle";
-  let autoMode = false;
 
   const bar = document.createElement("div");
   bar.style.cssText = "position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:999;align-items:center;";
@@ -110,19 +109,23 @@ async function main(): Promise<void> {
   const tInput = document.createElement("input");
   tInput.value = "3"; tInput.style.cssText = "width:50px;text-align:center;border-radius:4px;border:1px solid #555;background:#222;color:#fff;";
 
-  const btnRun  = makeBtn("▶ 运行", "#2ecc71");
-  const btnAuto = makeBtn("⏭ 自动", "#3498db");
-  const btnStop = makeBtn("⏸ 停止", "#e74c3c");
-  const btnMap  = makeBtn("🗺 地图", "#8e44ad");
+  const btnRunN = makeBtn("跑N个Tick", "#8e44ad");
+  const btnStart = makeBtn("▶ 开始", "#2ecc71");
+  const btnPause = makeBtn("⏸ 暂停", "#f39c12");
+  const btnResume = makeBtn("⏯ 恢复", "#3498db");
+  const btnReset = makeBtn("⏹ 重置", "#e74c3c");
+  const btnMap  = makeBtn("🗺 地图", "#555");
 
   const statusEl = document.createElement("span");
   statusEl.style.cssText = "padding:6px 14px;border-radius:4px;background:rgba(0,0,0,0.7);color:#ffd700;font-size:13px;font-weight:bold;min-width:140px;text-align:center;border:1px solid rgba(255,215,0,0.3);";
   statusEl.textContent = "就绪";
 
   bar.appendChild(tInput);
-  bar.appendChild(btnRun);
-  bar.appendChild(btnAuto);
-  bar.appendChild(btnStop);
+  bar.appendChild(btnRunN);
+  bar.appendChild(btnStart);
+  bar.appendChild(btnPause);
+  bar.appendChild(btnResume);
+  bar.appendChild(btnReset);
   bar.appendChild(btnMap);
   bar.appendChild(statusEl);
 
@@ -156,14 +159,23 @@ async function main(): Promise<void> {
   function updateButtons(): void {
     const idle = runState === "idle";
     const running = runState === "running";
-    btnRun.disabled = !idle;
-    btnRun.style.opacity = idle ? "1" : "0.4";
-    btnAuto.disabled = !idle && !running;
-    btnAuto.style.opacity = (!idle && !running) ? "0.4" : "1";
-    btnAuto.textContent = autoMode ? "自动中" : "⏭ 自动";
-    btnAuto.style.background = autoMode ? "#f39c12" : "#3498db";
-    btnStop.disabled = idle;
-    btnStop.style.opacity = idle ? "0.4" : "1";
+    const paused = runState === "paused";
+    
+    btnRunN.disabled = !idle;
+    btnRunN.style.opacity = idle ? "1" : "0.4";
+    
+    btnStart.disabled = !idle;
+    btnStart.style.display = (idle || running) ? "inline-block" : "none";
+    btnStart.style.opacity = idle ? "1" : "0.4";
+    
+    btnPause.disabled = !running;
+    btnPause.style.display = (idle || running) ? "inline-block" : "none";
+    btnPause.style.opacity = running ? "1" : "0.4";
+    
+    btnResume.style.display = paused ? "inline-block" : "none";
+    
+    btnReset.disabled = running;
+    btnReset.style.opacity = running ? "0.4" : "1";
   }
   updateButtons();
 
@@ -188,19 +200,21 @@ async function main(): Promise<void> {
 
   // ── 按钮行为 / Button behaviors ──
 
-  btnRun.onclick = async () => {
+  const onTickCallback = (tick: number, events: any[]) => {
+    statusEl.textContent = `Tick ${tick} (${events.length} events)`;
+    gameStore.setTick(tick);
+    console.log(`${L} tick=${tick} events=${events.map(e => e.type).join(',')}`);
+  };
+
+  btnRunN.onclick = async () => {
     if (runState !== "idle") return;
     const n = parseInt(tInput.value) || 1;
-    console.log(`${L} ▶ 运行: ticks=${n}`);
+    console.log(`${L} 跑N个Tick: ticks=${n}`);
     runState = "connecting"; updateButtons();
     try {
       runState = "running"; updateButtons();
       statusEl.textContent = "运行中...";
-      const delivered = await player.runTicks(n, (tick, events) => {
-        statusEl.textContent = `Tick ${tick}/${n} (${events.length} events)`;
-        gameStore.setTick(tick);
-        console.log(`${L} tick=${tick} events=${events.map(e => e.type).join(',')}`);
-      });
+      const delivered = await player.runTicks(n, onTickCallback);
       statusEl.textContent = `完成: ${delivered} tick`;
     } catch (e) {
       statusEl.textContent = "错误";
@@ -210,30 +224,57 @@ async function main(): Promise<void> {
     }
   };
 
-  btnAuto.onclick = async () => {
-    if (runState === "idle") {
-      autoMode = true;
-      runState = "connecting"; updateButtons();
-      try {
-        runState = "running"; updateButtons();
-        await player.runAuto((tick, events) => {
-          statusEl.textContent = `自动中: Tick ${tick}`;
-          gameStore.setTick(tick);
-        });
-      } catch (e) {
-        console.error(`${L} auto failed:`, e);
-      } finally {
-        autoMode = false; runState = "idle"; updateButtons();
-        statusEl.textContent = "已停止";
-      }
+  btnStart.onclick = async () => {
+    if (runState !== "idle") return;
+    runState = "connecting"; updateButtons();
+    try {
+      runState = "running"; updateButtons();
+      statusEl.textContent = "持续运行中...";
+      await player.startLoop(onTickCallback);
+    } catch (e) {
+      console.error(`${L} start failed:`, e);
+      runState = "idle"; updateButtons();
+      statusEl.textContent = "错误";
     }
   };
 
-  btnStop.onclick = () => {
-    player.stop();
-    autoMode = false;
-    runState = "idle"; updateButtons();
-    statusEl.textContent = "已停止";
+  btnPause.onclick = async () => {
+    if (runState !== "running") return;
+    try {
+      await player.pauseLoop();
+      runState = "paused"; updateButtons();
+      statusEl.textContent = "已暂停";
+    } catch (e) {
+      console.error(`${L} pause failed:`, e);
+    }
+  };
+
+  btnResume.onclick = async () => {
+    if (runState !== "paused") return;
+    runState = "connecting"; updateButtons();
+    try {
+      runState = "running"; updateButtons();
+      statusEl.textContent = "持续运行中...";
+      await player.resumeLoop(onTickCallback);
+    } catch (e) {
+      console.error(`${L} resume failed:`, e);
+      runState = "paused"; updateButtons();
+      statusEl.textContent = "错误";
+    }
+  };
+
+  btnReset.onclick = async () => {
+    if (runState === "running") return;
+    try {
+      await player.reset();
+      runState = "idle"; updateButtons();
+      statusEl.textContent = "已重置";
+      gameStore.setTick(0);
+      // 重新加载世界状态
+      window.location.reload();
+    } catch (e) {
+      console.error(`${L} reset failed:`, e);
+    }
   };
 
 

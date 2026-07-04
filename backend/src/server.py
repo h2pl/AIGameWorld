@@ -4,6 +4,7 @@ World CRUD + Tick 执行 + DB Viewer.
 Orchestrator 直接驱动 graph，无后台任务 / Orchestrator drives graph directly, no background tasks.
 """
 
+import asyncio
 import json
 from contextlib import asynccontextmanager
 
@@ -28,6 +29,41 @@ from src.viewer import (
 )
 
 logger = get_logger(__name__)
+
+
+# ── Tick Loop Manager ──
+class TickLoopManager:
+    def __init__(self):
+        self.running_worlds: dict[str, bool] = {}
+        self.tasks: dict[str, asyncio.Task] = {}
+
+    async def _loop(self, world_id: str, orch):
+        logger.info(f"[loop] Started continuous tick loop for world {world_id}")
+        while self.running_worlds.get(world_id, False):
+            try:
+                await orch.run_tick(world_id)
+                await asyncio.sleep(0.5)  # Prevent CPU hogging
+            except Exception as e:
+                logger.error(f"[loop] Error in tick loop for {world_id}: {e}")
+                self.running_worlds[world_id] = False
+                break
+        logger.info(f"[loop] Stopped continuous tick loop for world {world_id}")
+
+    def start(self, world_id: str, orch):
+        if self.running_worlds.get(world_id):
+            return
+        self.running_worlds[world_id] = True
+        self.tasks[world_id] = asyncio.create_task(self._loop(world_id, orch))
+
+    def stop(self, world_id: str):
+        self.running_worlds[world_id] = False
+        if world_id in self.tasks:
+            # We don't cancel immediately to let the current tick finish gracefully
+            pass
+
+
+loop_manager = TickLoopManager()
+
 try:
     from .config import load_config
     from .utils.logging import configure_console, configure_format
@@ -127,9 +163,54 @@ async def tick_next(world_id: str):
     }
 
 
+@app.post("/api/world/{world_id}/loop/start")
+async def loop_start(world_id: str):
+    """开始持续 Tick 循环."""
+    loop_manager.start(world_id, _get_orch())
+    return {"status": "ok", "running": True}
+
+
+@app.post("/api/world/{world_id}/loop/pause")
+async def loop_pause(world_id: str):
+    """暂停持续 Tick 循环."""
+    loop_manager.stop(world_id)
+    return {"status": "ok", "running": False}
+
+
+@app.post("/api/world/{world_id}/loop/resume")
+async def loop_resume(world_id: str):
+    """恢复持续 Tick 循环."""
+    loop_manager.start(world_id, _get_orch())
+    return {"status": "ok", "running": True}
+
+
+@app.get("/api/world/{world_id}/loop/status")
+async def loop_status(world_id: str):
+    """获取循环状态."""
+    return {"running": loop_manager.running_worlds.get(world_id, False)}
+
+
+@app.get("/api/world/{world_id}/events")
+async def get_events(world_id: str, since_tick: int = Query(0)):
+    """获取指定 tick 之后的事件."""
+    db = _get_db()
+    repo = TickEventRepo(db)
+    # We need to get the current tick to know the range
+    world_repo = WorldRepo(db)
+    world = await world_repo.get(world_id)
+    current_tick = world.current_tick if world else 0
+
+    if since_tick >= current_tick:
+        return {"events": [], "current_tick": current_tick}
+
+    events = await repo.load_by_tick_range(world_id, since_tick + 1, current_tick)
+    return {"events": events, "current_tick": current_tick}
+
+
 @app.post("/api/world/{world_id}/reset")
 async def world_reset(world_id: str):
     """重置 world 的 tick 计数."""
+    loop_manager.stop(world_id)
     await _get_orch().reset(world_id)
     return {"status": "ok"}
 
