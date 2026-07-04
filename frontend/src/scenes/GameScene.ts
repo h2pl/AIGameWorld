@@ -347,6 +347,11 @@ export class GameScene extends Phaser.Scene {
       const last = waypoints[waypoints.length - 1];
       const finalX = last.x;
       const finalY = last.y;
+      // 已在行走时跳过，不打断当前动画 / Skip if already walking to avoid stuttering
+      if (sprite.isWalking()) {
+        console.log("[Scene] explore skip: %s already walking", pcId);
+        continue;
+      }
       sprite.cancelWalk();
       sprite.walkPath(worldWaypoints, TILEMAP.WALK_SPEED, () => {
         // 走完后同步坐标到 store，避免下次 sync 瞬移 / Sync final pos to store after walk
@@ -368,6 +373,11 @@ export class GameScene extends Phaser.Scene {
     for (const wt of wtList) {
       const sprite = this.charManager?.getSprite(wt.pc_id);
       if (!sprite) continue;
+      // 已在行走时跳过，不打断探索 / Skip if already walking (e.g. exploring)
+      if (sprite.isWalking()) {
+        console.log("[Scene] walk-to-talk skip: %s already walking", wt.pc_id);
+        continue;
+      }
       // 走到目标旁边（相邻格）/ Walk to adjacent tile of target
       const targetTx = wt.target_position.x;
       const targetTy = wt.target_position.y;

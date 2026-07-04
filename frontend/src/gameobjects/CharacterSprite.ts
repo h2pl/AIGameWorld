@@ -92,7 +92,13 @@ export class CharacterSprite {
   cancelWalk(): void {
     this.walkSteps = [];
     this.walkIdx = 0;
+    this.walkOnComplete = null;
     this.scene.tweens.killTweensOf(this.sprite);
+  }
+
+  /** 是否正在行走 / Whether the sprite is currently walking */
+  isWalking(): boolean {
+    return this.walkSteps.length > 0;
   }
 
   /** 显示对话泡泡 / Show dialogue bubble above character */
