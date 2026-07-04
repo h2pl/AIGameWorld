@@ -1,6 +1,15 @@
-/** 事件面板 / Event Panel — 只展示当前 tick 的事件，切换 tick 时刷新 */
+/** 事件面板 / Event Panel
+ *
+ * 数据来源：直接监听 window "tick-event"，不依赖 GameStore.state.events。
+ * Store 仅用于检测 display_tick 变化（触发面板清空）。
+ * 历史事件面板（HistoryEventPanel）独立从后端 API 拉取数据。
+ *
+ * Data source: listens directly to window "tick-event", independent of GameStore.state.events.
+ * Store is only used to detect display_tick changes (triggers panel clear).
+ * HistoryEventPanel independently fetches from backend API.
+ */
 import { Panel } from "./Panel";
-import { gameStore, type GameState } from "../state/GameStore";
+import { gameStore } from "../state/GameStore";
 import type { EventData } from "../types";
 
 /** 事件类型 → 图标 / Event type → icon */
@@ -22,11 +31,14 @@ export class EventPanel extends Panel {
   private listEl!: HTMLElement; // 事件列表容器 / Event list container
   private tickBadgeEl!: HTMLElement; // Tick 徽章 / Tick badge
   private currentTick = 0; // 当前展示的 tick / Currently displayed tick
-  /** 当前 tick 内已渲染的最后一个 seq */
-  private renderedSeq = 0;
+  /** tick-event 监听器引用，用于 destroy 时移除 / Listener ref for cleanup */
+  private _onTickEvent: (e: Event) => void;
 
   constructor() {
     super("event-panel");
+    this._onTickEvent = (e: Event) => {
+      this._handleTickEvent((e as CustomEvent).detail);
+    };
   }
 
   protected buildDOM(): HTMLElement {
@@ -53,46 +65,37 @@ export class EventPanel extends Panel {
   }
 
   protected bindStore(): void {
-    this.unsubscribe = gameStore.subscribe((s: GameState) => {
-      this.onStateChange(s);
+    // 仅订阅 display_tick 变化以清空面板 / Only subscribe to detect tick changes
+    this.unsubscribe = gameStore.subscribe((s) => {
+      if (s.display_tick !== this.currentTick) {
+        this.currentTick = s.display_tick;
+        this.listEl.innerHTML = "";
+        this.tickBadgeEl.textContent = `Display_Tick=${this.currentTick}`;
+        if (this.currentTick === 0) {
+          this.listEl.innerHTML = `<div class="event-empty">等待开始...</div>`;
+        }
+      }
     });
+
+    // 直接监听 tick-event 获取事件数据 / Listen directly to tick-event for event data
+    window.addEventListener("tick-event", this._onTickEvent);
   }
 
-  private onStateChange(state: GameState): void {
-    // tick 切换时清空面板，重置已渲染 seq / Clear panel on tick change
-    if (state.display_tick !== this.currentTick) {
-      this.currentTick = state.display_tick;
-      this.listEl.innerHTML = "";
-      this.renderedSeq = 0;
-      this.tickBadgeEl.textContent = `Display_Tick=${this.currentTick}`;
-      if (this.currentTick === 0) {
-        this.listEl.innerHTML = `<div class="event-empty">等待开始...</div>`;
-      }
-    }
+  /** 处理 tick-event — 只追加当前 tick 的事件 / Handle tick-event, only append current tick events */
+  private _handleTickEvent(detail: { type: string; payload: Record<string, unknown> }): void {
+    const displayTick = gameStore.getState().display_tick;
+    if (displayTick !== this.currentTick || displayTick === 0) return;
 
-    console.log("[EventPanel] stateChange tick=%d events=%d", this.currentTick, state.events?.length || 0, state.events?.map(e => ({t: e.type, tick: e.tick, seq: e.seq})));
-    if (!state.events || state.events.length === 0) return;
+    const ev: EventData = { type: detail.type, tick: displayTick, payload: detail.payload };
 
-    // 只渲染当前 tick 且 seq > renderedSeq 的新事件 / Only render current tick's new events
-    const newEvents = state.events.filter(
-      (ev) => ev.tick === this.currentTick && (ev.seq ?? 0) > this.renderedSeq,
-    );
-    console.log("[EventPanel] newEvents=%d renderedSeq=%d", newEvents.length, this.renderedSeq);
-    if (newEvents.length === 0) return;
-
-    // 首次有事件时移除空状态提示 / Remove empty state on first event
+    // 移除空状态提示 / Remove empty state
     if (this.listEl.querySelector(".event-empty")) {
       this.listEl.innerHTML = "";
     }
 
-    const frag = document.createDocumentFragment();
-    for (const ev of newEvents) {
-      if (ev.seq) this.renderedSeq = Math.max(this.renderedSeq, ev.seq);
-      frag.appendChild(this._createLine(ev));
-    }
-
+    const line = this._createLine(ev);
     const shouldScroll = this._shouldAutoScroll();
-    this.listEl.appendChild(frag);
+    this.listEl.appendChild(line);
     if (shouldScroll) {
       this.listEl.scrollTop = this.listEl.scrollHeight;
     }
@@ -113,6 +116,12 @@ export class EventPanel extends Panel {
   private _shouldAutoScroll(): boolean {
     const { scrollTop, clientHeight, scrollHeight } = this.listEl;
     return scrollTop + clientHeight >= scrollHeight - 12;
+  }
+
+  /** 销毁时移除 tick-event 监听 / Remove tick-event listener on destroy */
+  destroy(): void {
+    window.removeEventListener("tick-event", this._onTickEvent);
+    super.destroy();
   }
 }
 
