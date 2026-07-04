@@ -86,8 +86,12 @@ def _action_events(state: OverallState) -> list[TickEvent]:
         if event_type == TickEventType.PC_TALK:
             pc_id = action.get("pc_id", "")
             target_id = action.get("target_id", "")
-            payload["pc_position"] = _get_char_position(pc_id, scene_info)
-            payload["target_position"] = _get_char_position(target_id, scene_info)
+            payload["pc_position"] = _get_char_position(
+                pc_id, scene_info, state.get("pc_state_map", {})
+            )
+            payload["target_position"] = _get_char_position(
+                target_id, scene_info, state.get("pc_state_map", {})
+            )
         events.append(
             TickEvent(
                 type=event_type,
@@ -104,10 +108,20 @@ def _pick(*evs: TickEvent | None) -> list[TickEvent]:
     return [e for e in evs if e is not None]
 
 
-def _get_char_position(char_id: str, scene_info: dict[str, Any]) -> dict[str, int]:
-    """从 scene_info 中获取角色坐标."""
+def _get_char_position(
+    char_id: str,
+    scene_info: dict[str, Any],
+    pc_state_map: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, int]:
+    """获取角色坐标——优先 pc_state_map（tick 内最新），其次 scene_info / 
+    Get character position — pc_state_map first (in-tick latest), then scene_info."""
     if not char_id:
         return {"x": 0, "y": 0}
+    # tick 内坐标优先 / In-tick position takes priority
+    if pc_state_map and char_id in pc_state_map:
+        info = pc_state_map[char_id]
+        return {"x": info.get("position_x", 0), "y": info.get("position_y", 0)}
+    # fallback: scene_info / Fallback to scene_info
     positions = scene_info.get("pc_positions", {})
     if char_id in positions:
         pos = positions[char_id]
