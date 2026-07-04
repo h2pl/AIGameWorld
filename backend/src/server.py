@@ -36,30 +36,35 @@ class TickLoopManager:
     def __init__(self):
         self.running_worlds: dict[str, bool] = {}
         self.tasks: dict[str, asyncio.Task] = {}
+        self.loop_ids: dict[str, int] = {}
 
-    async def _loop(self, world_id: str, orch):
-        logger.info(f"[loop] Started continuous tick loop for world {world_id}")
-        while self.running_worlds.get(world_id, False):
+    async def _loop(self, world_id: str, orch, loop_id: int):
+        logger.info(f"[loop] Started continuous tick loop for world {world_id} (id: {loop_id})")
+        while self.running_worlds.get(world_id, False) and self.loop_ids.get(world_id) == loop_id:
             try:
                 await orch.run_tick(world_id)
                 await asyncio.sleep(0.5)  # Prevent CPU hogging
+            except asyncio.CancelledError:
+                logger.info(f"[loop] Tick loop for {world_id} was cancelled")
+                break
             except Exception as e:
                 logger.error(f"[loop] Error in tick loop for {world_id}: {e}")
                 self.running_worlds[world_id] = False
                 break
-        logger.info(f"[loop] Stopped continuous tick loop for world {world_id}")
+        logger.info(f"[loop] Stopped continuous tick loop for world {world_id} (id: {loop_id})")
 
     def start(self, world_id: str, orch):
         if self.running_worlds.get(world_id):
             return
         self.running_worlds[world_id] = True
-        self.tasks[world_id] = asyncio.create_task(self._loop(world_id, orch))
+        loop_id = self.loop_ids.get(world_id, 0) + 1
+        self.loop_ids[world_id] = loop_id
+        self.tasks[world_id] = asyncio.create_task(self._loop(world_id, orch, loop_id))
 
     def stop(self, world_id: str):
         self.running_worlds[world_id] = False
-        if world_id in self.tasks:
-            # We don't cancel immediately to let the current tick finish gracefully
-            pass
+        # We don't cancel immediately to let the current tick finish gracefully
+        # The loop_id check ensures old loops will exit even if start is called quickly
 
 
 loop_manager = TickLoopManager()
@@ -195,16 +200,19 @@ async def get_events(world_id: str, since_tick: int = Query(0)):
     """获取指定 tick 之后的事件."""
     db = _get_db()
     repo = TickEventRepo(db)
-    # We need to get the current tick to know the range
-    world_repo = WorldRepo(db)
-    world = await world_repo.get(world_id)
-    current_tick = world.current_tick if world else 0
 
-    if since_tick >= current_tick:
-        return {"events": [], "current_tick": current_tick}
+    # 直接查询大于 since_tick 的事件，不依赖 world.current_tick，避免竞态条件
+    # 查询范围：since_tick + 1 到 since_tick + 100 (限制单次返回数量)
+    events = await repo.load_by_tick_range(world_id, since_tick + 1, since_tick + 100)
 
-    events = await repo.load_by_tick_range(world_id, since_tick + 1, current_tick)
-    return {"events": events, "current_tick": current_tick}
+    if not events:
+        return {"events": [], "current_tick": since_tick}
+
+    max_tick = max(e["tick"] for e in events)
+    return {
+        "events": events,
+        "current_tick": max_tick
+    }
 
 
 @app.post("/api/world/{world_id}/reset")

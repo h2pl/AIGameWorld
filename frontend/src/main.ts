@@ -122,10 +122,20 @@ async function main(): Promise<void> {
 
   bar.appendChild(tInput);
   bar.appendChild(btnRunN);
+  
+  const separator = document.createElement("div");
+  separator.style.width = "24px";
+  bar.appendChild(separator);
+
   bar.appendChild(btnStart);
   bar.appendChild(btnPause);
   bar.appendChild(btnResume);
   bar.appendChild(btnReset);
+  
+  const separator2 = document.createElement("div");
+  separator2.style.width = "24px";
+  bar.appendChild(separator2);
+  
   bar.appendChild(btnMap);
   bar.appendChild(statusEl);
 

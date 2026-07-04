@@ -16,7 +16,7 @@ async def test_single_tick_returns_narrative():
 @pytest.mark.asyncio
 async def test_ten_ticks_no_crash():
     orch = Orchestrator()
-    for i in range(10):
+    for _ in range(10):
         result = await orch.run_tick("test")
         assert result.get("errors", []) == []
 

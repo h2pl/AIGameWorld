@@ -45,7 +45,7 @@ class TickEventRepo:
             "WHERE m.world_id = ? AND m.tick BETWEEN ? AND ? ORDER BY m.tick, e.id",
             (world_id, tick_start, tick_end),
         )
-        return [{"tick": r["tick"], "type": r["type"], "payload": r["payload"]} for r in rows]
+        return [{"tick": r["tick"], "type": r["type"], "payload": json.loads(r["payload"])} for r in rows]
 
     async def load_by_message(self, tick_message_id: str, tick: int) -> list[TickEvent]:
         """按消息加载事件."""

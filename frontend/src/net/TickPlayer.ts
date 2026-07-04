@@ -146,9 +146,13 @@ export class TickPlayer {
   private async _pullNext(): Promise<TickResponse | null> {
     try {
       const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/tick/next`);
+      if (!resp.ok) {
+        console.warn(`${L} pull failed with status ${resp.status}`);
+        return null;
+      }
       return await resp.json() as TickResponse;
-    } catch {
-      console.warn(`${L} pull failed`);
+    } catch (e) {
+      console.warn(`${L} pull failed`, e);
       return null;
     }
   }
