@@ -82,6 +82,11 @@ export class CharacterManager {
     return this.sprites.get(id);
   }
 
+  /** 清除所有角色头顶泡泡 / Clear all dialogue bubbles */
+  clearBubbles(): void {
+    this.sprites.forEach(sp => sp.clearBubble());
+  }
+
   /** 销毁所有 / Destroy all */
   destroy(): void {
     this.sprites.forEach(sp => sp.destroy());

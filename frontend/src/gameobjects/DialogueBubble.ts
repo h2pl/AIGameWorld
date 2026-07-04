@@ -14,9 +14,9 @@ const MAX_WIDTH = 260;
 const CORNER_RADIUS = 10;
 const ARROW_HEIGHT = 8;
 const MAX_LINES = 4;
-const MIN_SHOW_MS = 1200;
-const MAX_SHOW_MS = 5000;
-const MS_PER_CHAR = 60;
+const MIN_SHOW_MS = 800;
+const MAX_SHOW_MS = 4000;
+const MS_PER_CHAR = 40;
 const TEXT_FONT = "14px Segoe UI, Microsoft YaHei, sans-serif";
 const TEXT_COLOR = "#1a1a1a";
 
@@ -57,13 +57,14 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     this.bg = scene.add.graphics();
     this.add([this.bg, this.textObj]);
 
-    this.setInteractive({ useHandCursor: true });
-    this.on("pointerdown", () => this._advance());
-
     this.setAlpha(0);
     scene.tweens.add({ targets: this, alpha: 1, duration: 150 });
 
     this._showPage(0);
+
+    // setSize 必须在 setInteractive 之前 / setSize before setInteractive
+    this.setInteractive({ useHandCursor: true });
+    this.on("pointerdown", () => this._advance());
   }
 
   /** 显示第 i 页 / Show page i */
@@ -150,6 +151,13 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
           lo = mid + 1;
         } else {
           hi = mid - 1;
+        }
+      }
+      // 尽量在空格或标点处断开，避免截断单词
+      if (best < fullText.length) {
+        const snap = fullText.slice(start, best).search(/[\s，。！？.,!?]\S*$/);
+        if (snap > 0) {
+          best = start + snap + 1;
         }
       }
       pages.push(fullText.slice(start, best));

@@ -17,12 +17,12 @@ setup: ## 首次安装所有依赖 / Install all dependencies (first-time only)
 ##@ 开发 / Development
 
 dev: ## 启动前后端（Ctrl+C 停止同时关闭）/ Start backend + frontend
-	cd backend && uv run python -m uvicorn src.server:app --reload --port 8000 & \
+	cd backend && uv run python -m uvicorn src.server:app --reload --reload-dir src --reload-exclude 'data' --reload-exclude '*.db' --port 8000 & \
 	trap 'kill %1 2>/dev/null' EXIT; \
 	cd "$(CURDIR)/frontend" && npm run dev
 
 backend-dev: ## 仅启动后端 / Start backend only
-	cd backend && uv run python -m uvicorn src.server:app --reload --port 8000
+	cd backend && uv run python -m uvicorn src.server:app --reload --reload-dir src --reload-exclude 'data' --reload-exclude '*.db' --port 8000
 
 frontend-dev: ## 仅启动前端 / Start frontend only
 	cd frontend && npm run dev

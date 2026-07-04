@@ -91,13 +91,18 @@ export class CharacterSprite {
 
   /** 显示对话泡泡 / Show dialogue bubble above character */
   say(text: string, onHide?: () => void): void {
+    this.clearBubble();
+    const x = this.sprite.x;
+    const y = this.sprite.y - this.tileSize * 0.75;
+    this.bubble = new DialogueBubble(this.scene, x, y, text, this.data.name, onHide);
+  }
+
+  /** 清除当前泡泡 / Clear current bubble */
+  clearBubble(): void {
     if (this.bubble) {
       this.bubble.destroy();
       this.bubble = null;
     }
-    const x = this.sprite.x;
-    const y = this.sprite.y - this.tileSize * 0.75;
-    this.bubble = new DialogueBubble(this.scene, x, y, text, this.data.name, onHide);
   }
 
   /** 名字标签、血条、金环跟随精灵 / Followers update with sprite position */

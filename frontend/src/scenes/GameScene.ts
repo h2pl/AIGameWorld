@@ -64,6 +64,8 @@ export class GameScene extends Phaser.Scene {
   private dialogueQueue: Array<{ speaker_id: string; text: string }> = [];
   private isPlayingDialogue = false;
   private dialogueTimer?: number;
+  private dialoguesThisTick = 0;
+  private readonly MAX_DIALOGUE_EVENTS_PER_TICK = 1;
 
   constructor() { super({ key: "Game" }); }
 
@@ -109,7 +111,22 @@ export class GameScene extends Phaser.Scene {
   /** 处理 tick 事件 / Handle tick event */
   private handleTickEvent = (e: CustomEvent): void => {
     const { type, payload } = e.detail;
+
+    // 新 tick 开始：清空上一 tick 未播完的对话，避免队列无限累积
+    if (type === "dm_create") {
+      if (this.dialogueTimer) window.clearTimeout(this.dialogueTimer);
+      this.dialogueTimer = undefined;
+      this.dialogueQueue = [];
+      this.isPlayingDialogue = false;
+      this.dialoguesThisTick = 0;
+      this.charManager?.clearBubbles();
+      return;
+    }
+
     if (type !== "pc_talk") return;
+    // 每 tick 只把第一个 talk 事件做成头顶泡泡，其余仅保留在事件列表
+    if (this.dialoguesThisTick >= this.MAX_DIALOGUE_EVENTS_PER_TICK) return;
+    this.dialoguesThisTick++;
     const result = payload?.result as Record<string, unknown> | undefined;
     const turns = result?.turns as Array<{ speaker_id: string; text: string }> | undefined;
     if (!turns?.length) return;
