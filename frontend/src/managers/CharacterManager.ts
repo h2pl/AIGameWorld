@@ -7,9 +7,6 @@ import { gridToWorld, calcSteps } from "../utils/tile";
 import { TILEMAP, DEPTH } from "../constants";
 import type { CharacterData } from "../types";
 
-/** 行走速度 / Walk speed: 200ms per tile */
-const WALK_SPEED = 200;
-
 type Pos = { x: number; y: number };
 
 export class CharacterManager {
@@ -52,7 +49,7 @@ export class CharacterManager {
         if (old.tx !== p.x || old.ty !== p.y) {
           existing.cancelWalk();
           const steps = calcSteps(old, { tx: p.x, ty: p.y }, this.ts);
-          existing.walkPath(steps, WALK_SPEED);
+          existing.walkPath(steps, TILEMAP.WALK_SPEED);
         }
         if (ch.combat) existing.updateHp(ch.combat.hp, ch.combat.max_hp);
       } else {

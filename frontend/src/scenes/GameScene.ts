@@ -348,7 +348,7 @@ export class GameScene extends Phaser.Scene {
       const finalX = last.x;
       const finalY = last.y;
       sprite.cancelWalk();
-      sprite.walkPath(worldWaypoints, 200, () => {
+      sprite.walkPath(worldWaypoints, TILEMAP.WALK_SPEED, () => {
         // 走完后同步坐标到 store，避免下次 sync 瞬移 / Sync final pos to store after walk
         const st = gameStore.getState();
         st.character_positions[pcId] = { x: finalX, y: finalY };
@@ -389,7 +389,7 @@ export class GameScene extends Phaser.Scene {
       if (best) {
         const { wx, wy } = gridToWorld(best.tx, best.ty, this.ts);
         sprite.cancelWalk();
-        sprite.walkPath([{ wx, wy }], 200);
+        sprite.walkPath([{ wx, wy }], TILEMAP.WALK_SPEED);
         console.log("[Scene] walk-to-talk: %s → (%d,%d) near target (%d,%d)",
           wt.pc_id, best.tx, best.ty, targetTx, targetTy);
       }
