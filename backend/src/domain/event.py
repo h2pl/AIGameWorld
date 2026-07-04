@@ -25,6 +25,7 @@ class TickEvent(BaseModel):
     type: TickEventType
     tick: int
     tick_message_id: str = ""
+    world_id: str = ""
     payload: dict = Field(default_factory=dict)
 
 

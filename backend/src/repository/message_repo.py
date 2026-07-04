@@ -54,5 +54,11 @@ class TickMessageRepo:
         )
         await self._db.commit()
 
+    async def delete_by_world(self, world_id: str) -> None:
+        """删除指定 world 的全部消息 / Delete all messages for a world."""
+        await self._db.execute("DELETE FROM tick_messages WHERE world_id = ?", (world_id,))
+        await self._db.commit()
+        log_msg("delete_by_world", world_id, 0)
+
 
 MessageRepo = TickMessageRepo

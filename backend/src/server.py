@@ -179,6 +179,15 @@ async def lifespan(app: FastAPI):
     app.state.db = db
     await db.connect()
     await db.init_schema()
+    # Migration: 给已有 tick_events 表补 world_id 列 / Add world_id column to existing table
+    cols = await db.fetch_all("PRAGMA table_info(tick_events)")
+    if cols and not any(c["name"] == "world_id" for c in cols):
+        await db.execute("ALTER TABLE tick_events ADD COLUMN world_id TEXT NOT NULL DEFAULT ''")
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tick_events_world_tick ON tick_events(world_id, tick)"
+        )
+        await db.commit()
+        logger.info("[migration] Added world_id column to tick_events")
     yield
     if app.state.db:
         await app.state.db.close()
@@ -285,9 +294,17 @@ async def get_events(world_id: str, since_tick: int = Query(0)):
 
 @app.post("/api/world/{world_id}/reset")
 async def world_reset(world_id: str):
-    """重置 world 的 tick 计数."""
+    """重置 world：清零 tick + 删除事件/消息/DM记录."""
     loop_manager.stop(world_id)
     await _get_orch().reset(world_id)
+    db = _get_db()
+    # 清理 tick_events / tick_messages / dm_records / story_summaries
+    await TickEventRepo(db).delete_by_world(world_id)
+    await TickMessageRepo(db).delete_by_world(world_id)
+    await db.execute("DELETE FROM dm_records WHERE world_id = ?", (world_id,))
+    await db.execute("DELETE FROM story_summaries WHERE world_id = ?", (world_id,))
+    await db.commit()
+    log_api("world.reset", world_id)
     return {"status": "ok"}
 
 

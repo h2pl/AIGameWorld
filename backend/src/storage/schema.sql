@@ -165,12 +165,14 @@ CREATE TABLE IF NOT EXISTS tick_events (
     tick            INTEGER NOT NULL,
     type            TEXT    NOT NULL,
     payload         TEXT    NOT NULL,
+    world_id        TEXT    NOT NULL DEFAULT '',
     ext_json        TEXT    NOT NULL DEFAULT '{}',
     created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (tick_message_id, tick) REFERENCES tick_messages(id, tick)
 );
 CREATE INDEX IF NOT EXISTS idx_tick_events_msg ON tick_events(tick_message_id, tick);
+CREATE INDEX IF NOT EXISTS idx_tick_events_world_tick ON tick_events(world_id, tick);
 
 
 

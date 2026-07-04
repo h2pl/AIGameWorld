@@ -21,6 +21,7 @@ def _dm_create_event(state: OverallState) -> TickEvent | None:
         type=TickEventType.DM_CREATE,
         tick=state.get("tick", 0),
         tick_message_id=state.get("tick_message_id", ""),
+        world_id=state.get("world_id", ""),
         payload={
             "scene_id": scene_id,
             "plot_brief": state.get("plot_brief", ""),
@@ -40,6 +41,7 @@ def _scene_event(state: OverallState) -> TickEvent | None:
         type=TickEventType.SCENE_SETUP,
         tick=state.get("tick", 0),
         tick_message_id=state.get("tick_message_id", ""),
+        world_id=state.get("world_id", ""),
         payload={
             "scene_id": scene_id,
             "scene": scene,
@@ -75,6 +77,7 @@ def _action_events(state: OverallState) -> list[TickEvent]:
                 type=event_type,
                 tick=tick,
                 tick_message_id=msg_id,
+                world_id=state.get("world_id", ""),
                 payload={
                     "order": action.get("order"),
                     "pc_id": action.get("pc_id", ""),
@@ -108,7 +111,9 @@ async def flush_events(state: OverallState, config: RunnableConfig = None) -> di
 
     event_repo = get_repo(config, "event")
     if events and event_repo:
-        await event_repo.insert_tick_events(tick_message_id, tick, events)
+        await event_repo.insert_tick_events(
+            tick_message_id, tick, events, world_id=state.get("world_id", "")
+        )
         logger.info(
             "[service] flushed tick=%s tick_message_id=%s count=%d",
             tick,
