@@ -210,6 +210,14 @@ async function main(): Promise<void> {
     gameStore.appendEvent({ type, payload } as any);
   }) as EventListener);
 
+  // 历史事件面板 / History event panel
+  const { HistoryEventPanel } = await import("./ui/HistoryEventPanel");
+  const historyPanel = new HistoryEventPanel(world.world_id);
+  historyPanel.mount(document.body);
+  window.addEventListener("show-event-history", () => {
+    historyPanel.open(gameStore.getState().current_tick);
+  });
+
   // 叙事转发 / Narrative relay to GameScene
   gameStore.subscribe((s) => {
     const gs = game.scene.scenes.find(sc => sc.scene.key === "Game") as import("./scenes/GameScene").GameScene | undefined;
