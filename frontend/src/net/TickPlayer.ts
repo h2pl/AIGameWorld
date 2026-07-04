@@ -4,6 +4,8 @@
  * 无 ack/pause/resume 概念。
  */
 
+import { gameStore } from "../state/GameStore";
+
 const L = "[TickPlayer]";
 
 interface TickResponse {
@@ -31,6 +33,34 @@ export class TickPlayer {
 
   get state(): PlayerState { return this._state; }
 
+  setLastTick(tick: number): void {
+    this._lastTick = tick;
+  }
+
+  /** 加载历史事件（从 0 到 targetTick）并追加到 store，不播放动画 */
+  async loadHistory(targetTick: number): Promise<void> {
+    let since = 0;
+    while (this._state === "idle" && since < targetTick) {
+      try {
+        const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${since}`);
+        if (!resp.ok) break;
+        const data = await resp.json() as { events: TickEvent[]; current_tick: number };
+        if (data.events && data.events.length > 0) {
+          for (const ev of data.events) {
+            gameStore.appendEvent({ type: ev.type, payload: ev.payload });
+          }
+        }
+        since = data.current_tick;
+        if (since >= targetTick) break;
+        await _sleep(200);
+      } catch (e) {
+        console.warn(`${L} loadHistory failed`, e);
+        break;
+      }
+    }
+    gameStore.setTick(targetTick);
+  }
+
   /** 运行 N 个 tick：通知后端批量生成，前端主动拉取，全部到齐后按顺序展示 */
   async runTicks(n: number, onTick: (tick: number, events: TickEvent[]) => void): Promise<number> {
     if (this._state === "running") return 0;
@@ -48,15 +78,29 @@ export class TickPlayer {
     // 2. 主动轮询 /events，直到 N 个 tick 的数据都生成完毕
     let delivered = 0;
     let lastPolledTick = startTick;
+    let emptyPolls = 0;
     while (this._state === "running" && lastPolledTick < targetTick) {
       try {
-        const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${lastPolledTick}`);
-        if (!resp.ok) {
+        const [eventsResp, statusResp] = await Promise.all([
+          fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${lastPolledTick}`),
+          fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/status`),
+        ]);
+
+        let batchDone = false;
+        let batchCompleted = 0;
+        if (statusResp.ok) {
+          const status = await statusResp.json() as { batch_running: boolean; batch_completed?: number };
+          batchDone = !status.batch_running;
+          batchCompleted = status.batch_completed || 0;
+        }
+
+        if (!eventsResp.ok) {
           await _sleep(500);
           continue;
         }
-        const data = await resp.json() as { events: TickEvent[]; current_tick: number };
+        const data = await eventsResp.json() as { events: TickEvent[]; current_tick: number };
         if (data.events && data.events.length > 0) {
+          emptyPolls = 0;
           // 按 tick 分组并排序
           const eventsByTick: Record<number, TickEvent[]> = {};
           for (const ev of data.events) {
@@ -71,8 +115,12 @@ export class TickPlayer {
             await this._playTick(tick, eventsByTick[tick], onTick);
             delivered++;
           }
-        } else if (data.current_tick > lastPolledTick) {
-          lastPolledTick = data.current_tick;
+        } else {
+          emptyPolls++;
+          // batch 已完成且连续空轮询，说明没有更多事件要消费
+          if (batchDone && (batchCompleted >= n || emptyPolls >= 2)) {
+            break;
+          }
         }
 
         if (lastPolledTick >= targetTick) break;

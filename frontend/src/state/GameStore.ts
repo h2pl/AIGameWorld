@@ -29,6 +29,7 @@ type Listener = (state: GameState) => void;
 class GameStore {
   private state: GameState;
   private listeners: Set<Listener> = new Set();
+  private _eventSeq = 0;
 
   constructor() {
     this.state = {
@@ -110,8 +111,10 @@ class GameStore {
 
   private _appendEvents(events: EventData[]): void {
     if (!events.length) return;
+    // 分配单调递增 seq，用于面板去重
+    const tagged = events.map((ev) => ({ ...ev, seq: ++this._eventSeq }));
     // 追加而非覆盖，保留历史并限制总容量
-    this.state.events = [...this.state.events, ...events];
+    this.state.events = [...this.state.events, ...tagged];
     if (this.state.events.length > 200) {
       this.state.events = this.state.events.slice(-200);
     }
@@ -138,6 +141,7 @@ class GameStore {
       type: ev.type,
       tick: this.state.current_tick,
       description: JSON.stringify(ev.payload || {}).slice(0, 120),
+      seq: ++this._eventSeq,
     } as EventData);
     if (this.state.events.length > 200) {
       this.state.events = this.state.events.slice(-200);

@@ -271,20 +271,16 @@ async def get_events(world_id: str, since_tick: int = Query(0)):
     """获取指定 tick 之后的事件."""
     db = _get_db()
     repo = TickEventRepo(db)
-    world_repo = WorldRepo(db)
 
     # 直接查询大于 since_tick 的事件，不依赖 world.current_tick，避免竞态条件
     # 查询范围：since_tick + 1 到 since_tick + 100 (限制单次返回数量)
     events = await repo.load_by_tick_range(world_id, since_tick + 1, since_tick + 100)
 
-    # 用世界实际 current_tick 作为进度锚点，空窗期也能让前端推进
-    world_tick = await world_repo.get_tick(world_id)
-
     if not events:
-        return {"events": [], "current_tick": max(since_tick, world_tick)}
+        return {"events": [], "current_tick": since_tick}
 
     max_tick = max(e["tick"] for e in events)
-    return {"events": events, "current_tick": max(max_tick, world_tick)}
+    return {"events": events, "current_tick": max_tick}
 
 
 @app.post("/api/world/{world_id}/reset")
@@ -351,8 +347,11 @@ async def get_pack_state(world_id: str):
             }
             for r in await db.fetch_all("SELECT * FROM scene_objects")
         ]
+        world_row = await db.fetch_one("SELECT current_tick FROM worlds WHERE id = ?", (world_id,))
+        current_tick = world_row["current_tick"] if world_row else 0
         return {
             "world_id": world_id,
+            "current_tick": current_tick,
             "scenes": scenes,
             "characters": pcs + actors,
             "items": items,

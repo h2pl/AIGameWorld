@@ -14,10 +14,8 @@ const EVENT_ICONS: Record<string, string> = {
 
 export class EventPanel extends Panel {
   private listEl!: HTMLElement;
-  /** key -> DOM 元素，保证去重与裁剪同步 */
-  private seen = new Map<string, HTMLElement>();
-  /** 有序的 key 列表，用于从头裁剪 */
-  private keys: string[] = [];
+  /** 已处理的最后一个 seq，只追加 seq > lastSeq 的事件 */
+  private lastSeq = 0;
   private $max = 50; // 面板最多保留 50 条 / Max events in panel
 
   constructor() {
@@ -48,55 +46,42 @@ export class EventPanel extends Panel {
   private onStateChange(state: GameState): void {
     if (!state.events || state.events.length === 0) return;
 
-    // 批量插入减少重排 / Batch insert to reduce reflow
+    // 只处理 seq > lastSeq 的新事件，避免重复插入
+    const newEvents = state.events.filter(
+      (ev) => (ev.seq ?? 0) > this.lastSeq,
+    );
+    if (newEvents.length === 0) return;
+
     const frag = document.createDocumentFragment();
-    let changed = false;
-    for (const ev of state.events) {
-      const key = this._makeKey(ev);
-      if (this.seen.has(key)) continue;
-      const el = this._createLine(ev, key);
-      this.seen.set(key, el);
-      this.keys.push(key);
-      frag.appendChild(el);
-      changed = true;
+    for (const ev of newEvents) {
+      if (ev.seq) this.lastSeq = Math.max(this.lastSeq, ev.seq);
+      frag.appendChild(this._createLine(ev));
     }
 
-    if (changed) {
-      const shouldScroll = this._shouldAutoScroll();
-      this.listEl.appendChild(frag);
-      this._trim();
-      if (shouldScroll) {
-        this.listEl.scrollTop = this.listEl.scrollHeight;
-      }
-      const countEl = document.getElementById("event-count");
-      if (countEl) countEl.textContent = String(this.listEl.children.length);
+    const shouldScroll = this._shouldAutoScroll();
+    this.listEl.appendChild(frag);
+    this._trim();
+    if (shouldScroll) {
+      this.listEl.scrollTop = this.listEl.scrollHeight;
     }
+    const countEl = document.getElementById("event-count");
+    if (countEl) countEl.textContent = String(this.listEl.children.length);
   }
 
-  private _makeKey(ev: EventData): string {
-    // 用索引避免 description 重复导致的新事件被吞
-    return `${ev.tick || 0}:${ev.type}:${this.seen.size}`;
-  }
-
-  private _createLine(ev: EventData, key: string): HTMLElement {
+  private _createLine(ev: EventData): HTMLElement {
     const icon = EVENT_ICONS[ev.type] || "📌";
     const tick = ev.tick ? `[Tick ${ev.tick}]` : "";
     const el = document.createElement("div");
     el.className = "event-line";
-    el.dataset.key = key;
     el.textContent = `${tick} ${icon} ${_readableType(ev.type)}`;
     el.title = ev.description || _readableType(ev.type);
     return el;
   }
 
-  /** 同步裁剪 DOM 与 seen，避免去重集合无限增长 */
+  /** 裁剪超出上限的旧 DOM */
   private _trim(): void {
-    while (this.keys.length > this.$max) {
-      const key = this.keys.shift();
-      if (!key) break;
-      const el = this.seen.get(key);
-      if (el) el.remove();
-      this.seen.delete(key);
+    while (this.listEl.children.length > this.$max) {
+      this.listEl.removeChild(this.listEl.firstElementChild!);
     }
   }
 

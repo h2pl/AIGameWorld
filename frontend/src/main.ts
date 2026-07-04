@@ -193,6 +193,14 @@ async function main(): Promise<void> {
   const { TickPlayer } = await import("./net/TickPlayer");
   const player = new TickPlayer(CONFIG.API.base, world.world_id);
 
+  // 同步当前 tick 并加载历史事件 / Sync current tick and load history
+  const initialTick = world.current_tick || 0;
+  player.setLastTick(initialTick);
+  if (initialTick > 0) {
+    statusEl.textContent = `已运行到 Tick ${initialTick}`;
+    await player.loadHistory(initialTick);
+  }
+
   // 事件 → Store 桥接 / Event → Store bridge
   window.addEventListener("tick-event", ((e: CustomEvent) => {
     const { type, payload } = e.detail;
