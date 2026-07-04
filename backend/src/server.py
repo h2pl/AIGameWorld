@@ -69,6 +69,59 @@ class TickLoopManager:
 
 loop_manager = TickLoopManager()
 
+
+# ── Tick Batch Runner（直接用 orchestrator 跑 N 个 tick，与 loop_manager 隔离）──
+class TickBatchRunner:
+    """一次性 N-tick 任务管理器——不依赖 loop_manager."""
+
+    def __init__(self):
+        self._tasks: dict[str, asyncio.Task] = {}
+        self._targets: dict[str, int] = {}
+        self._completed: dict[str, int] = {}
+
+    async def _run(self, world_id: str, orch, n: int):
+        logger.info(f"[batch] Started {n} ticks for world {world_id}")
+        completed = 0
+        try:
+            for _ in range(n):
+                task = self._tasks.get(world_id)
+                if task and task.cancelled():
+                    break
+                await orch.run_tick(world_id)
+                completed += 1
+        except asyncio.CancelledError:
+            logger.info(f"[batch] Cancelled for world {world_id} after {completed} ticks")
+        except Exception as e:
+            logger.error(f"[batch] Error in world {world_id}: {e}")
+        finally:
+            self._completed[world_id] = completed
+            self._tasks.pop(world_id, None)
+            self._targets.pop(world_id, None)
+            logger.info(f"[batch] Finished world {world_id}: {completed}/{n} ticks")
+
+    def start(self, world_id: str, orch, n: int):
+        """启动一次性 N-tick 任务（不阻塞，前端主动拉取）."""
+        if n <= 0:
+            raise ValueError("n must be positive")
+        existing = self._tasks.get(world_id)
+        if existing is not None and not existing.done():
+            raise RuntimeError(f"Batch already running for {world_id}")
+        self._targets[world_id] = n
+        self._tasks[world_id] = asyncio.create_task(self._run(world_id, orch, n))
+
+    def is_running(self, world_id: str) -> bool:
+        task = self._tasks.get(world_id)
+        return task is not None and not task.done()
+
+    def get_target(self, world_id: str) -> int | None:
+        return self._targets.get(world_id)
+
+    def get_completed(self, world_id: str) -> int | None:
+        return self._completed.get(world_id)
+
+
+batch_runner = TickBatchRunner()
+
 try:
     from .config import load_config
     from .utils.logging import configure_console, configure_format
@@ -192,7 +245,25 @@ async def loop_resume(world_id: str):
 @app.get("/api/world/{world_id}/loop/status")
 async def loop_status(world_id: str):
     """获取循环状态."""
-    return {"running": loop_manager.running_worlds.get(world_id, False)}
+    return {
+        "running": loop_manager.running_worlds.get(world_id, False),
+        "batch_running": batch_runner.is_running(world_id),
+        "batch_target": batch_runner.get_target(world_id),
+        "batch_completed": batch_runner.get_completed(world_id),
+    }
+
+
+@app.post("/api/world/{world_id}/tick/batch/{n}")
+async def tick_batch(world_id: str, n: int):
+    """直接用 orchestrator 跑 N 个 tick（不返回数据，前端主动拉取）."""
+    if n <= 0:
+        raise HTTPException(status_code=400, detail="n must be positive")
+    try:
+        batch_runner.start(world_id, _get_orch(), n)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    log_api("tick.batch", f"{world_id}:{n}")
+    return {"status": "ok", "n": n}
 
 
 @app.get("/api/world/{world_id}/events")
@@ -209,10 +280,7 @@ async def get_events(world_id: str, since_tick: int = Query(0)):
         return {"events": [], "current_tick": since_tick}
 
     max_tick = max(e["tick"] for e in events)
-    return {
-        "events": events,
-        "current_tick": max_tick
-    }
+    return {"events": events, "current_tick": max_tick}
 
 
 @app.post("/api/world/{world_id}/reset")

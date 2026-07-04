@@ -31,17 +31,58 @@ export class TickPlayer {
 
   get state(): PlayerState { return this._state; }
 
-  /** 运行 N 个 tick，每 tick 回调 onTick(tick, events) */
+  /** 运行 N 个 tick：通知后端批量生成，前端主动拉取，全部到齐后按顺序展示 */
   async runTicks(n: number, onTick: (tick: number, events: TickEvent[]) => void): Promise<number> {
-    let delivered = 0;
+    if (this._state === "running") return 0;
     this._state = "running";
-    while (delivered < n && this._state === "running") {
-      const msg = await this._pullNext();
-      if (!msg) break;
-      this._lastTick = msg.tick;
-      await this._playTick(msg.tick, msg.events, onTick);
-      delivered++;
+    const startTick = this._lastTick;
+    const targetTick = startTick + n;
+
+    // 1. 通知后端跑 N 个 tick（不等待返回数据）
+    const notify = await fetch(`${this._baseUrl}/api/world/${this._worldId}/tick/batch/${n}`, { method: "POST" });
+    if (!notify.ok) {
+      this._state = "idle";
+      throw new Error(`${L} batch/${n} failed: ${notify.status}`);
     }
+
+    // 2. 主动轮询 /events，直到 N 个 tick 的数据都生成完毕
+    let delivered = 0;
+    let lastPolledTick = startTick;
+    while (this._state === "running" && lastPolledTick < targetTick) {
+      try {
+        const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${lastPolledTick}`);
+        if (!resp.ok) {
+          await _sleep(500);
+          continue;
+        }
+        const data = await resp.json() as { events: TickEvent[]; current_tick: number };
+        if (data.events && data.events.length > 0) {
+          // 按 tick 分组并排序
+          const eventsByTick: Record<number, TickEvent[]> = {};
+          for (const ev of data.events) {
+            if (!eventsByTick[ev.tick]) eventsByTick[ev.tick] = [];
+            eventsByTick[ev.tick].push(ev);
+          }
+          const ticks = Object.keys(eventsByTick).map(Number).sort((a, b) => a - b);
+          for (const tick of ticks) {
+            if (this._state !== "running") break;
+            this._lastTick = tick;
+            lastPolledTick = tick;
+            await this._playTick(tick, eventsByTick[tick], onTick);
+            delivered++;
+          }
+        } else if (data.current_tick > lastPolledTick) {
+          lastPolledTick = data.current_tick;
+        }
+
+        if (lastPolledTick >= targetTick) break;
+        await _sleep(500);
+      } catch (e) {
+        console.warn(`${L} runTicks poll failed`, e);
+        await _sleep(500);
+      }
+    }
+
     this._state = "idle";
     return delivered;
   }
