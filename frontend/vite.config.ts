@@ -8,7 +8,7 @@ export default defineConfig({
     open: true,
     // 代理 /api 到后端服务 / Proxy /api to backend service
     proxy: {
-      "/api": "http://localhost:3003",
+      "/api": "http://localhost:8000",
     },
   },
   build: {
