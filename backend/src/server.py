@@ -243,8 +243,14 @@ async def lifespan(app: FastAPI):
             await db.execute("ALTER TABLE scenes ADD COLUMN spawn_y INTEGER NOT NULL DEFAULT 0")
         if not any(c["name"] == "map_key" for c in scene_cols):
             await db.execute("ALTER TABLE scenes ADD COLUMN map_key TEXT NOT NULL DEFAULT ''")
+        if not any(c["name"] == "map_width" for c in scene_cols):
+            await db.execute("ALTER TABLE scenes ADD COLUMN map_width INTEGER NOT NULL DEFAULT 40")
+        if not any(c["name"] == "map_height" for c in scene_cols):
+            await db.execute("ALTER TABLE scenes ADD COLUMN map_height INTEGER NOT NULL DEFAULT 40")
         await db.commit()
-        logger.info("[migration] Added spawn_x/spawn_y/map_key columns to scenes")
+        logger.info(
+            "[migration] Added spawn_x/spawn_y/map_key/map_width/map_height columns to scenes"
+        )
 
     # 自动导入默认 world-pack（DB 为空时）/ Auto-import default pack when DB is empty
     if not use_mock_data:

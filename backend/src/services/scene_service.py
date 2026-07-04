@@ -128,6 +128,8 @@ def _build_scene_ctx(scene: dict | None, scene_id: str) -> dict[str, Any]:
             "description": "",
             "spawn_x": 0,
             "spawn_y": 0,
+            "map_width": 40,
+            "map_height": 40,
             "landmarks": [],
             "exits": [],
         }
@@ -139,6 +141,8 @@ def _build_scene_ctx(scene: dict | None, scene_id: str) -> dict[str, Any]:
         "map_key": scene.get("map_key", ""),
         "spawn_x": scene.get("spawn_x", 0),
         "spawn_y": scene.get("spawn_y", 0),
+        "map_width": scene.get("map_width", 40),
+        "map_height": scene.get("map_height", 40),
         "landmarks": scene.get("landmarks", []),
         "exits": scene.get("exits", []),
     }

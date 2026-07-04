@@ -97,6 +97,8 @@ CREATE TABLE IF NOT EXISTS scenes (
     map_key         TEXT NOT NULL DEFAULT '',
     spawn_x         INTEGER NOT NULL DEFAULT 0,
     spawn_y         INTEGER NOT NULL DEFAULT 0,
+    map_width       INTEGER NOT NULL DEFAULT 40,
+    map_height      INTEGER NOT NULL DEFAULT 40,
     world_id        TEXT NOT NULL,
     ext_json        TEXT NOT NULL DEFAULT '{}',
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
