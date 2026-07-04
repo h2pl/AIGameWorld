@@ -4,6 +4,7 @@
 """
 
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -63,3 +64,22 @@ def base_state() -> OverallState:
         pc_decisions=[],
         narrative="",
     )
+
+
+@pytest.fixture
+def mock_repos():
+    """包含 mock world repo 的 repos 字典，用于 Orchestrator 集成测试."""
+    ticks = {}
+
+    async def _increment_data_tick(world_id: str) -> int:
+        ticks[world_id] = ticks.get(world_id, 0) + 1
+        return ticks[world_id]
+
+    async def _reset_tick(world_id: str) -> None:
+        ticks[world_id] = 0
+
+    world_repo = AsyncMock()
+    world_repo.increment_data_tick = AsyncMock(side_effect=_increment_data_tick)
+    world_repo.reset_tick = AsyncMock(side_effect=_reset_tick)
+
+    return {"world": world_repo}

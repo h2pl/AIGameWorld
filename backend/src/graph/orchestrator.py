@@ -26,6 +26,8 @@ class Orchestrator:
         repos: Any = None,
     ):
         logger.info("[orchestrator] init")
+        if repos is None:
+            logger.error("[orchestrator] repos is required")
         self._graph = build_tick_graph()
         self._checkpointer = checkpointer or checkpoints.create_dev_checkpointer()
         self._app = self._graph.compile(checkpointer=self._checkpointer)

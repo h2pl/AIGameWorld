@@ -208,6 +208,8 @@ class TestSceneAndMessageService:
             role="fighter",
             race="human",
             status="active",
+            position_x=0,
+            position_y=0,
         )
         config = _pc_repo_config([pc], object_ids=["obj-1"])
         state = _overall_state(tick=1, world_id="world-1", scene_id="scene-1")
