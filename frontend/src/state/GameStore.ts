@@ -88,7 +88,7 @@ class GameStore {
     }
     if (update.type === "dm_narrative" && d.narrative) {
       this.state.narrative = d.narrative;
-      this.state.events = d.events || [];
+      this._appendEvents(d.events || []);
     } else if (update.type === "tick_complete") {
       if (d.state_snapshot) {
         const snap = d.state_snapshot;
@@ -98,14 +98,23 @@ class GameStore {
         });
       }
       if (d.actions) this.state.actions = d.actions;
-      if (d.events) this.state.events = d.events;
+      this._appendEvents(d.events || []);
     } else if (update.type === "phase_update" && d.events) {
-      this.state.events = d.events;
+      this._appendEvents(d.events);
     }
     if (d.errors?.length) {
       this.state.errors = d.errors;
     }
     this.notify();
+  }
+
+  private _appendEvents(events: EventData[]): void {
+    if (!events.length) return;
+    // 追加而非覆盖，保留历史并限制总容量
+    this.state.events = [...this.state.events, ...events];
+    if (this.state.events.length > 200) {
+      this.state.events = this.state.events.slice(-200);
+    }
   }
 
   /** 批量更新角色位置（静默，applyTickUpdate 会统一 notify）/ Batch update positions (silent, notify via applyTickUpdate) */
@@ -130,8 +139,8 @@ class GameStore {
       tick: this.state.current_tick,
       description: JSON.stringify(ev.payload || {}).slice(0, 120),
     } as EventData);
-    if (this.state.events.length > 50) {
-      this.state.events = this.state.events.slice(-50);
+    if (this.state.events.length > 200) {
+      this.state.events = this.state.events.slice(-200);
     }
     this.notify();
   }

@@ -14,8 +14,11 @@ const EVENT_ICONS: Record<string, string> = {
 
 export class EventPanel extends Panel {
   private listEl!: HTMLElement;
-  private seenIds = new Set<string>();
-  private $max = 50; // 最多保留 50 条 / Max events
+  /** key -> DOM 元素，保证去重与裁剪同步 */
+  private seen = new Map<string, HTMLElement>();
+  /** 有序的 key 列表，用于从头裁剪 */
+  private keys: string[] = [];
+  private $max = 50; // 面板最多保留 50 条 / Max events in panel
 
   constructor() {
     super("event-panel");
@@ -44,34 +47,63 @@ export class EventPanel extends Panel {
 
   private onStateChange(state: GameState): void {
     if (!state.events || state.events.length === 0) return;
+
+    // 批量插入减少重排 / Batch insert to reduce reflow
+    const frag = document.createDocumentFragment();
     let changed = false;
     for (const ev of state.events) {
-      const key = `${ev.tick || 0}:${ev.type}:${ev.description || ""}`;
-      if (this.seenIds.has(key)) continue;
-      this.seenIds.add(key);
-      this.appendEvent(ev);
+      const key = this._makeKey(ev);
+      if (this.seen.has(key)) continue;
+      const el = this._createLine(ev, key);
+      this.seen.set(key, el);
+      this.keys.push(key);
+      frag.appendChild(el);
       changed = true;
     }
-    // 清理超出上限的旧事件 / Trim old events
-    while (this.seenIds.size > this.$max) {
-      const first = this.listEl.firstElementChild;
-      if (first) first.remove();
-      else break;
-    }
+
     if (changed) {
+      const shouldScroll = this._shouldAutoScroll();
+      this.listEl.appendChild(frag);
+      this._trim();
+      if (shouldScroll) {
+        this.listEl.scrollTop = this.listEl.scrollHeight;
+      }
       const countEl = document.getElementById("event-count");
       if (countEl) countEl.textContent = String(this.listEl.children.length);
     }
   }
 
-  private appendEvent(ev: EventData): void {
+  private _makeKey(ev: EventData): string {
+    // 用索引避免 description 重复导致的新事件被吞
+    return `${ev.tick || 0}:${ev.type}:${this.seen.size}`;
+  }
+
+  private _createLine(ev: EventData, key: string): HTMLElement {
     const icon = EVENT_ICONS[ev.type] || "📌";
     const tick = ev.tick ? `[Tick ${ev.tick}]` : "";
     const el = document.createElement("div");
     el.className = "event-line";
+    el.dataset.key = key;
     el.textContent = `${tick} ${icon} ${_readableType(ev.type)}`;
-    this.listEl.appendChild(el);
-    this.listEl.scrollTop = this.listEl.scrollHeight;
+    el.title = ev.description || _readableType(ev.type);
+    return el;
+  }
+
+  /** 同步裁剪 DOM 与 seen，避免去重集合无限增长 */
+  private _trim(): void {
+    while (this.keys.length > this.$max) {
+      const key = this.keys.shift();
+      if (!key) break;
+      const el = this.seen.get(key);
+      if (el) el.remove();
+      this.seen.delete(key);
+    }
+  }
+
+  /** 用户没有手动上滚时才自动到底 */
+  private _shouldAutoScroll(): boolean {
+    const { scrollTop, clientHeight, scrollHeight } = this.listEl;
+    return scrollTop + clientHeight >= scrollHeight - 12;
   }
 }
 
