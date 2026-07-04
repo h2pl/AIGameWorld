@@ -62,6 +62,7 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
     hints = state.get("hints", [])
     scene_id = state.get("scene_id", "")
     scene_info = state.get("scene_info", {})
+    pc_state_map = state.get("pc_state_map", {})
     pending_actions: list[dict] = []
     for order, decision in enumerate(decisions):
         talk_result = await talk_engine.process_talk_action(
@@ -82,10 +83,10 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
             decision=decision,
             config=config,
         )
-        explore_result = await explore_engine.process_explore_action(
+        explore_result = explore_engine.process_explore_action(
             decision=decision,
             scene_info=scene_info,
-            config=config,
+            pc_state_map=pc_state_map,
         )
         result = talk_result or interact_result or combat_result or explore_result
         if result is None:

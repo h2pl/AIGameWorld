@@ -196,7 +196,7 @@ class TestSceneAndMessageService:
             tick=1, world_id="world-x", scene_id="scene-x", tick_message_id="msg-x"
         )
         result = await scene_service.build_scene_info(state)
-        assert result == {"scene_info": {}}
+        assert result == {"scene_info": {}, "pc_state_map": {}}
 
     @pytest.mark.asyncio
     async def test_build_scene_info_builds_scene_info(self):

@@ -27,6 +27,9 @@ class OverallState(TypedDict, total=False):
     ]  # 角色决策（累加） / Character decisions (accumulated)
     pending_actions: Annotated[list[dict[str, Any]], add]  # pc_subgraph 产生的行动结果（累加）
     narrative: str  # DM 叙事文本 / DM narrative text
+    # PC 运行时状态——tick 内引擎修改此 map，末尾统一入库
+    # / PC runtime state map — engines mutate this during the tick, persisted at tick end
+    pc_state_map: dict[str, dict[str, Any]]
 
 
 class PcSubState(TypedDict):

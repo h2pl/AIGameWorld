@@ -138,7 +138,7 @@ def _get_char_position(char_id: str, scene_info: dict[str, Any]) -> dict[str, in
 
 @trace_node("event.flush")
 async def flush_events(state: OverallState, config: RunnableConfig = None) -> dict:
-    """从 state 各阶段产出统一构造 TickEvent → 写 tick_events → 标记消息可消费."""
+    """从 state 各阶段产出统一构造 TickEvent → 写 tick_events → 持久化 PC 状态 → 标记消息可消费."""
     tick_message_id = state.get("tick_message_id", "")
     if not tick_message_id:
         return {}
@@ -160,6 +160,23 @@ async def flush_events(state: OverallState, config: RunnableConfig = None) -> di
             tick_message_id,
             len(events),
         )
+
+    # tick 末尾：将 pc_state_map 中变更的 PC 坐标统一入库
+    # / At tick end: persist changed PC positions from pc_state_map to DB
+    pc_state_map: dict[str, dict[str, Any]] = state.get("pc_state_map", {})
+    if pc_state_map:
+        pc_repo = get_repo(config, "char")
+        if pc_repo:
+            for pc_id, info in pc_state_map.items():
+                pc = await pc_repo.load_pc(pc_id)
+                if pc:
+                    pc.position_x = info.get("position_x", 0)
+                    pc.position_y = info.get("position_y", 0)
+                    await pc_repo.save_pc(pc)
+            logger.info(
+                "[service] persisted pc_state_map count=%d tick=%s",
+                len(pc_state_map), tick,
+            )
 
     message_repo = get_repo(config, "message")
     if message_repo:

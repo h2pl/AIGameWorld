@@ -31,20 +31,19 @@ async def build_scene_info(state: OverallState, config=None) -> dict:
     scene_id = state.get("scene_id", "")
     tick_message_id = state.get("tick_message_id", "")
     logger.info("[service] tick=%s scene_id=%s tick_message_id=%s", tick, scene_id, tick_message_id)
-    info = await _build_scene_info(state, config)
-    return {"scene_info": info}
+    info, pc_state_map = await _build_scene_info(state, config)
+    return {"scene_info": info, "pc_state_map": pc_state_map}
 
 
-async def _build_scene_info(state: OverallState, config=None) -> dict[str, Any]:
-    """一次性构建当前场景的完整信息（与谁来用无关，不区分 PC，不限距离）/
-    Build the current scene's full info in one pass (consumer-independent —
-    not per-PC, no distance limit)."""
+async def _build_scene_info(state: OverallState, config=None) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    """一次性构建当前场景的完整信息 + PC 运行时状态 map /
+    Build the current scene's full info + PC runtime state map in one pass."""
     scene_id = state.get("scene_id", "")
     world_id = state.get("world_id", "")
     pc_repo = get_repo(config, "char")
     scene_repo = get_repo(config, "scene")
     if not pc_repo or not scene_id:
-        return {}
+        return {}, {}
 
     pcs = await pc_repo.load_pcs(world_id) if world_id else []
     actors = await pc_repo.load_actors(world_id) if world_id else []
@@ -58,9 +57,20 @@ async def _build_scene_info(state: OverallState, config=None) -> dict[str, Any]:
     scene_objects = await _fetch_scene_objects(scene_object_ids, scene_repo)
     scene_object_ctx = _build_scene_object_ctx(scene_objects)
 
-    # 按场景出生点给未设置坐标的 PC 分配坐标，避免重叠；NPC 保持固定坐标
-    # / Assign positions to unset PCs; keep NPC fixed positions
+    # 按场景出生点给未设置坐标的 PC 分配坐标，避免重叠 / Assign positions to unset PCs
     pc_positions = await _assign_pc_positions(scene_pcs, scene, pc_repo, spawn_radius=1)
+
+    # 构建 PC 运行时状态 map（tick 内各引擎读写此 map，末尾统一入库）
+    # / Build PC runtime state map (engines read/write during tick, persisted at tick end)
+    pc_state_map: dict[str, dict[str, Any]] = {}
+    for pc in scene_pcs:
+        pos = pc_positions.get(pc.id, {"x": pc.position_x, "y": pc.position_y})
+        pc_state_map[pc.id] = {
+            "position_x": pos["x"],
+            "position_y": pos["y"],
+            "scene_id": scene_id,
+            "status": pc.status,
+        }
 
     return {
         "scene": scene_ctx,
@@ -68,7 +78,7 @@ async def _build_scene_info(state: OverallState, config=None) -> dict[str, Any]:
         "pcs": [_build_pc_ctx(pc, pc_positions) for pc in scene_pcs],
         "actors": _build_actor_ctx(scene_actors),
         "pc_positions": pc_positions,
-    }
+    }, pc_state_map
 
 
 async def _assign_pc_positions(
