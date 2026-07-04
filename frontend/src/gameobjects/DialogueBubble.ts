@@ -2,7 +2,8 @@
  *
  * 设计：
  * - 人名放在内容前面，如 "Merchant: 晚上好"
- * - 泡泡宽度随内容自适应，最长不超过 MAX_WIDTH
+ * - 泡泡宽度按文本最长行自适应（有最小/最大限制），高度自动延伸
+ * - 左右内边距固定，文本过长时按字符强制换行，避免溢出
  * - 单条对话超过最大行数时，按页拆分成多个泡泡陆续显示
  */
 
@@ -10,6 +11,7 @@ import Phaser from "phaser";
 
 const PADDING_X = 12;
 const PADDING_Y = 8;
+const MIN_WIDTH = 100;
 const MAX_WIDTH = 260;
 const CORNER_RADIUS = 10;
 const ARROW_HEIGHT = 8;
@@ -50,7 +52,7 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     this.textObj = scene.add.text(0, -ARROW_HEIGHT - PADDING_Y, "", {
       font: TEXT_FONT,
       color: TEXT_COLOR,
-      wordWrap: { width: MAX_WIDTH - PADDING_X * 2 },
+      wordWrap: { width: MAX_WIDTH - PADDING_X * 2, useAdvancedWrap: true },
       align: "center",
     }).setOrigin(0.5, 1);
 
@@ -78,7 +80,9 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
   /** 绘制背景并调整交互区域 / Draw background and hit area */
   private _layout(): void {
     const bounds = this.textObj.getBounds();
-    const w = Math.min(bounds.width + PADDING_X * 2, MAX_WIDTH);
+    // 按实际最长行宽度 + 固定内边距计算泡泡宽度
+    const rawW = bounds.width + PADDING_X * 2;
+    const w = Math.min(Math.max(rawW, MIN_WIDTH), MAX_WIDTH);
     const h = bounds.height + PADDING_Y * 2;
 
     this.bg.clear();
@@ -124,7 +128,7 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     const style: Phaser.Types.GameObjects.Text.TextStyle = {
       font: TEXT_FONT,
       color: TEXT_COLOR,
-      wordWrap: { width: MAX_WIDTH - PADDING_X * 2 },
+      wordWrap: { width: MAX_WIDTH - PADDING_X * 2, useAdvancedWrap: true },
       align: "center",
     };
 
