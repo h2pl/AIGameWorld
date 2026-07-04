@@ -6,6 +6,8 @@ export interface SceneData {
   name: string;
   type: "outdoor" | "indoor" | "underground" | "village";
   description: string;
+  spawn_x?: number;
+  spawn_y?: number;
   exits: ExitData[];
   landmarks: LandmarkData[];
   environment: { weather?: string; time_of_day?: string };
@@ -131,6 +133,10 @@ export interface InitialWorldState {
   world_id: string;
   data_tick: number;
   display_tick: number;
+  llm_mock?: boolean;
+  data_mode?: string;
+  db_name?: string;
+  mock_dataset?: string;
   scenes: SceneData[];
   characters: CharacterData[];
   items: ItemData[];

@@ -49,6 +49,15 @@ class DMRecordRepo:
         )
         return row["m"] if row and row["m"] is not None else 0
 
+    async def load_latest_plot_brief(self, world_id: str, before_tick: int) -> str:
+        """加载 before_tick 之前最新的 plot_brief."""
+        row = await self._db.fetch_one(
+            "SELECT plot_brief FROM dm_records WHERE world_id = ? AND tick < ? AND plot_brief != '' "
+            "ORDER BY tick DESC LIMIT 1",
+            (world_id, before_tick),
+        )
+        return row["plot_brief"] if row and row["plot_brief"] else ""
+
     async def load_by_world(self, world_id: str, limit: int = 50) -> list[DMRecord]:
         """按 world 加载 DM 记录（按 tick 升序）."""
         rows = await self._db.fetch_all(

@@ -92,6 +92,7 @@ logging:
 mock:
   enabled: true               # 开启后所有 LLM 调用返回预定义 mock 数据
   dataset: "tavern"           # 数据集名称：tavern / combat
+  data_mode: "mock"           # 数据模式：mock=使用 test.db 灌入 mock 数据；real=使用真实 DB
 
 # === 可观测性 / Observability ===
 observability:

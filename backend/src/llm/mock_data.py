@@ -21,7 +21,7 @@ DATASET_TAVERN: MockDataset = {
             "空气中弥漫着麦酒和烤肉的香味，偶尔传来几声粗犷的笑声。",
         ],
         "plot_brief": "冒险者们踏入酒馆，等待他们的可能是一场蓄谋已久的相遇。",
-        "scene_id": "tavern",
+        "scene_id": "village_elderwood",
     },
     "dm_narrate": {
         "narrative": "推开厚重的橡木门，暖黄色的烛光洒在冒险者们身上。酒馆里比往常安静，几个常客低头啜饮，似乎都在刻意避开彼此的目光。吧台后面，老板娘 Greta 擦拭着一只锡杯，朝新来的客人们点了点头——那眼神好像在说：「你们来得正是时候。」",
@@ -72,7 +72,7 @@ DATASET_COMBAT: MockDataset = {
             "空气中有淡淡的血腥味。",
         ],
         "plot_brief": "冒险者们在林间小道上遭遇了伏击——一群地精从灌木丛后冲了出来。",
-        "scene_id": "forest_path",
+        "scene_id": "village_elderwood",
     },
     "dm_narrate": {
         "narrative": "刚走到林中小路的拐弯处，一阵刺耳的尖啸打破了寂静。三个绿皮地精从灌木丛后跳了出来，挥舞着生锈的短剑和木棒，龇牙咧嘴地朝冒险者们冲来。他们的眼睛里闪着贪婪的光——看来是把这几个旅人当成了今天的猎物。",

@@ -15,6 +15,7 @@ again.
 
 from typing import Any
 
+from ..domain.player_character import PlayerCharacter
 from ..graph.state import OverallState
 from ..utils.helpers import get_repo
 from ..utils.logging import get_logger, trace_node
@@ -57,12 +58,57 @@ async def _build_scene_info(state: OverallState, config=None) -> dict[str, Any]:
     scene_objects = await _fetch_scene_objects(scene_object_ids, scene_repo)
     scene_object_ctx = _build_scene_object_ctx(scene_objects)
 
+    # 按场景出生点给未设置坐标的 PC 分配坐标，避免重叠；NPC 保持固定坐标
+    # / Assign positions to unset PCs; keep NPC fixed positions
+    pc_positions = await _assign_pc_positions(scene_pcs, scene, pc_repo, spawn_radius=1)
+
     return {
         "scene": scene_ctx,
         "scene_objects": scene_object_ctx,
-        "pcs": [_build_pc_ctx(pc) for pc in scene_pcs],
+        "pcs": [_build_pc_ctx(pc, pc_positions) for pc in scene_pcs],
         "actors": _build_actor_ctx(scene_actors),
+        "pc_positions": pc_positions,
     }
+
+
+async def _assign_pc_positions(
+    pcs: list[PlayerCharacter],
+    scene: dict | None,
+    pc_repo,
+    spawn_radius: int = 1,
+) -> dict[str, dict[str, int]]:
+    """把未设置坐标的 PC 分配到场景出生点附近，返回 id→{x,y} 映射.
+
+    以 spawn 为中心，在 (2*radius+1)^2 的范围内按顺序占位，避免重叠。
+    NPC 保持 mock 或 world-pack 中的固定坐标，不参与分配。
+    """
+    unset_pcs = [pc for pc in pcs if pc.position_x == 0 and pc.position_y == 0]
+    if not unset_pcs:
+        return {}
+
+    spawn_x = scene.get("spawn_x", 0) if scene else 0
+    spawn_y = scene.get("spawn_y", 0) if scene else 0
+
+    positions: dict[str, dict[str, int]] = {}
+    # 生成以 spawn 为中心的格子偏移序列 / Generate offset grid around spawn
+    offsets = [
+        (dx, dy)
+        for dy in range(-spawn_radius, spawn_radius + 1)
+        for dx in range(-spawn_radius, spawn_radius + 1)
+    ]
+
+    for i, pc in enumerate(unset_pcs):
+        dx, dy = offsets[i % len(offsets)]
+        x = spawn_x + dx
+        y = spawn_y + dy
+        pc.position_x = x
+        pc.position_y = y
+        positions[pc.id] = {"x": x, "y": y}
+        # 持久化新坐标 / Persist updated position
+        if pc_repo:
+            await pc_repo.save_pc(pc)
+
+    return positions
 
 
 async def _fetch_scene_objects(object_ids: list[str], scene_repo) -> list:
@@ -80,6 +126,8 @@ def _build_scene_ctx(scene: dict | None, scene_id: str) -> dict[str, Any]:
             "name": "",
             "type": "",
             "description": "",
+            "spawn_x": 0,
+            "spawn_y": 0,
             "landmarks": [],
             "exits": [],
         }
@@ -88,6 +136,9 @@ def _build_scene_ctx(scene: dict | None, scene_id: str) -> dict[str, Any]:
         "name": scene.get("name", ""),
         "type": scene.get("type", ""),
         "description": scene.get("description", ""),
+        "map_key": scene.get("map_key", ""),
+        "spawn_x": scene.get("spawn_x", 0),
+        "spawn_y": scene.get("spawn_y", 0),
         "landmarks": scene.get("landmarks", []),
         "exits": scene.get("exits", []),
     }
@@ -105,13 +156,16 @@ def _build_scene_object_ctx(objects: list) -> list[dict[str, Any]]:
     ]
 
 
-def _build_pc_ctx(pc) -> dict[str, Any]:
+def _build_pc_ctx(pc: PlayerCharacter, positions: dict[str, dict[str, int]]) -> dict[str, Any]:
+    pos = positions.get(pc.id, {"x": pc.position_x, "y": pc.position_y})
     return {
         "id": pc.id,
         "name": pc.name,
         "role": pc.role,
         "race": pc.race or "",
         "status": pc.status,
+        "position_x": pos["x"],
+        "position_y": pos["y"],
     }
 
 
@@ -123,6 +177,8 @@ def _build_actor_ctx(actors: list) -> list[dict[str, Any]]:
             "role": actor.role,
             "race": actor.race or "",
             "status": actor.status,
+            "position_x": actor.position_x,
+            "position_y": actor.position_y,
             "personality": actor.personality,
             "disposition": actor.disposition,
         }

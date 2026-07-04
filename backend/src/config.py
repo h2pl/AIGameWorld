@@ -129,8 +129,9 @@ class LoggingConfig(BaseModel):
 class MockConfig(BaseModel):
     """Mock 模式配置 / Mock mode configuration."""
 
-    enabled: bool = True
-    dataset: str = "tavern"
+    enabled: bool = True  # LLM mock 开关 / LLM mock toggle
+    dataset: str = "tavern"  # mock 数据集 / Mock dataset name
+    data_mode: str = "mock"  # 数据模式：mock|real / Data mode: mock or real
 
 
 class Config(BaseSettings):

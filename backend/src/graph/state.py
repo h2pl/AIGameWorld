@@ -7,8 +7,11 @@ from operator import add
 from typing import Annotated, Any, TypedDict
 
 
-class OverallState(TypedDict):
-    """根状态——贯穿整个 tick 图 / Root state — flows through entire tick graph."""
+class OverallState(TypedDict, total=False):
+    """根状态——贯穿整个 tick 图 / Root state — flows through entire tick graph.
+
+    初始时只传入 tick 和 world_id，其余字段由各节点逐步填充。
+    """
 
     tick: int  # 当前 tick 编号 / Current tick number
     tick_message_id: str  # 消息 ID / Message ID

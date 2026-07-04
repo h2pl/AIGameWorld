@@ -1,4 +1,4 @@
-/** 主游戏场景 / Main Game Scene — kb/17 初始化顺序 */
+/** 主游戏场景 / Main Game Scene — 由 scene_setup 事件驱动初始化 */
 import Phaser from "phaser";
 import { gameStore } from "../state/GameStore";
 import { CharacterManager } from "../managers/CharacterManager";
@@ -57,55 +57,90 @@ export class GameScene extends Phaser.Scene {
   private charManager!: CharacterManager;
   private sceneNameText!: Phaser.GameObjects.Text;
   private narrativeText!: Phaser.GameObjects.Text;
+  private waitingText: Phaser.GameObjects.Text | null = null;
   private unsubscribe: (() => void) | null = null;
   private mapKey!: string;
+  private sceneBuilt = false;
 
   constructor() { super({ key: "Game" }); }
 
-  // ══ kb/17 初始化顺序 / Init order ══
-
-  create(data?: { mapKey?: string }): void {
-    this.mapKey = data?.mapKey || KEY.TILEMAP.TUXEMON;
-    this.initVariables();
-    this.initCamera();
-    this.initPhysics();         // ⏭️ TODO
-    this.createBackground();
-    this.createGroups();        // ⏭️ TODO
-    this.createLevel();
-    this.createTerrain();
-    this.createPlayer();
-    this.createEnemies();       // ⏭️ TODO
-    this.initAnimations();      // ⏭️ TODO
-    this.initInput();
-    this.setupCollisions();     // ⏭️ TODO
-    this.createUI();
-    this.cameras.main.fadeIn(400, 0, 0, 0);
-  }
-
-  /** 1. initVariables / Reset state + 生成纹理 */
-  private initVariables(): void {
+  create(): void {
     this.ts = TILEMAP.TILE_SIZE;
+    this.cameras.main.setBackgroundColor("#000000");
+
+    // 预生成角色纹理 / Pre-generate character textures
     const st = gameStore.getState();
-    // 为所有角色生成 Canvas 纹理 / Generate Canvas textures for all characters
     for (const ch of st.characters) makeCharTexture(this, ch, this.ts);
-    // fallback 纹理 / Fallback textures
     for (const fb of [{ id: "fighter_fb", race: "human", role: "fighter", is_pc: true }, { id: "actor_fb", race: "human", role: "villager", is_pc: false }]) {
       makeCharTexture(this, fb, this.ts);
     }
-    console.log("[Scene] initVariables ts=%d chars=%d textures=ready", this.ts, st.characters.length);
+
+    // 等待 DM 创建情境 / Waiting for DM to create situation
+    this.waitingText = this.add.text(CONFIG.CANVAS.width / 2, CONFIG.CANVAS.height / 2,
+      "等待 DM 创造情境...",
+      { fontFamily: "Segoe UI, sans-serif", fontSize: "18px", color: "#ffd700" },
+    ).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH.HUD);
+
+    // 订阅 store，等待 scene_setup / Subscribe to store and wait for scene_setup
+    this.unsubscribe = gameStore.subscribe(() => {
+      const s = gameStore.getState();
+      if (s.scene_ready && !this.sceneBuilt) {
+        this.buildScene(s.current_scene_id);
+      }
+      if (this.sceneBuilt) {
+        this.charManager?.sync(s.characters, s.character_positions);
+        if (s.narrative && this.narrativeText) this.narrativeText.setText(s.narrative);
+      }
+    });
+
+    // 如果已经有 scene_ready（例如热更新后），直接构建
+    if (st.scene_ready) {
+      this.buildScene(st.current_scene_id);
+    }
   }
 
-  /** 2. initCamera / Camera config */
+  /** 构建实际游戏场景 / Build the actual game scene */
+  private buildScene(sceneId: string): void {
+    if (this.sceneBuilt) return;
+    this.sceneBuilt = true;
+
+    // 移除等待文本 / Remove waiting text
+    if (this.waitingText) {
+      this.waitingText.destroy();
+      this.waitingText = null;
+    }
+
+    const st = gameStore.getState();
+    this.mapKey = st.current_map_key || KEY.TILEMAP.TUXEMON;
+
+    this.initCamera();
+    this.initPhysics();
+    this.createBackground();
+    this.createGroups();
+    this.createLevel();
+    this.createTerrain();
+    this.createPlayer();
+    this.createEnemies();
+    this.initAnimations();
+    this.initInput();
+    this.setupCollisions();
+    this.createUI();
+
+    this.cameras.main.fadeIn(400, 0, 0, 0);
+    console.log("[Scene] buildScene scene_id=%s map=%s", sceneId, this.mapKey);
+  }
+
+  /** 1. initCamera / Camera config */
   private initCamera(): void {
     // setBounds 在 createLevel 中执行（需 tilemap 尺寸）
   }
 
-  /** 3. initPhysics / Physics world — TODO: PMove 实时操控时启用 */
+  /** 2. initPhysics / Physics world — TODO: PMove 实时操控时启用 */
   private initPhysics(): void {
     // 当前跳过：kb/18 "Skip Physics When: Grid-based movement"
   }
 
-  /** 4. createBackground / Background visuals */
+  /** 3. createBackground / Background visuals */
   private createBackground(): void {
     this.tilemap = this.make.tilemap({ key: this.mapKey });
     const tsImageKey = this.mapKey === KEY.TILEMAP.DESERT ? KEY.IMAGE.DESERT : KEY.IMAGE.TUXEMON;
@@ -116,28 +151,12 @@ export class GameScene extends Phaser.Scene {
     console.log("[Scene] createBackground map=", this.mapKey);
   }
 
-  /** 6a. createTerrain / 场景物品渲染 */
-  private createTerrain(): void {
-    for (const obj of gameStore.getState().scene_objects) {
-      const key = `obj_${obj.id}`;
-      if (!this.textures.exists(key)) makeObjectTexture(this, obj, key, this.ts);
-      const { wx, wy } = gridToWorld(obj.position_x, obj.position_y, this.ts);
-      this.add.sprite(wx, wy, key).setOrigin(0.5, 1).setDepth(DEPTH.CHARACTER - 1)
-        .setInteractive({ useHandCursor: true })
-        .on("pointerdown", () => {
-          console.log("[Scene] interacted with:", obj.name);
-          document.dispatchEvent(new CustomEvent("object-interacted", { detail: obj }));
-        });
-    }
-    console.log("[Scene] createTerrain objects=%d", gameStore.getState().scene_objects.length);
-  }
-
-  /** 5. createGroups / Physics groups — TODO: 对象池化频繁创建的对象 */
+  /** 4. createGroups / Physics groups — TODO: 对象池化频繁创建的对象 */
   private createGroups(): void {
     // 当前跳过：无 physics groups
   }
 
-  /** 6. createLevel / Static objects: World + Above layers + collision props */
+  /** 5. createLevel / Static objects: World + Above layers + collision props */
   private createLevel(): void {
     const tsName = this.mapKey === KEY.TILEMAP.DESERT ? "Desert" : TILEMAP.TILESET_NAME;
     const ts = this.tilemap.getTileset(tsName);
@@ -151,6 +170,22 @@ export class GameScene extends Phaser.Scene {
     const mapH = this.tilemap.heightInPixels;
     this.cameras.main.setBounds(0, 0, mapW, mapH);
     console.log("[Scene] createLevel map=%dx%d px", mapW, mapH);
+  }
+
+  /** 6. createTerrain / 场景物品渲染 */
+  private createTerrain(): void {
+    for (const obj of gameStore.getState().scene_objects) {
+      const key = `obj_${obj.id}`;
+      if (!this.textures.exists(key)) makeObjectTexture(this, obj, key, this.ts);
+      const { wx, wy } = gridToWorld(obj.position_x, obj.position_y, this.ts);
+      this.add.sprite(wx, wy, key).setOrigin(0.5, 1).setDepth(DEPTH.CHARACTER - 1)
+        .setInteractive({ useHandCursor: true })
+        .on("pointerdown", () => {
+          console.log("[Scene] interacted with:", obj.name);
+          document.dispatchEvent(new CustomEvent("object-interacted", { detail: obj }));
+        });
+    }
+    console.log("[Scene] createTerrain objects=%d", gameStore.getState().scene_objects.length);
   }
 
   /** 7. createPlayer / Dynamic objects: 所有角色 */
@@ -197,10 +232,10 @@ export class GameScene extends Phaser.Scene {
     // 当前跳过：无 physics 碰撞体
   }
 
-  /** 12. createUI / HUD overlay + store subscribe + 场景切换 */
+  /** 12. createUI / HUD overlay */
   private createUI(): void {
     const st = gameStore.getState();
-    const scene = st.scenes[0];
+    const scene = st.scenes.find((s) => s.id === st.current_scene_id);
     this.sceneNameText = this.add.text(8, 4, `${scene?.name || ""}`, {
       fontFamily: "Segoe UI, sans-serif", fontSize: "12px", color: "#ffd700", fontStyle: "bold",
       backgroundColor: "rgba(0,0,0,0.6)", padding: { x: 5, y: 2 },
@@ -212,37 +247,19 @@ export class GameScene extends Phaser.Scene {
         backgroundColor: "rgba(0,0,0,0.7)", padding: { x: 10, y: 6 } },
     ).setScrollFactor(0).setDepth(DEPTH.HUD);
 
-    // 订阅 store / Subscribe to store
-    let lastSceneId = st.characters[0]?.scene_id;
-    this.unsubscribe = gameStore.subscribe(() => {
-      const s = gameStore.getState();
-      this.charManager.sync(s.characters, s.character_positions);
-      if (s.narrative && this.narrativeText) this.narrativeText.setText(s.narrative);
-      // 场景切换检测 / Scene change detection
-      const curSceneId = s.characters[0]?.scene_id;
-      if (curSceneId && curSceneId !== lastSceneId) {
-        lastSceneId = curSceneId;
-        this.onSceneChanged(curSceneId);
-      }
-    });
-
-    // 场景切换内部逻辑 / Scene change handler (commented: used by CharacterManager for future explicit triggers)
-
-    console.log("[Scene] createUI done, store subscribed");
+    console.log("[Scene] createUI done");
   }
 
-  /** 场景切换 / Switch scene — 淡出→重启→淡入 / Fade out → restart → fade in */
+  /** 场景切换 / Switch scene */
   private onSceneChanged(sceneId: string): void {
-    const cfg = SCENE_MAP[sceneId];
-    if (!cfg || cfg.map === this.mapKey) return;
-    console.log("[Scene] scene-changed →", sceneId, "restarting with", cfg.map);
+    const nextMapKey = gameStore.getState().current_map_key;
+    if (!nextMapKey || nextMapKey === this.mapKey) return;
+    console.log("[Scene] scene-changed →", sceneId, "restarting with", nextMapKey);
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once("camerafadeoutcomplete", () => {
-      this.scene.start("Game", { mapKey: cfg.map });
+      this.scene.start("Game", { mapKey: nextMapKey });
     });
   }
-
-  // ══ Lifecycle ══
 
   setNarrative(text: string): void {
     if (this.narrativeText) this.narrativeText.setText(text);

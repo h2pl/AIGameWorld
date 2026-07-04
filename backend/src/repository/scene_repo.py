@@ -15,17 +15,26 @@ class SceneRepo:
     async def list_scenes(self, world_id: str) -> list[dict]:
         """按 world_id 加载场景摘要列表."""
         rows = await self._db.fetch_all(
-            "SELECT id, name, type, description FROM scenes WHERE world_id = ?", (world_id,)
+            "SELECT id, name, type, description, map_key, spawn_x, spawn_y FROM scenes WHERE world_id = ?",
+            (world_id,),
         )
         return [
-            {"id": r["id"], "name": r["name"], "type": r["type"], "description": r["description"]}
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "type": r["type"],
+                "description": r["description"],
+                "map_key": r.get("map_key", ""),
+                "spawn_x": r.get("spawn_x", 0),
+                "spawn_y": r.get("spawn_y", 0),
+            }
             for r in rows
         ]
 
     async def get_scene(self, scene_id: str) -> dict | None:
         """按 scene_id 加载单个场景."""
         row = await self._db.fetch_one(
-            "SELECT id, name, type, description FROM scenes WHERE id = ?",
+            "SELECT id, name, type, description, map_key, spawn_x, spawn_y FROM scenes WHERE id = ?",
             (scene_id,),
         )
         if not row:
@@ -35,6 +44,9 @@ class SceneRepo:
             "name": row["name"],
             "type": row["type"],
             "description": row["description"],
+            "map_key": row.get("map_key", ""),
+            "spawn_x": row.get("spawn_x", 0),
+            "spawn_y": row.get("spawn_y", 0),
         }
 
     async def get_object_ids(self, scene_id: str) -> list[str]:
@@ -47,13 +59,16 @@ class SceneRepo:
     async def save_scene(self, scene: dict, world_id: str) -> None:
         """写入单条场景."""
         await self._db.execute(
-            "INSERT OR REPLACE INTO scenes (id, name, type, description, world_id) "
-            "VALUES (?, ?, ?, ?, ?)",
+            "INSERT OR REPLACE INTO scenes (id, name, type, description, map_key, spawn_x, spawn_y, world_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 scene.get("id", ""),
                 scene.get("name", ""),
                 scene.get("type", ""),
                 scene.get("description", ""),
+                scene.get("map_key", ""),
+                scene.get("spawn_x", 0),
+                scene.get("spawn_y", 0),
                 world_id,
             ),
         )
@@ -69,8 +84,8 @@ class SceneRepo:
                 obj.name,
                 obj.object_type.value,
                 obj.scene_id,
-                0,
-                0,
+                obj.position_x,
+                obj.position_y,
                 int(obj.interactable),
                 json.dumps(obj.interact_data, ensure_ascii=False) if obj.interact_data else None,
                 obj.world_id,

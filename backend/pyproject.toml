@@ -22,6 +22,7 @@ dependencies = [
     "jinja2>=3.1",                  # Prompt 模板引擎 / Prompt templates
     "pyyaml>=6.0",                  # Pack YAML 解析 / Pack YAML parsing
     "langfuse>=4.12",               # LLM 可观测性 / LLM observability
+    "python-json-logger>=4.1.0",
 ]
 
 # === 开发依赖 / Dev Dependencies ===

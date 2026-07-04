@@ -10,3 +10,5 @@ class Scene(DomainModel):
     name: str = ""
     type: str = ""  # outdoor / indoor / underground
     description: str = ""
+    spawn_x: int = 0  # 初始出生点 X / Spawn point X
+    spawn_y: int = 0  # 初始出生点 Y / Spawn point Y

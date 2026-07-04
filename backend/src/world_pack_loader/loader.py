@@ -96,6 +96,17 @@ class WorldLoader:
 
     async def _write_scenes(self, scenes: list[dict], world_id: str) -> int:
         for s in scenes:
+            # 读取场景出生点 / Read scene spawn point
+            spawn = s.get("spawn") or {}
+            grid = s.get("grid") or {}
+            spawn_x = spawn.get("x")
+            spawn_y = spawn.get("y")
+            if spawn_x is None or spawn_y is None:
+                # 未配置 spawn 时用 grid 中心 / Fallback to grid center
+                spawn_x = (grid.get("width", 0) // 2) if grid else 0
+                spawn_y = (grid.get("height", 0) // 2) if grid else 0
+            s.setdefault("spawn_x", spawn_x)
+            s.setdefault("spawn_y", spawn_y)
             await self._scene_repo.save_scene(s, world_id)
         return len(scenes)
 

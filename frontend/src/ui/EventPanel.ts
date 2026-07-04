@@ -19,7 +19,7 @@ const EVENT_ICONS: Record<string, string> = {
 
 export class EventPanel extends Panel {
   private listEl!: HTMLElement; // 事件列表容器 / Event list container
-  private titleEl!: HTMLElement; // 标题（显示当前 Tick） / Title (shows current tick)
+  private tickBadgeEl!: HTMLElement; // Tick 徽章 / Tick badge
   private currentTick = 0; // 当前展示的 tick / Currently displayed tick
   /** 当前 tick 内已渲染的最后一个 seq */
   private renderedSeq = 0;
@@ -34,13 +34,16 @@ export class EventPanel extends Panel {
     el.innerHTML = `
       <div class="panel-header">
         <span class="panel-icon">📋</span>
-        <span class="panel-title" id="event-title">事件 / Events</span>
+        <span class="panel-title" id="event-title">
+          <span>事件/Events</span>
+          <span class="event-tick-badge" id="event-tick-badge">Display_Tick=0</span>
+        </span>
         <button class="panel-history-btn" id="event-history-btn" title="历史事件">🕓</button>
       </div>
       <div class="panel-body event-body"></div>
     `;
     this.listEl = el.querySelector(".event-body")!;
-    this.titleEl = el.querySelector("#event-title")!;
+    this.tickBadgeEl = el.querySelector("#event-tick-badge")!;
     // 历史按钮点击 → 派发事件 / History button click → dispatch event
     el.querySelector("#event-history-btn")!.addEventListener("click", () => {
       window.dispatchEvent(new CustomEvent("show-event-history"));
@@ -60,20 +63,20 @@ export class EventPanel extends Panel {
       this.currentTick = state.display_tick;
       this.listEl.innerHTML = "";
       this.renderedSeq = 0;
-      this.titleEl.textContent = this.currentTick === 0
-        ? "Tick 0 (未开始)"
-        : `Tick ${this.currentTick}`;
+      this.tickBadgeEl.textContent = `Display_Tick=${this.currentTick}`;
       if (this.currentTick === 0) {
         this.listEl.innerHTML = `<div class="event-empty">等待开始...</div>`;
       }
     }
 
+    console.log("[EventPanel] stateChange tick=%d events=%d", this.currentTick, state.events?.length || 0, state.events?.map(e => ({t: e.type, tick: e.tick, seq: e.seq})));
     if (!state.events || state.events.length === 0) return;
 
     // 只渲染当前 tick 且 seq > renderedSeq 的新事件 / Only render current tick's new events
     const newEvents = state.events.filter(
       (ev) => ev.tick === this.currentTick && (ev.seq ?? 0) > this.renderedSeq,
     );
+    console.log("[EventPanel] newEvents=%d renderedSeq=%d", newEvents.length, this.renderedSeq);
     if (newEvents.length === 0) return;
 
     // 首次有事件时移除空状态提示 / Remove empty state on first event

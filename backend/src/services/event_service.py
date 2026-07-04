@@ -45,6 +45,7 @@ def _scene_event(state: OverallState) -> TickEvent | None:
         payload={
             "scene_id": scene_id,
             "scene": scene,
+            "pc_positions": scene_info.get("pc_positions", {}),
         },
     )
 

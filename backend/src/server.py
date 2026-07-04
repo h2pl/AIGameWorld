@@ -6,7 +6,9 @@ Orchestrator 直接驱动 graph，无后台任务 / Orchestrator drives graph di
 
 import asyncio
 import json
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,6 +29,11 @@ from src.viewer import (
     render_index,
     render_pack,
 )
+
+# 允许从 backend/data/mock.py 导入 / Allow importing backend/data/mock.py
+_BACKEND_ROOT = Path(__file__).parent.parent
+if str(_BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_ROOT))
 
 logger = get_logger(__name__)
 
@@ -175,10 +182,40 @@ def _get_orch():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db = SQLiteClient("data/world_db.db")
-    app.state.db = db
-    await db.connect()
-    await db.init_schema()
+    from .config import load_config
+
+    cfg = load_config("../config.yaml")
+    use_mock_data = cfg.mock.data_mode == "mock"
+    db_path = cfg.database.test_sqlite_path if use_mock_data else cfg.database.sqlite_path
+
+    logger.info(
+        "[lifespan] starting llm_mock=%s data_mode=%s db=%s dataset=%s",
+        cfg.mock.enabled,
+        cfg.mock.data_mode,
+        db_path,
+        cfg.mock.dataset,
+    )
+
+    # Mock 数据模式：使用独立的 test.db 并灌入 mock 数据 / Mock data mode uses test.db
+    if use_mock_data:
+        from data.mock import seed_mock_data
+
+        db_file = Path(db_path)
+        if db_file.exists():
+            db_file.unlink()
+            logger.info("[lifespan] removed old mock db=%s", db_path)
+        db = SQLiteClient(db_path)
+        app.state.db = db
+        await db.connect()
+        await db.init_schema()
+        await seed_mock_data(db)
+        logger.info("[lifespan] seeded mock data into %s", db_path)
+    else:
+        db = SQLiteClient(db_path)
+        app.state.db = db
+        await db.connect()
+        await db.init_schema()
+
     # Migration: 给已有 tick_events 表补 world_id 列 / Add world_id column to existing table
     cols = await db.fetch_all("PRAGMA table_info(tick_events)")
     if cols and not any(c["name"] == "world_id" for c in cols):
@@ -197,27 +234,36 @@ async def lifespan(app: FastAPI):
         await db.commit()
         logger.info("[migration] Renamed current_tick to data_tick, added display_tick")
 
+    # Migration: 给已有 scenes 表补 spawn_x/spawn_y/map_key 列 / Add columns to existing scenes
+    scene_cols = await db.fetch_all("PRAGMA table_info(scenes)")
+    if scene_cols:
+        if not any(c["name"] == "spawn_x" for c in scene_cols):
+            await db.execute("ALTER TABLE scenes ADD COLUMN spawn_x INTEGER NOT NULL DEFAULT 0")
+        if not any(c["name"] == "spawn_y" for c in scene_cols):
+            await db.execute("ALTER TABLE scenes ADD COLUMN spawn_y INTEGER NOT NULL DEFAULT 0")
+        if not any(c["name"] == "map_key" for c in scene_cols):
+            await db.execute("ALTER TABLE scenes ADD COLUMN map_key TEXT NOT NULL DEFAULT ''")
+        await db.commit()
+        logger.info("[migration] Added spawn_x/spawn_y/map_key columns to scenes")
+
     # 自动导入默认 world-pack（DB 为空时）/ Auto-import default pack when DB is empty
-    worlds_count = await db.fetch_all("SELECT 1 FROM worlds LIMIT 1")
-    if not worlds_count:
-        from pathlib import Path
+    if not use_mock_data:
+        worlds_count = await db.fetch_all("SELECT 1 FROM worlds LIMIT 1")
+        if not worlds_count:
+            from .storage.chroma_client import ChromaClient
+            from .world_pack_loader.loader import WorldLoader
 
-        from .config import load_config
-        from .storage.chroma_client import ChromaClient
-        from .world_pack_loader.loader import WorldLoader
-
-        cfg = load_config("../config.yaml")
-        pack_id = cfg.world.default_pack
-        pack_dir = Path(__file__).parent.parent.parent / "world-pack" / pack_id
-        if pack_dir.exists():
-            logger.info("[lifespan] worlds table empty, auto-importing pack=%s", pack_id)
-            chroma = ChromaClient(persist_path=cfg.database.chroma_path)
-            loader = WorldLoader(db, chroma)
-            counts = await loader.load(pack_dir)
-            await db.commit()
-            logger.info("[lifespan] auto-imported pack=%s counts=%s", pack_id, counts)
-        else:
-            logger.warning("[lifespan] default pack not found: %s", pack_dir)
+            pack_id = cfg.world.default_pack
+            pack_dir = Path(__file__).parent.parent.parent / "world-pack" / pack_id
+            if pack_dir.exists():
+                logger.info("[lifespan] worlds table empty, auto-importing pack=%s", pack_id)
+                chroma = ChromaClient(persist_path=cfg.database.chroma_path)
+                loader = WorldLoader(db, chroma)
+                counts = await loader.load(pack_dir)
+                await db.commit()
+                logger.info("[lifespan] auto-imported pack=%s counts=%s", pack_id, counts)
+            else:
+                logger.warning("[lifespan] default pack not found: %s", pack_dir)
 
     yield
     if app.state.db:
@@ -384,6 +430,8 @@ async def get_pack_state(world_id: str):
                 "name": r["name"],
                 "type": r["type"],
                 "description": r.get("description", ""),
+                "spawn_x": r.get("spawn_x", 0),
+                "spawn_y": r.get("spawn_y", 0),
             }
             for r in await db.fetch_all("SELECT * FROM scenes WHERE world_id = ?", (world_id,))
         ]
@@ -427,10 +475,20 @@ async def get_pack_state(world_id: str):
         )
         data_tick = world_row["data_tick"] if world_row else 0
         display_tick = world_row["display_tick"] if world_row else 0
+        cfg = load_config("../config.yaml")
+        db_path = (
+            cfg.database.test_sqlite_path
+            if cfg.mock.data_mode == "mock"
+            else cfg.database.sqlite_path
+        )
         return {
             "world_id": world_id,
             "data_tick": data_tick,
             "display_tick": display_tick,
+            "llm_mock": cfg.mock.enabled,
+            "data_mode": cfg.mock.data_mode,
+            "db_name": Path(db_path).name,
+            "mock_dataset": cfg.mock.dataset,
             "scenes": scenes,
             "characters": pcs + actors,
             "items": items,
