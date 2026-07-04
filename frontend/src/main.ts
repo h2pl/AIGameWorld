@@ -18,22 +18,33 @@ import { DMCreationPanel } from "./ui/DMCreationPanel";
 import { CharacterPanel } from "./ui/CharacterPanel";
 import { ObjectPanel } from "./ui/ObjectPanel";
 
-/** 从后端加载初始世界状态 / Load initial world state from backend */
+/** 从后端加载初始世界状态 / Load initial world state from backend
+ *
+ * 后端启动（尤其是 mock 数据灌入）可能需要几秒，因此失败时自动重试。
+ */
 async function loadWorldState(packId: string): Promise<InitialWorldState | null> {
-  console.log(`${L} loadWorldState: fetching ${CONFIG.API.base}${CONFIG.API.worldState}/${packId}/state`);
-  try {
-    const resp = await fetch(`${CONFIG.API.base}${CONFIG.API.worldState}/${packId}/state`);
-    if (!resp.ok) {
-      console.warn(`${L} API not available (${resp.status}), using mock`);
-      return null;
+  const url = `${CONFIG.API.base}${CONFIG.API.worldState}/${packId}/state`;
+  console.log(`${L} loadWorldState: fetching ${url}`);
+  const maxAttempts = 5;
+  const delayMs = 500;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = await resp.json() as InitialWorldState;
+        console.log(`${L} API OK: pack=${data.world_id} chars=${data.characters?.length || 0}`);
+        return data;
+      }
+      console.warn(`${L} API not available (${resp.status}), attempt ${attempt}/${maxAttempts}`);
+    } catch (e) {
+      console.warn(`${L} Backend unreachable, attempt ${attempt}/${maxAttempts}`, e instanceof Error ? e.message : e);
     }
-    const data = await resp.json() as InitialWorldState;
-    console.log(`${L} API OK: pack=${data.world_id} chars=${data.characters?.length || 0}`);
-    return data;
-  } catch (e) {
-    console.warn(`${L} Backend unreachable, using mock`, e instanceof Error ? e.message : e);
-    return null;
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
   }
+  console.error(`${L} backend unreachable after retries, using mock`);
+  return null;
 }
 
 /** 主入口 / Main entry — 全部数据来自后端，前端不再自带 mock */
