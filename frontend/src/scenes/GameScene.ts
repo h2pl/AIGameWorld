@@ -8,7 +8,10 @@ import { gridToWorld } from "../utils/tile";
 // gridToWorld 保留给 createPlayer 等场景构造使用 / gridToWorld kept for scene construction
 import { WalkController } from "../controllers/WalkController";
 import { EventManager } from "../managers/EventManager";
-import type { EventData } from "../types";
+import { ExploreController } from "../controllers/ExploreController";
+import { TalkController } from "../controllers/TalkController";
+import { NarrativeController } from "../controllers/NarrativeController";
+import { InteractController } from "../controllers/InteractController";
 
 /** 种族肤色 / Race skin colors */
 const RACE_SKIN: Record<string, string> = {
@@ -135,11 +138,10 @@ export class GameScene extends Phaser.Scene {
   private sceneBuilt = false;
   private walkController!: WalkController;
   private eventManager!: EventManager;
-  private dialogueQueue: Array<{ speaker_id: string; text: string }> = [];
-  private isPlayingDialogue = false;
-  private dialogueTimer?: number;
-  private dialoguesThisTick = 0;
-  private readonly MAX_DIALOGUE_EVENTS_PER_TICK = 1;
+  private exploreController!: ExploreController;
+  private talkController!: TalkController;
+  private narrativeController!: NarrativeController;
+  private interactController!: InteractController;
   private terrainSprites: Phaser.GameObjects.Sprite[] = [];
 
   constructor() {
@@ -195,6 +197,7 @@ export class GameScene extends Phaser.Scene {
     // 从 Phaser registry 拿到 EventManager 并注册场景级 handlers
     // / Retrieve EventManager from Phaser registry and register scene handlers
     this.eventManager = this.game.registry.get("eventManager") as EventManager;
+    this._initControllers();
     this._registerEventHandlers();
 
     // 刷新后重放当前展示 tick 的对话，让人物头顶仍有泡泡
@@ -205,157 +208,32 @@ export class GameScene extends Phaser.Scene {
         .getState()
         .events.filter((ev) => ev.tick === displayTick && ev.type === "pc_talk");
       for (const ev of talks) {
-        this._handleTalk(ev);
+        this.talkController.handle(ev);
       }
     }
+  }
+
+  /** 初始化事件控制器 / Initialize event controllers */
+  private _initControllers(): void {
+    const ctx = {
+      scene: this,
+      getCharManager: () => this.charManager,
+      getWalkController: () => this.walkController,
+      isSceneBuilt: () => this.sceneBuilt,
+    };
+    this.exploreController = new ExploreController(ctx);
+    this.talkController = new TalkController(ctx);
+    this.narrativeController = new NarrativeController();
+    this.interactController = new InteractController();
   }
 
   /** 注册事件 handlers / Register event handlers with EventManager */
   private _registerEventHandlers(): void {
     if (!this.eventManager) return;
-    this.eventManager.register("pc_explore", (ev) => this._handleExplore(ev));
-    this.eventManager.register("pc_talk", (ev) => this._handleTalk(ev));
-    this.eventManager.register("dm_narrative", (ev) => this._handleNarrative(ev));
-  }
-
-  /** 处理探索事件 / Handle explore event */
-  private _handleExplore(ev: EventData): Promise<void> {
-    return new Promise((resolve) => {
-      const payload = ev.payload;
-      if (!payload) {
-        resolve();
-        return;
-      }
-      const pcId = String(payload.pc_id || "");
-      const waypoints = payload.waypoints as Array<{ x: number; y: number }> | undefined;
-      const finalX = Number(payload.final_x ?? 0);
-      const finalY = Number(payload.final_y ?? 0);
-      if (!pcId || !waypoints?.length || !this.walkController) {
-        resolve();
-        return;
-      }
-      const sprite = this.charManager?.getSprite(pcId);
-      if (!sprite) {
-        resolve();
-        return;
-      }
-      const allWaypoints = [...waypoints, { x: finalX, y: finalY }];
-      this.walkController.walkRoute(sprite, allWaypoints, {
-        onComplete: (finalTx, finalTy) => {
-          // 走完后同步坐标到 store，避免下次 sync 瞬移 / Sync final pos to store after walk
-          const st = gameStore.getState();
-          st.character_positions[pcId] = { x: finalTx, y: finalTy };
-          const ch = st.characters.find((c) => c.id === pcId);
-          if (ch) {
-            ch.position_x = finalTx;
-            ch.position_y = finalTy;
-          }
-          console.log("[Scene] explore done: %s → (%d,%d)", pcId, finalTx, finalTy);
-          resolve();
-        },
-      });
-      console.log(
-        "[Scene] explore: %s through %d waypoints → (%d,%d)",
-        pcId,
-        waypoints.length,
-        finalX,
-        finalY
-      );
-    });
-  }
-
-  /** 处理对话事件：先走位（如需要），再显示泡泡 / Handle talk event: approach if needed, then show dialogue */
-  private async _handleTalk(ev: EventData): Promise<void> {
-    const payload = ev.payload;
-    if (!payload) return;
-
-    const pcId = String(payload.pc_id || "");
-    const targetPos = payload.target_position as { x: number; y: number } | undefined;
-
-    // 1. 先走到目标旁边 / Approach target first
-    if (pcId && targetPos && this.walkController) {
-      const sprite = this.charManager?.getSprite(pcId);
-      if (sprite) {
-        await this._walkToAdjacent(sprite, targetPos.x, targetPos.y);
-      }
-    }
-
-    // 2. 显示对话 / Show dialogue
-    const result = payload.result as Record<string, unknown> | undefined;
-    const turns = result?.turns as Array<{ speaker_id: string; text: string }> | undefined;
-    if (turns?.length) {
-      await this._playDialogueTurns(turns);
-    }
-  }
-
-  /** 走到目标相邻格 / Walk sprite to a tile adjacent to target */
-  private _walkToAdjacent(
-    sprite: import("../gameobjects/CharacterSprite").CharacterSprite,
-    targetTx: number,
-    targetTy: number
-  ): Promise<void> {
-    return new Promise((resolve) => {
-      const current = sprite.getGridPos(this.ts);
-      const adjacent = [
-        { tx: targetTx + 1, ty: targetTy },
-        { tx: targetTx - 1, ty: targetTy },
-        { tx: targetTx, ty: targetTy + 1 },
-        { tx: targetTx, ty: targetTy - 1 },
-      ].filter((a) => a.tx >= 0 && a.ty >= 0);
-      let best = adjacent[0];
-      let bestDist = Infinity;
-      for (const a of adjacent) {
-        const d = Math.abs(a.tx - current.tx) + Math.abs(a.ty - current.ty);
-        if (d < bestDist) {
-          best = a;
-          bestDist = d;
-        }
-      }
-      if (!best) {
-        resolve();
-        return;
-      }
-      this.walkController!.walkTo(sprite, best.tx, best.ty, { onComplete: () => resolve() });
-    });
-  }
-
-  /** 顺序播放多轮对话 / Play dialogue turns sequentially */
-  private _playDialogueTurns(turns: Array<{ speaker_id: string; text: string }>): Promise<void> {
-    return new Promise((resolve) => {
-      this.dialogueQueue.push(...turns);
-      this._playNextDialogue(resolve);
-    });
-  }
-
-  /** 播放队列中下一句对话 / Play next dialogue in queue
-   * @param onDone 队列全部播完后回调 / Called after all queued turns finish
-   */
-  private _playNextDialogue(onDone?: () => void): void {
-    if (this.isPlayingDialogue || this.dialogueQueue.length === 0) {
-      if (this.dialogueQueue.length === 0) onDone?.();
-      return;
-    }
-    this.isPlayingDialogue = true;
-    const turn = this.dialogueQueue.shift()!;
-    const sprite = this.charManager?.getSprite(turn.speaker_id);
-    const advance = () => {
-      this.isPlayingDialogue = false;
-      this._playNextDialogue(onDone);
-    };
-    if (sprite) {
-      sprite.say(turn.text, advance);
-    } else if (!this.sceneBuilt) {
-      // 场景尚未构建完成，稍等重试 / Scene not ready yet, retry shortly
-      this.dialogueTimer = window.setTimeout(() => {
-        this.dialogueQueue.unshift(turn);
-        this.isPlayingDialogue = false;
-        this._playNextDialogue(onDone);
-      }, 200);
-    } else {
-      console.warn("[Scene] dialogue speaker not found:", turn.speaker_id);
-      // 找不到说话者时短暂停留后继续 / Brief pause if speaker missing
-      this.dialogueTimer = window.setTimeout(advance, 600);
-    }
+    this.eventManager.register("pc_explore", (ev) => this.exploreController.handle(ev));
+    this.eventManager.register("pc_talk", (ev) => this.talkController.handle(ev));
+    this.eventManager.register("pc_interact", (ev) => this.interactController.handle(ev));
+    this.eventManager.register("dm_narrative", (ev) => this.narrativeController.handle(ev));
   }
 
   /** 构建实际游戏场景 / Build the actual game scene */
@@ -580,12 +458,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // 清理对话 / Clean up dialogues
-    this.dialogueQueue = [];
-    this.isPlayingDialogue = false;
-    if (this.dialogueTimer) {
-      window.clearTimeout(this.dialogueTimer);
-      this.dialogueTimer = undefined;
-    }
+    this.talkController?.clear();
 
     // 重置相机 / Reset camera
     this.cameras.main.setBounds(0, 0, CONFIG.CANVAS.width, CONFIG.CANVAS.height);
@@ -606,19 +479,8 @@ export class GameScene extends Phaser.Scene {
     console.log("[Scene] destroyed, waiting for new DM creation");
   }
 
-  /** 处理叙事事件 / Handle narrative event */
-  private _handleNarrative(ev: EventData): void {
-    const text = ev.payload?.text as string | undefined;
-    if (text) {
-      // 统一更新 store，由 subscribe 同步 narrativeText 和 narrative 面板
-      // / Update store uniformly; subscribe syncs narrativeText and narrative panel
-      gameStore.addNarrative(text);
-    }
-  }
-
   shutdown(): void {
-    if (this.dialogueTimer) window.clearTimeout(this.dialogueTimer);
-    this.dialogueQueue = [];
+    this.talkController?.clear();
     if (this.unsubscribe) this.unsubscribe();
     this.charManager?.destroy();
   }

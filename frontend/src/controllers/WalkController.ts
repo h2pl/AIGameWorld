@@ -88,4 +88,31 @@ export class WalkController {
     // prepend 只支持单段路径；onComplete 由调用方在需要时自行追加
     sprite.prependWalkPath(worldSteps, opts?.speed ?? TILEMAP.WALK_SPEED);
   }
+
+  /** 走到目标 tile 的相邻格 / Walk sprite to a tile adjacent to target */
+  walkToAdjacent(sprite: CharacterSprite, targetTx: number, targetTy: number): Promise<void> {
+    return new Promise((resolve) => {
+      const current = sprite.getGridPos(this.ts);
+      const adjacent = [
+        { tx: targetTx + 1, ty: targetTy },
+        { tx: targetTx - 1, ty: targetTy },
+        { tx: targetTx, ty: targetTy + 1 },
+        { tx: targetTx, ty: targetTy - 1 },
+      ].filter((a) => a.tx >= 0 && a.ty >= 0);
+      let best = adjacent[0];
+      let bestDist = Infinity;
+      for (const a of adjacent) {
+        const d = Math.abs(a.tx - current.tx) + Math.abs(a.ty - current.ty);
+        if (d < bestDist) {
+          best = a;
+          bestDist = d;
+        }
+      }
+      if (!best) {
+        resolve();
+        return;
+      }
+      this.walkTo(sprite, best.tx, best.ty, { onComplete: () => resolve() });
+    });
+  }
 }
