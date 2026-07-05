@@ -14,8 +14,8 @@
     "outDir": "./dist",                          // 输出目录
     "sourceMap": true,                           // 生成 Source Map
     "lib": ["ES2022", "DOM", "DOM.Iterable"],    // 库支持
-    "types": ["phaser"]                          // Phaser 3 类型声明
+    "types": ["phaser", "vitest/globals"]         // 类型声明 / Type declarations
   },
-  "include": ["src"],                           // 包含目录
+  "include": ["src", "tests"],                   // 包含目录 / Include directories
   "exclude": ["node_modules", "dist"]            // 排除目录
 }

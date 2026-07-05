@@ -11,18 +11,35 @@ import type { SceneData, CharacterData } from "../../../src/types";
 const makeScene = (id: string, spawnX = 10, spawnY = 10): SceneData => ({
   id,
   name: id,
-  map_key: "tuxemon-map",
+  type: "village",
+  description: `test scene ${id}`,
   spawn_x: spawnX,
   spawn_y: spawnY,
+  exits: [],
+  landmarks: [],
+  environment: {},
 });
 
 const makePC = (id: string, sceneId: string, x = 0, y = 0): CharacterData => ({
   id,
   name: id,
+  role: "adventurer",
+  race: "human",
+  status: "active",
   is_pc: true,
   scene_id: sceneId,
   position_x: x,
   position_y: y,
+  attributes: {
+    strength: 10,
+    dexterity: 10,
+    constitution: 10,
+    intelligence: 10,
+    wisdom: 10,
+    charisma: 10,
+  },
+  combat: null,
+  personality: "brave",
 });
 
 describe("GameStore", () => {
