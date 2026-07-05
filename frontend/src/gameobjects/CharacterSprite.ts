@@ -54,6 +54,11 @@ export class CharacterSprite {
     this.sprite.on("pointerdown", () => scene.events.emit("character-clicked", this.data));
   }
 
+  /** 内层 Phaser 精灵 / Inner Phaser sprite (for camera follow etc.) */
+  get rawSprite(): Phaser.GameObjects.Sprite {
+    return this.sprite;
+  }
+
   /** 设置深度 / Set depth */
   setDepth(d: number): void {
     this.sprite.setDepth(d);
@@ -74,11 +79,12 @@ export class CharacterSprite {
 
   /** 逐格行走 / Step-by-step walk — 追加到队列，支持多段路径连续播放 */
   walkPath(steps: { wx: number; wy: number }[], speed: number, onComplete?: () => void): void {
+    if (!steps.length) return;
     this.walkSpeed = speed;
-    if (onComplete) this.walkOnComplete = onComplete;
+    // 无 pending 队列时设置回调，避免覆盖正在执行的路径的回调 / Only set callback for fresh queue
+    const isFresh = this.walkQueue.length === 0 && !this._hasActiveWalkTween();
+    if (onComplete && isFresh) this.walkOnComplete = onComplete;
     this.walkQueue.push(...steps);
-    // 当前没有在 tween 移动时才启动，避免打断正在走的这一步
-    // / Only start if not currently tweening, so we don't interrupt the active step
     if (!this._hasActiveWalkTween()) {
       this.walkNext();
     }

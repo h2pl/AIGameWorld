@@ -15,6 +15,8 @@ import Phaser from "phaser";
 import { CharacterSprite } from "../gameobjects/CharacterSprite";
 import { calcSteps } from "../utils/tile";
 import { TILEMAP } from "../constants";
+import { speedMs } from "../config/playback";
+import type { CharacterManager } from "./CharacterManager";
 
 /** 移动完成回调 / Walk completion callback */
 type WalkComplete = (finalTx: number, finalTy: number) => void;
@@ -50,7 +52,7 @@ export class MovementManager {
     const steps = calcSteps(from, { tx: targetTx, ty: targetTy }, this.ts);
     const worldSteps = steps.map((s) => ({ wx: s.wx, wy: s.wy }));
     const onComplete = opts?.onComplete ? () => opts.onComplete!(targetTx, targetTy) : undefined;
-    sprite.walkPath(worldSteps, opts?.speed ?? TILEMAP.WALK_SPEED, onComplete);
+    sprite.walkPath(worldSteps, speedMs(opts?.speed ?? TILEMAP.WALK_SPEED), onComplete);
   }
 
   /** 按 waypoint 列表行走（追加到队列）/ Walk through a list of tile waypoints (append) */
@@ -69,7 +71,7 @@ export class MovementManager {
     }
     const final = waypoints[waypoints.length - 1];
     const onComplete = opts?.onComplete ? () => opts.onComplete!(final.x, final.y) : undefined;
-    sprite.walkPath(worldSteps, opts?.speed ?? TILEMAP.WALK_SPEED, onComplete);
+    sprite.walkPath(worldSteps, speedMs(opts?.speed ?? TILEMAP.WALK_SPEED), onComplete);
   }
 
   /** 插队走到目标 tile（插到队列前头）/ Walk to target tile, prepended to queue */
@@ -87,7 +89,7 @@ export class MovementManager {
     const steps = calcSteps(from, { tx: targetTx, ty: targetTy }, this.ts);
     const worldSteps = steps.map((s) => ({ wx: s.wx, wy: s.wy }));
     // prepend 只支持单段路径；onComplete 由调用方在需要时自行追加
-    sprite.prependWalkPath(worldSteps, opts?.speed ?? TILEMAP.WALK_SPEED);
+    sprite.prependWalkPath(worldSteps, speedMs(opts?.speed ?? TILEMAP.WALK_SPEED));
   }
 
   /** 走到目标 tile 的相邻格 / Walk sprite to a tile adjacent to target */
@@ -114,6 +116,21 @@ export class MovementManager {
         return;
       }
       this.walkTo(sprite, best.tx, best.ty, { onComplete: () => resolve() });
+    });
+  }
+
+  /** 位置同步：将精灵移动到 store 中的目标位置 / Sync sprite positions to store targets */
+  syncPositions(
+    posMap: Record<string, { x: number; y: number }>,
+    charManager: CharacterManager
+  ): void {
+    charManager.forEachSprite((sprite, id) => {
+      const target = posMap[id];
+      if (!target || sprite.isWalking()) return;
+      const { tx, ty } = sprite.getGridPos(this.ts);
+      if (tx !== target.x || ty !== target.y) {
+        this.walkTo(sprite, target.x, target.y);
+      }
     });
   }
 }

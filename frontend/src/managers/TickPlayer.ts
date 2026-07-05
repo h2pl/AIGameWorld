@@ -3,6 +3,7 @@ import { tickStore } from "../state/TickStore";
 import type { EventManager } from "../managers/EventManager";
 import type { EventData } from "../types";
 import * as API from "../client/api";
+import { speedMs } from "../config/playback";
 
 const L = "[TickPlayer]";
 
@@ -77,7 +78,7 @@ export class TickPlayer {
           const tick = this._lastTick + 1;
           const events = data.events.filter((ev) => ev.tick === tick);
           if (events.length === 0) {
-            await _sleep(500);
+            await _sleep(speedMs(500));
             continue;
           }
           this._lastTick = tick;
@@ -94,10 +95,10 @@ export class TickPlayer {
           }
         }
         if (this._lastTick >= targetTick) break;
-        await _sleep(500);
+        await _sleep(speedMs(500));
       } catch (e) {
         console.warn(`${L} runTicks poll failed`, e);
-        await _sleep(500);
+        await _sleep(speedMs(500));
       }
     }
     this._state = "idle";
@@ -176,10 +177,10 @@ export class TickPlayer {
         console.warn(`${L} poll events failed`, e);
       }
       if (this._state === "running") {
-        this._pollTimer = window.setTimeout(poll, 1000);
+        this._pollTimer = window.setTimeout(poll, speedMs(1000));
       }
     };
-    this._pollTimer = window.setTimeout(poll, 500);
+    this._pollTimer = window.setTimeout(poll, speedMs(500));
   }
 
   private _stopPolling() {

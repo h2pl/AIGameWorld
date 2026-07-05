@@ -40,15 +40,6 @@ class TickStore {
     return this.state;
   }
 
-  /** 设置初始角色位置 / Set initial character positions */
-  setInitialPositions(pos: Record<string, { x: number; y: number }>): void {
-    this.state.character_positions = pos;
-    for (const [id, p] of Object.entries(pos)) {
-      console.log("[TickStore] initial pos %s (%d,%d)", id, p.x, p.y);
-    }
-    this.notify();
-  }
-
   /** 追加事件到列表 / Append event */
   appendEvent(ev: { type: string; payload?: Record<string, unknown> }): void {
     this._appendEvents([
@@ -84,7 +75,7 @@ class TickStore {
     if (this.state.events.length > 200) {
       this.state.events = this.state.events.slice(-200);
     }
-    // 处理 scene_setup / dm_create 事件
+    // 处理 dm_create 事件（scene_setup 由 SceneSetupHandler 处理）
     for (const ev of tagged) {
       let payload: Record<string, unknown> | undefined = ev.payload;
       if (!payload && ev.description) {
@@ -96,25 +87,6 @@ class TickStore {
       }
       if (!payload) continue;
 
-      if (ev.type === "scene_setup") {
-        const sceneId = String(payload.scene_id || "");
-        const scene = payload.scene as Record<string, unknown> | undefined;
-        const mapKey = scene ? String(scene.map_key || "") : "";
-        if (sceneId) {
-          this.state.scene_ready = true;
-          this.state.current_scene_id = sceneId;
-          if (mapKey) this.state.current_map_key = mapKey;
-          console.log("[TickStore] scene_ready → true, scene_id=%s, map_key=%s", sceneId, mapKey);
-        }
-        const positions = payload.pc_positions as
-          | Record<string, { x: number; y: number }>
-          | undefined;
-        if (positions) {
-          for (const [id, p] of Object.entries(positions)) {
-            this.state.character_positions[id] = p;
-          }
-        }
-      }
       if (ev.type === "dm_create") {
         const brief = String(payload.plot_brief || "");
         if (brief) this.state.dm_plot_brief = brief;
@@ -125,6 +97,20 @@ class TickStore {
   /** 设置前端展示 tick */
   setDisplayTick(tick: number): void {
     this.state.display_tick = tick;
+    this.notify();
+  }
+
+  /** 设置场景就绪（scene_setup 消费）/ Set scene ready with metadata */
+  setSceneReady(
+    sceneId: string,
+    mapKey: string,
+    positions?: Record<string, { x: number; y: number }>
+  ): void {
+    this.state.scene_ready = true;
+    this.state.current_scene_id = sceneId;
+    if (mapKey) this.state.current_map_key = mapKey;
+    if (positions) Object.assign(this.state.character_positions, positions);
+    console.log("[TickStore] scene_ready → true, scene_id=%s, map_key=%s", sceneId, mapKey);
     this.notify();
   }
 

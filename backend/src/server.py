@@ -19,6 +19,7 @@ from src.api.events import router as events_router
 from src.api.health import router as health_router
 from src.api.mock import router as mock_router
 from src.api.reset import router as reset_router
+from src.api.scene import router as scene_router
 from src.api.state import router as state_router
 from src.api.tick import router as tick_router
 from src.api.view import router as view_router
@@ -109,6 +110,7 @@ app.include_router(world_router)
 app.include_router(tick_router)
 app.include_router(events_router)
 app.include_router(reset_router)
+app.include_router(scene_router)
 app.include_router(state_router)
 app.include_router(health_router)
 app.include_router(view_router)

@@ -2,6 +2,7 @@
 import type { CharacterManager } from "../CharacterManager";
 import type { MovementManager } from "../MovementManager";
 import type { EventData } from "../../types";
+import { speedMs } from "../../config/playback";
 
 export class TalkHandler {
   private dialogueQueue: Array<{ speaker_id: string; text: string }> = [];
@@ -11,7 +12,8 @@ export class TalkHandler {
   constructor(
     private getCharManager: () => CharacterManager | undefined,
     private getMovementManager: () => MovementManager | undefined,
-    private isSceneBuilt: () => boolean
+    private isSceneBuilt: () => boolean,
+    private followSprite: (sprite: any) => void
   ) {}
 
   async handle(ev: EventData): Promise<void> {
@@ -21,12 +23,17 @@ export class TalkHandler {
     const pcId = String(payload.pc_id || "");
     const targetPos = payload.target_position as { x: number; y: number } | undefined;
 
+    // 镜头跟随当前对话角色 / Camera follows talking PC
+    if (pcId) {
+      const sprite = this.getCharManager()?.getSprite(pcId);
+      if (sprite) this.followSprite(sprite.rawSprite);
+    }
+
     // 1. 先走到目标旁边 / Approach target first
     if (pcId && targetPos) {
       const sprite = this.getCharManager()?.getSprite(pcId);
-      const movementManager = this.getMovementManager();
-      if (sprite && movementManager) {
-        await movementManager.walkToAdjacent(sprite, targetPos.x, targetPos.y);
+      if (sprite && this.getMovementManager()) {
+        await this.getMovementManager()!.walkToAdjacent(sprite, targetPos.x, targetPos.y);
       }
     }
 
@@ -77,11 +84,11 @@ export class TalkHandler {
         this.dialogueQueue.unshift(turn);
         this.isPlayingDialogue = false;
         this._playNextDialogue(onDone);
-      }, 200);
+      }, speedMs(200));
     } else {
       console.warn("[TalkHandler] dialogue speaker not found:", turn.speaker_id);
       // 找不到说话者时短暂停留后继续 / Brief pause if speaker missing
-      this.dialogueTimer = window.setTimeout(advance, 600);
+      this.dialogueTimer = window.setTimeout(advance, speedMs(600));
     }
   }
 }

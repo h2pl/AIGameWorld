@@ -8,6 +8,7 @@
  */
 
 import Phaser from "phaser";
+import { speedMs } from "../config/playback";
 
 const PADDING_X = 12;
 const PADDING_Y = 8;
@@ -16,9 +17,6 @@ const MAX_WIDTH = 260;
 const CORNER_RADIUS = 10;
 const ARROW_HEIGHT = 8;
 const MAX_LINES = 4;
-const MIN_SHOW_MS = 800;
-const MAX_SHOW_MS = 4000;
-const MS_PER_CHAR = 40;
 const TEXT_FONT = "14px Segoe UI, Microsoft YaHei, sans-serif";
 const TEXT_COLOR = "#1a1a1a";
 
@@ -60,7 +58,7 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     this.add([this.bg, this.textObj]);
 
     this.setAlpha(0);
-    scene.tweens.add({ targets: this, alpha: 1, duration: 150 });
+    scene.tweens.add({ targets: this, alpha: 1, duration: speedMs(150) });
 
     this._showPage(0);
 
@@ -116,10 +114,10 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
   /** 按文本长度计算当前页自动翻页/关闭时间 / Auto-advance duration by text length */
   private _scheduleAutoAdvance(): void {
     const text = this.pages[this.pageIndex];
-    const showMs = Math.min(
-      MAX_SHOW_MS,
-      Math.max(MIN_SHOW_MS, MIN_SHOW_MS + text.length * MS_PER_CHAR)
-    );
+    const minMs = speedMs(800);
+    const perChar = speedMs(40);
+    const maxMs = speedMs(4000);
+    const showMs = Math.min(maxMs, Math.max(minMs, minMs + text.length * perChar));
     this.timer = window.setTimeout(() => this._advance(), showMs);
   }
 
@@ -181,7 +179,7 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     this.scene.tweens.add({
       targets: this,
       alpha: 0,
-      duration: 200,
+      duration: speedMs(200),
       onComplete: () => this.destroy(),
     });
   }

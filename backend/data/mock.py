@@ -81,7 +81,6 @@ async def _seed_world(world_repo: WorldRepo, world_id: str) -> None:
             version="1.0.0",
             rule_set="dnd_5e_srd",
             author="AIGameWorld",
-            starting_scene="village_elderwood",
             data_tick=0,
             display_tick=0,
         )

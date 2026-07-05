@@ -25,6 +25,7 @@ import { ExploreHandler } from "../managers/event_handler/ExploreHandler";
 import { TalkHandler } from "../managers/event_handler/TalkHandler";
 import { NarrativeHandler } from "../managers/event_handler/NarrativeHandler";
 import { InteractHandler } from "../managers/event_handler/InteractHandler";
+import { SceneSetupHandler } from "../managers/event_handler/SceneSetupHandler";
 
 /** 种族肤色 / Race skin colors */
 const RACE_SKIN: Record<string, string> = {
@@ -155,6 +156,7 @@ export class GameScene extends Phaser.Scene {
   private talkHandler!: TalkHandler;
   private narrativeHandler!: NarrativeHandler;
   private interactHandler!: InteractHandler;
+  private sceneSetupHandler!: SceneSetupHandler;
   private terrainSprites: Phaser.GameObjects.Sprite[] = [];
 
   constructor() {
@@ -196,8 +198,8 @@ export class GameScene extends Phaser.Scene {
       if (s.scene_ready && !this.sceneBuilt) {
         this.buildScene(s.current_scene_id);
       }
-      if (this.sceneBuilt) {
-        this.charManager?.sync(s.characters, s.character_positions);
+      if (this.sceneBuilt && this.charManager) {
+        this.charManager.sync(s.characters, s.character_positions);
         if (s.narrative && this.narrativeText) this.narrativeText.setText(s.narrative);
       }
     });
@@ -228,22 +230,29 @@ export class GameScene extends Phaser.Scene {
 
   /** 初始化事件处理器 / Initialize event handlers */
   private _initControllers(): void {
+    const follow = (sprite: any) => {
+      this.cameras.main.startFollow(sprite, true, 0.1, 0.1);
+    };
     this.exploreHandler = new ExploreHandler(
       () => this.charManager,
-      () => this.movementManager
+      () => this.movementManager,
+      follow
     );
     this.talkHandler = new TalkHandler(
       () => this.charManager,
       () => this.movementManager,
-      () => this.sceneBuilt
+      () => this.sceneBuilt,
+      follow
     );
     this.narrativeHandler = new NarrativeHandler();
     this.interactHandler = new InteractHandler();
+    this.sceneSetupHandler = new SceneSetupHandler();
   }
 
   /** 注册事件 handlers / Register event handlers with EventManager */
   private _registerEventHandlers(): void {
     if (!this.eventManager) return;
+    this.eventManager.register("scene_setup", (ev) => this.sceneSetupHandler.handle(ev));
     this.eventManager.register("pc_explore", (ev) => this.exploreHandler.handle(ev));
     this.eventManager.register("pc_talk", (ev) => this.talkHandler.handle(ev));
     this.eventManager.register("pc_interact", (ev) => this.interactHandler.handle(ev));
@@ -356,12 +365,7 @@ export class GameScene extends Phaser.Scene {
     const { sx, sy } = this.charManager.calcCameraScroll(CONFIG.CANVAS.width, CONFIG.CANVAS.height);
     this.cameras.main.scrollX = sx;
     this.cameras.main.scrollY = sy;
-    console.log(
-      "[Scene] createPlayer total=%d camScroll=(%d,%d)",
-      st.characters.length,
-      sx.toFixed(0),
-      sy.toFixed(0)
-    );
+    console.log("[Scene] createPlayer total=%d", st.characters.length);
   }
 
   /** 8. createEnemies / Spawned objects — TODO: 敌对 NPC 自动生成 */

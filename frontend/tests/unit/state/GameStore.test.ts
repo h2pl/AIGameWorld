@@ -69,16 +69,18 @@ describe("TickStore", () => {
     expect(st.events).toHaveLength(0);
   });
 
-  it("should append events and mark scene_ready from scene_setup", () => {
-    tickStore.appendEventAt(1, {
-      type: "scene_setup",
-      payload: { scene_id: "village", pc_positions: { cleric: { x: 9, y: 9 } } },
-    });
+  it("should append events", () => {
+    tickStore.appendEventAt(1, { type: "scene_setup", payload: { scene_id: "village" } });
+    expect(tickStore.getState().events.length).toBe(1);
+  });
+
+  it("should set scene_ready via setSceneReady", () => {
+    tickStore.setSceneReady("village", "tuxemon-map", { cleric: { x: 9, y: 9 } });
 
     const st = tickStore.getState();
-    expect(st.events.length).toBe(1);
     expect(st.scene_ready).toBe(true);
     expect(st.current_scene_id).toBe("village");
+    expect(st.current_map_key).toBe("tuxemon-map");
     expect(st.character_positions["cleric"]).toEqual({ x: 9, y: 9 });
   });
 

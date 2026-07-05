@@ -13,8 +13,8 @@ class WorldRepo:
 
     async def create(self, w: World) -> None:
         await self._db.execute(
-            "INSERT INTO worlds (id, name, description, version, rule_set, author, starting_scene, data_tick, display_tick) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO worlds (id, name, description, version, rule_set, author, data_tick, display_tick) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 w.id,
                 w.name,
@@ -22,7 +22,6 @@ class WorldRepo:
                 w.version,
                 w.rule_set,
                 w.author,
-                w.starting_scene,
                 w.data_tick,
                 w.display_tick,
             ),
@@ -32,7 +31,7 @@ class WorldRepo:
 
     async def get(self, world_id: str) -> World | None:
         row = await self._db.fetch_one(
-            "SELECT id, name, description, version, rule_set, author, starting_scene, data_tick, display_tick "
+            "SELECT id, name, description, version, rule_set, author, data_tick, display_tick "
             "FROM worlds WHERE id = ?",
             (world_id,),
         )
@@ -40,7 +39,7 @@ class WorldRepo:
 
     async def list_all(self) -> list[World]:
         rows = await self._db.fetch_all(
-            "SELECT id, name, description, version, rule_set, author, starting_scene, data_tick, display_tick FROM worlds"
+            "SELECT id, name, description, version, rule_set, author, data_tick, display_tick FROM worlds"
         )
         return [_row_to_world(r) for r in rows]
 
@@ -104,7 +103,6 @@ def _row_to_world(row: dict) -> World:
         version=row.get("version", "1.0.0"),
         rule_set=row.get("rule_set", "dnd_5e_srd"),
         author=row.get("author", ""),
-        starting_scene=row.get("starting_scene", ""),
         data_tick=row.get("data_tick", 0),
         display_tick=row.get("display_tick", 0),
     )

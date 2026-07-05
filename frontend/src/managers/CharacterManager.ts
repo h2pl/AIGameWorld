@@ -1,11 +1,8 @@
-/** 角色生命周期管理 / Character lifecycle manager */
-/** kb/17: Managers — System coordination */
-
+/** 角色生命周期管理 / Character lifecycle manager — only create/destroy/query sprites */
 import Phaser from "phaser";
 import { CharacterSprite } from "../gameobjects/CharacterSprite";
 import { gridToWorld } from "../utils/tile";
 import { DEPTH } from "../constants";
-import { MovementManager } from "./MovementManager";
 import type { CharacterData } from "../types";
 
 type Pos = { x: number; y: number };
@@ -14,12 +11,10 @@ export class CharacterManager {
   private sprites: Map<string, CharacterSprite> = new Map();
   private scene: Phaser.Scene;
   private ts: number;
-  private movementManager: MovementManager;
 
   constructor(scene: Phaser.Scene, tileSize: number) {
     this.scene = scene;
     this.ts = tileSize;
-    this.movementManager = new MovementManager(scene, tileSize);
   }
 
   /** 首次批量创建所有角色 / Create all characters initially */
@@ -33,7 +28,7 @@ export class CharacterManager {
     }
   }
 
-  /** WS tick 后增量同步：移动现有 / 创建新增 / 删除离场 / Incremental sync */
+  /** 增量同步：创建 / 删除 / HP / Incremental sync: create/destroy/HP only */
   sync(chars: CharacterData[], posMap: Record<string, Pos>): void {
     const currentIds = new Set(chars.map((c) => c.id));
 
@@ -45,20 +40,14 @@ export class CharacterManager {
       }
     }
 
-    // 创建或移动 / Create or move
+    // 创建或更新 HP / Create or update HP
     for (const ch of chars) {
       const p = posMap[ch.id] || { x: ch.position_x, y: ch.position_y };
-      const { wx, wy } = gridToWorld(p.x, p.y, this.ts);
       const existing = this.sprites.get(ch.id);
       if (existing) {
-        const old = existing.getGridPos(this.ts);
-        if (old.tx !== p.x || old.ty !== p.y) {
-          // 不要 cancelWalk：让当前动画队列继续，把增量同步作为追加路径
-          // / Don't cancel: append sync target as a continuation of the current queue
-          this.movementManager.walkTo(existing, p.x, p.y);
-        }
         if (ch.combat) existing.updateHp(ch.combat.hp, ch.combat.max_hp);
       } else {
+        const { wx, wy } = gridToWorld(p.x, p.y, this.ts);
         const sp = new CharacterSprite(this.scene, ch, wx, wy, this.ts);
         sp.setDepth(DEPTH.CHARACTER);
         this.sprites.set(ch.id, sp);
@@ -99,5 +88,10 @@ export class CharacterManager {
   destroy(): void {
     this.sprites.forEach((sp) => sp.destroy());
     this.sprites.clear();
+  }
+
+  /** 遍历所有精灵 / Iterate all sprites */
+  forEachSprite(fn: (sp: CharacterSprite, id: string) => void): void {
+    this.sprites.forEach((sp, id) => fn(sp, id));
   }
 }

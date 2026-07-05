@@ -1,5 +1,6 @@
 /** 控制栏 / Control Bar — 按钮 + 状态显示，通过回调暴露行为 */
 import { Panel } from "./Panel";
+import { getSpeed, setSpeed, speedOptions } from "../config/playback";
 
 type RunState = "idle" | "connecting" | "running" | "paused";
 
@@ -9,7 +10,6 @@ export interface ControlBarCallbacks {
   onPause: () => Promise<void>;
   onResume: () => Promise<void>;
   onReset: () => Promise<void>;
-  onMapSwitch: () => void;
   getTickCount: () => number;
 }
 
@@ -67,11 +67,22 @@ export class ControlBar extends Panel {
     bar.appendChild(this.btnResume);
     bar.appendChild(this.btnReset);
     bar.appendChild(this._sep());
-    const btnMap = this._btn("🗺 地图", "#555");
-    btnMap.onclick = () => {
-      this.callbacks?.onMapSwitch();
-    };
-    bar.appendChild(btnMap);
+
+    // 倍速按钮 / Speed buttons
+    bar.appendChild(this._sep());
+    const speedBtns: HTMLButtonElement[] = [];
+    for (const s of speedOptions()) {
+      const btn = this._btn(`${s}x`, s === 1 ? "#555" : "#e67e22");
+      btn.style.padding = "4px 8px";
+      btn.onclick = () => {
+        setSpeed(s);
+        speedBtns.forEach(
+          (b, i) => (b.style.background = speedOptions()[i] === s ? "#e67e22" : "#555")
+        );
+      };
+      bar.appendChild(btn);
+      speedBtns.push(btn);
+    }
 
     this.statusEl = document.createElement("span");
     this.statusEl.style.cssText =

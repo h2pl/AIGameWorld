@@ -49,8 +49,8 @@ async def _build_scene_info(
 
     pcs = await pc_repo.load_pcs(world_id) if world_id else []
     actors = await pc_repo.load_actors(world_id) if world_id else []
-    # 当前场景内的角色池 / Character pool limited to the current scene
-    scene_pcs = [pc for pc in pcs if getattr(pc, "scene_id", "") == scene_id]
+    # 主角团默认都在当前场景 / All PCs are always in the current scene
+    scene_pcs = list(pcs)
     scene_actors = [actor for actor in actors if getattr(actor, "scene_id", "") == scene_id]
 
     scene = await scene_repo.get_scene(scene_id) if scene_repo else None

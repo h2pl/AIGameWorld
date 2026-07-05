@@ -10,6 +10,5 @@ class World(BaseModel):
     version: str = "1.0.0"
     rule_set: str = "dnd_5e_srd"
     author: str = ""
-    starting_scene: str = ""
     data_tick: int = 0
     display_tick: int = 0

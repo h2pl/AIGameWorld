@@ -4,9 +4,8 @@ import Phaser from "phaser";
 import { Boot } from "./scenes/Boot";
 import { GameScene } from "./scenes/GameScene";
 import { CONFIG } from "./config";
-import { SCENE_MAP } from "./constants";
 import { bootstrap } from "./bootstrap";
-import { worldStore, initWorldWithPositions } from "./state/WorldStore";
+import { worldStore } from "./state/WorldStore";
 import { tickStore } from "./state/TickStore";
 import { NarrativePanel } from "./ui/NarrativePanel";
 import { EventPanel } from "./ui/EventPanel";
@@ -23,7 +22,7 @@ async function main(): Promise<void> {
 
   // ── 1. Bootstrap ──
   const { world } = await bootstrap();
-  initWorldWithPositions(
+  worldStore.setWorldState(
     world.world_id,
     world.scenes,
     world.characters,
@@ -38,7 +37,7 @@ async function main(): Promise<void> {
   // ── 2. App 容器 / App container ──
   const app = document.getElementById("app")!;
 
-  // ── 4. Phaser ──
+  // ── 3. Phaser ──
   const { EventManager } = await import("./managers/EventManager");
   const eventManager = new EventManager();
   const game = new Phaser.Game({
@@ -55,7 +54,7 @@ async function main(): Promise<void> {
   });
   game.registry.set("eventManager", eventManager);
 
-  // ── 5. DOM 面板 / Dom panels ──
+  // ── 4. DOM 面板 / Dom panels ──
   new DMCreationPanel().mount(app);
   new NarrativePanel().mount(app);
   new EventPanel().mount(app);
@@ -63,7 +62,6 @@ async function main(): Promise<void> {
   new ObjectPanel().mount(app);
   new MockConfigPanel().mount(app);
 
-  // 历史事件面板 / History event panel
   const historyPanel = new HistoryEventPanel(world.world_id);
   historyPanel.mount(app);
   window.addEventListener("show-event-history", () => {
@@ -79,12 +77,12 @@ async function main(): Promise<void> {
   worldStore.subscribe(relay);
   tickStore.subscribe(relay);
 
-  // ── 6. 控制栏 / Control bar ──
+  // ── 5. 控制栏 / Control bar ──
   const bar = new ControlBar();
   bar.mount(app);
   bar.initReady(true);
 
-  // ── 7. TickPlayer ──
+  // ── 6. TickPlayer ──
   const { TickPlayer } = await import("./managers/TickPlayer");
   const player = new TickPlayer(CONFIG.API.base, world.world_id, eventManager);
   const displayTick = world.display_tick || 0;
@@ -98,10 +96,6 @@ async function main(): Promise<void> {
     bar.setStatus(`展示 Tick ${tick} (${events.length} events)`);
     tickStore.setDisplayTick(tick);
   };
-
-  // 地图切换 / Map switch
-  const sceneOrder = Object.keys(SCENE_MAP);
-  let sceneIdx = 0;
 
   bar.setCallbacks({
     getTickCount: () => displayTick,
@@ -121,29 +115,6 @@ async function main(): Promise<void> {
       await player.reset();
       tickStore.clear();
       tickStore.setDisplayTick(0);
-    },
-    onMapSwitch: () => {
-      sceneIdx = (sceneIdx + 1) % sceneOrder.length;
-      const sceneId = sceneOrder[sceneIdx];
-      const s = sceneId; // for console
-      const spawn = SCENE_MAP[sceneId].spawn;
-      const wst = worldStore.getState();
-      initWorldWithPositions(
-        wst.world_id,
-        wst.scenes,
-        wst.characters.map((ch: any, i: number) => ({
-          ...ch,
-          scene_id: sceneId,
-          position_x: spawn.x + (i % 3) - 1,
-          position_y: spawn.y + Math.floor(i / 3) - 1,
-        })),
-        wst.items,
-        wst.scene_objects,
-        wst.runtime.llm_mock,
-        wst.runtime.data_mode,
-        wst.runtime.db_name
-      );
-      console.log(`${L} 🗺 switched to ${s}`);
     },
   });
 

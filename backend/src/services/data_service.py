@@ -59,6 +59,8 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
                 if pc:
                     pc.position_x = info.get("position_x", 0)
                     pc.position_y = info.get("position_y", 0)
+                    if "scene_id" in info:
+                        pc.scene_id = info["scene_id"]
                     await pc_repo.save_pc(pc)
             logger.info("[data] persisted pc_state_map count=%d tick=%s", len(pc_state_map), tick)
 

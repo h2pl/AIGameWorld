@@ -6,8 +6,11 @@ export interface SceneData {
   name: string;
   type: "outdoor" | "indoor" | "underground" | "village";
   description: string;
+  map_key?: string;
   spawn_x?: number;
   spawn_y?: number;
+  map_width?: number;
+  map_height?: number;
   exits: ExitData[];
   landmarks: LandmarkData[];
   environment: { weather?: string; time_of_day?: string };

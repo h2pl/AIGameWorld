@@ -65,7 +65,6 @@ class WorldLoader:
                 version=meta.get("version", "1.0.0"),
                 rule_set=meta.get("rule_set", "dnd_5e_srd"),
                 author=meta.get("author", ""),
-                starting_scene=meta.get("starting_scene", ""),
             )
         )
 
