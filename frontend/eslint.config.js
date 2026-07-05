@@ -4,7 +4,7 @@ import tsPlugin from "@typescript-eslint/eslint-plugin";
 
 export default [
   {
-    files: ["src/**/*.ts"],       // 匹配 TypeScript 源文件 / Match TS source files
+    files: ["src/**/*.ts", "tests/**/*.ts"], // 匹配源码与测试 / Match source and test files
     languageOptions: {
       ecmaVersion: 2022,          // ES2022 语法 / ES2022 syntax
       sourceType: "module",       // ES Module 模式
