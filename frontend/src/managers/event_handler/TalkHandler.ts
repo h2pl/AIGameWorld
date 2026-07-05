@@ -1,14 +1,19 @@
 /** 对话事件处理器 / Talk event handler */
+import type { CharacterManager } from "../CharacterManager";
+import type { MovementManager } from "../MovementManager";
 import type { EventData } from "../../types";
 import type { EventHandler } from "./base/EventHandler";
-import type { SceneControllerContext } from "../SceneControllerContext";
 
 export class TalkHandler implements EventHandler {
   private dialogueQueue: Array<{ speaker_id: string; text: string }> = [];
   private isPlayingDialogue = false;
   private dialogueTimer?: number;
 
-  constructor(private ctx: SceneControllerContext) {}
+  constructor(
+    private getCharManager: () => CharacterManager | undefined,
+    private getMovementManager: () => MovementManager | undefined,
+    private isSceneBuilt: () => boolean
+  ) {}
 
   async handle(ev: EventData): Promise<void> {
     const payload = ev.payload;
@@ -19,8 +24,8 @@ export class TalkHandler implements EventHandler {
 
     // 1. 先走到目标旁边 / Approach target first
     if (pcId && targetPos) {
-      const sprite = this.ctx.getCharManager()?.getSprite(pcId);
-      const movementManager = this.ctx.getMovementManager();
+      const sprite = this.getCharManager()?.getSprite(pcId);
+      const movementManager = this.getMovementManager();
       if (sprite && movementManager) {
         await movementManager.walkToAdjacent(sprite, targetPos.x, targetPos.y);
       }
@@ -60,14 +65,14 @@ export class TalkHandler implements EventHandler {
     }
     this.isPlayingDialogue = true;
     const turn = this.dialogueQueue.shift()!;
-    const sprite = this.ctx.getCharManager()?.getSprite(turn.speaker_id);
+    const sprite = this.getCharManager()?.getSprite(turn.speaker_id);
     const advance = () => {
       this.isPlayingDialogue = false;
       this._playNextDialogue(onDone);
     };
     if (sprite) {
       sprite.say(turn.text, advance);
-    } else if (!this.ctx.isSceneBuilt()) {
+    } else if (!this.isSceneBuilt()) {
       // 场景尚未构建完成，稍等重试 / Scene not ready yet, retry shortly
       this.dialogueTimer = window.setTimeout(() => {
         this.dialogueQueue.unshift(turn);

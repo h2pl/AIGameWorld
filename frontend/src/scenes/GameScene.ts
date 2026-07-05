@@ -215,14 +215,15 @@ export class GameScene extends Phaser.Scene {
 
   /** 初始化事件处理器 / Initialize event handlers */
   private _initControllers(): void {
-    const ctx = {
-      scene: this,
-      getCharManager: () => this.charManager,
-      getMovementManager: () => this.movementManager,
-      isSceneBuilt: () => this.sceneBuilt,
-    };
-    this.exploreHandler = new ExploreHandler(ctx);
-    this.talkHandler = new TalkHandler(ctx);
+    this.exploreHandler = new ExploreHandler(
+      () => this.charManager,
+      () => this.movementManager
+    );
+    this.talkHandler = new TalkHandler(
+      () => this.charManager,
+      () => this.movementManager,
+      () => this.sceneBuilt
+    );
     this.narrativeHandler = new NarrativeHandler();
     this.interactHandler = new InteractHandler();
   }

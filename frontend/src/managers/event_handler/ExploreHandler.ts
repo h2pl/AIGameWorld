@@ -1,11 +1,15 @@
 /** 探索事件处理器 / Explore event handler */
+import type { CharacterManager } from "../CharacterManager";
+import type { MovementManager } from "../MovementManager";
 import { gameStore } from "../../state/GameStore";
 import type { EventData } from "../../types";
 import type { EventHandler } from "./base/EventHandler";
-import type { SceneControllerContext } from "../SceneControllerContext";
 
 export class ExploreHandler implements EventHandler {
-  constructor(private ctx: SceneControllerContext) {}
+  constructor(
+    private getCharManager: () => CharacterManager | undefined,
+    private getMovementManager: () => MovementManager | undefined
+  ) {}
 
   async handle(ev: EventData): Promise<void> {
     // 解析事件负载 / Parse event payload
@@ -20,9 +24,9 @@ export class ExploreHandler implements EventHandler {
     if (!pcId || !waypoints?.length) return;
 
     // 获取角色精灵与移动管理器 / Get character sprite and movement manager
-    const sprite = this.ctx.getCharManager()?.getSprite(pcId);
+    const sprite = this.getCharManager()?.getSprite(pcId);
     if (!sprite) return;
-    const movementManager = this.ctx.getMovementManager();
+    const movementManager = this.getMovementManager();
     if (!movementManager) return;
 
     // 把最终坐标也加入路径末尾 / Append final destination to route
