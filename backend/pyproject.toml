@@ -78,6 +78,7 @@ ignore = [
     "PLR0911", "PLR0912", "PLR0913", "PLR0915",  # 复杂度（Phase 3 小步任务）
     "PLR2004",      # 魔法数字（测试/种子数据中的字面量是必要可读性）
     "RUF001", "RUF002", "RUF003",  # 中文全角标点（中英双语项目）
+    "B008",         # FastAPI Depends 必须在参数默认值中调用
 ]
 
 [tool.ruff.format]

@@ -18,7 +18,6 @@ class TestCharacterSubgraph:
         state = {
             "tick": 1,
             "world_id": "world-1",
-
             "plot_brief": "酒馆起争执",
             "hints": [],
             "scene_id": "tavern",

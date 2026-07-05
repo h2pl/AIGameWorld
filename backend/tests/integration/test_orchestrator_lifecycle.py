@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.graph.orchestrator import Orchestrator
+from src.orchestrator import Orchestrator
 
 
 class TestFullTickRun:

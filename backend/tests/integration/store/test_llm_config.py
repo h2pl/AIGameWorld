@@ -70,7 +70,14 @@ class TestProviderPurposeMerge:
         """每个 purpose 都有 model, temperature, timeout, retries, client_backend."""
         os.environ["LLM_PROVIDER"] = "deepseek"
         config = load_config(CONFIG_PATH)
-        for name in ["dm_create", "dm_narrate", "pc_decision", "actor_decision", "talk", "reflection"]:
+        for name in [
+            "dm_create",
+            "dm_narrate",
+            "pc_decision",
+            "actor_decision",
+            "talk",
+            "reflection",
+        ]:
             pur = getattr(config.llm, name)
             assert pur.model, f"{name}.model is empty"
             assert pur.temperature > 0, f"{name}.temperature is zero"
@@ -89,7 +96,7 @@ class TestLLMClientInit:
         monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
         monkeypatch.setenv("LLM_PROVIDER", "deepseek")
         config = load_config(CONFIG_PATH)
-        client = LLMClient(config.llm)
+        client = LLMClient(config)
         assert len(client._models) == 6
         assert set(client._models.keys()) == {
             "dm_create",
@@ -105,7 +112,7 @@ class TestLLMClientInit:
         monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
         monkeypatch.setenv("LLM_PROVIDER", "deepseek")
         config = load_config(CONFIG_PATH)
-        client = LLMClient(config.llm)
+        client = LLMClient(config)
         assert client._timeouts["dm_create"] == 20
         assert client._timeouts["dm_narrate"] == 30
         assert client._timeouts["actor_decision"] == 8

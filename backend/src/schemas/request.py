@@ -30,6 +30,7 @@ class DMNarrateRequest(BaseModel):
     plot_brief: str = ""
     hints: list[str] = []
     tick_message_id: str = ""
+    events: list[dict[str, Any]] = []  # 本 tick 已发生事件 / Events occurred this tick
 
 
 # === Phase 2: World ===

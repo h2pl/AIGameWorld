@@ -16,29 +16,22 @@ from src.server import app
 @pytest.fixture
 async def client():
     """真实 SQLite + 真实 App / Real SQLite + real app."""
-    import src.server as m
+    from src.domain.world import World
     from src.repository.world_repo import WorldRepo
     from src.storage.sqlite_client import SQLiteClient
 
     db = SQLiteClient("data/world_db.db")
-    m._set_db(db)
-    m.app.state.sessions = {}
+    app.state.db = db
     await db.connect()
     await db.init_schema()
-    await WorldRepo(db).create(m.World(id="e2e_live", name="E2E 真实测试"))
+    await WorldRepo(db).create(World(id="e2e_live", name="E2E 真实测试"))
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
-    sessions = m._get_sessions()
-    for mid in list(sessions.keys()):
-        s = sessions.pop(mid, None)
-        if s and (t := s.get("task")) and not t.done():
-            t.cancel()
-            await asyncio.sleep(0.1)
-    if getattr(m.app.state, "db", None):
-        await m._get_db().close()
-        m._set_db(None)
+    if getattr(app.state, "db", None):
+        await app.state.db.close()
+        app.state.db = None
 
 
 class TestLiveTickE2E:
@@ -82,9 +75,7 @@ class TestLiveTickE2E:
             print(f"   [{ev['type']}] {text}")
 
         # 3. 验证 DB 写入 / Verify DB write
-        import src.server as m
-
-        db = m._get_db()
+        db = app.state.db
 
         msg_row = await db.fetch_one(
             "SELECT id, tick, status FROM messages WHERE id=? AND status='pending'",

@@ -18,9 +18,7 @@ class OverallState(TypedDict, total=False):
     hints: list[str]  # DM 环境提示 / DM environmental hints
     plot_brief: str  # 剧情梗概 / Plot brief
     scene_id: str  # 当前场景 ID / Current scene ID
-    scene_info: dict[
-        str, Any
-    ]  # 当前场景的信息 / Current scene info
+    scene_info: dict[str, Any]  # 当前场景的信息 / Current scene info
     pc_decisions: Annotated[
         list[dict[str, Any]], add
     ]  # 角色决策（累加） / Character decisions (accumulated)

@@ -35,7 +35,9 @@ async def build_scene_info(state: OverallState, config=None) -> dict:
     return {"scene_info": info, "pc_state_map": pc_state_map}
 
 
-async def _build_scene_info(state: OverallState, config=None) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+async def _build_scene_info(
+    state: OverallState, config=None
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     """一次性构建当前场景的完整信息 + PC 运行时状态 map /
     Build the current scene's full info + PC runtime state map in one pass."""
     scene_id = state.get("scene_id", "")

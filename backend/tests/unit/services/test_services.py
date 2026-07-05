@@ -20,7 +20,7 @@ def _overall_state(**overrides):
     return {
         "tick": 0,
         "world_id": "world-1",
-                "scene_info": {},
+        "scene_info": {},
         "pending_actions": [],
         "hints": [],
         "plot_brief": "",
@@ -174,9 +174,7 @@ class TestSceneAndMessageService:
     @pytest.mark.asyncio
     async def test_build_scene_info_returns_empty_without_repo(self):
         """没有 pc_repo/scene_id 时返回空场景信息 / Returns empty scene info without pc_repo/scene_id."""
-        state = _overall_state(
-            tick=1, world_id="world-x", scene_id="scene-x"
-        )
+        state = _overall_state(tick=1, world_id="world-x", scene_id="scene-x")
         result = await scene_service.build_scene_info(state)
         assert result == {"scene_info": {}, "pc_state_map": {}}
 
@@ -279,7 +277,6 @@ class TestSummarizerService:
 class TestEventService:
     """事件服务测试 / Event service tests."""
 
-
     @pytest.mark.asyncio
     async def test_flush_events_persists_events_then_marks_ready(self):
         """先落盘事件，再把消息标记为可消费 / Persist events first, then mark the message ready."""
@@ -308,9 +305,7 @@ class TestEventService:
         Mark the message ready even with no pending events (e.g. narrative-only ticks)."""
         event_repo = AsyncMock()
         config = {"configurable": {"repos": {"event": event_repo}}}
-        state = _overall_state(
-            tick=4, scene_id="", pending_actions=[]
-        )
+        state = _overall_state(tick=4, scene_id="", pending_actions=[])
         result = event_service.flush_events(state, config)
         events = result.get("_pending_events", [])
         assert events == []

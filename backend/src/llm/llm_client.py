@@ -14,7 +14,7 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, ValidationError
 
-from ..config import LLMConfig, LLMModelConfig
+from ..config import Config, LLMModelConfig
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -251,13 +251,16 @@ def _build_fallback_model(
 class LLMClient:
     """多模型 LLM 客户端——统一 mock 开关 + 数据集切换."""
 
-    def __init__(self, config: LLMConfig, *, mock: bool = False, mock_dataset: str = ""):
-        self._mock = mock
-        self._mock_dataset = mock_dataset
-        key_env = config.providers.primary.api_key_env
+    def __init__(self, config: Config):
+        self._mock = config.llm_mock
+        self._mock_dataset = config.mock_dataset
+        llm_config = config.llm
+        key_env = llm_config.providers.primary.api_key_env
         primary_key = os.environ.get(key_env, "") if key_env else ""
-        primary_url = config.providers.primary.base_url
-        fallback_url = config.providers.fallback.base_url if config.providers.fallback else None
+        primary_url = llm_config.providers.primary.base_url
+        fallback_url = (
+            llm_config.providers.fallback.base_url if llm_config.providers.fallback else None
+        )
 
         self._models: dict[str, BaseChatModel] = {}
         self._fallbacks: dict[str, BaseChatModel | None] = {}
@@ -265,12 +268,12 @@ class LLMClient:
         self._retries: dict[str, int] = {}
 
         for purpose, cfg in [
-            ("dm_create", config.dm_create),
-            ("dm_narrate", config.dm_narrate),
-            ("pc_decision", config.pc_decision),
-            ("actor_decision", config.actor_decision),
-            ("talk", config.talk),
-            ("reflection", config.reflection),
+            ("dm_create", llm_config.dm_create),
+            ("dm_narrate", llm_config.dm_narrate),
+            ("pc_decision", llm_config.pc_decision),
+            ("actor_decision", llm_config.actor_decision),
+            ("talk", llm_config.talk),
+            ("reflection", llm_config.reflection),
         ]:
             model_url = cfg.base_url or primary_url
             self._models[purpose] = _build_model(cfg, model_url, primary_key)

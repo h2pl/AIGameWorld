@@ -25,7 +25,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.graph.orchestrator import Orchestrator
+from src.orchestrator import Orchestrator
 from src.repository.dm_record_repo import DMRecordRepo
 from src.repository.event_repo import TickEventRepo
 from src.repository.memory_repo import MemoryRepo
@@ -81,7 +81,7 @@ async def run(args: argparse.Namespace) -> None:
     from src.config import load_config
 
     config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
-    db_path = args.db_path or config.database.sqlite_path
+    db_path = args.db_path or config.db_name
     await _do_run(
         ticks=args.ticks,
         db_path=db_path,
@@ -142,9 +142,11 @@ async def _do_run(
     from src.llm.llm_client import LLMClient
 
     config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
-    _use_mock = not use_llm if use_llm else config.mock.enabled
-    _dataset = mock_dataset or config.mock.dataset
-    llm = LLMClient(config.llm, mock=_use_mock, mock_dataset=_dataset)
+    _use_mock = not use_llm if use_llm else config.llm_mock
+    _dataset = mock_dataset or config.mock_dataset
+    config.llm_mock = _use_mock
+    config.mock_dataset = _dataset
+    llm = LLMClient(config)
     if use_llm:
         provider_url = config.llm.providers.primary.base_url or "(default)"
         print(f"  [LLM] provider: {provider_url}")
@@ -193,7 +195,7 @@ async def _test_client() -> None:
     from src.llm.llm_client import LLMClient
 
     config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
-    client = LLMClient(config.llm)
+    client = LLMClient(config)
 
     print(f"\n{_SEP}")
     print("  LLMClient 基础调用测试 / Basic Call Test")
@@ -220,7 +222,7 @@ async def _test_engine() -> None:
     from src.schemas.request import DMCreateRequest, DMNarrateRequest
 
     config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
-    client = LLMClient(config.llm)
+    client = LLMClient(config)
     prompts = Environment(loader=FileSystemLoader(Path(__file__).parent / "prompts"))
 
     # ── dm_create ──
@@ -288,15 +290,16 @@ async def _test_tick() -> None:
     from src.llm.llm_client import LLMClient
 
     config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
-    client = LLMClient(config.llm)
+    client = LLMClient(config)
     orch = Orchestrator(llm=client)
+    world_id = config.world.default_pack
 
     print(f"\n{_SEP}")
     print("  Full Tick: Orchestrator + Graph + LLM")
     print(f"  provider: {config.llm.providers.primary.base_url or '(default)'}")
     print(_SEP)
 
-    result = await orch.run_tick()
+    result = await orch.run_tick(world_id)
     print(f"  [OUTPUT] Tick {result['tick']}")
     print(f"  [OUTPUT] DM narrative: {result.get('narrative', '')}")
     for a in result.get("pc_decisions", [])[:5]:

@@ -20,7 +20,6 @@ export interface GameState {
   llm_mock: boolean;
   data_mode: string;
   db_name: string;
-  mock_dataset: string;
   scene_ready: boolean; // 是否已收到 scene_setup / Whether scene_setup has been received
   current_scene_id: string; // 当前场景 id / Current scene id
   current_map_key: string; // 当前地图 key / Current map key
@@ -59,11 +58,10 @@ class GameStore {
       llm_mock: false,
       data_mode: "real",
       db_name: "",
-      mock_dataset: "",
       scene_ready: false,
-        current_scene_id: "",
-        current_map_key: "",
-        dm_plot_brief: "",
+      current_scene_id: "",
+      current_map_key: "",
+      dm_plot_brief: "",
       narrative: "",
       actions: [],
       events: [],
@@ -86,17 +84,18 @@ class GameStore {
     characters: CharacterData[],
     items: ItemData[],
     scene_objects: SceneObjectData[],
-    runtime: { llm_mock: boolean; data_mode: string; db_name: string; mock_dataset: string },
+    llm_mock: boolean,
+    data_mode: string,
+    db_name: string,
   ): void {
     this.state.world_id = world_id;
     this.state.scenes = scenes;
     this.state.characters = characters;
     this.state.items = items;
     this.state.scene_objects = scene_objects;
-    this.state.llm_mock = runtime.llm_mock;
-    this.state.data_mode = runtime.data_mode;
-    this.state.db_name = runtime.db_name;
-    this.state.mock_dataset = runtime.mock_dataset;
+    this.state.llm_mock = llm_mock;
+    this.state.data_mode = data_mode;
+    this.state.db_name = db_name;
     // 按场景 spawn 给未设置坐标的 PC 分配初始位置，避免重叠；NPC 保持固定坐标
     // / Assign initial positions to unset PCs based on scene spawn; keep NPC positions
     const sceneSpawn = new Map(scenes.map((s) => [s.id, { x: s.spawn_x ?? 0, y: s.spawn_y ?? 0 }]));

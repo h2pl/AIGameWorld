@@ -24,7 +24,7 @@ def test_db_path() -> Path:
         from src.config import load_config
 
         config = load_config(str(Path(__file__).parent.parent / "config.yaml"))
-        db_path = Path(config.database.test_sqlite_path)
+        db_path = Path(config.db_name)
         if not db_path.is_absolute():
             db_path = Path(__file__).parent.parent / db_path
     except Exception:
@@ -51,19 +51,18 @@ def seed_db(test_db_path: Path):
 
 @pytest.fixture
 def base_state() -> OverallState:
-    """基础 mock state."""
-    return OverallState(
-        tick=0,
-        world_id="",
-        tick_message_id="",
-        scene_info={},
-        pending_actions=[],
-        hints=[],
-        plot_brief="",
-        scene_id="",
-        pc_decisions=[],
-        narrative="",
-    )
+    """基础 mock state / Base mock state."""
+    return {
+        "tick": 0,
+        "world_id": "",
+        "scene_info": {},
+        "pending_actions": [],
+        "hints": [],
+        "plot_brief": "",
+        "scene_id": "",
+        "pc_decisions": [],
+        "narrative": "",
+    }
 
 
 @pytest.fixture

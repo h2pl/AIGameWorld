@@ -16,6 +16,7 @@ import sys
 import time as _time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Any, cast
 
 from pythonjsonlogger.json import JsonFormatter
 
@@ -114,7 +115,10 @@ def setup_logging(level: int = logging.INFO) -> None:
     """初始化日志——控制台可配置 + 文件分流 + JSON 格式."""
     for stream in (sys.stdout, sys.stderr):
         with contextlib.suppress(Exception):
-            stream.reconfigure(encoding="utf-8", errors="replace")
+            # reconfigure 仅在支持的平台可用 / reconfigure may not exist on all platforms
+            if hasattr(stream, "reconfigure"):
+                # pyright 将 stream 推断为 TextIO，实际为 io.TextIOWrapper / pyright sees TextIO, runtime is TextIOWrapper
+                cast(Any, stream).reconfigure(encoding="utf-8", errors="replace")
 
     root = logging.getLogger()
     root.setLevel(level)

@@ -133,10 +133,9 @@ export interface InitialWorldState {
   world_id: string;
   data_tick: number;
   display_tick: number;
-  llm_mock?: boolean;
-  data_mode?: string;
-  db_name?: string;
-  mock_dataset?: string;
+  llm_mock: boolean;
+  data_mode: string;
+  db_name: string;
   scenes: SceneData[];
   characters: CharacterData[];
   items: ItemData[];

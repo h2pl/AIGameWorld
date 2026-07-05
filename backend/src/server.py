@@ -2,135 +2,35 @@
 
 World CRUD + Tick 执行 + DB Viewer.
 Orchestrator 直接驱动 graph，无后台任务 / Orchestrator drives graph directly, no background tasks.
+
+所有业务路由已拆分到 src/api/ 下，本文件只负责：
+- 应用创建与生命周期
+- CORS 中间件
+- 路由注册
+- 日志配置
 """
 
-import asyncio
-import json
-import sys
 from contextlib import asynccontextmanager
-from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
 
-from src.domain.world import World
-from src.repository.event_repo import TickEventRepo
-from src.repository.world_repo import WorldRepo
+from src.api.events import router as events_router
+from src.api.health import router as health_router
+from src.api.mock import router as mock_router
+from src.api.reset import router as reset_router
+from src.api.state import router as state_router
+from src.api.tick import router as tick_router
+from src.api.view import router as view_router
+from src.api.world import router as world_router
 from src.storage.sqlite_client import SQLiteClient
-from src.utils.logging import get_logger, log_api, setup_logging
-from src.viewer import (
-    render_global_events,
-    render_global_items,
-    render_global_meta,
-    render_global_objects,
-    render_global_records,
-    render_index,
-    render_pack,
-)
-
-# 允许从 backend/data/mock.py 导入 / Allow importing backend/data/mock.py
-_BACKEND_ROOT = Path(__file__).parent.parent
-if str(_BACKEND_ROOT) not in sys.path:
-    sys.path.insert(0, str(_BACKEND_ROOT))
+from src.utils.logging import configure_console, configure_format, get_logger, setup_logging
 
 logger = get_logger(__name__)
 
-
-# ── Tick Loop Manager ──
-class TickLoopManager:
-    def __init__(self):
-        self.running_worlds: dict[str, bool] = {}
-        self.tasks: dict[str, asyncio.Task] = {}
-        self.loop_ids: dict[str, int] = {}
-
-    async def _loop(self, world_id: str, orch, loop_id: int):
-        logger.info(f"[loop] Started continuous tick loop for world {world_id} (id: {loop_id})")
-        while self.running_worlds.get(world_id, False) and self.loop_ids.get(world_id) == loop_id:
-            try:
-                await orch.run_tick(world_id)
-                await asyncio.sleep(0.5)  # Prevent CPU hogging
-            except asyncio.CancelledError:
-                logger.info(f"[loop] Tick loop for {world_id} was cancelled")
-                break
-            except Exception as e:
-                logger.error(f"[loop] Error in tick loop for {world_id}: {e}")
-                self.running_worlds[world_id] = False
-                break
-        logger.info(f"[loop] Stopped continuous tick loop for world {world_id} (id: {loop_id})")
-
-    def start(self, world_id: str, orch):
-        if self.running_worlds.get(world_id):
-            return
-        self.running_worlds[world_id] = True
-        loop_id = self.loop_ids.get(world_id, 0) + 1
-        self.loop_ids[world_id] = loop_id
-        self.tasks[world_id] = asyncio.create_task(self._loop(world_id, orch, loop_id))
-
-    def stop(self, world_id: str):
-        self.running_worlds[world_id] = False
-        # We don't cancel immediately to let the current tick finish gracefully
-        # The loop_id check ensures old loops will exit even if start is called quickly
-
-
-loop_manager = TickLoopManager()
-
-
-# ── Tick Batch Runner（直接用 orchestrator 跑 N 个 tick，与 loop_manager 隔离）──
-class TickBatchRunner:
-    """一次性 N-tick 任务管理器——不依赖 loop_manager."""
-
-    def __init__(self):
-        self._tasks: dict[str, asyncio.Task] = {}
-        self._targets: dict[str, int] = {}
-        self._completed: dict[str, int] = {}
-
-    async def _run(self, world_id: str, orch, n: int):
-        logger.info(f"[batch] Started {n} ticks for world {world_id}")
-        completed = 0
-        try:
-            for _ in range(n):
-                task = self._tasks.get(world_id)
-                if task and task.cancelled():
-                    break
-                await orch.run_tick(world_id)
-                completed += 1
-        except asyncio.CancelledError:
-            logger.info(f"[batch] Cancelled for world {world_id} after {completed} ticks")
-        except Exception as e:
-            logger.error(f"[batch] Error in world {world_id}: {e}")
-        finally:
-            self._completed[world_id] = completed
-            self._tasks.pop(world_id, None)
-            self._targets.pop(world_id, None)
-            logger.info(f"[batch] Finished world {world_id}: {completed}/{n} ticks")
-
-    def start(self, world_id: str, orch, n: int):
-        """启动一次性 N-tick 任务（不阻塞，前端主动拉取）."""
-        if n <= 0:
-            raise ValueError("n must be positive")
-        existing = self._tasks.get(world_id)
-        if existing is not None and not existing.done():
-            raise RuntimeError(f"Batch already running for {world_id}")
-        self._targets[world_id] = n
-        self._tasks[world_id] = asyncio.create_task(self._run(world_id, orch, n))
-
-    def is_running(self, world_id: str) -> bool:
-        task = self._tasks.get(world_id)
-        return task is not None and not task.done()
-
-    def get_target(self, world_id: str) -> int | None:
-        return self._targets.get(world_id)
-
-    def get_completed(self, world_id: str) -> int | None:
-        return self._completed.get(world_id)
-
-
-batch_runner = TickBatchRunner()
-
+# 在应用创建前初始化日志 / Initialize logging before app creation
 try:
     from .config import load_config
-    from .utils.logging import configure_console, configure_format
 
     _cfg = load_config("../config.yaml")
     configure_format(_cfg.logging.json_format)
@@ -140,355 +40,76 @@ except Exception:
     setup_logging()
     configure_console(None)
 
+# FastAPI 应用实例 / FastAPI app instance
 app = FastAPI(title="AIGameWorld API", version="0.1.0")
-
-
-def _get_db() -> SQLiteClient:
-    db = getattr(app.state, "db", None)
-    if db is None:
-        raise RuntimeError("DB not initialized")
-    return db
-
-
-def _get_orch():
-    """获取全局 Orchestrator 单例."""
-    if not hasattr(app.state, "orchestrator"):
-        from src.graph.orchestrator import Orchestrator
-        from src.llm.llm_client import LLMClient
-        from src.repository.dm_record_repo import DMRecordRepo
-        from src.repository.pc_repo import PcRepo
-        from src.repository.scene_repo import SceneRepo
-        from src.repository.world_repo import WorldRepo
-
-        db = _get_db()
-        cfg = load_config("../config.yaml")
-        llm = LLMClient(cfg.llm, mock=cfg.mock.enabled, mock_dataset=cfg.mock.dataset)
-        if cfg.mock.enabled:
-            logger.info("[main] mock mode dataset=%s", cfg.mock.dataset)
-        app.state.orchestrator = Orchestrator(
-            llm=llm,
-            repos={
-                "char": PcRepo(db),
-                "dm_record": DMRecordRepo(db),
-                "scene": SceneRepo(db),
-                "world": WorldRepo(db),
-                "event": TickEventRepo(db),
-            },
-        )
-    return app.state.orchestrator
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """应用生命周期：初始化 DB、mock 数据、编排器 / App lifespan: init DB, mock data, orchestrator."""
     from .config import load_config
 
     cfg = load_config("../config.yaml")
-    db_path = cfg.database.sqlite_path
+    db_path = cfg.db_name
+    # 创建并连接 SQLite / Create and connect SQLite
     db = SQLiteClient(db_path)
     app.state.db = db
     await db.connect()
     await db.init_schema()
     logger.info("[lifespan] db=%s ready", db_path)
 
+    # mock 模式下注入 mock 数据 / Seed mock data if in mock mode
+    if cfg.data_mode == "mock":
+        from data.mock import seed_mock_data
+
+        try:
+            await seed_mock_data(db)
+            logger.info("[lifespan] mock data seeded into %s", db_path)
+        except Exception as exc:
+            logger.warning("[lifespan] mock seed skipped: %s", exc)
+
+    # 初始化 LLM 与编排器 / Init LLM client and orchestrator
+    from .llm.llm_client import LLMClient
+    from .orchestrator import Orchestrator
+    from .repository.dm_record_repo import DMRecordRepo
+    from .repository.event_repo import TickEventRepo
+    from .repository.pc_repo import PcRepo
+    from .repository.scene_repo import SceneRepo
+    from .repository.world_repo import WorldRepo
+
+    llm = LLMClient(cfg)
+    app.state.orchestrator = Orchestrator(
+        llm=llm,
+        repos={
+            "char": PcRepo(db),
+            "dm_record": DMRecordRepo(db),
+            "scene": SceneRepo(db),
+            "world": WorldRepo(db),
+            "event": TickEventRepo(db),
+        },
+    )
+    logger.info("[lifespan] orchestrator ready")
+
     yield
+
+    # 关闭资源 / Cleanup resources
+    if app.state.orchestrator:
+        app.state.orchestrator = None
     if app.state.db:
         await app.state.db.close()
         app.state.db = None
 
 
 app.router.lifespan_context = lifespan
+# 允许跨域 / Enable CORS for frontend
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-
-# ── World CRUD ──
-
-
-@app.get("/api/world")
-async def world_list():
-    log_api("world.list", "-")
-    return [w.model_dump() for w in await WorldRepo(_get_db()).list_all()]
-
-
-@app.post("/api/world")
-async def world_create(w: World):
-    await WorldRepo(_get_db()).create(w)
-    return {"status": "ok"}
-
-
-# ── Tick 执行（Orchestrator 直接驱动，无后台任务）──
-
-
-@app.get("/api/world/{world_id}/tick/next")
-async def tick_next(world_id: str):
-    """运行一个 tick 并返回事件（data_tick 推进）."""
-    orch = _get_orch()
-    result = await orch.run_tick(world_id)
-    world_repo = WorldRepo(_get_db())
-    display_tick = await world_repo.get_display_tick(world_id)
-    return {
-        "tick": result["tick"],
-        "display_tick": display_tick,
-    }
-
-
-@app.post("/api/world/{world_id}/loop/start")
-async def loop_start(world_id: str):
-    """开始持续 Tick 循环."""
-    loop_manager.start(world_id, _get_orch())
-    return {"status": "ok", "running": True}
-
-
-@app.post("/api/world/{world_id}/loop/pause")
-async def loop_pause(world_id: str):
-    """暂停持续 Tick 循环."""
-    loop_manager.stop(world_id)
-    return {"status": "ok", "running": False}
-
-
-@app.post("/api/world/{world_id}/loop/resume")
-async def loop_resume(world_id: str):
-    """恢复持续 Tick 循环."""
-    loop_manager.start(world_id, _get_orch())
-    return {"status": "ok", "running": True}
-
-
-@app.get("/api/world/{world_id}/loop/status")
-async def loop_status(world_id: str):
-    """获取循环状态."""
-    return {
-        "running": loop_manager.running_worlds.get(world_id, False),
-        "batch_running": batch_runner.is_running(world_id),
-        "batch_target": batch_runner.get_target(world_id),
-        "batch_completed": batch_runner.get_completed(world_id),
-    }
-
-
-# ── Mock 数据 / Mock data ──
-
-
-@app.post("/api/mock/seed")
-async def mock_seed():
-    """按需注入 mock 数据 / Seed mock data on demand."""
-    from data.mock import seed_mock_data
-
-    await seed_mock_data(_get_db())
-    log_api("mock.seed", "-")
-    return {"status": "ok"}
-
-
-@app.post("/api/world/{world_id}/tick/batch/{n}")
-async def tick_batch(world_id: str, n: int):
-    """直接用 orchestrator 跑 N 个 tick（不返回数据，前端主动拉取）."""
-    if n <= 0:
-        raise HTTPException(status_code=400, detail="n must be positive")
-    try:
-        batch_runner.start(world_id, _get_orch(), n)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    log_api("tick.batch", f"{world_id}:{n}")
-    return {"status": "ok", "n": n}
-
-
-@app.get("/api/world/{world_id}/events")
-async def get_events(
-    world_id: str,
-    since_tick: int = Query(0),
-    tick_limit: int = Query(1),
-):
-    """获取 since_tick 之后的 tick 事件，支持按 tick 数量分页.
-
-    事件面板用 tick_limit=1 保证一次只取一个展示 tick；
-    历史面板用 tick_limit=N 实现分页加载。
-    """
-    db = _get_db()
-    repo = TickEventRepo(db)
-    world_repo = WorldRepo(db)
-
-    tick_limit = max(1, min(tick_limit, 20))
-    start_tick = since_tick + 1
-    end_tick = since_tick + tick_limit
-    events = await repo.load_by_tick_range(world_id, start_tick, end_tick)
-    data_tick = await world_repo.get_data_tick(world_id)
-    display_tick = await world_repo.get_display_tick(world_id)
-
-    if not events:
-        return {"events": [], "display_tick": display_tick, "data_tick": data_tick}
-
-    max_tick = max(e["tick"] for e in events)
-    return {"events": events, "display_tick": max_tick, "data_tick": data_tick}
-
-
-@app.post("/api/world/{world_id}/reset")
-async def world_reset(world_id: str):
-    """重置 world：清零 tick + 删除事件/消息/DM记录."""
-    loop_manager.stop(world_id)
-    await _get_orch().reset(world_id)
-    db = _get_db()
-    # 清理 tick_events / tick_messages / dm_records / story_summaries
-    await TickEventRepo(db).delete_by_world(world_id)
-    await db.execute("DELETE FROM dm_records WHERE world_id = ?", (world_id,))
-    await db.execute("DELETE FROM story_summaries WHERE world_id = ?", (world_id,))
-    await db.commit()
-    log_api("world.reset", world_id)
-    return {"status": "ok"}
-
-
-@app.post("/api/world/{world_id}/tick/display/{tick}")
-async def set_display_tick(world_id: str, tick: int):
-    """前端展示完一个 tick 后，更新 display_tick."""
-    if tick < 0:
-        raise HTTPException(status_code=400, detail="tick must be non-negative")
-    world_repo = WorldRepo(_get_db())
-    await world_repo.set_display_tick(world_id, tick)
-    log_api("tick.display", f"{world_id}:{tick}")
-    return {"status": "ok", "world_id": world_id, "display_tick": tick}
-
-
-# ── World State + Health ──
-
-
-@app.get("/health")
-async def health_check():
-    return {"status": "ok", "service": "AIGameWorld-backend"}
-
-
-@app.get("/api/world/{world_id}/state")
-async def get_pack_state(world_id: str):
-    try:
-        db = _get_db()
-        scenes = [
-            {
-                "id": r["id"],
-                "name": r["name"],
-                "type": r["type"],
-                "description": r.get("description", ""),
-                "spawn_x": r.get("spawn_x", 0),
-                "spawn_y": r.get("spawn_y", 0),
-            }
-            for r in await db.fetch_all("SELECT * FROM scenes WHERE world_id = ?", (world_id,))
-        ]
-        pcs = [
-            _char_from_row(r, True, i * 2 + 5)
-            for i, r in enumerate(
-                await db.fetch_all(
-                    "SELECT * FROM player_characters WHERE world_id = ?", (world_id,)
-                )
-            )
-        ]
-        actors = [
-            _char_from_row(r, False, i * 3 + 12)
-            for i, r in enumerate(
-                await db.fetch_all("SELECT * FROM actors WHERE world_id = ?", (world_id,))
-            )
-        ]
-        items = [
-            {
-                "id": r["id"],
-                "name": r["name"],
-                "item_type": r["item_type"],
-                "rarity": r.get("rarity", "common"),
-                "description": r.get("description", ""),
-            }
-            for r in await db.fetch_all("SELECT * FROM items WHERE world_id = ?", (world_id,))
-        ]
-        so = [
-            {
-                "id": r["id"],
-                "name": r["name"],
-                "object_type": r["object_type"],
-                "scene_id": r["scene_id"],
-                "position_x": r.get("position_x", 0),
-                "position_y": r.get("position_y", 0),
-            }
-            for r in await db.fetch_all("SELECT * FROM scene_objects")
-        ]
-        world_row = await db.fetch_one(
-            "SELECT data_tick, display_tick FROM worlds WHERE id = ?", (world_id,)
-        )
-        data_tick = world_row["data_tick"] if world_row else 0
-        display_tick = world_row["display_tick"] if world_row else 0
-        cfg = load_config("../config.yaml")
-        db_path = (
-            cfg.database.test_sqlite_path
-            if cfg.mock.data_mode == "mock"
-            else cfg.database.sqlite_path
-        )
-        return {
-            "world_id": world_id,
-            "data_tick": data_tick,
-            "display_tick": display_tick,
-            "llm_mock": cfg.mock.enabled,
-            "data_mode": cfg.mock.data_mode,
-            "db_name": Path(db_path).name,
-            "mock_dataset": cfg.mock.dataset,
-            "scenes": scenes,
-            "characters": pcs + actors,
-            "items": items,
-            "scene_objects": so,
-        }
-    except Exception as exc:
-        raise HTTPException(status_code=503, detail="DB unavailable") from exc
-
-
-# --- View ---
-
-
-@app.get("/view", response_class=HTMLResponse)
-async def view_index(db: str = Query(default="data/world_db.db")):
-    return await render_index(db_path=db)
-
-
-@app.get("/view/global/items", response_class=HTMLResponse)
-async def view_global_items(db: str = Query(default="data/world_db.db")):
-    return await render_global_items(db_path=db)
-
-
-@app.get("/view/global/scene-objects", response_class=HTMLResponse)
-async def view_global_objects(db: str = Query(default="data/world_db.db")):
-    return await render_global_objects(db_path=db)
-
-
-@app.get("/view/global/tick_events", response_class=HTMLResponse)
-async def view_global_tick_events(db: str = Query(default="data/world_db.db")):
-    return await render_global_events(db_path=db)
-
-
-@app.get("/view/global/dm_records", response_class=HTMLResponse)
-async def view_global_records(db: str = Query(default="data/world_db.db")):
-    return await render_global_records(db_path=db)
-
-
-@app.get("/view/global/meta", response_class=HTMLResponse)
-async def view_global_meta(db: str = Query(default="data/world_db.db")):
-    return await render_global_meta(db_path=db)
-
-
-@app.get("/view/pack/{world_id}", response_class=HTMLResponse)
-async def view_pack(world_id: str, db: str = Query(default="data/world_db.db")):
-    return await render_pack(world_id, db_path=db)
-
-
-# --- Internal ---
-
-
-def _char_from_row(r: dict, is_pc: bool, pos_offset: int) -> dict:
-    cj = r.get("combat_json")
-    return {
-        "id": r["id"],
-        "name": r["name"],
-        "role": r["role"],
-        "race": r.get("race"),
-        "status": r.get("status", "active"),
-        "scene_id": r["scene_id"],
-        "position_x": r.get("position_x", pos_offset),
-        "position_y": r.get("position_y", 5 + pos_offset % 10),
-        "attributes": json.loads(r["attributes_json"]),
-        "combat": json.loads(cj) if cj else None,
-        "personality": r.get("personality", ""),
-        "arc": json.loads(r.get("arc_json", "{}")) if is_pc else None,
-        "functions": json.loads(r.get("functions_json", "[]")) if not is_pc else None,
-        "is_pc": is_pc,
-    }
-
-
-
+# ── 注册 API 路由 / Register API routers ──
+app.include_router(world_router)
+app.include_router(tick_router)
+app.include_router(events_router)
+app.include_router(reset_router)
+app.include_router(state_router)
+app.include_router(health_router)
+app.include_router(view_router)
+app.include_router(mock_router)

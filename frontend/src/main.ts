@@ -66,7 +66,6 @@ async function main(): Promise<void> {
       llm_mock: false,
       data_mode: "unknown",
       db_name: "unknown",
-      mock_dataset: "",
       scenes: [],
       characters: [],
       items: [],
@@ -80,12 +79,9 @@ async function main(): Promise<void> {
     world.characters,
     world.items,
     world.scene_objects,
-    {
-      llm_mock: world.llm_mock ?? false,
-      data_mode: world.data_mode ?? "real",
-      db_name: world.db_name ?? "world_db.db",
-      mock_dataset: world.mock_dataset ?? "",
-    },
+    world.llm_mock,
+    world.data_mode,
+    world.db_name,
   );
   console.log(`${L} store initialized`);
 
@@ -150,10 +146,10 @@ async function main(): Promise<void> {
 
   const statusEl = document.createElement("span");
   statusEl.style.cssText = "padding:6px 14px;border-radius:4px;background:rgba(0,0,0,0.7);color:#ffd700;font-size:13px;font-weight:bold;min-width:180px;text-align:center;border:1px solid rgba(255,215,0,0.3);";
-  const state = gameStore.getState();
-  const llmLabel = state.llm_mock ? "LLM:Mock" : "LLM:Real";
-  const dataLabel = `Data:${state.data_mode === "mock" ? "Mock" : state.data_mode}`;
-  const dbLabel = state.db_name ? `使用DB:${state.db_name}` : (backendReady ? "DB" : "--");
+  const st = gameStore.getState();
+  const llmLabel = st.llm_mock ? "LLM:Mock" : "LLM:Real";
+  const dataLabel = `Data:${st.data_mode === "mock" ? "Mock" : st.data_mode}`;
+  const dbLabel = st.db_name ? `DB:${st.db_name}` : (backendReady ? "DB" : "--");
   statusEl.textContent = backendReady
     ? `${llmLabel} | ${dataLabel} | ${dbLabel}`
     : "后端未就绪";
@@ -193,12 +189,7 @@ async function main(): Promise<void> {
       position_x: spawn.x + (i % 3) - 1,
       position_y: spawn.y + Math.floor(i / 3) - 1,
     }));
-    gameStore.setWorldState(st.world_id, st.scenes, updated, st.items, st.scene_objects, {
-      llm_mock: st.llm_mock,
-      data_mode: st.data_mode,
-      db_name: st.db_name,
-      mock_dataset: st.mock_dataset,
-    });
+    gameStore.setWorldState(st.world_id, st.scenes, updated, st.items, st.scene_objects, st.llm_mock, st.data_mode, st.db_name);
     console.log(`${L} 🗺 switched to ${sceneId}`);
   };
 

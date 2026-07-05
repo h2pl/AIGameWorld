@@ -75,7 +75,9 @@ class TestSQLiteClient:
                 raise RuntimeError("forced error")
         except RuntimeError:
             pass
-        rows = await db.fetch_all("SELECT * FROM tick_events WHERE world_id = ?", ("test_rollback",))
+        rows = await db.fetch_all(
+            "SELECT * FROM tick_events WHERE world_id = ?", ("test_rollback",)
+        )
         assert len(rows) == 0
 
 

@@ -113,7 +113,7 @@ def _get_char_position(
     scene_info: dict[str, Any],
     pc_state_map: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, int]:
-    """获取角色坐标——优先 pc_state_map（tick 内最新），其次 scene_info / 
+    """获取角色坐标——优先 pc_state_map（tick 内最新），其次 scene_info /
     Get character position — pc_state_map first (in-tick latest), then scene_info."""
     if not char_id:
         return {"x": 0, "y": 0}

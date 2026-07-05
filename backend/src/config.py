@@ -63,8 +63,6 @@ class LLMConfig(BaseModel):
 class DatabaseConfig(BaseModel):
     """数据库配置 / Database configuration."""
 
-    sqlite_path: str = "data/world_db.db"
-    test_sqlite_path: str = "data/test.db"
     chroma_path: str = "data/chroma/"
 
 
@@ -127,24 +125,19 @@ class LoggingConfig(BaseModel):
     console: ConsoleLoggingConfig = ConsoleLoggingConfig()
 
 
-class MockConfig(BaseModel):
-    """Mock 模式配置 / Mock mode configuration."""
-
-    enabled: bool = True  # LLM mock 开关 / LLM mock toggle
-    dataset: str = "tavern"  # mock 数据集 / Mock dataset name
-    data_mode: str = "mock"  # 数据模式：mock|real / Data mode: mock or real
-
-
 class Config(BaseSettings):
     """全局配置根 / Global config root."""
 
     server: ServerConfig = ServerConfig()
     world: WorldConfig = WorldConfig()
     llm: LLMConfig
+    llm_mock: bool = True  # LLM 是否走 mock / Whether LLM returns mock data
+    data_mode: str = "mock"  # 数据模式：mock|real / Data mode: mock or real
+    db_name: str = "data/test.db"  # 实际使用的 SQLite DB 路径 / Active SQLite DB path
+    mock_dataset: str = "tavern"  # mock 数据集 / Mock dataset name
     database: DatabaseConfig = DatabaseConfig()
     auto_run: AutoRunConfig = AutoRunConfig()
     logging: LoggingConfig = LoggingConfig()
-    mock: MockConfig = MockConfig()
     observability: ObservabilityConfig = ObservabilityConfig()
 
     @classmethod

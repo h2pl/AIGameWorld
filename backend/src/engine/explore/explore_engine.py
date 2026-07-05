@@ -44,8 +44,14 @@ def process_explore_action(
 
     logger.info(
         "[engine] %s explore: (%d,%d) → %d steps → final (%d,%d) map=%dx%d",
-        pc_id, start_x, start_y, len(waypoints),
-        final_pos["x"], final_pos["y"], map_width, map_height,
+        pc_id,
+        start_x,
+        start_y,
+        len(waypoints),
+        final_pos["x"],
+        final_pos["y"],
+        map_width,
+        map_height,
     )
 
     return {
@@ -70,7 +76,10 @@ def _get_pc_position(pc_id: str, pc_state_map: dict[str, dict]) -> tuple[int, in
 
 
 def _generate_path(
-    start_x: int, start_y: int, map_width: int, map_height: int,
+    start_x: int,
+    start_y: int,
+    map_width: int,
+    map_height: int,
 ) -> list[dict]:
     """从起点出发，生成随机数量多段连续路径（每段相邻，不跨越地图）/
     Generate a random multi-segment continuous path from start position."""
@@ -88,10 +97,16 @@ def _generate_path(
         next_y = _clamp(cur_y + step_y, y_bounds[0], y_bounds[1])
         # 避免原地踏步：如果 clamp 导致无变化，重试一次
         if next_x == cur_x and next_y == cur_y:
-            next_x = _clamp(cur_x + random.randint(1, STEP_MAX) * random.choice((-1, 1)),
-                            x_bounds[0], x_bounds[1])
-            next_y = _clamp(cur_y + random.randint(1, STEP_MAX) * random.choice((-1, 1)),
-                            y_bounds[0], y_bounds[1])
+            next_x = _clamp(
+                cur_x + random.randint(1, STEP_MAX) * random.choice((-1, 1)),
+                x_bounds[0],
+                x_bounds[1],
+            )
+            next_y = _clamp(
+                cur_y + random.randint(1, STEP_MAX) * random.choice((-1, 1)),
+                y_bounds[0],
+                y_bounds[1],
+            )
         cur_x, cur_y = next_x, next_y
         waypoints.append({"x": cur_x, "y": cur_y})
 

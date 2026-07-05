@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.graph.orchestrator import Orchestrator
+from src.orchestrator import Orchestrator
 
 
 @pytest.mark.asyncio
