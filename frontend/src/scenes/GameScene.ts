@@ -89,15 +89,17 @@ export class GameScene extends Phaser.Scene {
     // 订阅 store，等待 scene_setup / Subscribe to store and wait for scene_setup
     this.unsubscribe = gameStore.subscribe(() => {
       const s = gameStore.getState();
+      if (!s.scene_ready && this.sceneBuilt) {
+        // reset 时回到等待状态 / Return to waiting state on reset
+        this._destroyScene();
+      }
       if (s.scene_ready && !this.sceneBuilt) {
         this.buildScene(s.current_scene_id);
       }
       if (this.sceneBuilt) {
         this.charManager?.sync(s.characters, s.character_positions);
         if (s.narrative && this.narrativeText) this.narrativeText.setText(s.narrative);
-        // 播放探索路径动画 / Play explore waypoint animations
         this._playExploreRoutes();
-        // 播放走位对话动画 / Play walk-to-talk animations
         this._playWalkToTalk();
       }
     });
@@ -328,6 +330,21 @@ export class GameScene extends Phaser.Scene {
 
   setNarrative(text: string): void {
     if (this.narrativeText) this.narrativeText.setText(text);
+  }
+
+  /** 销毁场景回到等待状态 / Destroy scene and return to waiting state */
+  private _destroyScene(): void {
+    this.sceneBuilt = false;
+    this.charManager?.destroy();
+    this.dialogueQueue = [];
+    this.isPlayingDialogue = false;
+    if (this.dialogueTimer) { window.clearTimeout(this.dialogueTimer); this.dialogueTimer = undefined; }
+    // 重新显示等待文本 / Show waiting text again
+    this.waitingText = this.add.text(CONFIG.CANVAS.width / 2, CONFIG.CANVAS.height / 2,
+      "等待 DM 创造情境...",
+      { fontFamily: "Segoe UI, sans-serif", fontSize: "18px", color: "#ffd700" },
+    ).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH.HUD);
+    console.log("[Scene] destroyed, waiting for new DM creation");
   }
 
   /** 播放探索路径动画 / Play explore waypoint traversal animation */

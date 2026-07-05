@@ -250,6 +250,11 @@ async def lifespan(app: FastAPI):
             "[migration] Added spawn_x/spawn_y/map_key/map_width/map_height columns to scenes"
         )
 
+    # Migration: 删除已废弃的 tick_messages 表 / Drop deprecated tick_messages table
+    await db.execute("DROP TABLE IF EXISTS tick_messages")
+    await db.commit()
+    logger.info("[migration] Dropped deprecated tick_messages table")
+
     # 自动导入默认 world-pack（DB 为空时）/ Auto-import default pack when DB is empty
     if not use_mock_data:
         worlds_count = await db.fetch_all("SELECT 1 FROM worlds LIMIT 1")

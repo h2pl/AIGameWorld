@@ -303,6 +303,11 @@ class GameStore {
     this.state.errors = [];
     this.state.explore_routes = {};
     this.state.walk_to_talk = [];
+    // 重置场景状态，让 Phaser 重新等待 DM 创造情境 / Reset scene state for fresh DM creation
+    this.state.scene_ready = false;
+    this.state.current_scene_id = "";
+    this.state.current_map_key = "";
+    this.state.dm_plot_brief = "";
     this.notify();
   }
 
