@@ -1,7 +1,7 @@
 /** GameStore 单元测试 / Unit tests for GameStore
  *
- * 覆盖初始状态、世界状态加载和 explore route 消费：
- * / Covers initial state, world state loading, and explore route consumption
+ * 覆盖初始状态、世界状态加载和事件列表追加：
+ * / Covers initial state, world state loading, and event list appending
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { gameStore } from "../../../src/state/GameStore";
@@ -69,7 +69,7 @@ describe("GameStore", () => {
     expect(st.current_scene_id).toBe("village");
   });
 
-  it("should consume explore routes", () => {
+  it("should append events and keep them in the events list", () => {
     const scene = makeScene("village");
     const pc = makePC("cleric", "village");
     gameStore.setWorldState("mock_world", [scene], [pc], [], [], false, "mock", "dev.db");
@@ -78,18 +78,15 @@ describe("GameStore", () => {
       type: "pc_explore",
       payload: {
         pc_id: "cleric",
-        waypoints: [
-          { x: 1, y: 1 },
-          { x: 2, y: 2 },
-        ],
+        waypoints: [{ x: 1, y: 1 }],
         final_x: 3,
         final_y: 3,
       },
     });
 
-    const routes = gameStore.consumeExploreRoutes();
-    // route 包含 waypoints + final point / Route contains waypoints plus final point
-    expect(routes["cleric"]).toHaveLength(3);
-    expect(gameStore.getState().explore_routes).toEqual({});
+    const events = gameStore.getState().events;
+    expect(events.length).toBeGreaterThan(0);
+    expect(events[events.length - 1].type).toBe("pc_explore");
+    expect(events[events.length - 1].tick).toBe(1);
   });
 });

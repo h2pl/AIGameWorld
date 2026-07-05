@@ -5,6 +5,8 @@
  */
 
 import { gameStore } from "../state/GameStore";
+import type { EventManager } from "../managers/EventManager";
+import type { EventData } from "../types";
 
 const L = "[TickPlayer]";
 
@@ -39,7 +41,8 @@ export class TickPlayer {
 
   constructor(
     private _baseUrl: string,
-    private _worldId: string
+    private _worldId: string,
+    private _eventManager: EventManager
   ) {}
 
   get state(): PlayerState {
@@ -283,17 +286,16 @@ export class TickPlayer {
     events: TickEvent[],
     onTick: (tick: number, events: TickEvent[]) => void
   ): Promise<void> {
-    // 先把事件写入 store，让 explore/walk-to-talk 等状态被 subscribe 消费
-    // / Persist events into store so subscribers (e.g. explore routes) can consume them
-    for (const ev of events) {
-      gameStore.appendEventAt(ev.tick, { type: ev.type, payload: ev.payload });
-    }
-    onTick(tick, events);
-    for (let i = 0; i < events.length; i++) {
-      if (this._state !== "running" && !this._autoMode) break;
-      this._emitEvent(events[i].type, events[i].payload);
-      if (i < events.length - 1) await _sleep(300);
-    }
+    // 统一交给 EventManager 串行处理：先写入 store，再按顺序 await 每个 handler
+    // / Delegate to EventManager for sequential processing: persist to store then await handlers
+    const eventData: EventData[] = events.map((ev) => ({
+      type: ev.type,
+      tick: ev.tick,
+      payload: ev.payload,
+    }));
+    await this._eventManager.processTick(tick, eventData, (t, evs) =>
+      onTick(t, evs as TickEvent[])
+    );
   }
 
   /** 同步 display_tick 到后端 / Sync display_tick to backend */
@@ -305,10 +307,6 @@ export class TickPlayer {
     } catch (e) {
       console.warn(`${L} sync display_tick failed`, e);
     }
-  }
-
-  private _emitEvent(type: string, payload: Record<string, unknown>): void {
-    window.dispatchEvent(new CustomEvent("tick-event", { detail: { type, payload } }));
   }
 }
 

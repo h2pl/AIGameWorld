@@ -7,6 +7,8 @@ import { KEY, DEPTH, TILEMAP } from "../constants";
 import { gridToWorld } from "../utils/tile";
 // gridToWorld 保留给 createPlayer 等场景构造使用 / gridToWorld kept for scene construction
 import { WalkController } from "../controllers/WalkController";
+import { EventManager } from "../managers/EventManager";
+import type { EventData } from "../types";
 
 /** 种族肤色 / Race skin colors */
 const RACE_SKIN: Record<string, string> = {
@@ -132,6 +134,7 @@ export class GameScene extends Phaser.Scene {
   private mapKey!: string;
   private sceneBuilt = false;
   private walkController!: WalkController;
+  private eventManager!: EventManager;
   private dialogueQueue: Array<{ speaker_id: string; text: string }> = [];
   private isPlayingDialogue = false;
   private dialogueTimer?: number;
@@ -181,8 +184,6 @@ export class GameScene extends Phaser.Scene {
       if (this.sceneBuilt) {
         this.charManager?.sync(s.characters, s.character_positions);
         if (s.narrative && this.narrativeText) this.narrativeText.setText(s.narrative);
-        this._playExploreRoutes();
-        this._playWalkToTalk();
       }
     });
 
@@ -191,46 +192,155 @@ export class GameScene extends Phaser.Scene {
       this.buildScene(st.current_scene_id);
     }
 
-    // 监听 tick 事件，处理对话 / Listen to tick events for dialogues
-    window.addEventListener("tick-event", this.handleTickEvent as EventListener);
-    window.addEventListener("dialogue-replay", this.handleTickEvent as EventListener);
+    // 从 Phaser registry 拿到 EventManager 并注册场景级 handlers
+    // / Retrieve EventManager from Phaser registry and register scene handlers
+    this.eventManager = this.game.registry.get("eventManager") as EventManager;
+    this._registerEventHandlers();
+
+    // 刷新后重放当前展示 tick 的对话，让人物头顶仍有泡泡
+    // / Replay current display tick dialogues after refresh so bubbles reappear
+    const displayTick = gameStore.getState().display_tick;
+    if (displayTick > 0) {
+      const talks = gameStore
+        .getState()
+        .events.filter((ev) => ev.tick === displayTick && ev.type === "pc_talk");
+      for (const ev of talks) {
+        this._handleTalk(ev);
+      }
+    }
   }
 
-  /** 处理 tick 事件 / Handle tick event */
-  private handleTickEvent = (e: CustomEvent): void => {
-    const { type, payload } = e.detail;
+  /** 注册事件 handlers / Register event handlers with EventManager */
+  private _registerEventHandlers(): void {
+    if (!this.eventManager) return;
+    this.eventManager.register("pc_explore", (ev) => this._handleExplore(ev));
+    this.eventManager.register("pc_talk", (ev) => this._handleTalk(ev));
+    this.eventManager.register("dm_narrative", (ev) => this._handleNarrative(ev));
+  }
 
-    // 新 tick 开始：清空上一 tick 未播完的对话，避免队列无限累积
-    if (type === "dm_create") {
-      if (this.dialogueTimer) window.clearTimeout(this.dialogueTimer);
-      this.dialogueTimer = undefined;
-      this.dialogueQueue = [];
-      this.isPlayingDialogue = false;
-      this.dialoguesThisTick = 0;
-      this.charManager?.clearBubbles();
-      return;
+  /** 处理探索事件 / Handle explore event */
+  private _handleExplore(ev: EventData): Promise<void> {
+    return new Promise((resolve) => {
+      const payload = ev.payload;
+      if (!payload) {
+        resolve();
+        return;
+      }
+      const pcId = String(payload.pc_id || "");
+      const waypoints = payload.waypoints as Array<{ x: number; y: number }> | undefined;
+      const finalX = Number(payload.final_x ?? 0);
+      const finalY = Number(payload.final_y ?? 0);
+      if (!pcId || !waypoints?.length || !this.walkController) {
+        resolve();
+        return;
+      }
+      const sprite = this.charManager?.getSprite(pcId);
+      if (!sprite) {
+        resolve();
+        return;
+      }
+      const allWaypoints = [...waypoints, { x: finalX, y: finalY }];
+      this.walkController.walkRoute(sprite, allWaypoints, {
+        onComplete: (finalTx, finalTy) => {
+          // 走完后同步坐标到 store，避免下次 sync 瞬移 / Sync final pos to store after walk
+          const st = gameStore.getState();
+          st.character_positions[pcId] = { x: finalTx, y: finalTy };
+          const ch = st.characters.find((c) => c.id === pcId);
+          if (ch) {
+            ch.position_x = finalTx;
+            ch.position_y = finalTy;
+          }
+          console.log("[Scene] explore done: %s → (%d,%d)", pcId, finalTx, finalTy);
+          resolve();
+        },
+      });
+      console.log(
+        "[Scene] explore: %s through %d waypoints → (%d,%d)",
+        pcId,
+        waypoints.length,
+        finalX,
+        finalY
+      );
+    });
+  }
+
+  /** 处理对话事件：先走位（如需要），再显示泡泡 / Handle talk event: approach if needed, then show dialogue */
+  private async _handleTalk(ev: EventData): Promise<void> {
+    const payload = ev.payload;
+    if (!payload) return;
+
+    const pcId = String(payload.pc_id || "");
+    const targetPos = payload.target_position as { x: number; y: number } | undefined;
+
+    // 1. 先走到目标旁边 / Approach target first
+    if (pcId && targetPos && this.walkController) {
+      const sprite = this.charManager?.getSprite(pcId);
+      if (sprite) {
+        await this._walkToAdjacent(sprite, targetPos.x, targetPos.y);
+      }
     }
 
-    if (type !== "pc_talk") return;
-    // 每 tick 只把第一个 talk 事件做成头顶泡泡，其余仅保留在事件列表
-    if (this.dialoguesThisTick >= this.MAX_DIALOGUE_EVENTS_PER_TICK) return;
-    this.dialoguesThisTick++;
-    const result = payload?.result as Record<string, unknown> | undefined;
+    // 2. 显示对话 / Show dialogue
+    const result = payload.result as Record<string, unknown> | undefined;
     const turns = result?.turns as Array<{ speaker_id: string; text: string }> | undefined;
-    if (!turns?.length) return;
-    this.dialogueQueue.push(...turns);
-    this.playNextDialogue();
-  };
+    if (turns?.length) {
+      await this._playDialogueTurns(turns);
+    }
+  }
 
-  /** 播放队列中下一句对话 / Play next dialogue in queue */
-  private playNextDialogue(): void {
-    if (this.isPlayingDialogue || this.dialogueQueue.length === 0) return;
+  /** 走到目标相邻格 / Walk sprite to a tile adjacent to target */
+  private _walkToAdjacent(
+    sprite: import("../gameobjects/CharacterSprite").CharacterSprite,
+    targetTx: number,
+    targetTy: number
+  ): Promise<void> {
+    return new Promise((resolve) => {
+      const current = sprite.getGridPos(this.ts);
+      const adjacent = [
+        { tx: targetTx + 1, ty: targetTy },
+        { tx: targetTx - 1, ty: targetTy },
+        { tx: targetTx, ty: targetTy + 1 },
+        { tx: targetTx, ty: targetTy - 1 },
+      ].filter((a) => a.tx >= 0 && a.ty >= 0);
+      let best = adjacent[0];
+      let bestDist = Infinity;
+      for (const a of adjacent) {
+        const d = Math.abs(a.tx - current.tx) + Math.abs(a.ty - current.ty);
+        if (d < bestDist) {
+          best = a;
+          bestDist = d;
+        }
+      }
+      if (!best) {
+        resolve();
+        return;
+      }
+      this.walkController!.walkTo(sprite, best.tx, best.ty, { onComplete: () => resolve() });
+    });
+  }
+
+  /** 顺序播放多轮对话 / Play dialogue turns sequentially */
+  private _playDialogueTurns(turns: Array<{ speaker_id: string; text: string }>): Promise<void> {
+    return new Promise((resolve) => {
+      this.dialogueQueue.push(...turns);
+      this._playNextDialogue(resolve);
+    });
+  }
+
+  /** 播放队列中下一句对话 / Play next dialogue in queue
+   * @param onDone 队列全部播完后回调 / Called after all queued turns finish
+   */
+  private _playNextDialogue(onDone?: () => void): void {
+    if (this.isPlayingDialogue || this.dialogueQueue.length === 0) {
+      if (this.dialogueQueue.length === 0) onDone?.();
+      return;
+    }
     this.isPlayingDialogue = true;
     const turn = this.dialogueQueue.shift()!;
     const sprite = this.charManager?.getSprite(turn.speaker_id);
     const advance = () => {
       this.isPlayingDialogue = false;
-      this.playNextDialogue();
+      this._playNextDialogue(onDone);
     };
     if (sprite) {
       sprite.say(turn.text, advance);
@@ -239,7 +349,7 @@ export class GameScene extends Phaser.Scene {
       this.dialogueTimer = window.setTimeout(() => {
         this.dialogueQueue.unshift(turn);
         this.isPlayingDialogue = false;
-        this.playNextDialogue();
+        this._playNextDialogue(onDone);
       }, 200);
     } else {
       console.warn("[Scene] dialogue speaker not found:", turn.speaker_id);
@@ -496,86 +606,17 @@ export class GameScene extends Phaser.Scene {
     console.log("[Scene] destroyed, waiting for new DM creation");
   }
 
-  /** 播放探索路径动画 / Play explore waypoint traversal animation */
-  private _playExploreRoutes(): void {
-    const routes = gameStore.consumeExploreRoutes();
-    const entries = Object.entries(routes);
-    if (!entries.length) return;
-    for (const [pcId, waypoints] of entries) {
-      const sprite = this.charManager?.getSprite(pcId);
-      if (!sprite || !waypoints.length || !this.walkController) continue;
-      const final = waypoints[waypoints.length - 1];
-      this.walkController.walkRoute(sprite, waypoints, {
-        onComplete: (finalTx, finalTy) => {
-          // 走完后同步坐标到 store，避免下次 sync 瞬移 / Sync final pos to store after walk
-          const st = gameStore.getState();
-          st.character_positions[pcId] = { x: finalTx, y: finalTy };
-          const ch = st.characters.find((c) => c.id === pcId);
-          if (ch) {
-            ch.position_x = finalTx;
-            ch.position_y = finalTy;
-          }
-          console.log("[Scene] explore done: %s → (%d,%d)", pcId, finalTx, finalTy);
-        },
-      });
-      console.log(
-        "[Scene] explore: %s through %d waypoints → (%d,%d)",
-        pcId,
-        waypoints.length - 1,
-        final.x,
-        final.y
-      );
-    }
-  }
-
-  /** 播放走位对话动画：PC 走到目标旁边 / Walk PC to target before dialogue */
-  private _playWalkToTalk(): void {
-    const wtList = gameStore.consumeWalkToTalk();
-    if (!wtList.length || !this.walkController) return;
-    for (const wt of wtList) {
-      const sprite = this.charManager?.getSprite(wt.pc_id);
-      if (!sprite) continue;
-      // 走到目标旁边（相邻格）/ Walk to adjacent tile of target
-      const targetTx = wt.target_position.x;
-      const targetTy = wt.target_position.y;
-      // 找离 PC 当前位置最近的相邻格 / Find nearest adjacent tile to PC's current position
-      const current = sprite.getGridPos(this.ts);
-      const pcTx = current.tx;
-      const pcTy = current.ty;
-      const adjacent = [
-        { tx: targetTx + 1, ty: targetTy },
-        { tx: targetTx - 1, ty: targetTy },
-        { tx: targetTx, ty: targetTy + 1 },
-        { tx: targetTx, ty: targetTy - 1 },
-      ].filter((a) => a.tx >= 0 && a.ty >= 0);
-      let best = adjacent[0];
-      let bestDist = Infinity;
-      for (const a of adjacent) {
-        const d = Math.abs(a.tx - pcTx) + Math.abs(a.ty - pcTy);
-        if (d < bestDist) {
-          best = a;
-          bestDist = d;
-        }
-      }
-      if (best) {
-        // 插队到移动队列前头；若正在 explore，完成当前这一步后先走过来再续 explore
-        // / Prepend to walk queue; if exploring, approach target first then resume explore
-        this.walkController.prependWalkTo(sprite, best.tx, best.ty);
-        console.log(
-          "[Scene] walk-to-talk queued: %s → (%d,%d) near target (%d,%d)",
-          wt.pc_id,
-          best.tx,
-          best.ty,
-          targetTx,
-          targetTy
-        );
-      }
+  /** 处理叙事事件 / Handle narrative event */
+  private _handleNarrative(ev: EventData): void {
+    const text = ev.payload?.text as string | undefined;
+    if (text) {
+      // 统一更新 store，由 subscribe 同步 narrativeText 和 narrative 面板
+      // / Update store uniformly; subscribe syncs narrativeText and narrative panel
+      gameStore.addNarrative(text);
     }
   }
 
   shutdown(): void {
-    window.removeEventListener("tick-event", this.handleTickEvent as EventListener);
-    window.removeEventListener("dialogue-replay", this.handleTickEvent as EventListener);
     if (this.dialogueTimer) window.clearTimeout(this.dialogueTimer);
     this.dialogueQueue = [];
     if (this.unsubscribe) this.unsubscribe();

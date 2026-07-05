@@ -134,6 +134,11 @@ async function main(): Promise<void> {
   );
   console.log(`${L} store initialized`);
 
+  // 创建全局 EventManager，TickPlayer 和 GameScene 共用
+  // / Create global EventManager shared by TickPlayer and GameScene
+  const { EventManager } = await import("./managers/EventManager");
+  const eventManager = new EventManager();
+
   // 启动 Phaser 游戏引擎 / Start Phaser game engine
   const game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -156,6 +161,9 @@ async function main(): Promise<void> {
     },
     scene: [Boot, GameScene],
   });
+  // 通过 Phaser registry 把 EventManager 注入场景
+  // / Inject EventManager into scenes via Phaser registry
+  game.registry.set("eventManager", eventManager);
   console.log(`${L} Phaser.Game created, scenes: Boot → Game`);
 
   // ── DOM 面板 / DOM Panels (P5-3) ──
@@ -292,7 +300,7 @@ async function main(): Promise<void> {
 
   // ── TickPlayer (HTTP 轮询，替换 WebSocket) ──
   const { TickPlayer } = await import("./net/TickPlayer");
-  const player = new TickPlayer(CONFIG.API.base, world.world_id);
+  const player = new TickPlayer(CONFIG.API.base, world.world_id, eventManager);
 
   // 同步当前 tick 并加载历史事件 / Sync current tick and load history
   const displayTick = world.display_tick || 0;
@@ -300,25 +308,9 @@ async function main(): Promise<void> {
   if (displayTick > 0) {
     statusEl.textContent = `已展示到 Tick ${displayTick}`;
     await player.loadHistory(displayTick);
-    // 重放当前展示 tick 的对话事件，确保刷新后人物头顶仍有泡泡 / Replay current tick dialogues so bubbles show after refresh
-    const currentTickTalks = gameStore
-      .getState()
-      .events.filter((ev) => ev.tick === displayTick && ev.type === "pc_talk");
-    for (const ev of currentTickTalks) {
-      window.dispatchEvent(
-        new CustomEvent("dialogue-replay", { detail: { type: ev.type, payload: ev.payload } })
-      );
-    }
+    // 当前 tick 对话重放由 GameScene.create() 在场景就绪后执行
+    // / Current tick dialogue replay is handled by GameScene.create() after scene is ready
   }
-
-  // 事件 → Store 桥接 / Event → Store bridge
-  window.addEventListener("tick-event", ((e: CustomEvent) => {
-    const { type, payload } = e.detail;
-    if (type === "dm_narrative" && payload.text) {
-      gameStore.addNarrative(payload.text as string);
-    }
-    gameStore.appendEvent({ type, payload } as any);
-  }) as EventListener);
 
   // 历史事件面板 / History event panel
   const { HistoryEventPanel } = await import("./ui/HistoryEventPanel");
