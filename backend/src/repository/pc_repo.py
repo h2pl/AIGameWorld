@@ -52,6 +52,7 @@ class PcRepo:
                 pc.world_id,
             ),
         )
+        await self._db.commit()
 
     async def save_actor(self, actor: Actor) -> None:
         await self._db.execute(
@@ -90,6 +91,7 @@ class PcRepo:
                 actor.world_id,
             ),
         )
+        await self._db.commit()
 
     # ── 读 ──
     async def load_pcs(self, world_id: str | None = None) -> list[PlayerCharacter]:
@@ -119,6 +121,16 @@ class PcRepo:
         """按 ID 加载单个 Actor / Load Actor by ID."""
         row = await self._db.fetch_one("SELECT * FROM actors WHERE id = ?", (actor_id,))
         return _actor_from_row(row) if row else None
+
+    async def delete_pcs_by_world(self, world_id: str) -> None:
+        """删除指定 world 下所有 PC / Delete all PCs for a world."""
+        await self._db.execute("DELETE FROM player_characters WHERE world_id = ?", (world_id,))
+        await self._db.commit()
+
+    async def delete_actors_by_world(self, world_id: str) -> None:
+        """删除指定 world 下所有 Actor / Delete all actors for a world."""
+        await self._db.execute("DELETE FROM actors WHERE world_id = ?", (world_id,))
+        await self._db.commit()
 
 
 # Row → Model

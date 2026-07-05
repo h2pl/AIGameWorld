@@ -18,6 +18,37 @@ import { DMCreationPanel } from "./ui/DMCreationPanel";
 import { CharacterPanel } from "./ui/CharacterPanel";
 import { ObjectPanel } from "./ui/ObjectPanel";
 
+/** 等待后端健康检查通过 / Wait until backend health check passes
+ *
+ * 页面进入时后端可能尚未启动完成，持续轮询 /health 直到就绪，避免用户刷新。
+ */
+async function waitForBackend(
+  statusEl?: HTMLElement,
+  pollMs = 800,
+  timeoutMs = 60000
+): Promise<boolean> {
+  const url = `${CONFIG.API.base}${CONFIG.API.health}`;
+  const start = Date.now();
+  let attempt = 0;
+  while (Date.now() - start < timeoutMs) {
+    attempt++;
+    try {
+      const resp = await fetch(url);
+      if (resp.ok) {
+        console.log(`${L} backend ready after ${attempt} attempt(s)`);
+        return true;
+      }
+      console.warn(`${L} backend health not ok (${resp.status}), attempt ${attempt}`);
+    } catch {
+      console.warn(`${L} backend not reachable, attempt ${attempt}`);
+    }
+    if (statusEl) statusEl.textContent = `等待后端就绪... (${attempt})`;
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+  }
+  console.error(`${L} backend readiness timeout after ${timeoutMs}ms`);
+  return false;
+}
+
 /** 从后端加载初始世界状态 / Load initial world state from backend
  *
  * 后端启动（尤其是 mock 数据灌入）可能需要几秒，因此失败时自动重试。
@@ -31,13 +62,16 @@ async function loadWorldState(packId: string): Promise<InitialWorldState | null>
     try {
       const resp = await fetch(url);
       if (resp.ok) {
-        const data = await resp.json() as InitialWorldState;
+        const data = (await resp.json()) as InitialWorldState;
         console.log(`${L} API OK: pack=${data.world_id} chars=${data.characters?.length || 0}`);
         return data;
       }
       console.warn(`${L} API not available (${resp.status}), attempt ${attempt}/${maxAttempts}`);
     } catch (e) {
-      console.warn(`${L} Backend unreachable, attempt ${attempt}/${maxAttempts}`, e instanceof Error ? e.message : e);
+      console.warn(
+        `${L} Backend unreachable, attempt ${attempt}/${maxAttempts}`,
+        e instanceof Error ? e.message : e
+      );
     }
     if (attempt < maxAttempts) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -50,13 +84,27 @@ async function loadWorldState(packId: string): Promise<InitialWorldState | null>
 /** 主入口 / Main entry — 全部数据来自后端，前端不再自带 mock */
 async function main(): Promise<void> {
   console.log(`${L} === main() START ===`);
+
+  // 等待后端就绪：先轮询 /health，避免后端启动慢导致按钮不可用
+  // / Wait for backend readiness before loading world state
+  const waitOverlay = document.createElement("div");
+  waitOverlay.id = "backend-wait-overlay";
+  waitOverlay.style.cssText =
+    "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#1a1a2e;color:#ffd700;z-index:9999;font-size:18px;font-family:Segoe UI,sans-serif;";
+  waitOverlay.textContent = "等待后端就绪...";
+  document.body.appendChild(waitOverlay);
+  const backendReady = await waitForBackend(waitOverlay);
+  waitOverlay.remove();
+
   const params = new URLSearchParams(window.location.search);
   const packId = params.get("pack") || "mock_world";
   console.log(`${L} world_id=${packId}`);
 
   // 加载世界数据 / Load world data — 全部依赖后端，失败则提示
-  let world = await loadWorldState(packId);
-  const backendReady = !!world;
+  let world: InitialWorldState | null = null;
+  if (backendReady) {
+    world = await loadWorldState(packId);
+  }
   if (!world) {
     console.error(`${L} backend unreachable, rendering UI with disabled controls`);
     world = {
@@ -66,6 +114,7 @@ async function main(): Promise<void> {
       llm_mock: false,
       data_mode: "unknown",
       db_name: "unknown",
+      runtime: { llm_mock: false, data_mode: "unknown", db_name: "unknown" },
       scenes: [],
       characters: [],
       items: [],
@@ -81,7 +130,7 @@ async function main(): Promise<void> {
     world.scene_objects,
     world.llm_mock,
     world.data_mode,
-    world.db_name,
+    world.db_name
   );
   console.log(`${L} store initialized`);
 
@@ -123,40 +172,46 @@ async function main(): Promise<void> {
   (window as any).gameStore = gameStore;
   console.log(`${L} DOM panels mounted: dm + narrative + event + character + object`);
 
-
-
+  // ── Mock 运行配置面板 / Mock runtime config panel (top-left) ──
+  const mockConfigPanel = document.createElement("div");
+  mockConfigPanel.className = "panel mock-config-panel";
+  const rt = gameStore.getState().runtime;
+  mockConfigPanel.innerHTML = `
+    <div class="mock-config-row"><span class="mock-config-label">LLM</span><span class="mock-config-value">${rt.llm_mock ? "Mock" : "Real"}</span></div>
+    <div class="mock-config-row"><span class="mock-config-label">Data</span><span class="mock-config-value">${rt.data_mode === "mock" ? "Mock" : rt.data_mode}</span></div>
+    <div class="mock-config-row"><span class="mock-config-label">DB</span><span class="mock-config-value">${rt.db_name || "--"}</span></div>
+  `;
+  document.body.appendChild(mockConfigPanel);
 
   // ── 控制器 / Controller (P5-4: 状态机 + ▶运行 ⏭自动 ⏸停止) ──
   type RunState = "idle" | "connecting" | "running" | "paused";
   let runState: RunState = "idle";
 
   const bar = document.createElement("div");
-  bar.style.cssText = "position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:999;align-items:center;";
+  bar.style.cssText =
+    "position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:999;align-items:center;";
   document.body.appendChild(bar);
 
   const tInput = document.createElement("input");
-  tInput.value = "3"; tInput.style.cssText = "width:50px;text-align:center;border-radius:4px;border:1px solid #555;background:#222;color:#fff;";
+  tInput.value = "3";
+  tInput.style.cssText =
+    "width:50px;text-align:center;border-radius:4px;border:1px solid #555;background:#222;color:#fff;";
 
   const btnRunN = makeBtn("跑N个Tick", "#8e44ad");
   const btnStart = makeBtn("▶ 开始", "#2ecc71");
   const btnPause = makeBtn("⏸ 暂停", "#f39c12");
   const btnResume = makeBtn("⏯ 恢复", "#3498db");
   const btnReset = makeBtn("⏹ 重置", "#e74c3c");
-  const btnMap  = makeBtn("🗺 地图", "#555");
+  const btnMap = makeBtn("🗺 地图", "#555");
 
   const statusEl = document.createElement("span");
-  statusEl.style.cssText = "padding:6px 14px;border-radius:4px;background:rgba(0,0,0,0.7);color:#ffd700;font-size:13px;font-weight:bold;min-width:180px;text-align:center;border:1px solid rgba(255,215,0,0.3);";
-  const st = gameStore.getState();
-  const llmLabel = st.llm_mock ? "LLM:Mock" : "LLM:Real";
-  const dataLabel = `Data:${st.data_mode === "mock" ? "Mock" : st.data_mode}`;
-  const dbLabel = st.db_name ? `DB:${st.db_name}` : (backendReady ? "DB" : "--");
-  statusEl.textContent = backendReady
-    ? `${llmLabel} | ${dataLabel} | ${dbLabel}`
-    : "后端未就绪";
+  statusEl.style.cssText =
+    "padding:6px 14px;border-radius:4px;background:rgba(0,0,0,0.7);color:#ffd700;font-size:13px;font-weight:bold;min-width:180px;text-align:center;border:1px solid rgba(255,215,0,0.3);";
+  statusEl.textContent = backendReady ? "就绪" : "后端未就绪";
 
   bar.appendChild(tInput);
   bar.appendChild(btnRunN);
-  
+
   const separator = document.createElement("div");
   separator.style.width = "24px";
   bar.appendChild(separator);
@@ -165,11 +220,11 @@ async function main(): Promise<void> {
   bar.appendChild(btnPause);
   bar.appendChild(btnResume);
   bar.appendChild(btnReset);
-  
+
   const separator2 = document.createElement("div");
   separator2.style.width = "24px";
   bar.appendChild(separator2);
-  
+
   bar.appendChild(btnMap);
   bar.appendChild(statusEl);
 
@@ -189,7 +244,16 @@ async function main(): Promise<void> {
       position_x: spawn.x + (i % 3) - 1,
       position_y: spawn.y + Math.floor(i / 3) - 1,
     }));
-    gameStore.setWorldState(st.world_id, st.scenes, updated, st.items, st.scene_objects, st.llm_mock, st.data_mode, st.db_name);
+    gameStore.setWorldState(
+      st.world_id,
+      st.scenes,
+      updated,
+      st.items,
+      st.scene_objects,
+      st.runtime.llm_mock,
+      st.runtime.data_mode,
+      st.runtime.db_name
+    );
     console.log(`${L} 🗺 switched to ${sceneId}`);
   };
 
@@ -210,11 +274,11 @@ async function main(): Promise<void> {
     btnRunN.style.opacity = controlsEnabled ? "1" : "0.4";
 
     btnStart.disabled = !controlsEnabled;
-    btnStart.style.display = (idle || running) ? "inline-block" : "none";
+    btnStart.style.display = idle || running ? "inline-block" : "none";
     btnStart.style.opacity = controlsEnabled ? "1" : "0.4";
 
     btnPause.disabled = !running || !backendReady;
-    btnPause.style.display = (idle || running) ? "inline-block" : "none";
+    btnPause.style.display = idle || running ? "inline-block" : "none";
     btnPause.style.opacity = running && backendReady ? "1" : "0.4";
 
     btnResume.style.display = paused ? "inline-block" : "none";
@@ -237,11 +301,13 @@ async function main(): Promise<void> {
     statusEl.textContent = `已展示到 Tick ${displayTick}`;
     await player.loadHistory(displayTick);
     // 重放当前展示 tick 的对话事件，确保刷新后人物头顶仍有泡泡 / Replay current tick dialogues so bubbles show after refresh
-    const currentTickTalks = gameStore.getState().events.filter(
-      (ev) => ev.tick === displayTick && ev.type === "pc_talk",
-    );
+    const currentTickTalks = gameStore
+      .getState()
+      .events.filter((ev) => ev.tick === displayTick && ev.type === "pc_talk");
     for (const ev of currentTickTalks) {
-      window.dispatchEvent(new CustomEvent("dialogue-replay", { detail: { type: ev.type, payload: ev.payload } }));
+      window.dispatchEvent(
+        new CustomEvent("dialogue-replay", { detail: { type: ev.type, payload: ev.payload } })
+      );
     }
   }
 
@@ -264,7 +330,9 @@ async function main(): Promise<void> {
 
   // 叙事转发 / Narrative relay to GameScene
   gameStore.subscribe((s) => {
-    const gs = game.scene.scenes.find(sc => sc.scene.key === "Game") as import("./scenes/GameScene").GameScene | undefined;
+    const gs = game.scene.scenes.find((sc) => sc.scene.key === "Game") as
+      | import("./scenes/GameScene").GameScene
+      | undefined;
     if (gs?.setNarrative && s.narrative) gs.setNarrative(s.narrative);
   });
 
@@ -273,16 +341,18 @@ async function main(): Promise<void> {
   const onTickCallback = (tick: number, events: any[]) => {
     statusEl.textContent = `展示 Tick ${tick} (${events.length} events)`;
     gameStore.setDisplayTick(tick);
-    console.log(`${L} display_tick=${tick} events=${events.map(e => e.type).join(',')}`);
+    console.log(`${L} display_tick=${tick} events=${events.map((e) => e.type).join(",")}`);
   };
 
   btnRunN.onclick = async () => {
     if (runState !== "idle") return;
     const n = parseInt(tInput.value) || 1;
     console.log(`${L} 跑N个Tick: ticks=${n}`);
-    runState = "connecting"; updateButtons();
+    runState = "connecting";
+    updateButtons();
     try {
-      runState = "running"; updateButtons();
+      runState = "running";
+      updateButtons();
       statusEl.textContent = "运行中...";
       const delivered = await player.runTicks(n, onTickCallback);
       statusEl.textContent = `完成: ${delivered} tick`;
@@ -290,20 +360,24 @@ async function main(): Promise<void> {
       statusEl.textContent = "错误";
       console.error(`${L} run failed:`, e);
     } finally {
-      runState = "idle"; updateButtons();
+      runState = "idle";
+      updateButtons();
     }
   };
 
   btnStart.onclick = async () => {
     if (runState !== "idle") return;
-    runState = "connecting"; updateButtons();
+    runState = "connecting";
+    updateButtons();
     try {
-      runState = "running"; updateButtons();
+      runState = "running";
+      updateButtons();
       statusEl.textContent = "持续运行中...";
       await player.startLoop(onTickCallback);
     } catch (e) {
       console.error(`${L} start failed:`, e);
-      runState = "idle"; updateButtons();
+      runState = "idle";
+      updateButtons();
       statusEl.textContent = "错误";
     }
   };
@@ -312,7 +386,8 @@ async function main(): Promise<void> {
     if (runState !== "running") return;
     try {
       await player.pauseLoop();
-      runState = "paused"; updateButtons();
+      runState = "paused";
+      updateButtons();
       statusEl.textContent = "已暂停";
     } catch (e) {
       console.error(`${L} pause failed:`, e);
@@ -321,14 +396,17 @@ async function main(): Promise<void> {
 
   btnResume.onclick = async () => {
     if (runState !== "paused") return;
-    runState = "connecting"; updateButtons();
+    runState = "connecting";
+    updateButtons();
     try {
-      runState = "running"; updateButtons();
+      runState = "running";
+      updateButtons();
       statusEl.textContent = "持续运行中...";
       await player.resumeLoop(onTickCallback);
     } catch (e) {
       console.error(`${L} resume failed:`, e);
-      runState = "paused"; updateButtons();
+      runState = "paused";
+      updateButtons();
       statusEl.textContent = "错误";
     }
   };
@@ -348,7 +426,6 @@ async function main(): Promise<void> {
       updateButtons();
     }
   };
-
 
   console.log(`${L} === main() DONE ===`);
 }

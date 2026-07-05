@@ -32,6 +32,7 @@ class DMRecordRepo:
                 json.dumps(record.ext),
             ),
         )
+        await self._db.commit()
 
     async def update_narrative(self, record: DMRecord) -> None:
         """更新 dm_narrative + ext（dm_narrate 阶段）."""
@@ -41,6 +42,7 @@ class DMRecordRepo:
                WHERE world_id = ? AND tick = ?""",
             (record.dm_narrative, json.dumps(record.ext), record.world_id, record.tick),
         )
+        await self._db.commit()
 
     async def max_tick(self, world_id: str) -> int:
         """获取 world 下最大 tick 号."""
@@ -86,6 +88,7 @@ class DMRecordRepo:
                VALUES (?, ?, ?, ?)""",
             (summary.world_id, summary.tick_start, summary.tick_end, summary.summary),
         )
+        await self._db.commit()
 
     async def load_summaries(self, world_id: str) -> list[StorySummary]:
         """按 world 加载所有摘要."""

@@ -79,6 +79,18 @@ class WorldConfig(BaseModel):
     default_pack: str = "forgotten_realms"  # 默认加载的 Pack
 
 
+class RuntimeConfig(BaseModel):
+    """运行时配置 / Runtime configuration.
+
+    这些字段描述后端当前以何种模式运行，与 world 业务配置相互独立、同时生效。
+    """
+
+    llm_mock: bool = True  # LLM 是否走 mock / Whether LLM returns mock data
+    data_mode: str = "mock"  # 数据模式：mock|real / Data mode: mock or real
+    db_name: str = "data/test.db"  # 实际使用的 SQLite DB 路径 / Active SQLite DB path
+    mock_dataset: str = "tavern"  # mock 数据集 / Mock dataset name
+
+
 class AutoRunConfig(BaseModel):
     """自动运行配置 / Auto-run configuration."""
 
@@ -131,14 +143,29 @@ class Config(BaseSettings):
     server: ServerConfig = ServerConfig()
     world: WorldConfig = WorldConfig()
     llm: LLMConfig
-    llm_mock: bool = True  # LLM 是否走 mock / Whether LLM returns mock data
-    data_mode: str = "mock"  # 数据模式：mock|real / Data mode: mock or real
-    db_name: str = "data/test.db"  # 实际使用的 SQLite DB 路径 / Active SQLite DB path
-    mock_dataset: str = "tavern"  # mock 数据集 / Mock dataset name
+    runtime: RuntimeConfig = RuntimeConfig()
     database: DatabaseConfig = DatabaseConfig()
     auto_run: AutoRunConfig = AutoRunConfig()
     logging: LoggingConfig = LoggingConfig()
     observability: ObservabilityConfig = ObservabilityConfig()
+
+    # 兼容访问器：大量旧代码通过 cfg.llm_mock / cfg.data_mode 等读取
+    # / Compatibility aliases for legacy flat access
+    @property
+    def llm_mock(self) -> bool:
+        return self.runtime.llm_mock
+
+    @property
+    def data_mode(self) -> str:
+        return self.runtime.data_mode
+
+    @property
+    def db_name(self) -> str:
+        return self.runtime.db_name
+
+    @property
+    def mock_dataset(self) -> str:
+        return self.runtime.mock_dataset
 
     @classmethod
     def from_yaml(cls, path: str = "config.yaml") -> Config:
@@ -148,6 +175,15 @@ class Config(BaseSettings):
             raise FileNotFoundError(f"Config file not found: {path}")
         with config_path.open(encoding="utf-8") as f:
             data = yaml.safe_load(f)
+
+        # 兼容旧版平铺配置：把顶层运行时字段收集到 runtime 节点
+        # / Migrate legacy flat runtime fields into runtime block
+        legacy_runtime = {}
+        for key in ("llm_mock", "data_mode", "db_name", "mock_dataset"):
+            if key in data:
+                legacy_runtime[key] = data.pop(key)
+        if legacy_runtime:
+            data.setdefault("runtime", {}).update(legacy_runtime)
 
         # 选择 provider（环境变量 LLM_PROVIDER > yaml llm_provider）
         providers = data.pop("llm_providers", None)

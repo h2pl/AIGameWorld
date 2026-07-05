@@ -89,16 +89,19 @@ export class HistoryEventPanel extends Panel {
   // 构建分页控件 / Build pagination controls
   private _buildPagination(): void {
     this.footerEl.innerHTML = "";
-    this.footerEl.style.cssText = "display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-top:1px solid rgba(255,215,0,0.2);";
+    this.footerEl.style.cssText =
+      "display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-top:1px solid rgba(255,215,0,0.2);";
 
     const btnPrev = document.createElement("button");
     btnPrev.textContent = "上一页";
-    btnPrev.style.cssText = "padding:4px 10px;border-radius:4px;border:none;background:#555;color:#fff;cursor:pointer;";
+    btnPrev.style.cssText =
+      "padding:4px 10px;border-radius:4px;border:none;background:#555;color:#fff;cursor:pointer;";
     btnPrev.addEventListener("click", () => this._goToPage(this.currentPage - 1));
 
     const btnNext = document.createElement("button");
     btnNext.textContent = "下一页";
-    btnNext.style.cssText = "padding:4px 10px;border-radius:4px;border:none;background:#555;color:#fff;cursor:pointer;";
+    btnNext.style.cssText =
+      "padding:4px 10px;border-radius:4px;border:none;background:#555;color:#fff;cursor:pointer;";
     btnNext.addEventListener("click", () => this._goToPage(this.currentPage + 1));
 
     this.pageInfo = document.createElement("span");
@@ -109,7 +112,8 @@ export class HistoryEventPanel extends Panel {
     this.pageInput.min = "1";
     this.pageInput.max = String(this.totalPages);
     this.pageInput.value = "1";
-    this.pageInput.style.cssText = "width:50px;text-align:center;border-radius:4px;border:1px solid #555;background:#222;color:#fff;";
+    this.pageInput.style.cssText =
+      "width:50px;text-align:center;border-radius:4px;border:1px solid #555;background:#222;color:#fff;";
     this.pageInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         const page = parseInt(this.pageInput.value, 10);
@@ -119,7 +123,8 @@ export class HistoryEventPanel extends Panel {
 
     const btnJump = document.createElement("button");
     btnJump.textContent = "跳转";
-    btnJump.style.cssText = "padding:4px 10px;border-radius:4px;border:none;background:#3498db;color:#fff;cursor:pointer;";
+    btnJump.style.cssText =
+      "padding:4px 10px;border-radius:4px;border:none;background:#3498db;color:#fff;cursor:pointer;";
     btnJump.addEventListener("click", () => {
       const page = parseInt(this.pageInput.value, 10);
       if (!isNaN(page)) this._goToPage(page);
@@ -155,7 +160,7 @@ export class HistoryEventPanel extends Panel {
 
     try {
       const resp = await fetch(
-        `${this.baseUrl}/api/world/${this.worldId}/events?since_tick=${sinceTick}&tick_limit=${PAGE_TICK_LIMIT}`,
+        `${this.baseUrl}/api/world/${this.worldId}/events?since_tick=${sinceTick}&tick_limit=${PAGE_TICK_LIMIT}`
       );
       if (!resp.ok) {
         this.listEl.innerHTML = `<div class="history-empty">加载失败</div>`;

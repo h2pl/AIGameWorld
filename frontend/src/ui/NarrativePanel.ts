@@ -42,7 +42,7 @@ export class NarrativePanel extends Panel {
 
   private render(): void {
     this.contentEl.innerHTML = this.lines
-      .map((l, i) => `<div class="narrative-line">${this.escapeHtml(l)}</div>`)
+      .map((l) => `<div class="narrative-line">${this.escapeHtml(l)}</div>`)
       .join("");
     this.contentEl.scrollTop = this.contentEl.scrollHeight;
   }

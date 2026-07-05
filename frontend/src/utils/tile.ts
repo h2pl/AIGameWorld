@@ -15,7 +15,7 @@ export function worldToGrid(wx: number, wy: number, tileSize: number): { tx: num
 export function calcSteps(
   from: { tx: number; ty: number },
   to: { tx: number; ty: number },
-  tileSize: number,
+  tileSize: number
 ): { wx: number; wy: number }[] {
   const dx = to.tx - from.tx;
   const dy = to.ty - from.ty;
@@ -26,8 +26,8 @@ export function calcSteps(
   }
   const steps: { wx: number; wy: number }[] = [];
   for (let i = 1; i <= dist; i++) {
-    const tx = from.tx + Math.round(dx * i / dist);
-    const ty = from.ty + Math.round(dy * i / dist);
+    const tx = from.tx + Math.round((dx * i) / dist);
+    const ty = from.ty + Math.round((dy * i) / dist);
     steps.push(gridToWorld(tx, ty, tileSize));
   }
   return steps;

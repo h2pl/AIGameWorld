@@ -32,11 +32,14 @@ export class CharacterManager {
 
   /** WS tick 后增量同步：移动现有 / 创建新增 / 删除离场 / Incremental sync */
   sync(chars: CharacterData[], posMap: Record<string, Pos>): void {
-    const currentIds = new Set(chars.map(c => c.id));
+    const currentIds = new Set(chars.map((c) => c.id));
 
     // 删除 / Remove
     for (const [id, sp] of this.sprites) {
-      if (!currentIds.has(id)) { sp.destroy(); this.sprites.delete(id); }
+      if (!currentIds.has(id)) {
+        sp.destroy();
+        this.sprites.delete(id);
+      }
     }
 
     // 创建或移动 / Create or move
@@ -62,11 +65,16 @@ export class CharacterManager {
 
   /** 计算摄像机包围盒 / Calc camera bounding box for scroll */
   calcCameraScroll(canvasW: number, canvasH: number): { sx: number; sy: number } {
-    let minX = 99, minY = 99, maxX = -99, maxY = -99;
-    this.sprites.forEach(sp => {
+    let minX = 99,
+      minY = 99,
+      maxX = -99,
+      maxY = -99;
+    this.sprites.forEach((sp) => {
       const { tx, ty } = sp.getGridPos(this.ts);
-      minX = Math.min(minX, tx); maxX = Math.max(maxX, tx);
-      minY = Math.min(minY, ty); maxY = Math.max(maxY, ty);
+      minX = Math.min(minX, tx);
+      maxX = Math.max(maxX, tx);
+      minY = Math.min(minY, ty);
+      maxY = Math.max(maxY, ty);
     });
     if (minX > maxX) return { sx: 0, sy: 0 };
     const mx = ((minX + maxX) / 2 + 0.5) * this.ts;
@@ -81,12 +89,12 @@ export class CharacterManager {
 
   /** 清除所有角色头顶泡泡 / Clear all dialogue bubbles */
   clearBubbles(): void {
-    this.sprites.forEach(sp => sp.clearBubble());
+    this.sprites.forEach((sp) => sp.clearBubble());
   }
 
   /** 销毁所有 / Destroy all */
   destroy(): void {
-    this.sprites.forEach(sp => sp.destroy());
+    this.sprites.forEach((sp) => sp.destroy());
     this.sprites.clear();
   }
 }

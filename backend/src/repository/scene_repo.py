@@ -79,6 +79,7 @@ class SceneRepo:
                 world_id,
             ),
         )
+        await self._db.commit()
 
     async def save_object(self, obj: SceneObject) -> None:
         """写入单条场景对象."""
@@ -98,6 +99,13 @@ class SceneRepo:
                 obj.world_id,
             ),
         )
+        await self._db.commit()
+
+    async def delete_by_world(self, world_id: str) -> None:
+        """删除指定 world 下所有场景及场景对象 / Delete all scenes and objects for a world."""
+        await self._db.execute("DELETE FROM scene_objects WHERE world_id = ?", (world_id,))
+        await self._db.execute("DELETE FROM scenes WHERE world_id = ?", (world_id,))
+        await self._db.commit()
 
     async def load_all(self) -> dict[str, SceneObject]:
         """加载全部场景对象."""

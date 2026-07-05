@@ -86,7 +86,9 @@ async def get_pack_state(world_id: str, db=Depends(get_db)):
                 "position_x": r.get("position_x", 0),
                 "position_y": r.get("position_y", 0),
             }
-            for r in await db.fetch_all("SELECT * FROM scene_objects")
+            for r in await db.fetch_all(
+                "SELECT * FROM scene_objects WHERE world_id = ?", (world_id,)
+            )
         ]
         # 世界 tick 信息 / World tick info
         world_row = await db.fetch_one(
@@ -97,14 +99,22 @@ async def get_pack_state(world_id: str, db=Depends(get_db)):
         # 加载配置返回 DB 名称 / Load config for DB name
         cfg = load_config("../config.yaml")
         db_path = cfg.db_name
+        db_name = Path(db_path).name
         # 组装响应 / Build response
+        # 运行时配置与业务状态同时存在、互不覆盖；顶层 3 个字段保留兼容旧前端
+        # / Runtime config coexists with world state; top-level fields kept for backward compatibility
         return {
             "world_id": world_id,
             "data_tick": data_tick,
             "display_tick": display_tick,
             "llm_mock": cfg.llm_mock,
             "data_mode": cfg.data_mode,
-            "db_name": Path(db_path).name,
+            "db_name": db_name,
+            "runtime": {
+                "llm_mock": cfg.llm_mock,
+                "data_mode": cfg.data_mode,
+                "db_name": db_name,
+            },
             "scenes": scenes,
             "characters": pcs + actors,
             "items": items,

@@ -46,11 +46,22 @@ def _j(data: Any) -> str:
 
 
 async def seed_mock_data(db: Any, world_id: str = MOCK_WORLD_ID) -> None:
-    """向数据库灌入全套 mock 数据 / Seed full mock data into DB."""
+    """向数据库灌入全套 mock 数据 / Seed full mock data into DB.
+
+    幂等处理：先清空该 world 下所有业务数据，再重新插入，
+    避免后端重启或 reset 后因主键冲突导致角色/场景未注入。
+    """
+    # 幂等：先清理旧数据 / Idempotent: clear old data first
     world_repo = WorldRepo(db)
     scene_repo = SceneRepo(db)
     pc_repo = PcRepo(db)
     item_repo = ItemRepo(db)
+
+    await pc_repo.delete_pcs_by_world(world_id)
+    await pc_repo.delete_actors_by_world(world_id)
+    await scene_repo.delete_by_world(world_id)
+    await item_repo.delete_by_world(world_id)
+    await world_repo.delete(world_id)
 
     await _seed_world(world_repo, world_id)
     await _seed_scenes(scene_repo, world_id)

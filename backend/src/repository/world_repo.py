@@ -89,6 +89,12 @@ class WorldRepo:
         )
         await self._db.commit()
 
+    async def delete(self, world_id: str) -> None:
+        """删除指定 world 记录 / Delete a world record."""
+        await self._db.execute("DELETE FROM worlds WHERE id = ?", (world_id,))
+        await self._db.commit()
+        logger.info("[repo] delete id=%s", world_id)
+
 
 def _row_to_world(row: dict) -> World:
     return World(

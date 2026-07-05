@@ -3,50 +3,118 @@ import Phaser from "phaser";
 import { gameStore } from "../state/GameStore";
 import { CharacterManager } from "../managers/CharacterManager";
 import { CONFIG } from "../config";
-import { KEY, DEPTH, TILEMAP, SCENE_MAP } from "../constants";
+import { KEY, DEPTH, TILEMAP } from "../constants";
 import { gridToWorld } from "../utils/tile";
 
 /** 种族肤色 / Race skin colors */
-const RACE_SKIN: Record<string, string> = { human: "#f5cba7", elf: "#fdebd0", dwarf: "#d4a574", halfling: "#f5c6a0", orc: "#6b8e5a", tiefling: "#c48b9d", dragonborn: "#8b5e3c" };
+const RACE_SKIN: Record<string, string> = {
+  human: "#f5cba7",
+  elf: "#fdebd0",
+  dwarf: "#d4a574",
+  halfling: "#f5c6a0",
+  orc: "#6b8e5a",
+  tiefling: "#c48b9d",
+  dragonborn: "#8b5e3c",
+};
 /** 种族发色 / Race hair colors */
-const RACE_HAIR: Record<string, string> = { human: "#4a2c0a", elf: "#d4c0a0", dwarf: "#8b4513", halfling: "#6b3a1f", orc: "#1a1a1a", tiefling: "#2c0033", dragonborn: "#3c1a00" };
+const RACE_HAIR: Record<string, string> = {
+  human: "#4a2c0a",
+  elf: "#d4c0a0",
+  dwarf: "#8b4513",
+  halfling: "#6b3a1f",
+  orc: "#1a1a1a",
+  tiefling: "#2c0033",
+  dragonborn: "#3c1a00",
+};
 /** 职业色 / Role colors */
-const ROLE_COLOR: Record<string, string> = { fighter: "#c0392b", rogue: "#2c3e50", cleric: "#f0f0f0", wizard: "#5b2c6f", ranger: "#27ae60", paladin: "#f1c40f", blacksmith: "#a0522d", guard: "#2980b9", merchant: "#16a085", innkeeper: "#d35400", boss: "#e74c3c", enemy: "#c0392b", villager: "#95a5a6" };
+const ROLE_COLOR: Record<string, string> = {
+  fighter: "#c0392b",
+  rogue: "#2c3e50",
+  cleric: "#f0f0f0",
+  wizard: "#5b2c6f",
+  ranger: "#27ae60",
+  paladin: "#f1c40f",
+  blacksmith: "#a0522d",
+  guard: "#2980b9",
+  merchant: "#16a085",
+  innkeeper: "#d35400",
+  boss: "#e74c3c",
+  enemy: "#c0392b",
+  villager: "#95a5a6",
+};
 
 /** 生成单个角色 Canvas 纹理 / Generate character Canvas texture */
-function makeCharTexture(scene: Phaser.Scene, ch: { id: string; race: string | null; role: string; is_pc: boolean; functions?: string[] }, size: number): void {
+function makeCharTexture(
+  scene: Phaser.Scene,
+  ch: { id: string; race: string | null; role: string; is_pc: boolean; functions?: string[] },
+  size: number
+): void {
   if (scene.textures.exists(ch.id)) return;
   const skin = RACE_SKIN[ch.race || ""] || "#f5cba7";
   const hair = RACE_HAIR[ch.race || ""] || "#4a2c0a";
-  const body = ROLE_COLOR[ch.role] || (ch.functions?.[0] ? ROLE_COLOR[ch.functions[0]] || "#7f8c8d" : "#7f8c8d");
+  const body =
+    ROLE_COLOR[ch.role] ||
+    (ch.functions?.[0] ? ROLE_COLOR[ch.functions[0]] || "#7f8c8d" : "#7f8c8d");
   const cv = scene.textures.createCanvas(ch.id, size, size);
   if (!cv) return;
-  const c = cv.context; c.imageSmoothingEnabled = false;
+  const c = cv.context;
+  c.imageSmoothingEnabled = false;
   const cx = size / 2;
-  c.fillStyle = body; c.fillRect(cx - 6, 11, 12, 10);           // body
-  c.fillStyle = skin; c.beginPath(); c.arc(cx, 9, 6, 0, Math.PI * 2); c.fill(); // head
-  c.fillStyle = hair; c.beginPath(); c.arc(cx, 7, 6, Math.PI, Math.PI * 2); c.fill(); // hair
-  c.fillStyle = "#fff"; c.fillRect(cx - 2, 8, 1, 2); c.fillRect(cx + 1, 8, 1, 2); // eyes
-  c.fillStyle = "#000"; c.fillRect(cx - 2, 9, 1, 1); c.fillRect(cx + 1, 9, 1, 1); // pupils
-  c.fillStyle = "#2c3e50"; c.fillRect(cx - 4, 20, 4, 6); c.fillRect(cx + 1, 20, 4, 6); // legs
-  if (ch.is_pc) { c.fillStyle = "#ffd700"; c.fillRect(cx - 7, 12, 3, 3); c.fillRect(cx + 4, 12, 3, 3); }
+  c.fillStyle = body;
+  c.fillRect(cx - 6, 11, 12, 10); // body
+  c.fillStyle = skin;
+  c.beginPath();
+  c.arc(cx, 9, 6, 0, Math.PI * 2);
+  c.fill(); // head
+  c.fillStyle = hair;
+  c.beginPath();
+  c.arc(cx, 7, 6, Math.PI, Math.PI * 2);
+  c.fill(); // hair
+  c.fillStyle = "#fff";
+  c.fillRect(cx - 2, 8, 1, 2);
+  c.fillRect(cx + 1, 8, 1, 2); // eyes
+  c.fillStyle = "#000";
+  c.fillRect(cx - 2, 9, 1, 1);
+  c.fillRect(cx + 1, 9, 1, 1); // pupils
+  c.fillStyle = "#2c3e50";
+  c.fillRect(cx - 4, 20, 4, 6);
+  c.fillRect(cx + 1, 20, 4, 6); // legs
+  if (ch.is_pc) {
+    c.fillStyle = "#ffd700";
+    c.fillRect(cx - 7, 12, 3, 3);
+    c.fillRect(cx + 4, 12, 3, 3);
+  }
   cv.refresh();
 }
 
 /** 生成场景物品纹理 / Generate scene object texture */
-function makeObjectTexture(scene: Phaser.Scene, obj: { id: string; object_type: string }, key: string, size: number): void {
-  const colors: Record<string, string> = { container: "#d4a017", door: "#8b6914", landmark: "#ccc" };
+function makeObjectTexture(
+  scene: Phaser.Scene,
+  obj: { id: string; object_type: string },
+  key: string,
+  size: number
+): void {
+  const colors: Record<string, string> = {
+    container: "#d4a017",
+    door: "#8b6914",
+    landmark: "#ccc",
+  };
   const fill = colors[obj.object_type] || "#888";
   const cv = scene.textures.createCanvas(key, size, size);
   if (!cv) return;
-  const c = cv.context; c.imageSmoothingEnabled = false;
+  const c = cv.context;
+  c.imageSmoothingEnabled = false;
   c.fillStyle = fill;
   if (obj.object_type === "container") {
-    c.fillRect(4, 10, 24, 16); c.fillStyle = "#fff"; c.fillRect(12, 16, 8, 2);
+    c.fillRect(4, 10, 24, 16);
+    c.fillStyle = "#fff";
+    c.fillRect(12, 16, 8, 2);
   } else if (obj.object_type === "door") {
     c.fillRect(8, 4, 16, 24);
   } else {
-    c.beginPath(); c.arc(size / 2, size / 2, 8, 0, Math.PI * 2); c.fill();
+    c.beginPath();
+    c.arc(size / 2, size / 2, 8, 0, Math.PI * 2);
+    c.fill();
   }
   cv.refresh();
 }
@@ -66,8 +134,11 @@ export class GameScene extends Phaser.Scene {
   private dialogueTimer?: number;
   private dialoguesThisTick = 0;
   private readonly MAX_DIALOGUE_EVENTS_PER_TICK = 1;
+  private terrainSprites: Phaser.GameObjects.Sprite[] = [];
 
-  constructor() { super({ key: "Game" }); }
+  constructor() {
+    super({ key: "Game" });
+  }
 
   create(): void {
     this.ts = TILEMAP.TILE_SIZE;
@@ -76,15 +147,23 @@ export class GameScene extends Phaser.Scene {
     // 预生成角色纹理 / Pre-generate character textures
     const st = gameStore.getState();
     for (const ch of st.characters) makeCharTexture(this, ch, this.ts);
-    for (const fb of [{ id: "fighter_fb", race: "human", role: "fighter", is_pc: true }, { id: "actor_fb", race: "human", role: "villager", is_pc: false }]) {
+    for (const fb of [
+      { id: "fighter_fb", race: "human", role: "fighter", is_pc: true },
+      { id: "actor_fb", race: "human", role: "villager", is_pc: false },
+    ]) {
       makeCharTexture(this, fb, this.ts);
     }
 
     // 等待 DM 创建情境 / Waiting for DM to create situation
-    this.waitingText = this.add.text(CONFIG.CANVAS.width / 2, CONFIG.CANVAS.height / 2,
-      "等待 DM 创造情境...",
-      { fontFamily: "Segoe UI, sans-serif", fontSize: "18px", color: "#ffd700" },
-    ).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH.HUD);
+    this.waitingText = this.add
+      .text(CONFIG.CANVAS.width / 2, CONFIG.CANVAS.height / 2, "等待 DM 创造情境...", {
+        fontFamily: "Segoe UI, sans-serif",
+        fontSize: "18px",
+        color: "#ffd700",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(DEPTH.HUD);
 
     // 订阅 store，等待 scene_setup / Subscribe to store and wait for scene_setup
     this.unsubscribe = gameStore.subscribe(() => {
@@ -213,7 +292,10 @@ export class GameScene extends Phaser.Scene {
     const tsImageKey = this.mapKey === KEY.TILEMAP.DESERT ? KEY.IMAGE.DESERT : KEY.IMAGE.TUXEMON;
     const tsName = this.mapKey === KEY.TILEMAP.DESERT ? "Desert" : TILEMAP.TILESET_NAME;
     const tileset = this.tilemap.addTilesetImage(tsName, tsImageKey);
-    if (!tileset) { console.error("[Scene] tileset FAIL for", this.mapKey); return; }
+    if (!tileset) {
+      console.error("[Scene] tileset FAIL for", this.mapKey);
+      return;
+    }
     this.tilemap.createLayer(TILEMAP.LAYERS.BELOW, tileset, 0, 0);
     console.log("[Scene] createBackground map=", this.mapKey);
   }
@@ -241,16 +323,21 @@ export class GameScene extends Phaser.Scene {
 
   /** 6. createTerrain / 场景物品渲染 */
   private createTerrain(): void {
+    this.terrainSprites = [];
     for (const obj of gameStore.getState().scene_objects) {
       const key = `obj_${obj.id}`;
       if (!this.textures.exists(key)) makeObjectTexture(this, obj, key, this.ts);
       const { wx, wy } = gridToWorld(obj.position_x, obj.position_y, this.ts);
-      this.add.sprite(wx, wy, key).setOrigin(0.5, 1).setDepth(DEPTH.CHARACTER - 1)
+      const sprite = this.add
+        .sprite(wx, wy, key)
+        .setOrigin(0.5, 1)
+        .setDepth(DEPTH.CHARACTER - 1)
         .setInteractive({ useHandCursor: true })
         .on("pointerdown", () => {
           console.log("[Scene] interacted with:", obj.name);
           document.dispatchEvent(new CustomEvent("object-interacted", { detail: obj }));
         });
+      this.terrainSprites.push(sprite);
     }
     console.log("[Scene] createTerrain objects=%d", gameStore.getState().scene_objects.length);
   }
@@ -263,7 +350,12 @@ export class GameScene extends Phaser.Scene {
     const { sx, sy } = this.charManager.calcCameraScroll(CONFIG.CANVAS.width, CONFIG.CANVAS.height);
     this.cameras.main.scrollX = sx;
     this.cameras.main.scrollY = sy;
-    console.log("[Scene] createPlayer total=%d camScroll=(%d,%d)", st.characters.length, sx.toFixed(0), sy.toFixed(0));
+    console.log(
+      "[Scene] createPlayer total=%d camScroll=(%d,%d)",
+      st.characters.length,
+      sx.toFixed(0),
+      sy.toFixed(0)
+    );
   }
 
   /** 8. createEnemies / Spawned objects — TODO: 敌对 NPC 自动生成 */
@@ -303,16 +395,28 @@ export class GameScene extends Phaser.Scene {
   private createUI(): void {
     const st = gameStore.getState();
     const scene = st.scenes.find((s) => s.id === st.current_scene_id);
-    this.sceneNameText = this.add.text(8, 4, `${scene?.name || ""}`, {
-      fontFamily: "Segoe UI, sans-serif", fontSize: "12px", color: "#ffd700", fontStyle: "bold",
-      backgroundColor: "rgba(0,0,0,0.6)", padding: { x: 5, y: 2 },
-    }).setScrollFactor(0).setDepth(DEPTH.HUD);
+    this.sceneNameText = this.add
+      .text(8, 4, `${scene?.name || ""}`, {
+        fontFamily: "Segoe UI, sans-serif",
+        fontSize: "12px",
+        color: "#ffd700",
+        fontStyle: "bold",
+        backgroundColor: "rgba(0,0,0,0.6)",
+        padding: { x: 5, y: 2 },
+      })
+      .setScrollFactor(0)
+      .setDepth(DEPTH.HUD);
 
-    this.narrativeText = this.add.text(10, CONFIG.CANVAS.height - 40,
-      "",
-      { fontFamily: "Segoe UI, sans-serif", fontSize: "13px", color: "#ffd700",
-        backgroundColor: "rgba(0,0,0,0.7)", padding: { x: 10, y: 6 } },
-    ).setScrollFactor(0).setDepth(DEPTH.HUD);
+    this.narrativeText = this.add
+      .text(10, CONFIG.CANVAS.height - 40, "", {
+        fontFamily: "Segoe UI, sans-serif",
+        fontSize: "13px",
+        color: "#ffd700",
+        backgroundColor: "rgba(0,0,0,0.7)",
+        padding: { x: 10, y: 6 },
+      })
+      .setScrollFactor(0)
+      .setDepth(DEPTH.HUD);
 
     console.log("[Scene] createUI done");
   }
@@ -336,14 +440,55 @@ export class GameScene extends Phaser.Scene {
   private _destroyScene(): void {
     this.sceneBuilt = false;
     this.charManager?.destroy();
+    this.charManager = undefined as any;
+
+    // 销毁 tilemap 与图层，避免 reset 后旧地图残留
+    // / Destroy tilemap and layers so old map doesn't linger after reset
+    if (this.tilemap) {
+      this.tilemap.destroy();
+      this.tilemap = undefined as any;
+    }
+
+    // 销毁场景物品 / Destroy terrain sprites
+    for (const sprite of this.terrainSprites) {
+      if (sprite.active) sprite.destroy();
+    }
+    this.terrainSprites = [];
+
+    // 销毁 HUD / Destroy HUD
+    if (this.sceneNameText) {
+      this.sceneNameText.destroy();
+      this.sceneNameText = undefined as any;
+    }
+    if (this.narrativeText) {
+      this.narrativeText.destroy();
+      this.narrativeText = undefined as any;
+    }
+
+    // 清理对话 / Clean up dialogues
     this.dialogueQueue = [];
     this.isPlayingDialogue = false;
-    if (this.dialogueTimer) { window.clearTimeout(this.dialogueTimer); this.dialogueTimer = undefined; }
+    if (this.dialogueTimer) {
+      window.clearTimeout(this.dialogueTimer);
+      this.dialogueTimer = undefined;
+    }
+
+    // 重置相机 / Reset camera
+    this.cameras.main.setBounds(0, 0, CONFIG.CANVAS.width, CONFIG.CANVAS.height);
+    this.cameras.main.scrollX = 0;
+    this.cameras.main.scrollY = 0;
+    this.cameras.main.fadeIn(0);
+
     // 重新显示等待文本 / Show waiting text again
-    this.waitingText = this.add.text(CONFIG.CANVAS.width / 2, CONFIG.CANVAS.height / 2,
-      "等待 DM 创造情境...",
-      { fontFamily: "Segoe UI, sans-serif", fontSize: "18px", color: "#ffd700" },
-    ).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH.HUD);
+    this.waitingText = this.add
+      .text(CONFIG.CANVAS.width / 2, CONFIG.CANVAS.height / 2, "等待 DM 创造情境...", {
+        fontFamily: "Segoe UI, sans-serif",
+        fontSize: "18px",
+        color: "#ffd700",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(DEPTH.HUD);
     console.log("[Scene] destroyed, waiting for new DM creation");
   }
 
@@ -364,22 +509,29 @@ export class GameScene extends Phaser.Scene {
       const last = waypoints[waypoints.length - 1];
       const finalX = last.x;
       const finalY = last.y;
-      // 已在行走时跳过，不打断当前动画 / Skip if already walking to avoid stuttering
+      // 追加到移动队列；若正在 talk 走位，等走完后自动继续探索
+      // / Append to walk queue; if currently walking (e.g. talk approach), continue after it finishes
       if (sprite.isWalking()) {
-        console.log("[Scene] explore skip: %s already walking", pcId);
-        continue;
+        console.log("[Scene] explore queued: %s already walking", pcId);
       }
-      sprite.cancelWalk();
       sprite.walkPath(worldWaypoints, TILEMAP.WALK_SPEED, () => {
         // 走完后同步坐标到 store，避免下次 sync 瞬移 / Sync final pos to store after walk
         const st = gameStore.getState();
         st.character_positions[pcId] = { x: finalX, y: finalY };
         const ch = st.characters.find((c) => c.id === pcId);
-        if (ch) { ch.position_x = finalX; ch.position_y = finalY; }
+        if (ch) {
+          ch.position_x = finalX;
+          ch.position_y = finalY;
+        }
         console.log("[Scene] explore done: %s → (%d,%d)", pcId, finalX, finalY);
       });
-      console.log("[Scene] explore: %s through %d waypoints → (%d,%d)",
-        pcId, waypoints.length - 1, finalX, finalY);
+      console.log(
+        "[Scene] explore: %s through %d waypoints → (%d,%d)",
+        pcId,
+        waypoints.length - 1,
+        finalX,
+        finalY
+      );
     }
   }
 
@@ -390,17 +542,13 @@ export class GameScene extends Phaser.Scene {
     for (const wt of wtList) {
       const sprite = this.charManager?.getSprite(wt.pc_id);
       if (!sprite) continue;
-      // 已在行走时跳过，不打断探索 / Skip if already walking (e.g. exploring)
-      if (sprite.isWalking()) {
-        console.log("[Scene] walk-to-talk skip: %s already walking", wt.pc_id);
-        continue;
-      }
       // 走到目标旁边（相邻格）/ Walk to adjacent tile of target
       const targetTx = wt.target_position.x;
       const targetTy = wt.target_position.y;
-      // 找离 PC 最近的相邻格 / Find nearest adjacent tile
-      const pcTx = wt.pc_position.x;
-      const pcTy = wt.pc_position.y;
+      // 找离 PC 当前位置最近的相邻格 / Find nearest adjacent tile to PC's current position
+      const current = sprite.getGridPos(this.ts);
+      const pcTx = current.tx;
+      const pcTy = current.ty;
       const adjacent = [
         { tx: targetTx + 1, ty: targetTy },
         { tx: targetTx - 1, ty: targetTy },
@@ -411,14 +559,24 @@ export class GameScene extends Phaser.Scene {
       let bestDist = Infinity;
       for (const a of adjacent) {
         const d = Math.abs(a.tx - pcTx) + Math.abs(a.ty - pcTy);
-        if (d < bestDist) { best = a; bestDist = d; }
+        if (d < bestDist) {
+          best = a;
+          bestDist = d;
+        }
       }
       if (best) {
         const { wx, wy } = gridToWorld(best.tx, best.ty, this.ts);
-        sprite.cancelWalk();
-        sprite.walkPath([{ wx, wy }], TILEMAP.WALK_SPEED);
-        console.log("[Scene] walk-to-talk: %s → (%d,%d) near target (%d,%d)",
-          wt.pc_id, best.tx, best.ty, targetTx, targetTy);
+        // 插队到移动队列前头；若正在 explore，完成当前这一步后先走过来再续 explore
+        // / Prepend to walk queue; if exploring, approach target first then resume explore
+        sprite.prependWalkPath([{ wx, wy }], TILEMAP.WALK_SPEED);
+        console.log(
+          "[Scene] walk-to-talk queued: %s → (%d,%d) near target (%d,%d)",
+          wt.pc_id,
+          best.tx,
+          best.ty,
+          targetTx,
+          targetTy
+        );
       }
     }
   }

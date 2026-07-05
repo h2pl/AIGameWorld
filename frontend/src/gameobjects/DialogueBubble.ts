@@ -36,7 +36,7 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     y: number,
     text: string,
     speakerName?: string,
-    onHide?: () => void,
+    onHide?: () => void
   ) {
     super(scene, x, y);
     this.onHide = onHide;
@@ -44,17 +44,17 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     // 泡泡在角色和 HUD 之上 / Bubble above characters and HUD
     this.setDepth(200);
 
-    const fullText = speakerName?.trim()
-      ? `${speakerName.trim()}: ${text}`
-      : text;
+    const fullText = speakerName?.trim() ? `${speakerName.trim()}: ${text}` : text;
     this.pages = this._splitPages(scene, fullText);
 
-    this.textObj = scene.add.text(0, -ARROW_HEIGHT - PADDING_Y, "", {
-      font: TEXT_FONT,
-      color: TEXT_COLOR,
-      wordWrap: { width: MAX_WIDTH - PADDING_X * 2, useAdvancedWrap: true },
-      align: "center",
-    }).setOrigin(0.5, 1);
+    this.textObj = scene.add
+      .text(0, -ARROW_HEIGHT - PADDING_Y, "", {
+        font: TEXT_FONT,
+        color: TEXT_COLOR,
+        wordWrap: { width: MAX_WIDTH - PADDING_X * 2, useAdvancedWrap: true },
+        align: "center",
+      })
+      .setOrigin(0.5, 1);
 
     this.bg = scene.add.graphics();
     this.add([this.bg, this.textObj]);
@@ -118,7 +118,7 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     const text = this.pages[this.pageIndex];
     const showMs = Math.min(
       MAX_SHOW_MS,
-      Math.max(MIN_SHOW_MS, MIN_SHOW_MS + text.length * MS_PER_CHAR),
+      Math.max(MIN_SHOW_MS, MIN_SHOW_MS + text.length * MS_PER_CHAR)
     );
     this.timer = window.setTimeout(() => this._advance(), showMs);
   }
@@ -133,7 +133,8 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     };
 
     // 用 MAX_LINES 行参考文本计算每页最大高度
-    const ref = scene.add.text(0, 0, Array(MAX_LINES).fill("中").join("\n"), style)
+    const ref = scene.add
+      .text(0, 0, Array(MAX_LINES).fill("中").join("\n"), style)
       .setVisible(false);
     const maxHeight = ref.height;
     ref.destroy();

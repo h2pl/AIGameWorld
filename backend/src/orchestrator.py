@@ -1,7 +1,9 @@
 """编排器 / Orchestrator: 全局单例，管理多个 world 的 tick 执行.
 
-每个 tick 使用独立的 thread_id，避免累加器字段跨 tick 累积."""
+每个 tick 使用独立的 thread_id，避免累加器字段跨 tick 累积.
+同一 world 的 tick 执行加互斥锁，防止并发导致 data_tick 重复或事件重复写入."""
 
+import asyncio
 import time
 from typing import Any
 
@@ -34,26 +36,29 @@ class Orchestrator:
         self._llm = llm
         self._reflection_interval = reflection_interval
         self._repos = repos
+        self._locks: dict[str, asyncio.Lock] = {}
 
     async def run_tick(self, world_id: str) -> dict:
         """对指定 world 执行一个完整 Tick——data_tick 从 worlds 表读取并自增."""
-        world_repo = self._repos.get("world")
-        if not world_repo:
-            logger.error("[orchestrator] world repo not found")
-            raise RuntimeError("world repo not found")
+        lock = self._locks.setdefault(world_id, asyncio.Lock())
+        async with lock:
+            world_repo = self._repos.get("world")
+            if not world_repo:
+                logger.error("[orchestrator] world repo not found")
+                raise RuntimeError("world repo not found")
 
-        tick = await world_repo.increment_data_tick(world_id)
+            tick = await world_repo.increment_data_tick(world_id)
 
-        initial_state: OverallState = {"tick": tick, "world_id": world_id}
+            initial_state: OverallState = {"tick": tick, "world_id": world_id}
 
-        config = self._make_config(world_id, tick)
-        config["callbacks"] = [TickGraphCallback(tick=tick)]
+            config = self._make_config(world_id, tick)
+            config["callbacks"] = [TickGraphCallback(tick=tick)]
 
-        t_start = time.monotonic()
-        result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
-        log_phase("tick", tick, elapsed=time.monotonic() - t_start)
+            t_start = time.monotonic()
+            result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
+            log_phase("tick", tick, elapsed=time.monotonic() - t_start)
 
-        return {"tick": result["tick"]}
+            return {"tick": result["tick"]}
 
     def _make_config(self, world_id: str, tick: int) -> dict:
         """构造 LangGraph 执行配置 / Build LangGraph run config."""

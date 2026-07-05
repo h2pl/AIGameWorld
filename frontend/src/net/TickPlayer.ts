@@ -37,9 +37,14 @@ export class TickPlayer {
   private _pollTimer: number | null = null;
   private _lastTick = 0; // 前端已展示到的 tick / display_tick
 
-  constructor(private _baseUrl: string, private _worldId: string) {}
+  constructor(
+    private _baseUrl: string,
+    private _worldId: string
+  ) {}
 
-  get state(): PlayerState { return this._state; }
+  get state(): PlayerState {
+    return this._state;
+  }
 
   setLastTick(tick: number): void {
     this._lastTick = tick;
@@ -50,9 +55,11 @@ export class TickPlayer {
     let since = 0;
     while (this._state === "idle" && since < targetTick) {
       try {
-        const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${since}`);
+        const resp = await fetch(
+          `${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${since}`
+        );
         if (!resp.ok) break;
-        const data = await resp.json() as EventsResponse;
+        const data = (await resp.json()) as EventsResponse;
         if (data.events && data.events.length > 0) {
           for (const ev of data.events) {
             gameStore.appendEventAt(ev.tick, { type: ev.type, payload: ev.payload });
@@ -79,7 +86,9 @@ export class TickPlayer {
 
     // 1. 通知后端跑 N 个 tick（不等待返回数据）
     try {
-      const notify = await fetch(`${this._baseUrl}/api/world/${this._worldId}/tick/batch/${n}`, { method: "POST" });
+      const notify = await fetch(`${this._baseUrl}/api/world/${this._worldId}/tick/batch/${n}`, {
+        method: "POST",
+      });
       if (!notify.ok) {
         throw new Error(`${L} batch/${n} failed: ${notify.status}`);
       }
@@ -93,17 +102,19 @@ export class TickPlayer {
     let emptyPolls = 0;
     while (this._state === "running" && this._lastTick < targetTick) {
       try {
-        const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${this._lastTick}`);
+        const resp = await fetch(
+          `${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${this._lastTick}`
+        );
         if (!resp.ok) {
           await _sleep(500);
           continue;
         }
-        const data = await resp.json() as EventsResponse;
+        const data = (await resp.json()) as EventsResponse;
         if (data.events && data.events.length > 0) {
           emptyPolls = 0;
           const tick = this._lastTick + 1;
           // 只应拿到下一个展示 tick 的事件
-          const events = data.events.filter(ev => ev.tick === tick);
+          const events = data.events.filter((ev) => ev.tick === tick);
           if (events.length === 0) {
             await _sleep(500);
             continue;
@@ -117,12 +128,16 @@ export class TickPlayer {
           // 连续空轮询 5 次，检查 batch 是否已完成
           if (emptyPolls >= 5) {
             try {
-              const statusResp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/status`);
+              const statusResp = await fetch(
+                `${this._baseUrl}/api/world/${this._worldId}/loop/status`
+              );
               if (statusResp.ok) {
-                const status = await statusResp.json() as { batch_running: boolean };
+                const status = (await statusResp.json()) as { batch_running: boolean };
                 if (!status.batch_running) break;
               }
-            } catch { /* ignore */ }
+            } catch {
+              /* ignore */
+            }
           }
         }
 
@@ -145,7 +160,9 @@ export class TickPlayer {
 
     // 通知后端开始
     try {
-      const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/start`, { method: "POST" });
+      const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/start`, {
+        method: "POST",
+      });
       if (!resp.ok) throw new Error(`${L} loop/start failed: ${resp.status}`);
     } catch (e) {
       this._state = "idle";
@@ -177,7 +194,9 @@ export class TickPlayer {
 
     // 通知后端恢复
     try {
-      const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/resume`, { method: "POST" });
+      const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/loop/resume`, {
+        method: "POST",
+      });
       if (!resp.ok) throw new Error(`${L} loop/resume failed: ${resp.status}`);
     } catch (e) {
       this._state = "idle";
@@ -212,12 +231,14 @@ export class TickPlayer {
       if (this._state !== "running") return;
 
       try {
-        const resp = await fetch(`${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${this._lastTick}`);
-        const data = await resp.json() as EventsResponse;
+        const resp = await fetch(
+          `${this._baseUrl}/api/world/${this._worldId}/events?since_tick=${this._lastTick}`
+        );
+        const data = (await resp.json()) as EventsResponse;
 
         if (data.events && data.events.length > 0) {
           const tick = this._lastTick + 1;
-          const events = data.events.filter(ev => ev.tick === tick);
+          const events = data.events.filter((ev) => ev.tick === tick);
           if (events.length > 0) {
             this._lastTick = tick;
             await this._playTick(tick, events, onTick);
@@ -250,7 +271,7 @@ export class TickPlayer {
         console.warn(`${L} pull failed with status ${resp.status}`);
         return null;
       }
-      return await resp.json() as TickResponse;
+      return (await resp.json()) as TickResponse;
     } catch (e) {
       console.warn(`${L} pull failed`, e);
       return null;
@@ -258,9 +279,15 @@ export class TickPlayer {
   }
 
   private async _playTick(
-    tick: number, events: TickEvent[],
-    onTick: (tick: number, events: TickEvent[]) => void,
+    tick: number,
+    events: TickEvent[],
+    onTick: (tick: number, events: TickEvent[]) => void
   ): Promise<void> {
+    // 先把事件写入 store，让 explore/walk-to-talk 等状态被 subscribe 消费
+    // / Persist events into store so subscribers (e.g. explore routes) can consume them
+    for (const ev of events) {
+      gameStore.appendEventAt(ev.tick, { type: ev.type, payload: ev.payload });
+    }
     onTick(tick, events);
     for (let i = 0; i < events.length; i++) {
       if (this._state !== "running" && !this._autoMode) break;
@@ -272,7 +299,9 @@ export class TickPlayer {
   /** 同步 display_tick 到后端 / Sync display_tick to backend */
   private async _syncDisplayTick(tick: number): Promise<void> {
     try {
-      await fetch(`${this._baseUrl}/api/world/${this._worldId}/tick/display/${tick}`, { method: "POST" });
+      await fetch(`${this._baseUrl}/api/world/${this._worldId}/tick/display/${tick}`, {
+        method: "POST",
+      });
     } catch (e) {
       console.warn(`${L} sync display_tick failed`, e);
     }
@@ -284,5 +313,7 @@ export class TickPlayer {
 }
 
 function _sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => { setTimeout(resolve, ms); });
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }

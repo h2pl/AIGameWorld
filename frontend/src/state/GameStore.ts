@@ -1,5 +1,6 @@
 /** 前端状态管理 / Frontend State Store — 简单的发布-订阅模式 */
 
+import { SCENE_MAP } from "../constants";
 import type {
   SceneData,
   CharacterData,
@@ -8,6 +9,7 @@ import type {
   TickUpdate,
   ActionData,
   EventData,
+  RuntimeConfig,
 } from "../types";
 
 export interface GameState {
@@ -17,9 +19,10 @@ export interface GameState {
   items: ItemData[];
   scene_objects: SceneObjectData[];
   display_tick: number;
-  llm_mock: boolean;
-  data_mode: string;
-  db_name: string;
+  llm_mock: boolean; // 兼容旧代码，优先使用 runtime.llm_mock / Deprecated, prefer runtime.llm_mock
+  data_mode: string; // 兼容旧代码，优先使用 runtime.data_mode / Deprecated, prefer runtime.data_mode
+  db_name: string; // 兼容旧代码，优先使用 runtime.db_name / Deprecated, prefer runtime.db_name
+  runtime: RuntimeConfig; // 运行时配置与顶层字段同时存在 / Coexists with top-level fields
   scene_ready: boolean; // 是否已收到 scene_setup / Whether scene_setup has been received
   current_scene_id: string; // 当前场景 id / Current scene id
   current_map_key: string; // 当前地图 key / Current map key
@@ -55,6 +58,7 @@ class GameStore {
       items: [],
       scene_objects: [],
       display_tick: 0,
+      runtime: { llm_mock: false, data_mode: "real", db_name: "" },
       llm_mock: false,
       data_mode: "real",
       db_name: "",
@@ -86,13 +90,14 @@ class GameStore {
     scene_objects: SceneObjectData[],
     llm_mock: boolean,
     data_mode: string,
-    db_name: string,
+    db_name: string
   ): void {
     this.state.world_id = world_id;
     this.state.scenes = scenes;
     this.state.characters = characters;
     this.state.items = items;
     this.state.scene_objects = scene_objects;
+    this.state.runtime = { llm_mock, data_mode, db_name };
     this.state.llm_mock = llm_mock;
     this.state.data_mode = data_mode;
     this.state.db_name = db_name;
@@ -127,11 +132,28 @@ class GameStore {
     }
     console.log(
       "[Store] setWorldState pack=%s chars=%d scenes=%d items=%d objs=%d",
-      world_id, characters.length, scenes.length, items.length, scene_objects.length,
+      world_id,
+      characters.length,
+      scenes.length,
+      items.length,
+      scene_objects.length
     );
     for (const ch of characters) {
       const p = this.state.character_positions[ch.id];
       console.log("[Store]   %s (%s) pos=(%d,%d) pc=%s", ch.id, ch.name, p.x, p.y, ch.is_pc);
+    }
+    // 设置首个场景为当前场景，触发 GameScene 构建
+    // / Set first scene as current to trigger GameScene build
+    if (scenes.length > 0) {
+      const firstScene = scenes[0];
+      this.state.current_scene_id = firstScene.id;
+      this.state.current_map_key = SCENE_MAP[firstScene.id]?.map || firstScene.id;
+      this.state.scene_ready = true;
+      console.log(
+        "[Store] scene_ready=true scene_id=%s map_key=%s",
+        firstScene.id,
+        this.state.current_map_key
+      );
     }
     this.notify();
   }
@@ -196,7 +218,9 @@ class GameStore {
           }
           console.log("[Store] scene_ready → true, scene_id=%s, map_key=%s", sceneId, mapKey);
         }
-        const positions = payload.pc_positions as Record<string, { x: number; y: number }> | undefined;
+        const positions = payload.pc_positions as
+          | Record<string, { x: number; y: number }>
+          | undefined;
         if (positions) {
           for (const [id, p] of Object.entries(positions)) {
             this.state.character_positions[id] = p;
@@ -225,8 +249,13 @@ class GameStore {
             ...this.state.explore_routes,
             [pcId]: [...waypoints, { x: finalX, y: finalY }],
           };
-          console.log("[Store] explore route for %s: %d waypoints → final (%d,%d)",
-            pcId, waypoints.length, finalX, finalY);
+          console.log(
+            "[Store] explore route for %s: %d waypoints → final (%d,%d)",
+            pcId,
+            waypoints.length,
+            finalX,
+            finalY
+          );
         }
       }
 
@@ -241,8 +270,15 @@ class GameStore {
             ...this.state.walk_to_talk,
             { pc_id: pcId, target_id: targetId, pc_position: pcPos, target_position: targetPos },
           ];
-          console.log("[Store] walk-to-talk: %s→%s (%d,%d)→(%d,%d)",
-            pcId, targetId, pcPos.x, pcPos.y, targetPos.x, targetPos.y);
+          console.log(
+            "[Store] walk-to-talk: %s→%s (%d,%d)→(%d,%d)",
+            pcId,
+            targetId,
+            pcPos.x,
+            pcPos.y,
+            targetPos.x,
+            targetPos.y
+          );
         }
       }
     }
@@ -253,7 +289,11 @@ class GameStore {
     for (const [id, p] of Object.entries(pos)) {
       this.state.character_positions[id] = p;
     }
-    console.log("[Store] updatePositions %d chars: %s", Object.keys(pos).length, Object.keys(pos).join(","));
+    console.log(
+      "[Store] updatePositions %d chars: %s",
+      Object.keys(pos).length,
+      Object.keys(pos).join(",")
+    );
     // notify() 由 applyTickUpdate 统一触发，避免 sync 双次调用
   }
 
@@ -265,25 +305,29 @@ class GameStore {
 
   /** 追加事件到列表 */
   appendEvent(ev: { type: string; payload?: Record<string, unknown> }): void {
-    this._appendEvents([{
-      type: ev.type,
-      tick: this.state.display_tick,
-      description: JSON.stringify(ev.payload || {}).slice(0, 120),
-      payload: ev.payload,
-      seq: 0,
-    } as EventData]);
+    this._appendEvents([
+      {
+        type: ev.type,
+        tick: this.state.display_tick,
+        description: JSON.stringify(ev.payload || {}).slice(0, 120),
+        payload: ev.payload,
+        seq: 0,
+      } as EventData,
+    ]);
     this.notify();
   }
 
   /** 追加事件到列表，指定 tick（用于历史加载）/ Append event at specific tick (for history) */
   appendEventAt(tick: number, ev: { type: string; payload?: Record<string, unknown> }): void {
-    this._appendEvents([{
-      type: ev.type,
-      tick,
-      description: JSON.stringify(ev.payload || {}).slice(0, 120),
-      payload: ev.payload,
-      seq: 0,
-    } as EventData]);
+    this._appendEvents([
+      {
+        type: ev.type,
+        tick,
+        description: JSON.stringify(ev.payload || {}).slice(0, 120),
+        payload: ev.payload,
+        seq: 0,
+      } as EventData,
+    ]);
     this.notify();
   }
 

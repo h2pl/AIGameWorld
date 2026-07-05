@@ -30,6 +30,12 @@ class ItemRepo:
                 item.world_id,
             ),
         )
+        await self._db.commit()
+
+    async def delete_by_world(self, world_id: str) -> None:
+        """删除指定 world 下所有物品 / Delete all items for a world."""
+        await self._db.execute("DELETE FROM items WHERE world_id = ?", (world_id,))
+        await self._db.commit()
 
     async def load_all(self) -> dict[str, Item]:
         """加载全部物品."""

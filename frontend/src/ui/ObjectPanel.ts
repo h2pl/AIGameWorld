@@ -41,7 +41,8 @@ export class ObjectPanel extends Panel {
   /** 绑定事件：关闭按钮 + ESC 键 + object-interacted 监听 / Bind events */
   protected bindEvents(): void {
     this.el.querySelector(".panel-close")?.addEventListener("click", (e) => {
-      e.stopPropagation(); this.hide();
+      e.stopPropagation();
+      this.hide();
     });
     document.addEventListener("keydown", (e: KeyboardEvent) => {
       if (e.key === "Escape" && this.el.style.display !== "none") this.hide();

@@ -1,6 +1,4 @@
 /** 面板基类 / Panel Base — 统一生命周期：mount → bindStore → show/hide → destroy */
-import type { GameState } from "../state/GameStore";
-
 export abstract class Panel {
   protected el!: HTMLElement;
   protected unsubscribe: (() => void) | null = null;

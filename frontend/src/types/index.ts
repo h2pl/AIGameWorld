@@ -128,14 +128,25 @@ export interface SceneObjectData {
   position_y: number;
 }
 
+/** 运行时配置 / Runtime config from backend */
+export interface RuntimeConfig {
+  llm_mock: boolean;
+  data_mode: string;
+  db_name: string;
+}
+
 /** 初始世界状态 / Initial world state (HTTP API 返回) */
 export interface InitialWorldState {
   world_id: string;
   data_tick: number;
   display_tick: number;
+  /** @deprecated 请使用 runtime.llm_mock / Use runtime.llm_mock instead */
   llm_mock: boolean;
+  /** @deprecated 请使用 runtime.data_mode / Use runtime.data_mode instead */
   data_mode: string;
+  /** @deprecated 请使用 runtime.db_name / Use runtime.db_name instead */
   db_name: string;
+  runtime: RuntimeConfig;
   scenes: SceneData[];
   characters: CharacterData[];
   items: ItemData[];

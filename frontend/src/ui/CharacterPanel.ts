@@ -18,8 +18,6 @@ export class CharacterPanel extends Panel {
     super("character-panel");
   }
 
-
-
   protected buildDOM(): HTMLElement {
     const el = document.createElement("div");
     el.className = "panel character-panel";
@@ -51,8 +49,6 @@ export class CharacterPanel extends Panel {
       this.showChar(e.detail);
     }) as EventListener);
   }
-
-
 
   private showChar(ch: CharacterData): void {
     const attrRows = Object.entries(ch.attributes || {})

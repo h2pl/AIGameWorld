@@ -15,6 +15,6 @@ export const KEY = {
 
 /** 场景 → 地图 + 出生点 映射 / Scene → Tilemap + Spawn area mapping */
 export const SCENE_MAP: Record<string, { map: string; spawn: { x: number; y: number } }> = {
-  "village_elderwood": { map: "tuxemon-map", spawn: { x: 20, y: 20 } },
-  "desert":            { map: "desert-map",  spawn: { x: 10, y: 10 } },
+  village_elderwood: { map: "tuxemon-map", spawn: { x: 20, y: 20 } },
+  desert: { map: "desert-map", spawn: { x: 10, y: 10 } },
 };

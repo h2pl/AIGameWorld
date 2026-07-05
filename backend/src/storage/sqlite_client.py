@@ -22,6 +22,8 @@ class SQLiteClient:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._db = await aiosqlite.connect(str(self._db_path))
         self._db.row_factory = aiosqlite.Row
+        # WAL 模式减少并发读写锁 / WAL mode reduces concurrent lock contention
+        await self._db.execute("PRAGMA journal_mode=WAL")
         logger.info("[storage] connected %s", self._db_path.name)
 
     async def close(self) -> None:

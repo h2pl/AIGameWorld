@@ -1,16 +1,14 @@
 """OverallState + 子图 State 定义 / Root + subgraph state definitions."""
 
-# LangGraph 累加器 / LangGraph reducer
-from operator import add
-
 # 类型标注 / Type annotations
-from typing import Annotated, Any, TypedDict
+from typing import Any, TypedDict
 
 
 class OverallState(TypedDict, total=False):
     """根状态——贯穿整个 tick 图 / Root state — flows through entire tick graph.
 
     初始时只传入 tick 和 world_id，其余字段由各节点逐步填充。
+    pc_decisions / pending_actions 不使用累加器，避免节点重试/子图异常时重复累积。
     """
 
     tick: int  # 当前 tick 编号 / Current tick number
@@ -19,10 +17,8 @@ class OverallState(TypedDict, total=False):
     plot_brief: str  # 剧情梗概 / Plot brief
     scene_id: str  # 当前场景 ID / Current scene ID
     scene_info: dict[str, Any]  # 当前场景的信息 / Current scene info
-    pc_decisions: Annotated[
-        list[dict[str, Any]], add
-    ]  # 角色决策（累加） / Character decisions (accumulated)
-    pending_actions: Annotated[list[dict[str, Any]], add]  # pc_subgraph 产生的行动结果（累加）
+    pc_decisions: list[dict[str, Any]]  # 角色决策 / Character decisions
+    pending_actions: list[dict[str, Any]]  # pc_subgraph 产生的行动结果
     narrative: str  # DM 叙事文本 / DM narrative text
     # PC 运行时状态——tick 内引擎修改此 map，末尾统一入库
     pc_state_map: dict[str, dict[str, Any]]
@@ -38,8 +34,8 @@ class PcSubState(TypedDict):
     tick: int
     plot_brief: str
     scene_info: dict[str, Any]
-    pending_actions: Annotated[list[dict[str, Any]], add]
-    pc_decisions: Annotated[list[dict[str, Any]], add]
+    pending_actions: list[dict[str, Any]]
+    pc_decisions: list[dict[str, Any]]
 
 
 class PcAgentState(TypedDict):
@@ -49,7 +45,7 @@ class PcAgentState(TypedDict):
     pc_type: str  # pc / actor / Player character or NPC
     plot_brief: str
     tick: int
-    pc_decisions: Annotated[list[dict[str, Any]], add]
+    pc_decisions: list[dict[str, Any]]
 
 
 class ReflectionSubState(TypedDict):
