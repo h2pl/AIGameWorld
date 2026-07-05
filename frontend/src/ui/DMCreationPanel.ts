@@ -1,6 +1,6 @@
 /** DM 创造情境面板 / DM Creation Panel — 显示 plot_brief，带打字机渐入效果 */
 import { Panel } from "./Panel";
-import { gameStore, type GameState } from "../state/GameStore";
+import { tickStore, type TickState } from "../state/TickStore";
 
 export class DMCreationPanel extends Panel {
   private contentEl!: HTMLElement;
@@ -31,13 +31,13 @@ export class DMCreationPanel extends Panel {
 
   /** 订阅 GameStore 状态变化 / Subscribe to GameStore changes */
   protected bindStore(): void {
-    this.unsubscribe = gameStore.subscribe((s: GameState) => {
+    this.unsubscribe = tickStore.subscribe((s: TickState) => {
       this.onStateChange(s);
     });
   }
 
   /** 状态变更时触发新的打字机效果 / Trigger typewriter effect on state change */
-  private onStateChange(state: GameState): void {
+  private onStateChange(state: TickState): void {
     if (!state.dm_plot_brief || state.dm_plot_brief === this.targetBrief) return;
     this.targetBrief = state.dm_plot_brief;
     this.charIndex = 0;

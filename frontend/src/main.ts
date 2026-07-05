@@ -8,7 +8,67 @@ const L = "[Main]"; // 日志前缀 / Log prefix
 import Phaser from "phaser";
 import { Boot } from "./scenes/Boot";
 import { GameScene } from "./scenes/GameScene";
-import { gameStore } from "./state/GameStore";
+import { worldStore } from "./state/WorldStore";
+import { tickStore } from "./state/TickStore";
+
+const _s = () => ({ ...worldStore.getState(), ...tickStore.getState() }) as any;
+const _sub = (fn: (s: any) => void) => {
+  const l = () => fn(_s());
+  const u1 = worldStore.subscribe(l);
+  const u2 = tickStore.subscribe(l);
+  return () => {
+    u1();
+    u2();
+  };
+};
+function _setWorld(
+  world_id: string,
+  scenes: any[],
+  characters: any[],
+  items: any[],
+  scene_objects: any[],
+  llm_mock: boolean,
+  data_mode: string,
+  db_name: string
+) {
+  worldStore.setWorldState(
+    world_id,
+    scenes,
+    characters,
+    items,
+    scene_objects,
+    llm_mock,
+    data_mode,
+    db_name
+  );
+  const pos: Record<string, { x: number; y: number }> = {};
+  const sceneSpawn = new Map(
+    scenes.map((s: any) => [s.id, { x: s.spawn_x ?? 0, y: s.spawn_y ?? 0 }])
+  );
+  const occupied = new Map<string, Set<string>>();
+  for (const ch of characters) {
+    if (!ch.is_pc || ch.position_x !== 0 || ch.position_y !== 0) {
+      pos[ch.id] = { x: ch.position_x, y: ch.position_y };
+      continue;
+    }
+    const sp = sceneSpawn.get(ch.scene_id) || { x: 0, y: 0 };
+    const k = `${sp.x},${sp.y}`;
+    if (!occupied.has(k)) occupied.set(k, new Set());
+    const used = occupied.get(k)!;
+    let done = false;
+    for (let dy = -1; dy <= 1 && !done; dy++)
+      for (let dx = -1; dx <= 1 && !done; dx++) {
+        const c = `${sp.x + dx},${sp.y + dy}`;
+        if (!used.has(c)) {
+          used.add(c);
+          pos[ch.id] = { x: sp.x + dx, y: sp.y + dy };
+          done = true;
+        }
+      }
+    if (!done) pos[ch.id] = { x: sp.x, y: sp.y };
+  }
+  tickStore.setInitialPositions(pos);
+}
 import { CONFIG } from "./config";
 import type { InitialWorldState } from "./types";
 import "./ui/styles.css";
@@ -122,7 +182,7 @@ async function main(): Promise<void> {
     };
   }
   console.log(`${L} world loaded: ${world.scenes.length} scenes, ${world.characters.length} chars`);
-  gameStore.setWorldState(
+  _setWorld(
     world.world_id,
     world.scenes,
     world.characters,
@@ -177,13 +237,13 @@ async function main(): Promise<void> {
   characterPanel.mount(document.body);
   const objectPanel = new ObjectPanel();
   objectPanel.mount(document.body);
-  (window as any).gameStore = gameStore;
+
   console.log(`${L} DOM panels mounted: dm + narrative + event + character + object`);
 
   // ── Mock 运行配置面板 / Mock runtime config panel (top-left) ──
   const mockConfigPanel = document.createElement("div");
   mockConfigPanel.className = "panel mock-config-panel";
-  const rt = gameStore.getState().runtime;
+  const rt = _s().runtime;
   mockConfigPanel.innerHTML = `
     <div class="mock-config-row"><span class="mock-config-label">LLM</span><span class="mock-config-value">${rt.llm_mock ? "Mock" : "Real"}</span></div>
     <div class="mock-config-row"><span class="mock-config-label">Data</span><span class="mock-config-value">${rt.data_mode === "mock" ? "Mock" : rt.data_mode}</span></div>
@@ -244,15 +304,15 @@ async function main(): Promise<void> {
     sceneIdx = (sceneIdx + 1) % sceneOrder.length;
     const sceneId = sceneOrder[sceneIdx];
     const spawn = SCENE_MAP[sceneId].spawn;
-    const st = gameStore.getState();
+    const st = _s();
     // 主角群集中在出生点 3×3 区域 / Cluster PCs in spawn area
-    const updated = st.characters.map((ch, i) => ({
+    const updated = st.characters.map((ch: any, i: number) => ({
       ...ch,
       scene_id: sceneId,
       position_x: spawn.x + (i % 3) - 1,
       position_y: spawn.y + Math.floor(i / 3) - 1,
     }));
-    gameStore.setWorldState(
+    _setWorld(
       st.world_id,
       st.scenes,
       updated,
@@ -317,11 +377,11 @@ async function main(): Promise<void> {
   const historyPanel = new HistoryEventPanel(world.world_id);
   historyPanel.mount(document.body);
   window.addEventListener("show-event-history", () => {
-    historyPanel.open(gameStore.getState().display_tick);
+    historyPanel.open(_s().display_tick);
   });
 
   // 叙事转发 / Narrative relay to GameScene
-  gameStore.subscribe((s) => {
+  _sub((s) => {
     const gs = game.scene.scenes.find((sc) => sc.scene.key === "Game") as
       | import("./scenes/GameScene").GameScene
       | undefined;
@@ -332,7 +392,7 @@ async function main(): Promise<void> {
 
   const onTickCallback = (tick: number, events: any[]) => {
     statusEl.textContent = `展示 Tick ${tick} (${events.length} events)`;
-    gameStore.setDisplayTick(tick);
+    tickStore.setDisplayTick(tick);
     console.log(`${L} display_tick=${tick} events=${events.map((e) => e.type).join(",")}`);
   };
 
@@ -407,8 +467,8 @@ async function main(): Promise<void> {
     if (runState === "running") return;
     try {
       await player.reset();
-      gameStore.clear();
-      gameStore.setDisplayTick(0);
+      tickStore.clear();
+      tickStore.setDisplayTick(0);
       statusEl.textContent = "已重置";
     } catch (e) {
       console.error(`${L} reset failed:`, e);

@@ -1,11 +1,11 @@
 /** 探索事件处理器 / Explore event handler */
 import type { CharacterManager } from "../CharacterManager";
 import type { MovementManager } from "../MovementManager";
-import { gameStore } from "../../state/GameStore";
+import { worldStore } from "../../state/WorldStore";
+import { tickStore } from "../../state/TickStore";
 import type { EventData } from "../../types";
-import type { EventHandler } from "./base/EventHandler";
 
-export class ExploreHandler implements EventHandler {
+export class ExploreHandler {
   constructor(
     private getCharManager: () => CharacterManager | undefined,
     private getMovementManager: () => MovementManager | undefined
@@ -35,9 +35,9 @@ export class ExploreHandler implements EventHandler {
       movementManager.walkRoute(sprite, allWaypoints, {
         onComplete: (finalTx, finalTy) => {
           // 走完后同步坐标到 store，避免下次 sync 瞬移 / Sync final pos to store after walk
-          const st = gameStore.getState();
+          const st = tickStore.getState();
           st.character_positions[pcId] = { x: finalTx, y: finalTy };
-          const ch = st.characters.find((c) => c.id === pcId);
+          const ch = worldStore.getState().characters.find((c) => c.id === pcId);
           if (ch) {
             ch.position_x = finalTx;
             ch.position_y = finalTy;

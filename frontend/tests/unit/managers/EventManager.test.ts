@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { EventManager } from "../../../src/managers/EventManager";
-import { gameStore } from "../../../src/state/GameStore";
+import { tickStore } from "../../../src/state/TickStore";
 import type { EventData } from "../../../src/types";
 
 /** 构造测试事件 / Build a test event */
@@ -16,7 +16,7 @@ function makeEv(type: string, payload?: Record<string, unknown>): EventData {
 describe("EventManager", () => {
   beforeEach(() => {
     // 每个用例前清空 store 事件列表 / Clear store events before each test
-    gameStore.clear();
+    tickStore.clear();
   });
 
   it("should persist events to store before handling", async () => {
@@ -25,7 +25,7 @@ describe("EventManager", () => {
 
     await em.processTick(1, events);
 
-    const stored = gameStore.getState().events;
+    const stored = tickStore.getState().events;
     expect(stored.length).toBe(1);
     expect(stored[0].type).toBe("dm_create");
   });
@@ -68,7 +68,7 @@ describe("EventManager", () => {
 
     expect(onTick).toHaveBeenCalledWith(2, expect.any(Array));
     // onTick 应该在 store 写入后调用 / onTick should be called after store persistence
-    expect(gameStore.getState().events.length).toBe(1);
+    expect(tickStore.getState().events.length).toBe(1);
   });
 
   it("should use default handler for unregistered event types", async () => {

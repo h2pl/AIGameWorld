@@ -1,6 +1,7 @@
 /** 主游戏场景 / Main Game Scene — 由 scene_setup 事件驱动初始化 */
 import Phaser from "phaser";
-import { gameStore } from "../state/GameStore";
+import { worldStore } from "../state/WorldStore";
+import { tickStore } from "../state/TickStore";
 import { CharacterManager } from "../managers/CharacterManager";
 import { CONFIG } from "../config";
 import { KEY, DEPTH, TILEMAP } from "../constants";
@@ -8,6 +9,18 @@ import { gridToWorld } from "../utils/tile";
 // gridToWorld 保留给 createPlayer 等场景构造使用 / gridToWorld kept for scene construction
 import { EventManager } from "../managers/EventManager";
 import { MovementManager } from "../managers/MovementManager";
+
+/** 合并两个 store 的快捷读取 / Shorthand for merged state */
+const _s = () => ({ ...worldStore.getState(), ...tickStore.getState() }) as any;
+const _sub = (fn: (s: any) => void) => {
+  const listener = () => fn(_s());
+  const u1 = worldStore.subscribe(listener);
+  const u2 = tickStore.subscribe(listener);
+  return () => {
+    u1();
+    u2();
+  };
+};
 import { ExploreHandler } from "../managers/event_handler/ExploreHandler";
 import { TalkHandler } from "../managers/event_handler/TalkHandler";
 import { NarrativeHandler } from "../managers/event_handler/NarrativeHandler";
@@ -153,7 +166,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("#000000");
 
     // 预生成角色纹理 / Pre-generate character textures
-    const st = gameStore.getState();
+    const st = _s();
     for (const ch of st.characters) makeCharTexture(this, ch, this.ts);
     for (const fb of [
       { id: "fighter_fb", race: "human", role: "fighter", is_pc: true },
@@ -174,8 +187,8 @@ export class GameScene extends Phaser.Scene {
       .setDepth(DEPTH.HUD);
 
     // 订阅 store，等待 scene_setup / Subscribe to store and wait for scene_setup
-    this.unsubscribe = gameStore.subscribe(() => {
-      const s = gameStore.getState();
+    this.unsubscribe = _sub(() => {
+      const s = _s();
       if (!s.scene_ready && this.sceneBuilt) {
         // reset 时回到等待状态 / Return to waiting state on reset
         this._destroyScene();
@@ -202,11 +215,11 @@ export class GameScene extends Phaser.Scene {
 
     // 刷新后重放当前展示 tick 的对话，让人物头顶仍有泡泡
     // / Replay current display tick dialogues after refresh so bubbles reappear
-    const displayTick = gameStore.getState().display_tick;
+    const displayTick = _s().display_tick;
     if (displayTick > 0) {
-      const talks = gameStore
-        .getState()
-        .events.filter((ev) => ev.tick === displayTick && ev.type === "pc_talk");
+      const talks = _s().events.filter(
+        (ev: any) => ev.tick === displayTick && ev.type === "pc_talk"
+      );
       for (const ev of talks) {
         this.talkHandler.handle(ev);
       }
@@ -248,7 +261,7 @@ export class GameScene extends Phaser.Scene {
       this.waitingText = null;
     }
 
-    const st = gameStore.getState();
+    const st = _s();
     this.mapKey = st.current_map_key || KEY.TILEMAP.TUXEMON;
 
     this.initCamera();
@@ -316,7 +329,7 @@ export class GameScene extends Phaser.Scene {
   /** 6. createTerrain / 场景物品渲染 */
   private createTerrain(): void {
     this.terrainSprites = [];
-    for (const obj of gameStore.getState().scene_objects) {
+    for (const obj of _s().scene_objects) {
       const key = `obj_${obj.id}`;
       if (!this.textures.exists(key)) makeObjectTexture(this, obj, key, this.ts);
       const { wx, wy } = gridToWorld(obj.position_x, obj.position_y, this.ts);
@@ -331,14 +344,14 @@ export class GameScene extends Phaser.Scene {
         });
       this.terrainSprites.push(sprite);
     }
-    console.log("[Scene] createTerrain objects=%d", gameStore.getState().scene_objects.length);
+    console.log("[Scene] createTerrain objects=%d", _s().scene_objects.length);
   }
 
   /** 7. createPlayer / Dynamic objects: 所有角色 */
   private createPlayer(): void {
     this.charManager = new CharacterManager(this, this.ts);
     this.movementManager = new MovementManager(this, this.ts);
-    const st = gameStore.getState();
+    const st = _s();
     this.charManager.createAll(st.characters, st.character_positions);
     const { sx, sy } = this.charManager.calcCameraScroll(CONFIG.CANVAS.width, CONFIG.CANVAS.height);
     this.cameras.main.scrollX = sx;
@@ -365,7 +378,7 @@ export class GameScene extends Phaser.Scene {
   private initInput(): void {
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       const wp = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-      const st = gameStore.getState();
+      const st = _s();
       for (const ch of st.characters) {
         const p = st.character_positions[ch.id] || { x: ch.position_x, y: ch.position_y };
         const cx = p.x * this.ts + this.ts / 2;
@@ -386,8 +399,8 @@ export class GameScene extends Phaser.Scene {
 
   /** 12. createUI / HUD overlay */
   private createUI(): void {
-    const st = gameStore.getState();
-    const scene = st.scenes.find((s) => s.id === st.current_scene_id);
+    const st = _s();
+    const scene = st.scenes.find((s: any) => s.id === st.current_scene_id);
     this.sceneNameText = this.add
       .text(8, 4, `${scene?.name || ""}`, {
         fontFamily: "Segoe UI, sans-serif",
@@ -416,7 +429,7 @@ export class GameScene extends Phaser.Scene {
 
   /** 场景切换 / Switch scene */
   private onSceneChanged(sceneId: string): void {
-    const nextMapKey = gameStore.getState().current_map_key;
+    const nextMapKey = _s().current_map_key;
     if (!nextMapKey || nextMapKey === this.mapKey) return;
     console.log("[Scene] scene-changed →", sceneId, "restarting with", nextMapKey);
     this.cameras.main.fadeOut(400, 0, 0, 0);

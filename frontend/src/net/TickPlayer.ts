@@ -4,7 +4,7 @@
  * Backend generates data_tick; frontend presents display_tick and syncs progress back.
  */
 
-import { gameStore } from "../state/GameStore";
+import { tickStore } from "../state/TickStore";
 import type { EventManager } from "../managers/EventManager";
 import type { EventData } from "../types";
 
@@ -65,7 +65,7 @@ export class TickPlayer {
         const data = (await resp.json()) as EventsResponse;
         if (data.events && data.events.length > 0) {
           for (const ev of data.events) {
-            gameStore.appendEventAt(ev.tick, { type: ev.type, payload: ev.payload });
+            tickStore.appendEventAt(ev.tick, { type: ev.type, payload: ev.payload });
           }
           since = data.display_tick;
         } else {
@@ -77,7 +77,7 @@ export class TickPlayer {
       }
     }
     this._lastTick = targetTick;
-    gameStore.setDisplayTick(targetTick);
+    tickStore.setDisplayTick(targetTick);
   }
 
   /** 运行 N 个 tick：通知后端批量生成，前端按 display_tick 顺序展示 */

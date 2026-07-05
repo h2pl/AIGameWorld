@@ -1,13 +1,10 @@
-/** GameStore 单元测试 / Unit tests for GameStore
- *
- * 覆盖初始状态、世界状态加载和事件列表追加：
- * / Covers initial state, world state loading, and event list appending
- */
+/** WorldStore + TickStore 单元测试 / Unit tests for WorldStore + TickStore */
 import { describe, it, expect, beforeEach } from "vitest";
-import { gameStore } from "../../../src/state/GameStore";
+import { worldStore } from "../../../src/state/WorldStore";
+import { tickStore } from "../../../src/state/TickStore";
 import type { SceneData, CharacterData } from "../../../src/types";
 
-// 测试工厂函数 / Test factory helpers
+/** 创建测试场景 / Create test scene */
 const makeScene = (id: string, spawnX = 10, spawnY = 10): SceneData => ({
   id,
   name: id,
@@ -42,51 +39,65 @@ const makePC = (id: string, sceneId: string, x = 0, y = 0): CharacterData => ({
   personality: "brave",
 });
 
-describe("GameStore", () => {
-  beforeEach(() => {
-    // 每个用例前清空 store / Reset store before each test
-    gameStore.clear();
-  });
-
-  it("should initialize with empty world state", () => {
-    const st = gameStore.getState();
+describe("WorldStore", () => {
+  it("should initialize with empty state", () => {
+    // 初始状态为空 / Initial state is empty
+    const st = worldStore.getState();
     expect(st.world_id).toBe("");
     expect(st.characters).toHaveLength(0);
-    expect(st.scene_ready).toBe(false);
   });
 
-  it("should set world state and assign positions to PCs", () => {
+  it("should set world state", () => {
+    // 设置世界状态 / Set world state
     const scene = makeScene("village");
     const pc = makePC("cleric", "village");
-    gameStore.setWorldState("mock_world", [scene], [pc], [], [], false, "mock", "dev.db");
+    worldStore.setWorldState("mock_world", [scene], [pc], [], [], false, "mock", "dev.db");
 
-    const st = gameStore.getState();
+    const st = worldStore.getState();
     expect(st.world_id).toBe("mock_world");
     expect(st.runtime.data_mode).toBe("mock");
-    // PCs 在 spawn 3x3 区域内偏移 -1 / PCs spawn in a 3x3 area offset by -1
-    expect(st.character_positions["cleric"]).toEqual({ x: 9, y: 9 });
-    expect(st.scene_ready).toBe(true);
-    expect(st.current_scene_id).toBe("village");
+  });
+});
+
+describe("TickStore", () => {
+  // 每用例前清空 / Reset before each test
+  beforeEach(() => tickStore.clear());
+
+  it("should initialize with empty state", () => {
+    const st = tickStore.getState();
+    expect(st.scene_ready).toBe(false);
+    expect(st.events).toHaveLength(0);
   });
 
-  it("should append events and keep them in the events list", () => {
-    const scene = makeScene("village");
-    const pc = makePC("cleric", "village");
-    gameStore.setWorldState("mock_world", [scene], [pc], [], [], false, "mock", "dev.db");
-
-    gameStore.appendEventAt(1, {
-      type: "pc_explore",
-      payload: {
-        pc_id: "cleric",
-        waypoints: [{ x: 1, y: 1 }],
-        final_x: 3,
-        final_y: 3,
-      },
+  it("should append events and mark scene_ready from scene_setup", () => {
+    tickStore.appendEventAt(1, {
+      type: "scene_setup",
+      payload: { scene_id: "village", pc_positions: { cleric: { x: 9, y: 9 } } },
     });
 
-    const events = gameStore.getState().events;
-    expect(events.length).toBeGreaterThan(0);
-    expect(events[events.length - 1].type).toBe("pc_explore");
-    expect(events[events.length - 1].tick).toBe(1);
+    const st = tickStore.getState();
+    expect(st.events.length).toBe(1);
+    expect(st.scene_ready).toBe(true);
+    expect(st.current_scene_id).toBe("village");
+    expect(st.character_positions["cleric"]).toEqual({ x: 9, y: 9 });
+  });
+
+  it("should set display_tick", () => {
+    tickStore.setDisplayTick(5);
+    expect(tickStore.getState().display_tick).toBe(5);
+  });
+
+  it("should add narrative", () => {
+    tickStore.addNarrative("test narrative");
+    expect(tickStore.getState().narrative).toBe("test narrative");
+  });
+
+  it("should clear runtime state", () => {
+    tickStore.appendEventAt(1, { type: "pc_explore" });
+    tickStore.clear();
+    const st = tickStore.getState();
+    expect(st.events).toHaveLength(0);
+    expect(st.scene_ready).toBe(false);
+    expect(st.display_tick).toBe(0);
   });
 });

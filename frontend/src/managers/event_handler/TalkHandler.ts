@@ -2,9 +2,8 @@
 import type { CharacterManager } from "../CharacterManager";
 import type { MovementManager } from "../MovementManager";
 import type { EventData } from "../../types";
-import type { EventHandler } from "./base/EventHandler";
 
-export class TalkHandler implements EventHandler {
+export class TalkHandler {
   private dialogueQueue: Array<{ speaker_id: string; text: string }> = [];
   private isPlayingDialogue = false;
   private dialogueTimer?: number;

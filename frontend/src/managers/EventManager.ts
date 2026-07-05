@@ -10,7 +10,7 @@
  *   em.register("pc_explore", (ev) => scene.handleExplore(ev));
  *   await em.processTick(tick, events, (t, evs) => { ... });
  */
-import { gameStore } from "../state/GameStore";
+import { tickStore } from "../state/TickStore";
 import type { EventData } from "../types";
 
 /** 事件处理函数 / Event handler function */
@@ -43,7 +43,11 @@ export class EventManager {
     this.handlers.delete(type);
   }
 
-  /** 串行处理一个 tick 的事件 / Process a tick's events sequentially */
+  /** 串行处理一个 tick 的事件 / Process a tick's events sequentially
+   *
+   * 流程：逐个事件先 dispatch 到事件面板（高亮），再 await handler（动画），
+   * 完成后面板去除高亮。
+   */
   async processTick(
     tick: number,
     events: EventData[],
@@ -51,21 +55,29 @@ export class EventManager {
   ): Promise<void> {
     if (!events.length) return;
 
-    // 1. 先写入 store，让事件面板能立刻看到 / Persist to store first for immediate panel visibility
+    // 1. 写入 store / Persist to store
     for (const ev of events) {
-      gameStore.appendEventAt(tick, { type: ev.type, payload: ev.payload });
+      tickStore.appendEventAt(tick, { type: ev.type, payload: ev.payload });
     }
 
-    // 2. 通知外部（如状态栏更新）/ Notify externals (e.g. status bar)
+    // 2. 通知外部（更新 display_tick）/ Notify externals (updates display_tick)
     onTick?.(tick, events);
 
-    // 3. 串行处理：等前一个完成再继续 / Sequential: await each before next
+    // 3. 逐个事件：dispatch → 高亮展示 → await handler → 取消高亮 / Sequential: dispatch → highlight → await handler → unhighlight
     for (const ev of events) {
+      window.dispatchEvent(
+        new CustomEvent("tick-event", { detail: { type: ev.type, payload: ev.payload } })
+      );
       const handler = this.handlers.get(ev.type) || this.defaultHandler;
       const result = handler(ev);
       if (result && typeof result.then === "function") {
         await result;
       }
+      window.dispatchEvent(
+        new CustomEvent("tick-event", {
+          detail: { type: ev.type, payload: ev.payload, phase: "done" },
+        })
+      );
     }
   }
 }

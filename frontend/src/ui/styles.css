@@ -182,6 +182,12 @@
   color: #a0aec0;
   font-size: 11px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background 0.2s;
+}
+.event-active {
+  background: rgba(0, 180, 255, 0.12);
+  border-left: 2px solid #00b4ff;
+  padding-left: 4px;
 }
 
 .event-icon {

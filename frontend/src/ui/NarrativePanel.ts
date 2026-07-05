@@ -1,6 +1,6 @@
 /** 叙事面板 / Narrative Panel — 展示 DM 生成的叙事文本，自动滚动 */
 import { Panel } from "./Panel";
-import { gameStore, type GameState } from "../state/GameStore";
+import { tickStore, type TickState } from "../state/TickStore";
 
 export class NarrativePanel extends Panel {
   private contentEl!: HTMLElement;
@@ -26,12 +26,12 @@ export class NarrativePanel extends Panel {
   }
 
   protected bindStore(): void {
-    this.unsubscribe = gameStore.subscribe((s: GameState) => {
+    this.unsubscribe = tickStore.subscribe((s: TickState) => {
       this.onStateChange(s);
     });
   }
 
-  private onStateChange(state: GameState): void {
+  private onStateChange(state: TickState): void {
     if (!state.narrative) return;
     // 避免重复追加同一行 / Avoid duplicating same line
     if (this.lines.length > 0 && this.lines[this.lines.length - 1] === state.narrative) return;

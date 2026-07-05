@@ -9,7 +9,7 @@
  * HistoryEventPanel independently fetches from backend API.
  */
 import { Panel } from "./Panel";
-import { gameStore } from "../state/GameStore";
+import { tickStore, type TickState } from "../state/TickStore";
 import type { EventData } from "../types";
 
 /** 事件类型 → 图标 / Event type → icon */
@@ -67,7 +67,7 @@ export class EventPanel extends Panel {
 
   protected bindStore(): void {
     // 仅订阅 display_tick 变化以清空面板 / Only subscribe to detect tick changes
-    this.unsubscribe = gameStore.subscribe((s) => {
+    this.unsubscribe = tickStore.subscribe((s: TickState) => {
       if (s.display_tick !== this.currentTick) {
         this.currentTick = s.display_tick;
         this.listEl.innerHTML = "";
@@ -82,19 +82,35 @@ export class EventPanel extends Panel {
     window.addEventListener("tick-event", this._onTickEvent);
   }
 
-  /** 处理 tick-event — 只追加当前 tick 的事件 / Handle tick-event, only append current tick events */
-  private _handleTickEvent(detail: { type: string; payload: Record<string, unknown> }): void {
-    const displayTick = gameStore.getState().display_tick;
+  /** 处理 tick-event — 逐条展示，当前事件高亮 / Handle tick-event, sequential with highlight */
+  private _handleTickEvent(detail: {
+    type: string;
+    payload: Record<string, unknown>;
+    phase?: "done";
+  }): void {
+    const displayTick = tickStore.getState().display_tick;
     if (displayTick !== this.currentTick || displayTick === 0) return;
+
+    // done 阶段：取消高亮 / Done phase: remove highlight
+    if (detail.phase === "done") {
+      const active = this.listEl.querySelector(".event-active");
+      if (active) active.classList.remove("event-active");
+      return;
+    }
 
     const ev: EventData = { type: detail.type, tick: displayTick, payload: detail.payload };
 
-    // 移除空状态提示 / Remove empty state
+    // 移除空状态 / Remove empty state
     if (this.listEl.querySelector(".event-empty")) {
       this.listEl.innerHTML = "";
     }
 
+    // 新事件：先取消上一行的 active，再追加新行并高亮 / New event: unhighlight previous, append and highlight new
+    const prevActive = this.listEl.querySelector(".event-active");
+    if (prevActive) prevActive.classList.remove("event-active");
+
     const line = this._createLine(ev);
+    line.classList.add("event-active");
     const shouldScroll = this._shouldAutoScroll();
     this.listEl.appendChild(line);
     if (shouldScroll) {
