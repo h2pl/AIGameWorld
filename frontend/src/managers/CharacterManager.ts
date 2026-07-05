@@ -3,8 +3,9 @@
 
 import Phaser from "phaser";
 import { CharacterSprite } from "../gameobjects/CharacterSprite";
-import { gridToWorld, calcSteps } from "../utils/tile";
-import { TILEMAP, DEPTH } from "../constants";
+import { gridToWorld } from "../utils/tile";
+import { DEPTH } from "../constants";
+import { WalkController } from "../controllers/WalkController";
 import type { CharacterData } from "../types";
 
 type Pos = { x: number; y: number };
@@ -13,10 +14,12 @@ export class CharacterManager {
   private sprites: Map<string, CharacterSprite> = new Map();
   private scene: Phaser.Scene;
   private ts: number;
+  private walkController: WalkController;
 
   constructor(scene: Phaser.Scene, tileSize: number) {
     this.scene = scene;
     this.ts = tileSize;
+    this.walkController = new WalkController(scene, tileSize);
   }
 
   /** 首次批量创建所有角色 / Create all characters initially */
@@ -50,9 +53,9 @@ export class CharacterManager {
       if (existing) {
         const old = existing.getGridPos(this.ts);
         if (old.tx !== p.x || old.ty !== p.y) {
-          existing.cancelWalk();
-          const steps = calcSteps(old, { tx: p.x, ty: p.y }, this.ts);
-          existing.walkPath(steps, TILEMAP.WALK_SPEED);
+          // 不要 cancelWalk：让当前动画队列继续，把增量同步作为追加路径
+          // / Don't cancel: append sync target as a continuation of the current queue
+          this.walkController.walkTo(existing, p.x, p.y);
         }
         if (ch.combat) existing.updateHp(ch.combat.hp, ch.combat.max_hp);
       } else {

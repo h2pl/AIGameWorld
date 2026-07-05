@@ -5,6 +5,8 @@ import { CharacterManager } from "../managers/CharacterManager";
 import { CONFIG } from "../config";
 import { KEY, DEPTH, TILEMAP } from "../constants";
 import { gridToWorld } from "../utils/tile";
+// gridToWorld 保留给 createPlayer 等场景构造使用 / gridToWorld kept for scene construction
+import { WalkController } from "../controllers/WalkController";
 
 /** 种族肤色 / Race skin colors */
 const RACE_SKIN: Record<string, string> = {
@@ -129,6 +131,7 @@ export class GameScene extends Phaser.Scene {
   private unsubscribe: (() => void) | null = null;
   private mapKey!: string;
   private sceneBuilt = false;
+  private walkController!: WalkController;
   private dialogueQueue: Array<{ speaker_id: string; text: string }> = [];
   private isPlayingDialogue = false;
   private dialogueTimer?: number;
@@ -345,6 +348,7 @@ export class GameScene extends Phaser.Scene {
   /** 7. createPlayer / Dynamic objects: 所有角色 */
   private createPlayer(): void {
     this.charManager = new CharacterManager(this, this.ts);
+    this.walkController = new WalkController(this, this.ts);
     const st = gameStore.getState();
     this.charManager.createAll(st.characters, st.character_positions);
     const { sx, sy } = this.charManager.calcCameraScroll(CONFIG.CANVAS.width, CONFIG.CANVAS.height);
@@ -499,38 +503,27 @@ export class GameScene extends Phaser.Scene {
     if (!entries.length) return;
     for (const [pcId, waypoints] of entries) {
       const sprite = this.charManager?.getSprite(pcId);
-      if (!sprite || !waypoints.length) continue;
-      const ts = this.ts;
-      // 将 waypoints 转成世界坐标（最后一个是终点）/ Convert waypoints to world coords (last is final pos)
-      const worldWaypoints = waypoints.map((wp) => {
-        const { wx, wy } = gridToWorld(wp.x, wp.y, ts);
-        return { wx, wy };
-      });
-      const last = waypoints[waypoints.length - 1];
-      const finalX = last.x;
-      const finalY = last.y;
-      // 追加到移动队列；若正在 talk 走位，等走完后自动继续探索
-      // / Append to walk queue; if currently walking (e.g. talk approach), continue after it finishes
-      if (sprite.isWalking()) {
-        console.log("[Scene] explore queued: %s already walking", pcId);
-      }
-      sprite.walkPath(worldWaypoints, TILEMAP.WALK_SPEED, () => {
-        // 走完后同步坐标到 store，避免下次 sync 瞬移 / Sync final pos to store after walk
-        const st = gameStore.getState();
-        st.character_positions[pcId] = { x: finalX, y: finalY };
-        const ch = st.characters.find((c) => c.id === pcId);
-        if (ch) {
-          ch.position_x = finalX;
-          ch.position_y = finalY;
-        }
-        console.log("[Scene] explore done: %s → (%d,%d)", pcId, finalX, finalY);
+      if (!sprite || !waypoints.length || !this.walkController) continue;
+      const final = waypoints[waypoints.length - 1];
+      this.walkController.walkRoute(sprite, waypoints, {
+        onComplete: (finalTx, finalTy) => {
+          // 走完后同步坐标到 store，避免下次 sync 瞬移 / Sync final pos to store after walk
+          const st = gameStore.getState();
+          st.character_positions[pcId] = { x: finalTx, y: finalTy };
+          const ch = st.characters.find((c) => c.id === pcId);
+          if (ch) {
+            ch.position_x = finalTx;
+            ch.position_y = finalTy;
+          }
+          console.log("[Scene] explore done: %s → (%d,%d)", pcId, finalTx, finalTy);
+        },
       });
       console.log(
         "[Scene] explore: %s through %d waypoints → (%d,%d)",
         pcId,
         waypoints.length - 1,
-        finalX,
-        finalY
+        final.x,
+        final.y
       );
     }
   }
@@ -538,7 +531,7 @@ export class GameScene extends Phaser.Scene {
   /** 播放走位对话动画：PC 走到目标旁边 / Walk PC to target before dialogue */
   private _playWalkToTalk(): void {
     const wtList = gameStore.consumeWalkToTalk();
-    if (!wtList.length) return;
+    if (!wtList.length || !this.walkController) return;
     for (const wt of wtList) {
       const sprite = this.charManager?.getSprite(wt.pc_id);
       if (!sprite) continue;
@@ -565,10 +558,9 @@ export class GameScene extends Phaser.Scene {
         }
       }
       if (best) {
-        const { wx, wy } = gridToWorld(best.tx, best.ty, this.ts);
         // 插队到移动队列前头；若正在 explore，完成当前这一步后先走过来再续 explore
         // / Prepend to walk queue; if exploring, approach target first then resume explore
-        sprite.prependWalkPath([{ wx, wy }], TILEMAP.WALK_SPEED);
+        this.walkController.prependWalkTo(sprite, best.tx, best.ty);
         console.log(
           "[Scene] walk-to-talk queued: %s → (%d,%d) near target (%d,%d)",
           wt.pc_id,
