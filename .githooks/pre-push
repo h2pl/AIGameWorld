@@ -33,7 +33,7 @@ fi
 if [ "$frontend_changed" -gt 0 ]; then
     echo ""
     echo "=== Pre-push: 运行前端测试 / Running frontend tests ==="
-    (cd frontend && npm test 2>/dev/null) || { echo "WARN: 前端测试不可用 (非阻塞) / Frontend tests unavailable (non-blocking)"; }
+    (cd frontend && npm test) || { echo "FAIL: 前端测试不通过 / Frontend tests failed"; exit 1; }
 else
     echo "  (frontend 无变更，跳过 / no frontend changes, skip)"
 fi
