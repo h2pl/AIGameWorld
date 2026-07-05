@@ -188,34 +188,17 @@ async def lifespan(app: FastAPI):
 
     logger.info(
         "[lifespan] starting llm_mock=%s data_mode=%s db=%s dataset=%s",
-        cfg.mock.enabled,
-        cfg.mock.data_mode,
-        db_path,
-        cfg.mock.dataset,
+        cfg.mock.enabled, cfg.mock.data_mode, db_path, cfg.mock.dataset,
     )
 
-    # Mock 数据模式：使用独立的 test.db 并灌入 mock 数据 / Mock data mode uses test.db
     if use_mock_data:
-        from data.mock import seed_mock_data
-
-        db_file = Path(db_path)
-        if db_file.exists():
-            db_file.unlink()
-            logger.info("[lifespan] removed old mock db=%s", db_path)
-        db = SQLiteClient(db_path)
-        app.state.db = db
-        await db.connect()
-        await db.init_schema()
-        await seed_mock_data(db)
-        logger.info("[lifespan] seeded mock data into %s", db_path)
+        from data.mock import init_mock_db
+        db = await init_mock_db(db_path)
     else:
         db = SQLiteClient(db_path)
-        app.state.db = db
         await db.connect()
         await db.init_schema()
-
-    # 自动导入默认 world-pack（DB 为空时）/ Auto-import default pack when DB is empty
-    if not use_mock_data:
+        # 自动导入默认 world-pack / Auto-import default pack
         worlds_count = await db.fetch_all("SELECT 1 FROM worlds LIMIT 1")
         if not worlds_count:
             from .storage.chroma_client import ChromaClient
@@ -224,14 +207,15 @@ async def lifespan(app: FastAPI):
             pack_id = cfg.world.default_pack
             pack_dir = Path(__file__).parent.parent.parent / "world-pack" / pack_id
             if pack_dir.exists():
-                logger.info("[lifespan] worlds table empty, auto-importing pack=%s", pack_id)
+                logger.info("[lifespan] worlds empty, auto-importing pack=%s", pack_id)
                 chroma = ChromaClient(persist_path=cfg.database.chroma_path)
                 loader = WorldLoader(db, chroma)
                 counts = await loader.load(pack_dir)
                 await db.commit()
-                logger.info("[lifespan] auto-imported pack=%s counts=%s", pack_id, counts)
+                logger.info("[lifespan] imported pack=%s counts=%s", pack_id, counts)
             else:
                 logger.warning("[lifespan] default pack not found: %s", pack_dir)
+    app.state.db = db
 
     yield
     if app.state.db:

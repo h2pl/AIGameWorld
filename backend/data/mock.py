@@ -28,6 +28,7 @@ from src.domain import (  # noqa: E402
 from src.domain.world import World  # noqa: E402
 from src.repository.item_repo import ItemRepo  # noqa: E402
 from src.repository.pc_repo import PcRepo  # noqa: E402
+from src.storage.sqlite_client import SQLiteClient  # noqa: E402
 from src.repository.scene_repo import SceneRepo  # noqa: E402
 from src.repository.world_repo import WorldRepo  # noqa: E402
 
@@ -428,3 +429,17 @@ async def _seed_actors(pc_repo: PcRepo, world_id: str) -> None:
                 world_id=world_id,
             )
         )
+
+
+async def init_mock_db(db_path: str) -> SQLiteClient:
+    """初始化 mock 数据库——删旧库、建表、灌数据 / Init mock DB: drop old, init schema, seed data."""
+    from pathlib import Path
+
+    db_file = Path(db_path)
+    if db_file.exists():
+        db_file.unlink()
+    db = SQLiteClient(db_path)
+    await db.connect()
+    await db.init_schema()
+    await seed_mock_data(db)
+    return db
