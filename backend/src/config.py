@@ -133,6 +133,7 @@ class ConsoleLoggingConfig(BaseModel):
 class LoggingConfig(BaseModel):
     """日志配置 / Logging configuration."""
 
+    level: str = "INFO"  # DEBUG / INFO / WARNING / ERROR
     json_format: bool = True
     console: ConsoleLoggingConfig = ConsoleLoggingConfig()
 

@@ -1,3 +1,4 @@
+// -- file start -- / file start
 /** 控制栏 / Control Bar — 按钮 + 状态显示，通过回调暴露行为 */
 import { Panel } from "./Panel";
 import { getSpeed, setSpeed, speedOptions } from "../config/playback";

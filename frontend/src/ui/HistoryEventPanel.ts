@@ -3,7 +3,8 @@ import { Panel } from "./Panel";
 import type { EventData } from "../types";
 import { CONFIG } from "../config";
 
-const L = "[HistoryEventPanel]";
+import { createLogger } from "../utils/logger";
+const log = createLogger("HistoryEventPanel");
 const PAGE_TICK_LIMIT = 5; // 每页 tick 数量 / Ticks per page
 
 const EVENT_ICONS: Record<string, string> = {
@@ -169,7 +170,7 @@ export class HistoryEventPanel extends Panel {
       const data = (await resp.json()) as { events: EventData[]; display_tick: number };
       this._render(data.events || [], sinceTick + 1, endTick);
     } catch (e) {
-      console.warn(`${L} _loadPage failed`, e);
+      log.warn(`_loadPage failed`, e);
       this.listEl.innerHTML = `<div class="history-empty">加载失败</div>`;
     }
   }

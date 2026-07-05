@@ -10,6 +10,7 @@
 
 from pathlib import Path
 
+from src.repository.actor_repo import ActorRepo
 from src.repository.pc_repo import PcRepo
 
 from ..domain.world import World
@@ -33,6 +34,7 @@ class WorldLoader:
         self._scene_repo = SceneRepo(db)
         self._item_repo = ItemRepo(db)
         self._pc_repo = PcRepo(db)
+        self._actor_repo = ActorRepo(db)
 
     async def load(self, pack_dir: Path) -> dict[str, int]:
         """加载 world-pack 到数据库。
@@ -131,7 +133,7 @@ class WorldLoader:
         starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
         pcs = data.get("player_characters", [])
         for pc_data in pcs:
-            await self._pc_repo.save_pc(deserialize.pc_from_yaml(pc_data, starting_scene, world_id))
+            await self._pc_repo.save(deserialize.pc_from_yaml(pc_data, starting_scene, world_id))
         return len(pcs)
 
     # ── Actors (PcRepo) ──
@@ -140,7 +142,7 @@ class WorldLoader:
         starting_scene = data.get("meta", {}).get("starting_scene", "scene_1")
         actors = data.get("actors", [])
         for a_data in actors:
-            await self._pc_repo.save_actor(
+            await self._actor_repo.save(
                 deserialize.actor_from_yaml(a_data, starting_scene, world_id)
             )
         return len(actors)

@@ -88,7 +88,7 @@ async def decide(
 
         decisions: list[dict] = []
         for action in result.actions:
-            validated = _validate(action)
+            validated = _validate(action, scene_info)
             decisions.append(
                 PCDecideResponse(
                     pc_id=pc_id,
@@ -115,24 +115,45 @@ def _fallback_decision(pc_id: str) -> dict:
     ).model_dump()
 
 
-def _validate(result: CharacterActionSchema) -> CharacterActionSchema:
-    """校验并修正 LLM 返回的动作，非法组合降级为 wait /
-    Validate LLM action, fallback to wait for invalid combinations."""
-    # 未知动作直接降级 / Unknown action type → wait
+def _validate(
+    result: CharacterActionSchema, scene_info: dict | None = None
+) -> CharacterActionSchema:
+    """校验并修正 LLM 返回的动作 / Validate LLM action, fallback to wait for invalid combos."""
+    # 未知动作 / Unknown action
     if result.action_type not in _VALID_ACTIONS:
         result.action_type = "wait"
-    # wait/explore 不需要目标 / wait and explore require no target
+    # wait/explore 不需要目标 / No target needed
     if result.action_type in ("wait", "explore"):
         result.target_id = None
         result.target_type = None
     else:
-        # 其他动作需要匹配的目标类型 / Other actions need matching target type
+        # 格式校验 / Format check
         allowed_types = _ACTION_TARGET_TYPES.get(result.action_type, set())
         if not result.target_id or result.target_type not in allowed_types:
             result.action_type = "wait"
             result.target_id = None
             result.target_type = None
-    # 理由为空时填充默认值 / Default reasoning if empty
+        # 存在性校验：目标必须在当前场景中 / Existence check: target must be in current scene
+        elif scene_info and not _target_in_scene(result.target_id, result.target_type, scene_info):
+            logger.warning(
+                "[engine] target %s (%s) not in scene, downgrading to wait",
+                result.target_id,
+                result.target_type,
+            )
+            result.action_type = "wait"
+            result.target_id = None
+            result.target_type = None
     if not result.reasoning or not result.reasoning.strip():
         result.reasoning = "等待时机。"
     return result
+
+
+def _target_in_scene(target_id: str, target_type: str, scene_info: dict) -> bool:
+    """检查目标是否在当前场景 / Check if target exists in current scene"""
+    if target_type == "scene_object":
+        objects = scene_info.get("scene_objects", [])
+        return any(o.get("id") == target_id for o in objects)
+    # pc / actor
+    key = "pcs" if target_type == "pc" else "actors"
+    chars = scene_info.get(key, [])
+    return any(c.get("id") == target_id for c in chars)

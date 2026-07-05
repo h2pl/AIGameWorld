@@ -3,6 +3,8 @@
 import Phaser from "phaser";
 import { DialogueBubble } from "./DialogueBubble";
 import type { CharacterData } from "../types";
+import { playState } from "../utils/playState";
+import { speedMs } from "../config/playback";
 
 export class CharacterSprite {
   readonly id: string;
@@ -106,20 +108,24 @@ export class CharacterSprite {
 
   /** 走下一步 / Walk next step */
   private walkNext(): void {
+    // 暂停或队列空 / Paused or queue empty
+    if (!playState.playing) return;
     if (this.walkQueue.length === 0) {
       this.walkOnComplete?.();
       this.walkOnComplete = null;
       return;
     }
     const s = this.walkQueue.shift()!;
+    const speed = speedMs(this.walkSpeed); // 实时读倍速 / Read speed dynamically
     this.scene.tweens.add({
       targets: this.sprite,
       x: s.wx,
       y: s.wy,
-      duration: this.walkSpeed,
+      duration: speed,
       ease: "Linear",
       onUpdate: () => this.updateFollowers(),
       onComplete: () => {
+        if (!playState.playing) return; // 完成时也检查 / Also check on completion
         this.walkNext();
       },
     });

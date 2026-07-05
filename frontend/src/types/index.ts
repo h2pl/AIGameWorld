@@ -11,6 +11,7 @@ export interface SceneData {
   spawn_y?: number;
   map_width?: number;
   map_height?: number;
+  ext_json?: string;
   exits: ExitData[];
   landmarks: LandmarkData[];
   environment: { weather?: string; time_of_day?: string };
@@ -151,7 +152,4 @@ export interface InitialWorldState {
   db_name: string;
   runtime: RuntimeConfig;
   scenes: SceneData[];
-  characters: CharacterData[];
-  items: ItemData[];
-  scene_objects: SceneObjectData[];
 }

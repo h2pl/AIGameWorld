@@ -22,6 +22,8 @@ class OverallState(TypedDict, total=False):
     narrative: str  # DM 叙事文本 / DM narrative text
     # PC 运行时状态——tick 内引擎修改此 map，末尾统一入库
     pc_state_map: dict[str, dict[str, Any]]
+    # Actor 运行时状态——只读，用于查询 actor 坐标 / Actor runtime state — read-only, for position lookup
+    actor_state_map: dict[str, dict[str, Any]]
     # flush_events 产出的待持久化事件列表 / Pending events for persistence
     _pending_events: list[dict[str, Any]]
     # dm_create 产出的 LLM 原始输出，供 persist_tick 落 dm_records

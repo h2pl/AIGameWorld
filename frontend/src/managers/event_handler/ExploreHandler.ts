@@ -1,38 +1,36 @@
-/** 探索事件处理器 / Explore event handler */
-import type { CharacterManager } from "../CharacterManager";
+/** 探索事件处理器 / Explore event handler — 播放 waypoints 路径行走动画 */
+import { createLogger } from "../../utils/logger";
+const log = createLogger("ExploreHandler");
+import type { CharacterSprite } from "../../gameobjects/CharacterSprite";
 import type { MovementManager } from "../MovementManager";
 import type { EventData } from "../../types";
 
 export class ExploreHandler {
   constructor(
-    private getCharManager: () => CharacterManager | undefined,
+    private getSprite: (id: string) => CharacterSprite | undefined,
     private getMovementManager: () => MovementManager | undefined,
     private followSprite: (sprite: any) => void
   ) {}
 
+  /** 处理探索事件，按 waypoints 走路径 / Handle explore event, walk along waypoints */
   async handle(ev: EventData): Promise<void> {
     const payload = ev.payload;
     if (!payload) return;
-
     const pcId = String(payload.pc_id || "");
     const waypoints = payload.waypoints as Array<{ x: number; y: number }> | undefined;
-    const finalX = Number(payload.final_x ?? 0);
-    const finalY = Number(payload.final_y ?? 0);
     if (!pcId || !waypoints?.length) return;
 
-    const sprite = this.getCharManager()?.getSprite(pcId);
+    const sprite = this.getSprite(pcId);
     if (!sprite) return;
-    const movementManager = this.getMovementManager();
-    if (!movementManager) return;
+    const mm = this.getMovementManager();
+    if (!mm) return;
 
-    // 镜头跟随当前探索角色 / Camera follows exploring PC
+    const last = waypoints[waypoints.length - 1];
     this.followSprite(sprite.rawSprite);
-
-    const allWaypoints = [...waypoints, { x: finalX, y: finalY }];
     return new Promise((resolve) => {
-      movementManager.walkRoute(sprite, allWaypoints, {
+      mm.walkRoute(sprite, waypoints, {
         onComplete: () => {
-          console.log("[ExploreHandler] explore done: %s → (%d,%d)", pcId, finalX, finalY);
+          log.info(`explore done: ${pcId} → (${last.x},${last.y})`);
           resolve();
         },
       });

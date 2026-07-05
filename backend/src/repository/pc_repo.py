@@ -1,11 +1,9 @@
-"""角色仓储 / Character Repository — 用 SQLiteClient，零 SQL."""
+"""PC 仓储 / Player Character Repository — 主角团 CRUD 操作"""
 
 from typing import Any
 
-from ..domain import Actor, PlayerCharacter
+from ..domain import PlayerCharacter
 from ..storage.sqlite_client import SQLiteClient
-
-# ── 辅助函数 / Helpers ──
 
 
 def _val(data: dict[str, Any], key: str, default: Any = None) -> Any:
@@ -13,26 +11,21 @@ def _val(data: dict[str, Any], key: str, default: Any = None) -> Any:
     return default if v is None else v
 
 
+# PC CRUD / 主角团增删改查
 class PcRepo:
-    """角色存取——PC + Actor."""
-
     def __init__(self, client: SQLiteClient):
         self._db = client
 
-    # ── 写 ──
-    async def save_pc(self, pc: PlayerCharacter) -> None:
+    async def save(self, pc: PlayerCharacter) -> None:
         await self._db.execute(
-            """
-            INSERT INTO player_characters (id, name, role, race, status, scene_id,
+            """INSERT INTO player_characters (id, name, role, race, status, scene_id,
             position_x, position_y, attributes_json, combat_json, arc_json,
             values_json, equipment_json, inventory_json, relationships_json, world_id, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+08:00'))
             ON CONFLICT(id) DO UPDATE SET
             status=excluded.status, scene_id=excluded.scene_id,
             position_x=excluded.position_x, position_y=excluded.position_y,
-            world_id=excluded.world_id,
-            updated_at=datetime('now')
-        """,
+            world_id=excluded.world_id, updated_at=datetime('now', '+08:00')""",
             (
                 pc.id,
                 pc.name,
@@ -54,48 +47,7 @@ class PcRepo:
         )
         await self._db.commit()
 
-    async def save_actor(self, actor: Actor) -> None:
-        await self._db.execute(
-            """
-            INSERT INTO actors (id, name, role, race, status, disposition, scene_id,
-            position_x, position_y, attributes_json, combat_json, functions_json,
-            function_data_json, inventory_json, relationships_json, dm_assigned,
-            motivation_injected, world_id, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-            ON CONFLICT(id) DO UPDATE SET
-            status=excluded.status, disposition=excluded.disposition, scene_id=excluded.scene_id,
-            position_x=excluded.position_x, position_y=excluded.position_y,
-            dm_assigned=excluded.dm_assigned,
-            motivation_injected=excluded.motivation_injected,
-            world_id=excluded.world_id,
-            updated_at=datetime('now')
-        """,
-            (
-                actor.id,
-                actor.name,
-                actor.role,
-                actor.race,
-                actor.status,
-                actor.disposition,
-                actor.scene_id,
-                actor.position_x,
-                actor.position_y,
-                actor.attributes_json,
-                actor.combat_json,
-                actor.functions_json,
-                actor.function_data_json,
-                actor.inventory_json,
-                actor.relationships_json,
-                int(actor.dm_assigned),
-                actor.motivation_injected,
-                actor.world_id,
-            ),
-        )
-        await self._db.commit()
-
-    # ── 读 ──
-    async def load_pcs(self, world_id: str | None = None) -> list[PlayerCharacter]:
-        """加载 PC / Load PCs. world_id=None 加载全部."""
+    async def load_all(self, world_id: str | None = None) -> list[PlayerCharacter]:
         if world_id:
             rows = await self._db.fetch_all(
                 "SELECT * FROM player_characters WHERE world_id = ?", (world_id,)
@@ -104,36 +56,27 @@ class PcRepo:
             rows = await self._db.fetch_all("SELECT * FROM player_characters")
         return [_pc_from_row(r) for r in rows]
 
-    async def load_pc(self, char_id: str) -> PlayerCharacter | None:
-        """按 ID 加载单个 PC / Load PC by ID."""
-        row = await self._db.fetch_one("SELECT * FROM player_characters WHERE id = ?", (char_id,))
+    async def load_one(self, pc_id: str) -> PlayerCharacter | None:
+        row = await self._db.fetch_one("SELECT * FROM player_characters WHERE id = ?", (pc_id,))
         return _pc_from_row(row) if row else None
 
-    async def load_actors(self, world_id: str | None = None) -> list[Actor]:
-        """加载 Actor / Load Actors. world_id=None 加载全部."""
-        if world_id:
-            rows = await self._db.fetch_all("SELECT * FROM actors WHERE world_id = ?", (world_id,))
-        else:
-            rows = await self._db.fetch_all("SELECT * FROM actors")
-        return [_actor_from_row(r) for r in rows]
+    async def list_rows(self, world_id: str) -> list[dict]:
+        return await self._db.fetch_all(
+            "SELECT * FROM player_characters WHERE world_id = ?", (world_id,)
+        )
 
-    async def load_actor(self, actor_id: str) -> Actor | None:
-        """按 ID 加载单个 Actor / Load Actor by ID."""
-        row = await self._db.fetch_one("SELECT * FROM actors WHERE id = ?", (actor_id,))
-        return _actor_from_row(row) if row else None
+    async def reset_positions(self, world_id: str) -> None:
+        await self._db.execute(
+            "UPDATE player_characters SET position_x = 0, position_y = 0 WHERE world_id = ?",
+            (world_id,),
+        )
+        await self._db.commit()
 
-    async def delete_pcs_by_world(self, world_id: str) -> None:
-        """删除指定 world 下所有 PC / Delete all PCs for a world."""
+    async def delete_by_world(self, world_id: str) -> None:
         await self._db.execute("DELETE FROM player_characters WHERE world_id = ?", (world_id,))
         await self._db.commit()
 
-    async def delete_actors_by_world(self, world_id: str) -> None:
-        """删除指定 world 下所有 Actor / Delete all actors for a world."""
-        await self._db.execute("DELETE FROM actors WHERE world_id = ?", (world_id,))
-        await self._db.commit()
 
-
-# Row → Model
 def _pc_from_row(row: dict) -> PlayerCharacter:
     return PlayerCharacter(
         id=row["id"],
@@ -146,24 +89,5 @@ def _pc_from_row(row: dict) -> PlayerCharacter:
         position_y=_val(row, "position_y", 0),
         attributes_json=_val(row, "attributes_json", "{}"),
         combat_json=_val(row, "combat_json", "{}"),
-        world_id=_val(row, "world_id", ""),
-    )
-
-
-def _actor_from_row(row: dict) -> Actor:
-    return Actor(
-        id=row["id"],
-        name=row["name"],
-        role=row["role"],
-        race=_val(row, "race"),
-        status=_val(row, "status", "active"),
-        disposition=_val(row, "disposition", "neutral"),
-        scene_id=_val(row, "scene_id", ""),
-        position_x=_val(row, "position_x", 0),
-        position_y=_val(row, "position_y", 0),
-        attributes_json=_val(row, "attributes_json", "{}"),
-        combat_json=_val(row, "combat_json", "{}"),
-        dm_assigned=bool(_val(row, "dm_assigned", 0)),
-        motivation_injected=_val(row, "motivation_injected"),
         world_id=_val(row, "world_id", ""),
     )

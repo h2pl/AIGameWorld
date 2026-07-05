@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from src.orchestrator import Orchestrator
+from src.repository.actor_repo import ActorRepo
 from src.repository.dm_record_repo import DMRecordRepo
 from src.repository.event_repo import TickEventRepo
 from src.repository.memory_repo import MemoryRepo
@@ -116,15 +117,16 @@ async def _do_run(
     print("  [DB] initialized")
 
     pc_repo = PcRepo(db)
+    actor_repo = ActorRepo(db)
     record_repo = DMRecordRepo(db)
 
     if pack_id:
-        pcs = await pc_repo.load_pcs(pack_id)
-        actors = await pc_repo.load_actors(pack_id)
+        pcs = await pc_repo.load_all(pack_id)
+        actors = await actor_repo.load_all(pack_id)
         print(f"  [DB] pack_id={pack_id}")
     else:
-        pcs = await pc_repo.load_pcs()
-        actors = await pc_repo.load_actors()
+        pcs = await pc_repo.load_all()
+        actors = await actor_repo.load_all()
         print("  [DB] no pack_id specified")
     print(f"  [DB] Loaded {len(pcs)} PCs, {len(actors)} Actors")
 
@@ -803,9 +805,10 @@ def main() -> None:
     try:
         config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
         configure_format(config.logging.json_format)
+        setup_logging(config.logging.level)
     except Exception:
         configure_format(True)
-    setup_logging()
+        setup_logging()
     try:
         configure_console(config.logging.console.model_dump())
     except Exception:

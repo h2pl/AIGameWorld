@@ -21,6 +21,7 @@ _ACTOR_THRESHOLD = 200
 async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> dict:
     """Phase 7: 遍历所有角色执行反思 / Reflect on all characters."""
     pc_repo = get_repo(config, "char")
+    actor_repo = get_repo(config, "actor")
     memory_repo = get_repo(config, "memory")
     if not pc_repo or not memory_repo:
         return {"reflected_pcs": []}
@@ -29,7 +30,7 @@ async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> d
     tick = state.get("tick", 0)
 
     # PC 反思 / PC reflection
-    for pc in await pc_repo.load_pcs():
+    for pc in await pc_repo.load_all():
         if _needs_reflection(memory_repo, pc.id, _PC_THRESHOLD):
             insight = await _reflect_one(
                 reflection_engine,
@@ -46,10 +47,10 @@ async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> d
                 insights.append(insight)
                 memory_repo.store_reflection(pc.id, insight["insight"], tick)
                 pc.importance_accumulator = 0.0
-                await pc_repo.save_pc(pc)
+                await pc_repo.save(pc)
 
     # Actor 反思 / Actor reflection
-    for actor in await pc_repo.load_actors():
+    for actor in await actor_repo.load_all():
         if _needs_reflection(memory_repo, actor.id, _ACTOR_THRESHOLD):
             insight = await _reflect_one(
                 reflection_engine,
@@ -66,7 +67,7 @@ async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> d
                 insights.append(insight)
                 memory_repo.store_reflection(actor.id, insight["insight"], tick)
                 actor.importance_accumulator = 0.0
-                await pc_repo.save_actor(actor)
+                await actor_repo.save(actor)
 
     return {"reflected_pcs": [i["pc_id"] for i in insights]}
 

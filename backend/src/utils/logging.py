@@ -111,8 +111,10 @@ class _ConsoleFilter(logging.Filter):
         return False
 
 
-def setup_logging(level: int = logging.INFO) -> None:
+def setup_logging(level: str = "INFO") -> None:
     """初始化日志——控制台可配置 + 文件分流 + JSON 格式."""
+    log_level = getattr(logging, level.upper(), logging.INFO)
+
     for stream in (sys.stdout, sys.stderr):
         with contextlib.suppress(Exception):
             # reconfigure 仅在支持的平台可用 / reconfigure may not exist on all platforms
@@ -121,7 +123,7 @@ def setup_logging(level: int = logging.INFO) -> None:
                 cast(Any, stream).reconfigure(encoding="utf-8", errors="replace")
 
     root = logging.getLogger()
-    root.setLevel(level)
+    root.setLevel(log_level)
     if any(isinstance(h, logging.StreamHandler) for h in root.handlers):
         return
 
@@ -129,7 +131,7 @@ def setup_logging(level: int = logging.INFO) -> None:
 
     # ── 控制台：按类别过滤 ──
     console = logging.StreamHandler(sys.stderr)
-    console.setLevel(level)
+    console.setLevel(log_level)
     console.setFormatter(fmt)
     console.addFilter(_ConsoleFilter())
     root.addHandler(console)

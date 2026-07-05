@@ -4,15 +4,7 @@
  * / Verify KEY, DEPTH, TILEMAP export values
  */
 import { describe, it, expect } from "vitest";
-import { KEY, DEPTH, TILEMAP } from "../../../src/constants";
-
-describe("KEY", () => {
-  it("should define image and tilemap cache keys", () => {
-    // 图片和地图缓存键应存在 / Image and tilemap cache keys should exist
-    expect(KEY.IMAGE.TUXEMON).toBe("tuxemon");
-    expect(KEY.TILEMAP.TUXEMON).toBe("tuxemon-map");
-  });
-});
+import { DEPTH, TILEMAP } from "../../../src/constants";
 
 describe("DEPTH", () => {
   it("should have ascending layer order", () => {

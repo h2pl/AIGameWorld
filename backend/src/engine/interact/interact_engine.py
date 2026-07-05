@@ -138,7 +138,7 @@ async def _ability_mod_for(pc_repo, char_id: str, ability: str) -> int:
     """加载 PC 属性并计算检定加值 / Load PC attributes and compute the check bonus."""
     if not pc_repo or not char_id:
         return 0
-    pc = await pc_repo.load_pc(char_id)
+    pc = await pc_repo.load_one(char_id)
     if not pc:
         return 0
     try:

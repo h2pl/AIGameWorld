@@ -1,15 +1,12 @@
+// --- / ---
+// -- file start -- / file start
 /** 启动引导 / Bootstrap — 等后端就绪 + 加载世界状态 */
 import { CONFIG } from "./config";
 import type { InitialWorldState } from "./types";
+import { createLogger } from "./utils/logger";
+const log = createLogger("Bootstrap");
 
-const L = "[Bootstrap]";
-
-/** 等待后端健康检查通过 / Wait until backend health check passes */
-export async function waitForBackend(
-  statusEl?: HTMLElement,
-  pollMs = 800,
-  timeoutMs = 60000
-): Promise<boolean> {
+export async function waitForBackend(statusEl?: HTMLElement, pollMs = 800, timeoutMs = 60000): Promise<boolean> {
   const url = `${CONFIG.API.base}${CONFIG.API.health}`;
   const start = Date.now();
   let attempt = 0;
@@ -17,87 +14,51 @@ export async function waitForBackend(
     attempt++;
     try {
       const resp = await fetch(url);
-      if (resp.ok) {
-        console.log(`${L} backend ready after ${attempt} attempt(s)`);
-        return true;
-      }
-      console.warn(`${L} backend health not ok (${resp.status}), attempt ${attempt}`);
-    } catch {
-      console.warn(`${L} backend not reachable, attempt ${attempt}`);
-    }
+      if (resp.ok) { log.info(`backend ready after ${attempt} attempt(s)`); return true; }
+      log.warn(`backend health not ok (${resp.status}), attempt ${attempt}`);
+    } catch { log.warn(`backend not reachable, attempt ${attempt}`); }
     if (statusEl) statusEl.textContent = `等待后端就绪... (${attempt})`;
-    await new Promise((resolve) => setTimeout(resolve, pollMs));
+    await new Promise(r => setTimeout(r, pollMs));
   }
-  console.error(`${L} backend readiness timeout after ${timeoutMs}ms`);
+  log.error(`backend readiness timeout after ${timeoutMs}ms`);
   return false;
 }
 
-/** 从后端加载初始世界状态 / Load initial world state from backend */
-export async function loadWorldState(packId: string): Promise<InitialWorldState | null> {
-  const url = `${CONFIG.API.base}${CONFIG.API.worldState}/${packId}/state`;
-  console.log(`${L} loadWorldState: fetching ${url}`);
-  const maxAttempts = 5;
-  const delayMs = 500;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+export async function loadWorldState(worldId: string): Promise<InitialWorldState | null> {
+  const url = `${CONFIG.API.base}${CONFIG.API.worldState}/${worldId}/state`;
+  log.info(`loading world: ${url}`);
+  for (let i = 1; i <= 5; i++) {
     try {
       const resp = await fetch(url);
       if (resp.ok) {
-        const data = (await resp.json()) as InitialWorldState;
-        console.log(`${L} API OK: pack=${data.world_id} chars=${data.characters?.length || 0}`);
+        const data = await resp.json() as InitialWorldState;
+        log.info(`world loaded: id=${data.world_id} scenes=${data.scenes?.length || 0}`);
         return data;
       }
-      console.warn(`${L} API not available (${resp.status}), attempt ${attempt}/${maxAttempts}`);
-    } catch (e) {
-      console.warn(
-        `${L} Backend unreachable, attempt ${attempt}/${maxAttempts}`,
-        e instanceof Error ? e.message : e
-      );
-    }
-    if (attempt < maxAttempts) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
+      log.warn(`API not available (${resp.status}), attempt ${i}/5`);
+    } catch (e) { log.warn(`unreachable, attempt ${i}/5`); }
+    if (i < 5) await new Promise(r => setTimeout(r, 500));
   }
-  console.error(`${L} backend unreachable after retries, using mock`);
+  log.error(`world load failed`);
   return null;
 }
 
-/** 完整启动引导：等后端 → 加载世界 / Full bootstrap: wait for backend → load world */
-export async function bootstrap(): Promise<{
-  world: InitialWorldState;
-  packId: string;
-}> {
-  // 等待遮罩 / Wait overlay
-  const waitOverlay = document.createElement("div");
-  waitOverlay.id = "backend-wait-overlay";
-  waitOverlay.style.cssText =
-    "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#1a1a2e;color:#ffd700;z-index:9999;font-size:18px;font-family:Segoe UI,sans-serif;";
-  waitOverlay.textContent = "等待后端就绪...";
-  document.body.appendChild(waitOverlay);
-  const backendReady = await waitForBackend(waitOverlay);
-  waitOverlay.remove();
+export async function bootstrap(): Promise<{ world: InitialWorldState }> {
+  const overlay = document.createElement("div");
+  overlay.id = "backend-wait-overlay";
+  overlay.style.cssText = "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#1a1a2e;color:#ffd700;z-index:9999;font-size:18px;font-family:Segoe UI,sans-serif;";
+  overlay.textContent = "等待后端就绪...";
+  document.body.appendChild(overlay);
+  const ok = await waitForBackend(overlay);
+  overlay.remove();
 
   const params = new URLSearchParams(window.location.search);
-  const packId = params.get("pack") || "mock_world";
-  console.log(`${L} world_id=${packId}`);
+  const worldId = params.get("pack") || "mock_world";
 
   let world: InitialWorldState | null = null;
-  if (backendReady) {
-    world = await loadWorldState(packId);
-  }
+  if (ok) world = await loadWorldState(worldId);
   if (!world) {
-    world = {
-      world_id: packId,
-      data_tick: 0,
-      display_tick: 0,
-      llm_mock: false,
-      data_mode: "unknown",
-      db_name: "unknown",
-      runtime: { llm_mock: false, data_mode: "unknown", db_name: "unknown" },
-      scenes: [],
-      characters: [],
-      items: [],
-      scene_objects: [],
-    };
+    world = { world_id: worldId, data_tick: 0, display_tick: 0, llm_mock: false, data_mode: "unknown", db_name: "unknown", runtime: { llm_mock: false, data_mode: "unknown", db_name: "unknown" }, scenes: [] };
   }
-  return { world, packId };
+  return { world };
 }

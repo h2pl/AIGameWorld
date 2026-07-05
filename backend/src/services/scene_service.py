@@ -31,24 +31,24 @@ async def build_scene_info(state: OverallState, config=None) -> dict:
     scene_id = state.get("scene_id", "")
     tick_message_id = state.get("tick_message_id", "")
     logger.info("[service] tick=%s scene_id=%s tick_message_id=%s", tick, scene_id, tick_message_id)
-    info, pc_state_map = await _build_scene_info(state, config)
-    return {"scene_info": info, "pc_state_map": pc_state_map}
+    info, pc_state_map, actor_state_map = await _build_scene_info(state, config)
+    return {"scene_info": info, "pc_state_map": pc_state_map, "actor_state_map": actor_state_map}
 
 
 async def _build_scene_info(
     state: OverallState, config=None
-) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
-    """一次性构建当前场景的完整信息 + PC 运行时状态 map /
-    Build the current scene's full info + PC runtime state map in one pass."""
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """一次性构建当前场景完整信息 + PC/Actor 运行时状态 map"""
     scene_id = state.get("scene_id", "")
     world_id = state.get("world_id", "")
     pc_repo = get_repo(config, "char")
+    actor_repo = get_repo(config, "actor")
     scene_repo = get_repo(config, "scene")
     if not pc_repo or not scene_id:
-        return {}, {}
+        return {}, {}, {}
 
-    pcs = await pc_repo.load_pcs(world_id) if world_id else []
-    actors = await pc_repo.load_actors(world_id) if world_id else []
+    pcs = await pc_repo.load_all(world_id) if world_id else []
+    actors = await actor_repo.load_all(world_id) if world_id else []
     # 主角团默认都在当前场景 / All PCs are always in the current scene
     scene_pcs = list(pcs)
     scene_actors = [actor for actor in actors if getattr(actor, "scene_id", "") == scene_id]
@@ -63,7 +63,6 @@ async def _build_scene_info(
     pc_positions = await _assign_pc_positions(scene_pcs, scene, pc_repo, spawn_radius=1)
 
     # 构建 PC 运行时状态 map（tick 内各引擎读写此 map，末尾统一入库）
-    # / Build PC runtime state map (engines read/write during tick, persisted at tick end)
     pc_state_map: dict[str, dict[str, Any]] = {}
     for pc in scene_pcs:
         pos = pc_positions.get(pc.id, {"x": pc.position_x, "y": pc.position_y})
@@ -74,13 +73,25 @@ async def _build_scene_info(
             "status": pc.status,
         }
 
-    return {
-        "scene": scene_ctx,
-        "scene_objects": scene_object_ctx,
-        "pcs": [_build_pc_ctx(pc, pc_positions) for pc in scene_pcs],
-        "actors": _build_actor_ctx(scene_actors),
-        "pc_positions": pc_positions,
-    }, pc_state_map
+    # 构建 Actor 运行时状态 map（只读，用于查询位置）
+    actor_state_map: dict[str, dict[str, Any]] = {}
+    for actor in scene_actors:
+        actor_state_map[actor.id] = {
+            "position_x": actor.position_x,
+            "position_y": actor.position_y,
+            "scene_id": scene_id,
+        }
+
+    return (
+        {
+            "scene": scene_ctx,
+            "scene_objects": scene_object_ctx,
+            "pcs": [_build_pc_ctx(pc, pc_positions) for pc in scene_pcs],
+            "actors": _build_actor_ctx(scene_actors),
+        },
+        pc_state_map,
+        actor_state_map,
+    )
 
 
 async def _assign_pc_positions(
@@ -92,9 +103,14 @@ async def _assign_pc_positions(
     """把未设置坐标的 PC 分配到场景出生点附近，返回 id→{x,y} 映射.
 
     以 spawn 为中心，在 (2*radius+1)^2 的范围内按顺序占位，避免重叠。
-    NPC 保持 mock 或 world-pack 中的固定坐标，不参与分配。
+    坐标(0,0) 或 scene_id 不匹配当前场景的 PC 视为未设置，分配到新场景出生点。
     """
-    unset_pcs = [pc for pc in pcs if pc.position_x == 0 and pc.position_y == 0]
+    unset_pcs = [
+        pc
+        for pc in pcs
+        if (pc.position_x == 0 and pc.position_y == 0)
+        or getattr(pc, "scene_id", "") != (scene.get("id", "") if scene else "")
+    ]
     if not unset_pcs:
         return {}
 
@@ -144,6 +160,7 @@ def _build_scene_ctx(scene: dict | None, scene_id: str) -> dict[str, Any]:
             "landmarks": [],
             "exits": [],
         }
+    ext_json = scene.get("ext_json", "{}")
     return {
         "id": scene.get("id", scene_id),
         "name": scene.get("name", ""),
@@ -156,6 +173,7 @@ def _build_scene_ctx(scene: dict | None, scene_id: str) -> dict[str, Any]:
         "map_height": scene.get("map_height", 40),
         "landmarks": scene.get("landmarks", []),
         "exits": scene.get("exits", []),
+        "ext_json": ext_json,
     }
 
 

@@ -1,0 +1,131 @@
+// --- TickPlayer / Tick Player ---
+// --- 状态机 + 轮询 + 事件分发 ---
+// --- / ---
+// -- file start -- / file start
+/** TickPlayer — 控制 tick 播放流程（状态机 + 轮询 + 事件分发） */
+import type { EventManager } from "./managers/EventManager";
+import type { EventData } from "./types";
+import * as API from "./client/api";
+import { speedMs } from "./config/playback";
+import { createLogger } from "./utils/logger";
+const log = createLogger("TickPlayer");
+
+export type PlayerState = "idle" | "running" | "stopped";
+
+export class TickPlayer {
+  private _state: PlayerState = "idle";
+  private _pollTimer: number | null = null;
+  private _lastTick = 0;
+  private _baseUrl: string;
+  private _worldId: string;
+  private _eventManager: EventManager;
+
+  constructor(baseUrl: string, worldId: string, em: EventManager) {
+    this._baseUrl = baseUrl; this._worldId = worldId; this._eventManager = em;
+  }
+
+  get state(): PlayerState { return this._state; }
+  get lastTick(): number { return this._lastTick; }
+
+  /** 从后端恢复当前 tick 的场景 / Recover scene from last tick on page refresh */
+  async recoverFromReload(displayTick: number): Promise<void> {
+    if (displayTick <= 0) return;
+    try {
+      const data = await API.fetchEvents(this._baseUrl, this._worldId, displayTick - 1);
+      const events = (data.events || []).filter((ev: any) => ev.tick === displayTick);
+      if (events.length) {
+        const ed: EventData[] = events.map((ev: any) => ({ type: ev.type, tick: ev.tick, payload: ev.payload }));
+        await this._eventManager.replayTick(displayTick, ed);
+        this._lastTick = displayTick;
+        log.info(`recovered tick=${displayTick} events=${ed.length}`);
+      }
+    } catch (e) { log.warn(`recoverFromReload failed`, e); }
+  }
+
+  /** 运行 N 个 tick */
+  async runTicks(n: number, onTick: (tick: number, events: any[]) => void): Promise<number> {
+    if (this._state === "running") return 0;
+    this._state = "running";
+    this._eventManager.running = true;
+    const targetTick = this._lastTick + n;
+    try { await API.triggerBatch(this._baseUrl, this._worldId, n); }
+    catch (e) { this._state = "idle"; throw e; }
+
+    let delivered = 0;
+    while (this._state === "running" && this._lastTick < targetTick) {
+      try {
+        const data = await API.fetchEvents(this._baseUrl, this._worldId, this._lastTick);
+        if (data.events?.length) {
+          const tick = this._lastTick + 1;
+          const evs = data.events.filter((ev) => ev.tick === tick);
+          if (!evs.length) { await _sleep(speedMs(500)); continue; }
+          this._lastTick = tick;
+          await this._playTick(tick, evs, onTick);
+          await API.syncDisplayTick(this._baseUrl, this._worldId, tick);
+          delivered++;
+        }
+      } catch { await _sleep(speedMs(500)); }
+      if (this._lastTick >= targetTick) break;
+      await _sleep(speedMs(500));
+    }
+    this._state = "idle";
+    return delivered;
+  }
+
+  async startLoop(onTick: (tick: number, events: any[]) => void): Promise<void> {
+    if (this._state === "running") return;
+    this._state = "running"; this._eventManager.running = true;
+    await API.startLoop(this._baseUrl, this._worldId);
+    this._startPolling(onTick);
+  }
+
+  async pauseLoop(): Promise<void> {
+    if (this._state !== "running") return;
+    this._state = "idle"; this._stopPolling(); this._eventManager.running = false;
+    await API.pauseLoop(this._baseUrl, this._worldId).catch(e => log.warn(`pause failed`, e));
+  }
+
+  async resumeLoop(onTick: (tick: number, events: any[]) => void): Promise<void> {
+    if (this._state === "running") return;
+    this._state = "running"; this._eventManager.running = true;
+    await API.resumeLoop(this._baseUrl, this._worldId);
+    this._startPolling(onTick);
+  }
+
+  async reset(): Promise<void> {
+    this._state = "idle"; this._stopPolling(); this._lastTick = 0; this._eventManager.running = false;
+    await API.resetWorld(this._baseUrl, this._worldId);
+  }
+
+  stop(): void {
+    this._state = "idle"; this._stopPolling(); this._eventManager.running = false;
+  }
+
+  private _startPolling(onTick: (tick: number, events: any[]) => void): void {
+    if (this._pollTimer) return;
+    const poll = async () => {
+      if (this._state !== "running") return;
+      try {
+        const data = await API.fetchEvents(this._baseUrl, this._worldId, this._lastTick);
+        if (data.events?.length) {
+          const tick = this._lastTick + 1;
+          const evs = data.events.filter((ev) => ev.tick === tick);
+          if (evs.length) { this._lastTick = tick; await this._playTick(tick, evs, onTick); }
+        }
+      } catch (e) { log.warn(`poll failed`, e); }
+      if (this._state === "running") this._pollTimer = window.setTimeout(poll, speedMs(1000));
+    };
+    this._pollTimer = window.setTimeout(poll, speedMs(500));
+  }
+
+  private _stopPolling(): void {
+    if (this._pollTimer) { window.clearTimeout(this._pollTimer); this._pollTimer = null; }
+  }
+
+  private async _playTick(tick: number, evs: any[], onTick: (tick: number, events: any[]) => void): Promise<void> {
+    const ed: EventData[] = evs.map((ev: any) => ({ type: ev.type, tick: ev.tick, payload: ev.payload }));
+    await this._eventManager.processTick(tick, ed, (t, e) => onTick(t, e as any));
+  }
+}
+
+function _sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }

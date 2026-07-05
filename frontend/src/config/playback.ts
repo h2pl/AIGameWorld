@@ -1,3 +1,4 @@
+// -- file start -- / file start
 /** 播放倍速 / Playback speed multiplier */
 const SPEEDS = [1, 1.5, 2, 4] as const;
 
@@ -8,9 +9,10 @@ export function getSpeed(): number {
   return _speed;
 }
 
-/** 设置倍速 / Set speed */
+/** 设置倍速 / Set speed (clamped to available options) */
 export function setSpeed(s: number): number {
-  _speed = s;
+  const valid = SPEEDS.includes(s as any) ? s : SPEEDS[SPEEDS.length - 1];
+  _speed = valid;
   return _speed;
 }
 

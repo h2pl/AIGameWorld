@@ -38,7 +38,7 @@ class DMRecordRepo:
         """更新 dm_narrative + ext（dm_narrate 阶段）."""
         logger.info("[repo] update_narrative tick=%s", record.tick)
         await self._db.execute(
-            """UPDATE dm_records SET dm_narrative = ?, ext_json = ?, updated_at = datetime('now')
+            """UPDATE dm_records SET dm_narrative = ?, ext_json = ?, updated_at = datetime('now', '+08:00')
                WHERE world_id = ? AND tick = ?""",
             (record.dm_narrative, json.dumps(record.ext), record.world_id, record.tick),
         )
@@ -88,6 +88,16 @@ class DMRecordRepo:
                VALUES (?, ?, ?, ?)""",
             (summary.world_id, summary.tick_start, summary.tick_end, summary.summary),
         )
+        await self._db.commit()
+
+    async def delete_by_world(self, world_id: str) -> None:
+        """删除指定 world 下所有 DM 记录 / Delete all DM records for a world."""
+        await self._db.execute("DELETE FROM dm_records WHERE world_id = ?", (world_id,))
+        await self._db.commit()
+
+    async def delete_summaries_by_world(self, world_id: str) -> None:
+        """删除指定 world 下所有摘要 / Delete all summaries for a world."""
+        await self._db.execute("DELETE FROM story_summaries WHERE world_id = ?", (world_id,))
         await self._db.commit()
 
     async def load_summaries(self, world_id: str) -> list[StorySummary]:

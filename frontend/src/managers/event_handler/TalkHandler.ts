@@ -1,8 +1,12 @@
+// -- file start -- / file start
 /** 对话事件处理器 / Talk event handler */
-import type { CharacterManager } from "../CharacterManager";
+import { createLogger } from "../../utils/logger";
+const log = createLogger("TalkHandler");
+import type { CharacterSprite } from "../../gameobjects/CharacterSprite";
 import type { MovementManager } from "../MovementManager";
 import type { EventData } from "../../types";
 import { speedMs } from "../../config/playback";
+import { playState } from "../../utils/playState";
 
 export class TalkHandler {
   private dialogueQueue: Array<{ speaker_id: string; text: string }> = [];
@@ -10,7 +14,7 @@ export class TalkHandler {
   private dialogueTimer?: number;
 
   constructor(
-    private getCharManager: () => CharacterManager | undefined,
+    private getSprite: (id: string) => CharacterSprite | undefined,
     private getMovementManager: () => MovementManager | undefined,
     private isSceneBuilt: () => boolean,
     private followSprite: (sprite: any) => void
@@ -21,19 +25,22 @@ export class TalkHandler {
     if (!payload) return;
 
     const pcId = String(payload.pc_id || "");
-    const targetPos = payload.target_position as { x: number; y: number } | undefined;
+    const waypoints = payload.waypoints as Array<{ x: number; y: number }> | undefined;
+    log.info(`talk pc=${pcId} target=${payload.target_id} waypoints=${JSON.stringify(waypoints)}`);
 
     // 镜头跟随当前对话角色 / Camera follows talking PC
     if (pcId) {
-      const sprite = this.getCharManager()?.getSprite(pcId);
+      const sprite = this.getSprite(pcId);
       if (sprite) this.followSprite(sprite.rawSprite);
     }
 
-    // 1. 先走到目标旁边 / Approach target first
-    if (pcId && targetPos) {
-      const sprite = this.getCharManager()?.getSprite(pcId);
+    // 1. 走到目标旁边 / Walk along waypoints to adjacent position
+    if (pcId && waypoints?.length) {
+      const sprite = this.getSprite(pcId);
       if (sprite && this.getMovementManager()) {
-        await this.getMovementManager()!.walkToAdjacent(sprite, targetPos.x, targetPos.y);
+        const mm = this.getMovementManager()!;
+        const endPos = waypoints[waypoints.length - 1];
+        await mm.walkTo(sprite, endPos.x, endPos.y);
       }
     }
 
@@ -65,13 +72,20 @@ export class TalkHandler {
 
   /** 播放队列中下一句对话 / Play next dialogue in queue */
   private _playNextDialogue(onDone?: () => void): void {
+    // 暂停时立即终止 / Abort immediately when paused
+    if (!playState.playing) {
+      this.dialogueQueue = [];
+      this.isPlayingDialogue = false;
+      onDone?.();
+      return;
+    }
     if (this.isPlayingDialogue || this.dialogueQueue.length === 0) {
       if (this.dialogueQueue.length === 0) onDone?.();
       return;
     }
     this.isPlayingDialogue = true;
     const turn = this.dialogueQueue.shift()!;
-    const sprite = this.getCharManager()?.getSprite(turn.speaker_id);
+    const sprite = this.getSprite(turn.speaker_id);
     const advance = () => {
       this.isPlayingDialogue = false;
       this._playNextDialogue(onDone);
@@ -86,7 +100,7 @@ export class TalkHandler {
         this._playNextDialogue(onDone);
       }, speedMs(200));
     } else {
-      console.warn("[TalkHandler] dialogue speaker not found:", turn.speaker_id);
+      log.warn("[TalkHandler] dialogue speaker not found:", turn.speaker_id);
       // 找不到说话者时短暂停留后继续 / Brief pause if speaker missing
       this.dialogueTimer = window.setTimeout(advance, speedMs(600));
     }

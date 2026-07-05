@@ -1,6 +1,5 @@
 /** 地图常量 / Tilemap Constants */
 export const TILEMAP = {
-  TILESET_NAME: "tuxemon-sample-32px-extruded",
   TILE_SIZE: 32,
   MARGIN: 1,
   SPACING: 2,

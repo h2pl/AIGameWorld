@@ -35,7 +35,7 @@ try:
 
     _cfg = load_config("../config.yaml")
     configure_format(_cfg.logging.json_format)
-    setup_logging()
+    setup_logging(_cfg.logging.level)
     configure_console(_cfg.logging.console.model_dump())
 except Exception:
     setup_logging()
@@ -72,6 +72,7 @@ async def lifespan(app: FastAPI):
     # 初始化 LLM 与编排器 / Init LLM client and orchestrator
     from .llm.llm_client import LLMClient
     from .orchestrator import Orchestrator
+    from .repository.actor_repo import ActorRepo
     from .repository.dm_record_repo import DMRecordRepo
     from .repository.event_repo import TickEventRepo
     from .repository.pc_repo import PcRepo
@@ -83,6 +84,7 @@ async def lifespan(app: FastAPI):
         llm=llm,
         repos={
             "char": PcRepo(db),
+            "actor": ActorRepo(db),
             "dm_record": DMRecordRepo(db),
             "scene": SceneRepo(db),
             "world": WorldRepo(db),

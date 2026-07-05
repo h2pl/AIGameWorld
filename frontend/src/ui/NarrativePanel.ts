@@ -1,14 +1,16 @@
-/** 叙事面板 / Narrative Panel — 展示 DM 生成的叙事文本，自动滚动 */
+// --- / ---
+// -- file start -- / file start
+/** 叙事面板 / Narrative Panel — 通过 window tick-event 消费 dm_narrative */
 import { Panel } from "./Panel";
-import { tickStore, type TickState } from "../state/TickStore";
 
 export class NarrativePanel extends Panel {
   private contentEl!: HTMLElement;
   private lines: string[] = [];
-  private $max = 200; // 最多保留 200 行 / Max lines
+  private _onTickEvent: (e: Event) => void;
 
   constructor() {
     super("narrative-panel");
+    this._onTickEvent = (e: Event) => this._handleTickEvent((e as CustomEvent).detail);
   }
 
   protected buildDOM(): HTMLElement {
@@ -16,40 +18,39 @@ export class NarrativePanel extends Panel {
     el.className = "panel narrative-panel";
     el.innerHTML = `
       <div class="panel-header">
-        <span class="panel-icon">📜</span>
-        <span class="panel-title">叙事 / Narrative</span>
+        <span class="panel-icon">📖</span><span class="panel-title">叙事 / Narrative</span>
       </div>
-      <div class="panel-body narrative-body"></div>
-    `;
+      <div class="panel-body narrative-body"></div>`;
     this.contentEl = el.querySelector(".narrative-body")!;
     return el;
   }
 
   protected bindStore(): void {
-    this.unsubscribe = tickStore.subscribe((s: TickState) => {
-      this.onStateChange(s);
-    });
+    window.addEventListener("tick-event", this._onTickEvent);
   }
 
-  private onStateChange(state: TickState): void {
-    if (!state.narrative) return;
-    // 避免重复追加同一行 / Avoid duplicating same line
-    if (this.lines.length > 0 && this.lines[this.lines.length - 1] === state.narrative) return;
-    this.lines.push(state.narrative);
-    if (this.lines.length > this.$max) this.lines.shift();
-    this.render();
+  private _handleTickEvent(detail: { type: string; payload: Record<string, unknown> }): void {
+    if (detail.type !== "dm_narrative") return;
+    const text = (detail.payload?.text as string) || (detail.payload?.narrative as string);
+    if (!text) return;
+    if (this.lines.length > 0 && this.lines[this.lines.length - 1] === text) return;
+    this.lines.push(text);
+    this._render();
   }
 
-  private render(): void {
+  private _render(): void {
     this.contentEl.innerHTML = this.lines
-      .map((l) => `<div class="narrative-line">${this.escapeHtml(l)}</div>`)
+      .map(l => `<div class="narrative-line">${this._escape(l)}</div>`)
       .join("");
     this.contentEl.scrollTop = this.contentEl.scrollHeight;
   }
 
-  private escapeHtml(s: string): string {
-    const d = document.createElement("div");
-    d.textContent = s;
-    return d.innerHTML;
+  private _escape(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  destroy(): void {
+    window.removeEventListener("tick-event", this._onTickEvent);
+    super.destroy();
   }
 }

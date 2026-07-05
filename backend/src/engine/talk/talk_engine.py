@@ -26,10 +26,11 @@ async def process_talk_action(
     hints: list[str],
     scene_id: str,
     tick: int,
+    pc_state_map: dict[str, dict] | None = None,
+    actor_state_map: dict[str, dict] | None = None,
     config: RunnableConfig = None,
 ) -> dict | None:
-    """处理单个 talk 决策 → 生成多轮对话，返回原始对话结果（不构造事件）/
-    Resolve a single talk decision, return the raw dialogue result (not an event)."""
+    """处理单个 talk 决策 → 生成多轮对话，更新发起者坐标到目标旁边"""
     if decision.get("type") != "talk":
         return None
 
@@ -42,20 +43,22 @@ async def process_talk_action(
         char_id, target_id, target_type, reason, plot_brief, hints, scene_id, config
     )
     if not turns:
-        # 降级：没有 LLM/目标时只保留发起者一句话 / fallback: initiator-only line
         turns = [{"speaker_id": char_id, "text": reason or f"{char_id} 发起交谈。"}]
     else:
-        # 规范化 speaker_id：LLM/mock 可能使用占位名，按出现顺序映射为真实 id
-        # Normalize speaker_id: LLM/mock may use placeholder names; map by appearance order
         turns = _normalize_speaker_ids(turns, char_id, target_id)
 
     _store_dialogue_memory(char_id, target_id, turns, tick, config)
+
+    waypoints = _update_talker_position(
+        char_id, target_id, target_type, pc_state_map, actor_state_map
+    )
 
     logger.info("[engine] %s ↔ %s : %d turns", char_id, target_id, len(turns))
     return {
         "kind": "pc_talk",
         "participants": [pid for pid in (char_id, target_id) if pid],
         "turns": turns,
+        "waypoints": waypoints,
     }
 
 
@@ -75,8 +78,9 @@ async def _generate_dialogue(
         return []
 
     pc_repo = get_repo(config, "char")
-    initiator = await pc_repo.load_pc(char_id) if pc_repo else None
-    target = await _load_target(pc_repo, target_id, target_type)
+    actor_repo = get_repo(config, "actor")
+    initiator = await pc_repo.load_one(char_id) if pc_repo else None
+    target = await _load_target(pc_repo, actor_repo, target_id, target_type)
     scene = await _fetch_scene(scene_id, config)
 
     ctx = {
@@ -121,13 +125,13 @@ async def _fetch_scene(scene_id: str, config: RunnableConfig = None) -> dict:
     return scene or empty
 
 
-async def _load_target(pc_repo, target_id: str, target_type: str):
+async def _load_target(pc_repo, actor_repo, target_id: str, target_type: str):
     """按 target_type 加载对话对象 / Load the dialogue target by its type."""
-    if not pc_repo or not target_id:
+    if not target_id:
         return None
     if target_type == "pc":
-        return await pc_repo.load_pc(target_id)
-    return await pc_repo.load_actor(target_id)
+        return await pc_repo.load_one(target_id) if pc_repo else None
+    return await actor_repo.load_one(target_id) if actor_repo else None
 
 
 def _character_ctx(char_id: str, char) -> dict:
@@ -188,3 +192,33 @@ def _store_dialogue_memory(
         memory_repo.store(char_id, f"与 {target_id} 的对话：{transcript}", tick, importance=3)
     if target_id:
         memory_repo.store(target_id, f"与 {char_id} 的对话：{transcript}", tick, importance=3)
+
+
+def _update_talker_position(
+    pc_id: str,
+    target_id: str,
+    target_type: str,
+    pc_state_map: dict[str, dict] | None,
+    actor_state_map: dict[str, dict] | None = None,
+) -> list[dict]:
+    """谈话者移到目标旁边空位，返回 waypoints / Move talker to vacant adjacent cell"""
+    if not pc_state_map or pc_id not in pc_state_map:
+        return []
+    target_map = pc_state_map if target_type == "pc" else actor_state_map
+    target = (target_map or {}).get(target_id, {})
+    tx, ty = target.get("position_x", 0), target.get("position_y", 0)
+    if tx == 0 and ty == 0:
+        return []
+    old_x = pc_state_map[pc_id].get("position_x", 0)
+    old_y = pc_state_map[pc_id].get("position_y", 0)
+
+    from ...utils.helpers import build_occupied_set, find_vacant_adjacent
+
+    occupied = build_occupied_set(pc_state_map, actor_state_map, exclude_id=pc_id)
+    new_x, new_y = find_vacant_adjacent(tx, ty, occupied)
+
+    pc_state_map[pc_id]["position_x"] = new_x
+    pc_state_map[pc_id]["position_y"] = new_y
+    if old_x == new_x and old_y == new_y:
+        return []
+    return [{"x": old_x, "y": old_y}, {"x": new_x, "y": new_y}]

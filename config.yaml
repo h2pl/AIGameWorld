@@ -77,6 +77,7 @@ auto_run:
 
 # === 日志 / Logging ===
 logging:
+  level: "INFO"                     # DEBUG / INFO / WARNING / ERROR
   json_format: true                 # true=JSON输出 false=文本输出
   console:                          # 控制台输出开关（true=开启）
     # 主流程

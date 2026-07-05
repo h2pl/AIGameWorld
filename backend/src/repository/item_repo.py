@@ -37,6 +37,23 @@ class ItemRepo:
         await self._db.execute("DELETE FROM items WHERE world_id = ?", (world_id,))
         await self._db.commit()
 
+    async def list_by_world(self, world_id: str) -> list[dict]:
+        """按 world_id 加载物品列表 / List items by world."""
+        rows = await self._db.fetch_all(
+            "SELECT id, name, item_type, rarity, description FROM items WHERE world_id = ?",
+            (world_id,),
+        )
+        return [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "item_type": r["item_type"],
+                "rarity": r.get("rarity", "common"),
+                "description": r.get("description", ""),
+            }
+            for r in rows
+        ]
+
     async def load_all(self) -> dict[str, Item]:
         """加载全部物品."""
         rows = await self._db.fetch_all("SELECT * FROM items")

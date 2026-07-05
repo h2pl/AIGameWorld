@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
 
+from src.repository.actor_repo import ActorRepo
 from src.repository.dm_record_repo import DMRecordRepo
 from src.repository.event_repo import TickEventRepo
 from src.repository.item_repo import ItemRepo
@@ -101,7 +102,8 @@ async def render_pack(pack_id: str, db_path: str) -> HTMLResponse:
         record_repo = DMRecordRepo(client)
 
         pcs = await _load_pcs(pc_repo, pack_id)
-        actors = await _load_actors(pc_repo, pack_id)
+        actor_repo = ActorRepo(client)
+        actors = await _load_actors(actor_repo, pack_id)
         scenes = await _load_scenes(client, pack_id)
         items = await _load_items(client, pack_id)
         objects = await _load_objects(client, pack_id)
@@ -322,7 +324,7 @@ async def _load_pcs(repo: PcRepo, pack_id: str) -> list[dict]:
     return result
 
 
-async def _load_actors(repo: PcRepo, pack_id: str) -> list[dict]:
+async def _load_actors(repo: ActorRepo, pack_id: str) -> list[dict]:
     rows = await repo._db.fetch_all(
         "SELECT id, name, role, race, scene_id, personality, attributes_json, combat_json, "
         "functions_json, function_data_json, dm_assigned, motivation_injected "

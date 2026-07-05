@@ -26,6 +26,7 @@ from src.domain import (  # noqa: E402
     SceneObjectType,
 )
 from src.domain.world import World  # noqa: E402
+from src.repository.actor_repo import ActorRepo  # noqa: E402
 from src.repository.item_repo import ItemRepo  # noqa: E402
 from src.repository.pc_repo import PcRepo  # noqa: E402
 from src.repository.scene_repo import SceneRepo  # noqa: E402
@@ -55,10 +56,11 @@ async def seed_mock_data(db: Any, world_id: str = MOCK_WORLD_ID) -> None:
     world_repo = WorldRepo(db)
     scene_repo = SceneRepo(db)
     pc_repo = PcRepo(db)
+    actor_repo = ActorRepo(db)
     item_repo = ItemRepo(db)
 
-    await pc_repo.delete_pcs_by_world(world_id)
-    await pc_repo.delete_actors_by_world(world_id)
+    await pc_repo.delete_by_world(world_id)
+    await actor_repo.delete_by_world(world_id)
     await scene_repo.delete_by_world(world_id)
     await item_repo.delete_by_world(world_id)
     await world_repo.delete(world_id)
@@ -68,7 +70,7 @@ async def seed_mock_data(db: Any, world_id: str = MOCK_WORLD_ID) -> None:
     await _seed_items(item_repo, world_id)
     await _seed_scene_objects(scene_repo, world_id)
     await _seed_pcs(pc_repo, world_id)
-    await _seed_actors(pc_repo, world_id)
+    await _seed_actors(actor_repo, world_id)
 
 
 async def _seed_world(world_repo: WorldRepo, world_id: str) -> None:
@@ -100,7 +102,20 @@ async def _seed_scenes(scene_repo: SceneRepo, world_id: str) -> None:
             "spawn_y": 20,
             "map_width": 40,
             "map_height": 40,
-        }
+            "ext_json": '{"tilemap_url":"/assets/tuxemon-town.json","tileset_url":"/assets/rpg_tileset.png","tileset_name":"tuxemon-sample-32px-extruded","tileset_image_key":"tuxemon"}',
+        },
+        {
+            "id": "desert",
+            "name": "Scorching Desert",
+            "type": "outdoor",
+            "description": "An endless sea of sand under the blazing sun.",
+            "map_key": "desert-map",
+            "spawn_x": 10,
+            "spawn_y": 10,
+            "map_width": 40,
+            "map_height": 40,
+            "ext_json": '{"tilemap_url":"/assets/desert.json","tileset_url":"/assets/tmw_desert_spacing.png","tileset_name":"Desert","tileset_image_key":"desert-tiles"}',
+        },
     ]
     for s in scenes:
         await scene_repo.save_scene(s, world_id)
@@ -328,7 +343,7 @@ async def _seed_pcs(pc_repo: PcRepo, world_id: str) -> None:
         },
     ]
     for pc in pcs:
-        await pc_repo.save_pc(
+        await pc_repo.save(
             PlayerCharacter(
                 id=pc["id"],
                 name=pc["name"],
@@ -348,7 +363,7 @@ async def _seed_pcs(pc_repo: PcRepo, world_id: str) -> None:
         )
 
 
-async def _seed_actors(pc_repo: PcRepo, world_id: str) -> None:
+async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
     """灌入 NPC / Seed actors.
 
     NPC 同样初始坐标 (0,0)，避免与 PC 初始位置混淆；
@@ -417,7 +432,7 @@ async def _seed_actors(pc_repo: PcRepo, world_id: str) -> None:
         },
     ]
     for actor in actors:
-        await pc_repo.save_actor(
+        await actor_repo.save(
             Actor(
                 id=actor["id"],
                 name=actor["name"],
