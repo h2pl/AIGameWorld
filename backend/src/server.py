@@ -183,9 +183,12 @@ async def lifespan(app: FastAPI):
     from .config import load_config
 
     cfg = load_config("../config.yaml")
-    from data.mock import init_database
-    db = await init_database(cfg)
+    db_path = cfg.database.sqlite_path
+    db = SQLiteClient(db_path)
     app.state.db = db
+    await db.connect()
+    await db.init_schema()
+    logger.info("[lifespan] db=%s ready", db_path)
 
     yield
     if app.state.db:
@@ -258,6 +261,19 @@ async def loop_status(world_id: str):
         "batch_target": batch_runner.get_target(world_id),
         "batch_completed": batch_runner.get_completed(world_id),
     }
+
+
+# ── Mock 数据 / Mock data ──
+
+
+@app.post("/api/mock/seed")
+async def mock_seed():
+    """按需注入 mock 数据 / Seed mock data on demand."""
+    from data.mock import seed_mock_data
+
+    await seed_mock_data(_get_db())
+    log_api("mock.seed", "-")
+    return {"status": "ok"}
 
 
 @app.post("/api/world/{world_id}/tick/batch/{n}")
