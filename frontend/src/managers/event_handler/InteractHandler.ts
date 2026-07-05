@@ -4,10 +4,10 @@
  * / Placeholder for pc_interact events until frontend interaction is implemented.
  */
 import type { EventData } from "../../types";
-import type { EventController } from "../base/EventController";
+import type { EventHandler } from "./base/EventHandler";
 
-export class InteractController implements EventController {
+export class InteractHandler implements EventHandler {
   async handle(ev: EventData): Promise<void> {
-    console.log("[InteractController] unhandled interact event:", ev.payload);
+    console.log("[InteractHandler] unhandled interact event:", ev.payload);
   }
 }

@@ -14,16 +14,16 @@ import { gameStore } from "../state/GameStore";
 import type { EventData } from "../types";
 
 /** 事件处理函数 / Event handler function */
-export type EventHandler = (ev: EventData) => void | Promise<void>;
+export type EventHandlerFn = (ev: EventData) => void | Promise<void>;
 
 export interface EventManagerOptions {
   /** 默认 handler，处理未注册类型 / Default handler for unregistered types */
-  defaultHandler?: EventHandler;
+  defaultHandler?: EventHandlerFn;
 }
 
 export class EventManager {
-  private handlers: Map<string, EventHandler> = new Map();
-  private defaultHandler: EventHandler;
+  private handlers: Map<string, EventHandlerFn> = new Map();
+  private defaultHandler: EventHandlerFn;
 
   constructor(options?: EventManagerOptions) {
     this.defaultHandler =
@@ -34,7 +34,7 @@ export class EventManager {
   }
 
   /** 注册事件 handler / Register an event handler */
-  register(type: string, handler: EventHandler): void {
+  register(type: string, handler: EventHandlerFn): void {
     this.handlers.set(type, handler);
   }
 

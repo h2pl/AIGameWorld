@@ -1,9 +1,9 @@
 /** 对话事件处理器 / Talk event handler */
 import type { EventData } from "../../types";
-import type { EventController } from "../base/EventController";
+import type { EventHandler } from "./base/EventHandler";
 import type { SceneControllerContext } from "../SceneControllerContext";
 
-export class TalkController implements EventController {
+export class TalkHandler implements EventHandler {
   private dialogueQueue: Array<{ speaker_id: string; text: string }> = [];
   private isPlayingDialogue = false;
   private dialogueTimer?: number;
@@ -75,7 +75,7 @@ export class TalkController implements EventController {
         this._playNextDialogue(onDone);
       }, 200);
     } else {
-      console.warn("[TalkController] dialogue speaker not found:", turn.speaker_id);
+      console.warn("[TalkHandler] dialogue speaker not found:", turn.speaker_id);
       // 找不到说话者时短暂停留后继续 / Brief pause if speaker missing
       this.dialogueTimer = window.setTimeout(advance, 600);
     }

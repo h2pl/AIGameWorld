@@ -1,10 +1,10 @@
-/** SceneController 依赖上下文 / Scene controller dependency context
+/** Scene 依赖上下文 / Scene dependency context
  *
- * 把 GameScene 对 controller 的依赖收敛到一个接口，避免 controller 反向引用场景类。
- * / A narrow context interface so controllers don't need to import GameScene.
+ * 把 GameScene 对 handler 的依赖收敛到一个接口，避免 handler 反向引用场景类。
+ * / A narrow context interface so handlers don't need to import GameScene.
  */
-import type { CharacterManager } from "../managers/CharacterManager";
-import type { MovementManager } from "../managers/MovementManager";
+import type { CharacterManager } from "./CharacterManager";
+import type { MovementManager } from "./MovementManager";
 
 export interface SceneControllerContext {
   /** Phaser 场景实例 / Phaser scene instance */

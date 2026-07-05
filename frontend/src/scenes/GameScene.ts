@@ -8,10 +8,10 @@ import { gridToWorld } from "../utils/tile";
 // gridToWorld 保留给 createPlayer 等场景构造使用 / gridToWorld kept for scene construction
 import { EventManager } from "../managers/EventManager";
 import { MovementManager } from "../managers/MovementManager";
-import { ExploreController } from "../controllers/event_handler/ExploreController";
-import { TalkController } from "../controllers/event_handler/TalkController";
-import { NarrativeController } from "../controllers/event_handler/NarrativeController";
-import { InteractController } from "../controllers/event_handler/InteractController";
+import { ExploreHandler } from "../managers/event_handler/ExploreHandler";
+import { TalkHandler } from "../managers/event_handler/TalkHandler";
+import { NarrativeHandler } from "../managers/event_handler/NarrativeHandler";
+import { InteractHandler } from "../managers/event_handler/InteractHandler";
 
 /** 种族肤色 / Race skin colors */
 const RACE_SKIN: Record<string, string> = {
@@ -138,10 +138,10 @@ export class GameScene extends Phaser.Scene {
   private sceneBuilt = false;
   private movementManager!: MovementManager;
   private eventManager!: EventManager;
-  private exploreController!: ExploreController;
-  private talkController!: TalkController;
-  private narrativeController!: NarrativeController;
-  private interactController!: InteractController;
+  private exploreHandler!: ExploreHandler;
+  private talkHandler!: TalkHandler;
+  private narrativeHandler!: NarrativeHandler;
+  private interactHandler!: InteractHandler;
   private terrainSprites: Phaser.GameObjects.Sprite[] = [];
 
   constructor() {
@@ -208,7 +208,7 @@ export class GameScene extends Phaser.Scene {
         .getState()
         .events.filter((ev) => ev.tick === displayTick && ev.type === "pc_talk");
       for (const ev of talks) {
-        this.talkController.handle(ev);
+        this.talkHandler.handle(ev);
       }
     }
   }
@@ -221,19 +221,19 @@ export class GameScene extends Phaser.Scene {
       getMovementManager: () => this.movementManager,
       isSceneBuilt: () => this.sceneBuilt,
     };
-    this.exploreController = new ExploreController(ctx);
-    this.talkController = new TalkController(ctx);
-    this.narrativeController = new NarrativeController();
-    this.interactController = new InteractController();
+    this.exploreHandler = new ExploreHandler(ctx);
+    this.talkHandler = new TalkHandler(ctx);
+    this.narrativeHandler = new NarrativeHandler();
+    this.interactHandler = new InteractHandler();
   }
 
   /** 注册事件 handlers / Register event handlers with EventManager */
   private _registerEventHandlers(): void {
     if (!this.eventManager) return;
-    this.eventManager.register("pc_explore", (ev) => this.exploreController.handle(ev));
-    this.eventManager.register("pc_talk", (ev) => this.talkController.handle(ev));
-    this.eventManager.register("pc_interact", (ev) => this.interactController.handle(ev));
-    this.eventManager.register("dm_narrative", (ev) => this.narrativeController.handle(ev));
+    this.eventManager.register("pc_explore", (ev) => this.exploreHandler.handle(ev));
+    this.eventManager.register("pc_talk", (ev) => this.talkHandler.handle(ev));
+    this.eventManager.register("pc_interact", (ev) => this.interactHandler.handle(ev));
+    this.eventManager.register("dm_narrative", (ev) => this.narrativeHandler.handle(ev));
   }
 
   /** 构建实际游戏场景 / Build the actual game scene */
@@ -458,7 +458,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // 清理对话 / Clean up dialogues
-    this.talkController?.clear();
+    this.talkHandler?.clear();
 
     // 重置相机 / Reset camera
     this.cameras.main.setBounds(0, 0, CONFIG.CANVAS.width, CONFIG.CANVAS.height);
@@ -480,7 +480,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   shutdown(): void {
-    this.talkController?.clear();
+    this.talkHandler?.clear();
     if (this.unsubscribe) this.unsubscribe();
     this.charManager?.destroy();
   }

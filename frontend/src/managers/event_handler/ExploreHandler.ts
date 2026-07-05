@@ -1,10 +1,10 @@
 /** 探索事件处理器 / Explore event handler */
 import { gameStore } from "../../state/GameStore";
 import type { EventData } from "../../types";
-import type { EventController } from "../base/EventController";
+import type { EventHandler } from "./base/EventHandler";
 import type { SceneControllerContext } from "../SceneControllerContext";
 
-export class ExploreController implements EventController {
+export class ExploreHandler implements EventHandler {
   constructor(private ctx: SceneControllerContext) {}
 
   async handle(ev: EventData): Promise<void> {
@@ -38,12 +38,12 @@ export class ExploreController implements EventController {
             ch.position_x = finalTx;
             ch.position_y = finalTy;
           }
-          console.log("[ExploreController] explore done: %s → (%d,%d)", pcId, finalTx, finalTy);
+          console.log("[ExploreHandler] explore done: %s → (%d,%d)", pcId, finalTx, finalTy);
           resolve();
         },
       });
       console.log(
-        "[ExploreController] explore: %s through %d waypoints → (%d,%d)",
+        "[ExploreHandler] explore: %s through %d waypoints → (%d,%d)",
         pcId,
         waypoints.length,
         finalX,

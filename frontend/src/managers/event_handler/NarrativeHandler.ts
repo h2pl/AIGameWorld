@@ -1,9 +1,9 @@
 /** 叙事事件处理器 / Narrative event handler */
 import { gameStore } from "../../state/GameStore";
 import type { EventData } from "../../types";
-import type { EventController } from "../base/EventController";
+import type { EventHandler } from "./base/EventHandler";
 
-export class NarrativeController implements EventController {
+export class NarrativeHandler implements EventHandler {
   async handle(ev: EventData): Promise<void> {
     const text = ev.payload?.text as string | undefined;
     if (text) {
