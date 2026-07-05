@@ -5,7 +5,7 @@ import Phaser from "phaser";
 import { CharacterSprite } from "../gameobjects/CharacterSprite";
 import { gridToWorld } from "../utils/tile";
 import { DEPTH } from "../constants";
-import { WalkController } from "../controllers/WalkController";
+import { MovementManager } from "./MovementManager";
 import type { CharacterData } from "../types";
 
 type Pos = { x: number; y: number };
@@ -14,12 +14,12 @@ export class CharacterManager {
   private sprites: Map<string, CharacterSprite> = new Map();
   private scene: Phaser.Scene;
   private ts: number;
-  private walkController: WalkController;
+  private movementManager: MovementManager;
 
   constructor(scene: Phaser.Scene, tileSize: number) {
     this.scene = scene;
     this.ts = tileSize;
-    this.walkController = new WalkController(scene, tileSize);
+    this.movementManager = new MovementManager(scene, tileSize);
   }
 
   /** 首次批量创建所有角色 / Create all characters initially */
@@ -55,7 +55,7 @@ export class CharacterManager {
         if (old.tx !== p.x || old.ty !== p.y) {
           // 不要 cancelWalk：让当前动画队列继续，把增量同步作为追加路径
           // / Don't cancel: append sync target as a continuation of the current queue
-          this.walkController.walkTo(existing, p.x, p.y);
+          this.movementManager.walkTo(existing, p.x, p.y);
         }
         if (ch.combat) existing.updateHp(ch.combat.hp, ch.combat.max_hp);
       } else {

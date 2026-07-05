@@ -1,8 +1,8 @@
-/** 探索事件控制器 / Explore event controller */
-import { gameStore } from "../state/GameStore";
-import type { EventData } from "../types";
-import type { EventController } from "./base/EventController";
-import type { SceneControllerContext } from "./SceneControllerContext";
+/** 探索事件处理器 / Explore event handler */
+import { gameStore } from "../../state/GameStore";
+import type { EventData } from "../../types";
+import type { EventController } from "../base/EventController";
+import type { SceneControllerContext } from "../SceneControllerContext";
 
 export class ExploreController implements EventController {
   constructor(private ctx: SceneControllerContext) {}
@@ -19,16 +19,16 @@ export class ExploreController implements EventController {
     const finalY = Number(payload.final_y ?? 0);
     if (!pcId || !waypoints?.length) return;
 
-    // 获取角色精灵与移动控制器 / Get character sprite and walk controller
+    // 获取角色精灵与移动管理器 / Get character sprite and movement manager
     const sprite = this.ctx.getCharManager()?.getSprite(pcId);
     if (!sprite) return;
-    const walkController = this.ctx.getWalkController();
-    if (!walkController) return;
+    const movementManager = this.ctx.getMovementManager();
+    if (!movementManager) return;
 
     // 把最终坐标也加入路径末尾 / Append final destination to route
     const allWaypoints = [...waypoints, { x: finalX, y: finalY }];
     return new Promise((resolve) => {
-      walkController.walkRoute(sprite, allWaypoints, {
+      movementManager.walkRoute(sprite, allWaypoints, {
         onComplete: (finalTx, finalTy) => {
           // 走完后同步坐标到 store，避免下次 sync 瞬移 / Sync final pos to store after walk
           const st = gameStore.getState();

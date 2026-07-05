@@ -1,7 +1,7 @@
-/** 对话事件控制器 / Talk event controller */
-import type { EventData } from "../types";
-import type { EventController } from "./base/EventController";
-import type { SceneControllerContext } from "./SceneControllerContext";
+/** 对话事件处理器 / Talk event handler */
+import type { EventData } from "../../types";
+import type { EventController } from "../base/EventController";
+import type { SceneControllerContext } from "../SceneControllerContext";
 
 export class TalkController implements EventController {
   private dialogueQueue: Array<{ speaker_id: string; text: string }> = [];
@@ -20,9 +20,9 @@ export class TalkController implements EventController {
     // 1. 先走到目标旁边 / Approach target first
     if (pcId && targetPos) {
       const sprite = this.ctx.getCharManager()?.getSprite(pcId);
-      const walkController = this.ctx.getWalkController();
-      if (sprite && walkController) {
-        await walkController.walkToAdjacent(sprite, targetPos.x, targetPos.y);
+      const movementManager = this.ctx.getMovementManager();
+      if (sprite && movementManager) {
+        await movementManager.walkToAdjacent(sprite, targetPos.x, targetPos.y);
       }
     }
 

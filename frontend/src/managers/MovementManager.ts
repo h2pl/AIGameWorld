@@ -1,5 +1,6 @@
-/** 角色移动控制器 / Walk Controller — 统一 A→B 行走逻辑
+/** 角色移动管理器 / Movement Manager — 统一 A→B 行走逻辑
  *
+ * kb/17: Managers — System coordination
  * 所有角色从 A 点走到 B 点（网格坐标）都应经过这里：
  * - 增量同步 tick 更新
  * - explore 路径探索
@@ -18,14 +19,14 @@ import { TILEMAP } from "../constants";
 /** 移动完成回调 / Walk completion callback */
 type WalkComplete = (finalTx: number, finalTy: number) => void;
 
-export interface WalkControllerOptions {
+export interface MovementOptions {
   /** 每格耗时 ms / Duration per tile in ms */
   speed?: number;
   /** 走完后触发 / Called after reaching destination */
   onComplete?: WalkComplete;
 }
 
-export class WalkController {
+export class MovementManager {
   private scene: Phaser.Scene;
   private ts: number;
 
@@ -39,7 +40,7 @@ export class WalkController {
     sprite: CharacterSprite,
     targetTx: number,
     targetTy: number,
-    opts?: WalkControllerOptions
+    opts?: MovementOptions
   ): void {
     const from = sprite.getGridPos(this.ts);
     if (from.tx === targetTx && from.ty === targetTy) {
@@ -56,7 +57,7 @@ export class WalkController {
   walkRoute(
     sprite: CharacterSprite,
     waypoints: Array<{ x: number; y: number }>,
-    opts?: WalkControllerOptions
+    opts?: MovementOptions
   ): void {
     if (!waypoints.length) return;
     let current = sprite.getGridPos(this.ts);
@@ -76,7 +77,7 @@ export class WalkController {
     sprite: CharacterSprite,
     targetTx: number,
     targetTy: number,
-    opts?: WalkControllerOptions
+    opts?: MovementOptions
   ): void {
     const from = sprite.getGridPos(this.ts);
     if (from.tx === targetTx && from.ty === targetTy) {

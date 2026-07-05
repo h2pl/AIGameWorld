@@ -6,12 +6,12 @@ import { CONFIG } from "../config";
 import { KEY, DEPTH, TILEMAP } from "../constants";
 import { gridToWorld } from "../utils/tile";
 // gridToWorld 保留给 createPlayer 等场景构造使用 / gridToWorld kept for scene construction
-import { WalkController } from "../controllers/WalkController";
 import { EventManager } from "../managers/EventManager";
-import { ExploreController } from "../controllers/ExploreController";
-import { TalkController } from "../controllers/TalkController";
-import { NarrativeController } from "../controllers/NarrativeController";
-import { InteractController } from "../controllers/InteractController";
+import { MovementManager } from "../managers/MovementManager";
+import { ExploreController } from "../controllers/event_handler/ExploreController";
+import { TalkController } from "../controllers/event_handler/TalkController";
+import { NarrativeController } from "../controllers/event_handler/NarrativeController";
+import { InteractController } from "../controllers/event_handler/InteractController";
 
 /** 种族肤色 / Race skin colors */
 const RACE_SKIN: Record<string, string> = {
@@ -136,7 +136,7 @@ export class GameScene extends Phaser.Scene {
   private unsubscribe: (() => void) | null = null;
   private mapKey!: string;
   private sceneBuilt = false;
-  private walkController!: WalkController;
+  private movementManager!: MovementManager;
   private eventManager!: EventManager;
   private exploreController!: ExploreController;
   private talkController!: TalkController;
@@ -213,12 +213,12 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** 初始化事件控制器 / Initialize event controllers */
+  /** 初始化事件处理器 / Initialize event handlers */
   private _initControllers(): void {
     const ctx = {
       scene: this,
       getCharManager: () => this.charManager,
-      getWalkController: () => this.walkController,
+      getMovementManager: () => this.movementManager,
       isSceneBuilt: () => this.sceneBuilt,
     };
     this.exploreController = new ExploreController(ctx);
@@ -336,7 +336,7 @@ export class GameScene extends Phaser.Scene {
   /** 7. createPlayer / Dynamic objects: 所有角色 */
   private createPlayer(): void {
     this.charManager = new CharacterManager(this, this.ts);
-    this.walkController = new WalkController(this, this.ts);
+    this.movementManager = new MovementManager(this, this.ts);
     const st = gameStore.getState();
     this.charManager.createAll(st.characters, st.character_positions);
     const { sx, sy } = this.charManager.calcCameraScroll(CONFIG.CANVAS.width, CONFIG.CANVAS.height);
