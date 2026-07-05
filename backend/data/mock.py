@@ -431,15 +431,37 @@ async def _seed_actors(pc_repo: PcRepo, world_id: str) -> None:
         )
 
 
-async def init_mock_db(db_path: str) -> SQLiteClient:
-    """初始化 mock 数据库——删旧库、建表、灌数据 / Init mock DB: drop old, init schema, seed data."""
+async def init_database(cfg) -> SQLiteClient:
+    """根据配置初始化数据库——mock 或真实 / Init DB per config — mock or real."""
     from pathlib import Path
 
-    db_file = Path(db_path)
-    if db_file.exists():
-        db_file.unlink()
-    db = SQLiteClient(db_path)
-    await db.connect()
-    await db.init_schema()
-    await seed_mock_data(db)
+    use_mock = cfg.mock.data_mode == "mock"
+    db_path = cfg.database.test_sqlite_path if use_mock else cfg.database.sqlite_path
+
+    if use_mock:
+        db_file = Path(db_path)
+        if db_file.exists():
+            db_file.unlink()
+        db = SQLiteClient(db_path)
+        await db.connect()
+        await db.init_schema()
+        await seed_mock_data(db)
+    else:
+        db = SQLiteClient(db_path)
+        await db.connect()
+        await db.init_schema()
+        # 自动导入默认 world-pack / Auto-import default pack
+        worlds_count = await db.fetch_all("SELECT 1 FROM worlds LIMIT 1")
+        if not worlds_count:
+            from src.storage.chroma_client import ChromaClient
+            from src.world_pack_loader.loader import WorldLoader
+
+            pack_id = cfg.world.default_pack
+            pack_dir = Path(__file__).parent.parent / "world-pack" / pack_id
+            if pack_dir.exists():
+                chroma = ChromaClient(persist_path=cfg.database.chroma_path)
+                loader = WorldLoader(db, chroma)
+                counts = await loader.load(pack_dir)
+                await db.commit()
+
     return db

@@ -183,38 +183,8 @@ async def lifespan(app: FastAPI):
     from .config import load_config
 
     cfg = load_config("../config.yaml")
-    use_mock_data = cfg.mock.data_mode == "mock"
-    db_path = cfg.database.test_sqlite_path if use_mock_data else cfg.database.sqlite_path
-
-    logger.info(
-        "[lifespan] starting llm_mock=%s data_mode=%s db=%s dataset=%s",
-        cfg.mock.enabled, cfg.mock.data_mode, db_path, cfg.mock.dataset,
-    )
-
-    if use_mock_data:
-        from data.mock import init_mock_db
-        db = await init_mock_db(db_path)
-    else:
-        db = SQLiteClient(db_path)
-        await db.connect()
-        await db.init_schema()
-        # 自动导入默认 world-pack / Auto-import default pack
-        worlds_count = await db.fetch_all("SELECT 1 FROM worlds LIMIT 1")
-        if not worlds_count:
-            from .storage.chroma_client import ChromaClient
-            from .world_pack_loader.loader import WorldLoader
-
-            pack_id = cfg.world.default_pack
-            pack_dir = Path(__file__).parent.parent.parent / "world-pack" / pack_id
-            if pack_dir.exists():
-                logger.info("[lifespan] worlds empty, auto-importing pack=%s", pack_id)
-                chroma = ChromaClient(persist_path=cfg.database.chroma_path)
-                loader = WorldLoader(db, chroma)
-                counts = await loader.load(pack_dir)
-                await db.commit()
-                logger.info("[lifespan] imported pack=%s counts=%s", pack_id, counts)
-            else:
-                logger.warning("[lifespan] default pack not found: %s", pack_dir)
+    from data.mock import init_database
+    db = await init_database(cfg)
     app.state.db = db
 
     yield
