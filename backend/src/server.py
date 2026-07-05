@@ -214,47 +214,6 @@ async def lifespan(app: FastAPI):
         await db.connect()
         await db.init_schema()
 
-    # Migration: 给已有 tick_events 表补 world_id 列 / Add world_id column to existing table
-    cols = await db.fetch_all("PRAGMA table_info(tick_events)")
-    if cols and not any(c["name"] == "world_id" for c in cols):
-        await db.execute("ALTER TABLE tick_events ADD COLUMN world_id TEXT NOT NULL DEFAULT ''")
-        await db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_tick_events_world_tick ON tick_events(world_id, tick)"
-        )
-        await db.commit()
-        logger.info("[migration] Added world_id column to tick_events")
-
-    # Migration: worlds.current_tick -> data_tick + display_tick
-    world_cols = await db.fetch_all("PRAGMA table_info(worlds)")
-    if world_cols and any(c["name"] == "current_tick" for c in world_cols):
-        await db.execute("ALTER TABLE worlds RENAME COLUMN current_tick TO data_tick")
-        await db.execute("ALTER TABLE worlds ADD COLUMN display_tick INTEGER NOT NULL DEFAULT 0")
-        await db.commit()
-        logger.info("[migration] Renamed current_tick to data_tick, added display_tick")
-
-    # Migration: 给已有 scenes 表补 spawn_x/spawn_y/map_key 列 / Add columns to existing scenes
-    scene_cols = await db.fetch_all("PRAGMA table_info(scenes)")
-    if scene_cols:
-        if not any(c["name"] == "spawn_x" for c in scene_cols):
-            await db.execute("ALTER TABLE scenes ADD COLUMN spawn_x INTEGER NOT NULL DEFAULT 0")
-        if not any(c["name"] == "spawn_y" for c in scene_cols):
-            await db.execute("ALTER TABLE scenes ADD COLUMN spawn_y INTEGER NOT NULL DEFAULT 0")
-        if not any(c["name"] == "map_key" for c in scene_cols):
-            await db.execute("ALTER TABLE scenes ADD COLUMN map_key TEXT NOT NULL DEFAULT ''")
-        if not any(c["name"] == "map_width" for c in scene_cols):
-            await db.execute("ALTER TABLE scenes ADD COLUMN map_width INTEGER NOT NULL DEFAULT 40")
-        if not any(c["name"] == "map_height" for c in scene_cols):
-            await db.execute("ALTER TABLE scenes ADD COLUMN map_height INTEGER NOT NULL DEFAULT 40")
-        await db.commit()
-        logger.info(
-            "[migration] Added spawn_x/spawn_y/map_key/map_width/map_height columns to scenes"
-        )
-
-    # Migration: 删除已废弃的 tick_messages 表 / Drop deprecated tick_messages table
-    await db.execute("DROP TABLE IF EXISTS tick_messages")
-    await db.commit()
-    logger.info("[migration] Dropped deprecated tick_messages table")
-
     # 自动导入默认 world-pack（DB 为空时）/ Auto-import default pack when DB is empty
     if not use_mock_data:
         worlds_count = await db.fetch_all("SELECT 1 FROM worlds LIMIT 1")
