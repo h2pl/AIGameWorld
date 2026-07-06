@@ -14,9 +14,11 @@ class TickEventType(StrEnum):
 
     DM_CREATE = "dm_create"
     SCENE_SETUP = "scene_setup"
+    PC_DECISION = "pc_decision"
     PC_TALK = "pc_talk"
     PC_INTERACT = "pc_interact"
     PC_EXPLORE = "pc_explore"
+    PC_COMBAT = "pc_combat"
     DM_NARRATIVE = "dm_narrative"
 
 

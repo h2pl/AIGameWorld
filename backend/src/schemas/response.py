@@ -47,7 +47,8 @@ class PCDecideResponse(EngineResponse):
     type: str = ""
     target_id: str | None = None
     target_type: str | None = None
-    description: str = ""
+    thought: str = ""  # 完整思考过程 / full reasoning process
+    description: str = ""  # 最终决策理由 / final decision rationale
 
 
 # ============================================================

@@ -13,8 +13,16 @@ router = APIRouter(prefix="/api/world", tags=["tick"])
 @router.get("/{world_id}/tick/next")
 async def tick_next(world_id: str, orch=Depends(get_orch), db=Depends(get_db)):
     """运行一个 tick 并返回事件（data_tick 推进）."""
+    world_repo = WorldRepo(db)
+    data_tick = await world_repo.get_data_tick(world_id)
+    display_tick = await world_repo.get_display_tick(world_id)
+    if data_tick - display_tick >= 3:
+        raise HTTPException(
+            status_code=429,
+            detail="data_tick is 3 ticks ahead of display_tick; wait for display to catch up",
+        )
     result = await orch.run_tick(world_id)
-    display_tick = await WorldRepo(db).get_display_tick(world_id)
+    display_tick = await world_repo.get_display_tick(world_id)
     return {
         "tick": result["tick"],
         "display_tick": display_tick,

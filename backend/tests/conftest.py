@@ -52,7 +52,7 @@ def base_state() -> OverallState:
     return {
         "tick": 0,
         "world_id": "",
-        "scene_info": {},
+        "scene": {},
         "pending_actions": [],
         "hints": [],
         "plot_brief": "",
@@ -65,6 +65,7 @@ def base_state() -> OverallState:
 def _make_mock_llm():
     """构造按 purpose 返回对应 schema 的 mock LLM."""
     from src.schemas.llm_output import (
+        CombatNarrationSchema,
         DialogueSchema,
         DMNarrativeSchema,
         DMOutput,
@@ -97,6 +98,12 @@ def _make_mock_llm():
             return InteractOutputSchema(success=True, narration="交互成功。")
         if purpose == "explore":
             return ExploreOutputSchema(end_x=5, end_y=5, explore_record="发现了一条小路。")
+        if purpose == "combat":
+            return CombatNarrationSchema(
+                narration="他挥剑击中敌人，战斗激烈。",
+                target_defeated=True,
+                result="目标被击败",
+            )
         if purpose.startswith("reflect_"):
             return ReflectionOutputSchema(arc_analysis="弧线分析", personality_insight="性格洞察")
         if purpose == "summarize":

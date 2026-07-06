@@ -15,6 +15,8 @@ import { ExploreHandler } from "../managers/event_handler/ExploreHandler";
 import { TalkHandler } from "../managers/event_handler/TalkHandler";
 import { NarrativeHandler } from "../managers/event_handler/NarrativeHandler";
 import { InteractHandler } from "../managers/event_handler/InteractHandler";
+import { CombatHandler } from "../managers/event_handler/CombatHandler";
+import { DecisionHandler } from "../managers/event_handler/DecisionHandler";
 import {
   SceneSetupHandler,
   type SceneSetupData,
@@ -41,6 +43,8 @@ export class GameScene extends Phaser.Scene {
   private talkHandler!: TalkHandler;
   private narrativeHandler!: NarrativeHandler;
   private interactHandler!: InteractHandler;
+  private combatHandler!: CombatHandler;
+  private decisionHandler!: DecisionHandler;
   private sceneSetupHandler!: SceneSetupHandler;
 
   constructor() {
@@ -117,6 +121,13 @@ export class GameScene extends Phaser.Scene {
     );
     this.narrativeHandler = new NarrativeHandler();
     this.interactHandler = new InteractHandler(getSprite, () => this.movementManager, follow);
+    this.combatHandler = new CombatHandler(
+      getSprite,
+      () => this.movementManager,
+      () => this.actorManager,
+      follow
+    );
+    this.decisionHandler = new DecisionHandler(getSprite, follow);
     this.sceneSetupHandler = new SceneSetupHandler((d) => this.ensureScene(d));
   }
 
@@ -124,9 +135,11 @@ export class GameScene extends Phaser.Scene {
   private _registerHandlers(): void {
     if (!this.eventManager) return;
     this.eventManager.register("scene_setup", (ev) => this.sceneSetupHandler.handle(ev));
+    this.eventManager.register("pc_decision", (ev) => this.decisionHandler.handle(ev));
     this.eventManager.register("pc_explore", (ev) => this.exploreHandler.handle(ev));
     this.eventManager.register("pc_talk", (ev) => this.talkHandler.handle(ev));
     this.eventManager.register("pc_interact", (ev) => this.interactHandler.handle(ev));
+    this.eventManager.register("pc_combat", (ev) => this.combatHandler.handle(ev));
     this.eventManager.register("dm_narrative", (ev) => this.narrativeHandler.handle(ev));
   }
 

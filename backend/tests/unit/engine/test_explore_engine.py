@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from src.domain.player_character import PlayerCharacter
 from src.engine.explore.explore_engine import process_explore_action
 from src.schemas.llm_output import ExploreOutputSchema
 
@@ -19,14 +20,25 @@ def _mock_config(llm=None):
     return cfg
 
 
+def _pc(position_x: int = 0, position_y: int = 0) -> PlayerCharacter:
+    return PlayerCharacter(
+        id="pc1",
+        name="pc1",
+        role="adventurer",
+        personality="",
+        position_x=position_x,
+        position_y=position_y,
+    )
+
+
 class TestExploreEngine:
     @pytest.mark.asyncio
     async def test_non_explore_action_skipped(self):
         """非 explore 类型被跳过 / Non-explore action is skipped."""
         event = await process_explore_action(
             decision={"type": "talk", "pc_id": "pc1"},
-            scene_info={},
-            pc_state_map={},
+            scene={},
+            pcs={},
         )
         assert event is None
 
@@ -42,22 +54,11 @@ class TestExploreEngine:
             )
         )
         config = _mock_config(llm=llm)
-        pc_state_map = {
-            "pc1": {
-                "name": "pc1",
-                "role": "adventurer",
-                "personality": "",
-                "position_x": 5,
-                "position_y": 5,
-            },
-        }
-        scene_info = {
-            "scene": {"map_width": 40, "map_height": 40},
-        }
+        pc = _pc(position_x=5, position_y=5)
         event = await process_explore_action(
             decision={"type": "explore", "pc_id": "pc1"},
-            scene_info=scene_info,
-            pc_state_map=pc_state_map,
+            scene={"map_width": 40, "map_height": 40},
+            pcs={"pc1": pc},
             config=config,
         )
         assert event is not None
@@ -67,8 +68,8 @@ class TestExploreEngine:
         assert len(event.waypoints) == 2
         assert event.waypoints[0] == {"x": 5, "y": 5}
         assert event.waypoints[1] == {"x": 39, "y": 0}
-        assert pc_state_map["pc1"]["position_x"] == 39
-        assert pc_state_map["pc1"]["position_y"] == 0
+        assert pc.position_x == 39
+        assert pc.position_y == 0
 
     @pytest.mark.asyncio
     async def test_same_position_returns_none(self):
@@ -82,16 +83,10 @@ class TestExploreEngine:
             )
         )
         config = _mock_config(llm=llm)
-        pc_state_map = {
-            "pc1": {"name": "pc1", "role": "", "personality": "", "position_x": 5, "position_y": 5},
-        }
-        scene_info = {
-            "scene": {"map_width": 40, "map_height": 40},
-        }
         event = await process_explore_action(
             decision={"type": "explore", "pc_id": "pc1"},
-            scene_info=scene_info,
-            pc_state_map=pc_state_map,
+            scene={"map_width": 40, "map_height": 40},
+            pcs={"pc1": _pc(position_x=5, position_y=5)},
             config=config,
         )
         assert event is None

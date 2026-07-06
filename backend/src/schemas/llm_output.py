@@ -30,7 +30,10 @@ class CharacterActionSchema(BaseModel):
     action_type: str = Field(description="talk / interact / combat / explore / wait")
     target_id: str | None = Field(default=None, description="目标 id（pc/actor/场景物体）")
     target_type: str | None = Field(default=None, description="pc / actor / scene_object")
-    reasoning: str = Field(description="决策理由（2-3句中文，结合当前场景和附近的人）")
+    thought: str = Field(
+        description="完整的思考过程（2-4句中文）：观察到了什么、联想到哪些记忆、权衡了哪些选择、为什么选这个行动"
+    )
+    reasoning: str = Field(description="最终决策理由（1-2句中文，总结为什么执行这个动作）")
 
 
 class PCDecideListSchema(BaseModel):
@@ -75,6 +78,81 @@ class InteractOutputSchema(BaseModel):
 
     success: bool = Field(description="交互是否成功（基于当前场景、角色能力和物体特性合理判断）")
     narration: str = Field(description="第三人称旁白（1-2 句中文），描述 PC 与物体交互的过程和结果")
+
+
+# === Phase 4d: 战斗 / Combat ===
+class CombatNarrationSchema(BaseModel):
+    """战斗旁白输出——LLM 基于战斗日志生成第三人称描述与战斗结果 / Combat narration output."""
+
+    narration: str = Field(description="第三人称战斗旁白（2-3 句中文），基于战斗日志描述交锋过程")
+    target_defeated: bool = Field(default=False, description="目标是否在本次交锋中被击败/击杀")
+    result: str = Field(
+        default="", description="战斗结果一句话总结，例如'目标倒地不起'或'双方仍在僵持'"
+    )
+
+
+# === Phase 2.4: tilemap 语义解读 / Tilemap semantic interpretation ===
+class TilemapInterpretationSchema(BaseModel):
+    """tilemap 语义摘要 / Semantic summary of a tilemap."""
+
+    summary: str = Field(
+        description="一段关于 tilemap 地图的中文语义描述：地形、建筑、出入口、危险区域、氛围等"
+    )
+
+
+# === Phase 2.5: 动态生成场景实体 / Dynamic scene entity generation ===
+class GeneratedActorSchema(BaseModel):
+    """LLM 动态生成的 Actor 字段 / LLM-generated actor fields."""
+
+    id: str = Field(description="唯一 id，建议使用 actor_前缀 + 英文名小写")
+    name: str = Field(description="显示名称")
+    role: str = Field(default="", description="身份/职业，如 酒馆老板、巡逻守卫、地精斥候")
+    race: str | None = Field(default=None, description="种族，如 human、elf、goblin")
+    disposition: str = Field(default="neutral", description="neutral / friendly / hostile")
+    status: str = Field(default="active", description="active / dead / inactive")
+    personality: str = Field(default="", description="简短性格描述")
+    position_x: int = Field(default=0, description="场景内 x 坐标，必须在地图范围内")
+    position_y: int = Field(default=0, description="场景内 y 坐标，必须在地图范围内")
+    attributes_json: str = Field(
+        default='{"strength":10,"dexterity":10,"constitution":10,"intelligence":10,"wisdom":10,"charisma":10}',
+        description="JSON 字符串：六维属性",
+    )
+    combat_json: str = Field(
+        default='{"hp":10,"max_hp":10,"ac":10,"attack_bonus":0,"damage_dice":"1d6"}',
+        description="JSON 字符串：战斗属性",
+    )
+
+
+class ActorGenerationSchema(BaseModel):
+    """批量生成 Actor / Batch actor generation."""
+
+    actors: list[GeneratedActorSchema] = Field(
+        default_factory=list, description="为本场景生成的 NPC 列表，通常 2-5 个"
+    )
+
+
+class GeneratedSceneObjectSchema(BaseModel):
+    """LLM 动态生成的 SceneObject 字段 / LLM-generated scene object fields."""
+
+    id: str = Field(description="唯一 id，建议使用 obj_前缀 + 英文名小写")
+    name: str = Field(description="显示名称")
+    object_type: str = Field(
+        description="物体类型，必须是 container / door / trap / animal / mechanism / decoration / item_drop 之一"
+    )
+    interactable: bool = Field(default=True, description="是否可交互")
+    position_x: int = Field(default=0, description="场景内 x 坐标，必须在地图范围内")
+    position_y: int = Field(default=0, description="场景内 y 坐标，必须在地图范围内")
+    interact_data: dict | None = Field(
+        default=None, description="交互数据，如容器内容、陷阱 DC、门是否上锁等"
+    )
+
+
+class SceneObjectGenerationSchema(BaseModel):
+    """批量生成场景物体 / Batch scene object generation."""
+
+    objects: list[GeneratedSceneObjectSchema] = Field(
+        default_factory=list, description="为本场景生成的物体列表，通常 2-5 个"
+    )
 
 
 # === Phase 7: 反思与摘要 / Reflection & Summary ===

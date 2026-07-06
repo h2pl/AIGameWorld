@@ -1,5 +1,6 @@
 /** 叙事面板 — 仅显示 DM 叙事、探索/交互记录，历史改为居中弹窗列表 */
 import { Panel } from "./Panel";
+import { speedMs } from "../config/playback";
 
 const CHAR_MS = 40; // 逐字速度 / Per-char speed
 
@@ -90,12 +91,16 @@ export class NarrativePanel extends Panel {
     if (idx >= this.target.length) {
       this.timer = null;
       this.history.push(this.target);
+      window.dispatchEvent(
+        new CustomEvent("narrative-complete", { detail: { text: this.target } })
+      );
       return;
     }
     this.displayed = this.target.slice(0, idx + 1);
     this.contentEl.innerHTML = `<div class="narrative-line fade-in">${this._escape(this.displayed)}</div>`;
     this.contentEl.scrollTop = this.contentEl.scrollHeight;
-    const delay = idx < 20 ? CHAR_MS : Math.max(15, CHAR_MS - (idx - 20) * 1.5);
+    const baseDelay = idx < 20 ? CHAR_MS : Math.max(15, CHAR_MS - (idx - 20) * 1.5);
+    const delay = speedMs(baseDelay);
     this.timer = setTimeout(() => this._reveal(), delay);
   }
 

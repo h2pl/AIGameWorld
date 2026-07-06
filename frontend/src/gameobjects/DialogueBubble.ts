@@ -17,17 +17,23 @@ const MAX_WIDTH = 260;
 const CORNER_RADIUS = 10;
 const ARROW_HEIGHT = 8;
 const MAX_LINES = 4;
-const TEXT_FONT = "14px Segoe UI, Microsoft YaHei, sans-serif";
-const NAR_FONT = "italic 12px Segoe UI, Microsoft YaHei, sans-serif";
+const TEXT_FONT =
+  '16px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", SimHei, Segoe UI, sans-serif';
+const NAR_FONT =
+  'italic 14px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", SimHei, Segoe UI, sans-serif';
 const TEXT_COLOR = "#1a1a1a";
 // 旁白风格颜色 / Narration style colors
 const NAR_BG = 0x1a1a2e;
 const NAR_BORDER = 0x16213e;
 const NAR_TEXT = "#c8d6e5";
+// 思考风格颜色 / Thought style colors
+const THOUGHT_BG = 0xfff9c4;
+const THOUGHT_BORDER = 0xfbc02d;
+const THOUGHT_TEXT = "#5d4037";
 // 探索/交互浮字固定停留时长（含翻页） / Fixed duration for explore/interact narration bubbles
 const NAR_FIXED_MS = 2000;
 
-export type BubbleStyle = "dialogue" | "narration";
+export type BubbleStyle = "dialogue" | "narration" | "thought";
 
 export class DialogueBubble extends Phaser.GameObjects.Container {
   private bg!: Phaser.GameObjects.Graphics;
@@ -53,14 +59,18 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     scene.add.existing(this);
     this.setDepth(200);
 
-    const fullText = speakerName?.trim() ? `${speakerName.trim()}: ${text}` : text;
+    let fullText = speakerName?.trim() ? `${speakerName.trim()}: ${text}` : text;
+    if (style === "thought") {
+      fullText = `💡 ${fullText}`;
+    }
     this.pages = this._splitPages(scene, fullText);
 
     const isNarration = style === "narration";
+    const isThought = style === "thought";
     this.textObj = scene.add
       .text(0, -ARROW_HEIGHT - PADDING_Y, "", {
         font: isNarration ? NAR_FONT : TEXT_FONT,
-        color: isNarration ? NAR_TEXT : TEXT_COLOR,
+        color: isThought ? THOUGHT_TEXT : isNarration ? NAR_TEXT : TEXT_COLOR,
         wordWrap: { width: MAX_WIDTH - PADDING_X * 2, useAdvancedWrap: true },
         align: "center",
       })
@@ -95,11 +105,18 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     const h = bounds.height + PADDING_Y * 2;
 
     const isNarration = this.style === "narration";
+    const isThought = this.style === "thought";
     this.bg.clear();
-    this.bg.fillStyle(isNarration ? NAR_BG : 0xfff8e7, 0.98);
-    this.bg.lineStyle(2, isNarration ? NAR_BORDER : 0x5d4037, 0.9);
+    this.bg.fillStyle(isThought ? THOUGHT_BG : isNarration ? NAR_BG : 0xfff8e7, 0.98);
+    this.bg.lineStyle(2, isThought ? THOUGHT_BORDER : isNarration ? NAR_BORDER : 0x5d4037, 0.9);
     this.bg.fillRoundedRect(-w / 2, -h - ARROW_HEIGHT, w, h, CORNER_RADIUS);
     this.bg.strokeRoundedRect(-w / 2, -h - ARROW_HEIGHT, w, h, CORNER_RADIUS);
+    if (isThought) {
+      // 思考泡泡用虚线边框 / Dashed border for thought bubble
+      this.bg.lineStyle(2, THOUGHT_BORDER, 0.6);
+      this.bg.strokeCircle(-w / 2 - 6, -ARROW_HEIGHT - h / 2, 4);
+      this.bg.strokeCircle(-w / 2 - 12, -ARROW_HEIGHT - h / 2 + 8, 3);
+    }
     this.bg.fillTriangle(0, 0, -6, -ARROW_HEIGHT, 6, -ARROW_HEIGHT);
     this.bg.lineBetween(-6, -ARROW_HEIGHT, 0, 0);
     this.bg.lineBetween(6, -ARROW_HEIGHT, 0, 0);

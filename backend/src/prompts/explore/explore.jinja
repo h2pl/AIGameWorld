@@ -21,6 +21,9 @@ DM 提示：
 {# 场景上下文 / Scene context #}
 当前场景：{{ scene.name | default("未知场景") }}（{{ scene.type | default("") }}）
 {{ scene.description | default("") }}
+{% if scene.tilemap_summary %}
+地图语义摘要：{{ scene.tilemap_summary }}
+{% endif %}
 地图尺寸：{{ map_width }} x {{ map_height }}
 
 {# 地标列表 / Landmarks #}

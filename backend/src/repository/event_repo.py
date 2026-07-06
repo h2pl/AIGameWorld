@@ -31,7 +31,7 @@ class TickEventRepo:
                 ev_world = ev.get("world_id", world_id)
             await self._db.execute(
                 "INSERT INTO tick_events (tick, type, payload, world_id, updated_at) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))",
-                (tick, ev_type, json.dumps(ev_payload, default=str), ev_world),
+                (tick, ev_type, json.dumps(ev_payload, ensure_ascii=False, default=str), ev_world),
             )
         await self._db.commit()
         logger.info("[repo] insert tick=%s count=%d", tick, len(tick_events))

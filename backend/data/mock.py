@@ -366,16 +366,17 @@ async def _seed_pcs(pc_repo: PcRepo, world_id: str) -> None:
 async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
     """灌入 NPC / Seed actors.
 
-    NPC 同样初始坐标 (0,0)，避免与 PC 初始位置混淆；
-    后续 tick 中的 scene_service 会把同场景角色按 spawn 重新分配。
+    包含友好 NPC、小怪与 Boss，放置在不同场景。
     """
     actors = [
+        # --- Elderwood Village 友好 NPC ---
         {
             "id": "blacksmith",
             "name": "Blacksmith",
             "role": "blacksmith",
             "race": "dwarf",
             "disposition": "neutral",
+            "scene_id": "village_elderwood",
             "x": 15,
             "y": 17,
             "attributes": {
@@ -386,7 +387,7 @@ async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
                 "wisdom": 12,
                 "charisma": 8,
             },
-            "combat": {"hp": 30, "max_hp": 30, "ac": 15, "attack_bonus": 5, "damage_bonus": 3},
+            "combat": {"hp": 30, "max_hp": 30, "ac": 15, "attack_bonus": 5, "damage_dice": "1d8+2"},
             "personality": "Hardworking, quiet, wary of strangers",
             "functions": ["merchant", "dialogue"],
         },
@@ -396,6 +397,7 @@ async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
             "role": "guard",
             "race": "human",
             "disposition": "friendly",
+            "scene_id": "village_elderwood",
             "x": 22,
             "y": 18,
             "attributes": {
@@ -406,7 +408,7 @@ async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
                 "wisdom": 10,
                 "charisma": 10,
             },
-            "combat": {"hp": 25, "max_hp": 25, "ac": 16, "attack_bonus": 4, "damage_bonus": 2},
+            "combat": {"hp": 25, "max_hp": 25, "ac": 16, "attack_bonus": 4, "damage_dice": "1d6+2"},
             "personality": "尽职、警觉，对陌生人保持礼貌但警惕。",
             "functions": ["ally"],
         },
@@ -416,6 +418,7 @@ async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
             "role": "merchant",
             "race": "human",
             "disposition": "neutral",
+            "scene_id": "village_elderwood",
             "x": 26,
             "y": 20,
             "attributes": {
@@ -426,9 +429,124 @@ async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
                 "wisdom": 12,
                 "charisma": 16,
             },
-            "combat": {"hp": 18, "max_hp": 18, "ac": 10, "attack_bonus": 2, "damage_bonus": 1},
+            "combat": {"hp": 18, "max_hp": 18, "ac": 10, "attack_bonus": 2, "damage_dice": "1d4+1"},
             "personality": "圆滑、健谈，任何信息都有价格。",
             "functions": ["merchant", "dialogue"],
+        },
+        # --- Elderwood Village 敌对生物：小怪 ---
+        {
+            "id": "goblin",
+            "name": "Goblin",
+            "role": "goblin",
+            "race": "goblinoid",
+            "disposition": "hostile",
+            "scene_id": "village_elderwood",
+            "x": 10,
+            "y": 10,
+            "attributes": {
+                "strength": 8,
+                "dexterity": 14,
+                "constitution": 10,
+                "intelligence": 8,
+                "wisdom": 8,
+                "charisma": 6,
+            },
+            "combat": {"hp": 7, "max_hp": 7, "ac": 12, "attack_bonus": 2, "damage_dice": "1d4+2"},
+            "personality": "怯懦但贪婪，喜欢以多欺少。",
+            "functions": ["enemy"],
+        },
+        {
+            "id": "skeleton",
+            "name": "Skeleton",
+            "role": "skeleton",
+            "race": "undead",
+            "disposition": "hostile",
+            "scene_id": "village_elderwood",
+            "x": 30,
+            "y": 10,
+            "attributes": {
+                "strength": 10,
+                "dexterity": 14,
+                "constitution": 12,
+                "intelligence": 4,
+                "wisdom": 8,
+                "charisma": 4,
+            },
+            "combat": {"hp": 13, "max_hp": 13, "ac": 13, "attack_bonus": 3, "damage_dice": "1d6+1"},
+            "personality": "毫无意识的不死生物，只会服从命令攻击活物。",
+            "functions": ["enemy"],
+        },
+        # --- Elderwood Village Boss ---
+        {
+            "id": "orc_boss",
+            "name": "Orc Warlord",
+            "role": "orc_boss",
+            "race": "orc",
+            "disposition": "hostile",
+            "scene_id": "village_elderwood",
+            "x": 35,
+            "y": 35,
+            "attributes": {
+                "strength": 18,
+                "dexterity": 12,
+                "constitution": 18,
+                "intelligence": 8,
+                "wisdom": 10,
+                "charisma": 12,
+            },
+            "combat": {
+                "hp": 45,
+                "max_hp": 45,
+                "ac": 15,
+                "attack_bonus": 5,
+                "damage_dice": "1d12+3",
+            },
+            "personality": "残暴好战，崇尚力量，喜欢正面碾碎敌人。",
+            "functions": ["enemy", "boss"],
+        },
+        # --- Desert 小怪 ---
+        {
+            "id": "desert_scorpion",
+            "name": "Giant Scorpion",
+            "role": "scorpion",
+            "race": "beast",
+            "disposition": "hostile",
+            "scene_id": "desert",
+            "x": 12,
+            "y": 12,
+            "attributes": {
+                "strength": 12,
+                "dexterity": 10,
+                "constitution": 12,
+                "intelligence": 2,
+                "wisdom": 8,
+                "charisma": 4,
+            },
+            "combat": {"hp": 16, "max_hp": 16, "ac": 13, "attack_bonus": 3, "damage_dice": "1d8+1"},
+            "personality": "潜伏在沙下的掠食者，对震动极为敏感。",
+            "functions": ["enemy"],
+        },
+        # --- Desert Boss ---
+        {
+            "id": "mummy_lord",
+            "name": "Mummy Lord",
+            "role": "mummy_lord",
+            "race": "undead",
+            "disposition": "hostile",
+            "scene_id": "desert",
+            "x": 25,
+            "y": 25,
+            "attributes": {
+                "strength": 16,
+                "dexterity": 8,
+                "constitution": 16,
+                "intelligence": 10,
+                "wisdom": 14,
+                "charisma": 12,
+            },
+            "combat": {"hp": 60, "max_hp": 60, "ac": 16, "attack_bonus": 6, "damage_dice": "2d6+3"},
+            "personality": "古老的沙漠统治者，怨恨所有闯入者。",
+            "functions": ["enemy", "boss"],
         },
     ]
     for actor in actors:
@@ -440,7 +558,7 @@ async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
                 race=actor["race"],
                 status="active",
                 disposition=actor["disposition"],
-                scene_id="village_elderwood",
+                scene_id=actor["scene_id"],
                 position_x=actor["x"],
                 position_y=actor["y"],
                 attributes_json=_j(actor["attributes"]),

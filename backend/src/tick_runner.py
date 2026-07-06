@@ -9,6 +9,28 @@ from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+# data_tick 允许领先 display_tick 的最大 tick 数 / Max ticks data_tick may lead display_tick
+MAX_AHEAD_TICKS = 3
+
+
+async def _throttle_tick(world_id: str, orch) -> None:
+    """当 data_tick 领先 display_tick 达到上限时等待 / Wait if data_tick is too far ahead."""
+    world_repo = orch._repos.get("world")
+    if world_repo is None:
+        return
+    while True:
+        data_tick = await world_repo.get_data_tick(world_id)
+        display_tick = await world_repo.get_display_tick(world_id)
+        if data_tick - display_tick < MAX_AHEAD_TICKS:
+            return
+        logger.info(
+            "[throttle] %s data_tick=%d display_tick=%d; waiting for display to catch up",
+            world_id,
+            data_tick,
+            display_tick,
+        )
+        await asyncio.sleep(1)
+
 
 class TickLoopManager:
     """持续 Tick 循环管理器."""
@@ -22,6 +44,7 @@ class TickLoopManager:
         logger.info(f"[loop] Started continuous tick loop for world {world_id} (id: {loop_id})")
         while self.running_worlds.get(world_id, False) and self.loop_ids.get(world_id) == loop_id:
             try:
+                await _throttle_tick(world_id, orch)
                 await orch.run_tick(world_id)
                 await asyncio.sleep(0.5)  # Prevent CPU hogging
             except asyncio.CancelledError:
@@ -63,6 +86,7 @@ class TickBatchRunner:
                 task = self._tasks.get(world_id)
                 if task and task.cancelled():
                     break
+                await _throttle_tick(world_id, orch)
                 await orch.run_tick(world_id)
                 completed += 1
         except asyncio.CancelledError:

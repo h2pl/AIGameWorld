@@ -31,18 +31,14 @@ def _dm_create_event(state: OverallState) -> TickEvent | None:
 def _scene_event(state: OverallState) -> TickEvent | None:
     """构造 scene_setup 事件。
 
-    scene/objects 来自 scene_info（静态数据），PC/Actor 坐标从 state maps 获取。
+    scene / scene_objects 来自 state（静态数据），PC/Actor 从领域模型 map 获取最新坐标。
     """
-    scene_info: dict[str, Any] = state.get("scene_info", {}) or {}
-    scene: dict[str, Any] = scene_info.get("scene", {}) or {}
+    scene: dict[str, Any] = state.get("scene", {}) or {}
     scene_id = scene.get("id", "")
     if not scene_id:
         return None
-    # PC/Actor 从 state maps 获取（最新坐标），不从 scene_info["pcs"]/["actors"] 读
-    pc_state_map = state.get("pc_state_map", {})
-    actor_state_map = state.get("actor_state_map", {})
-    pcs = [{**info, "id": pid} for pid, info in pc_state_map.items()]
-    actors = [{**info, "id": aid} for aid, info in actor_state_map.items()]
+    pcs = [pc.model_dump() for pc in state.get("pcs", {}).values()]
+    actors = [actor.model_dump() for actor in state.get("actors", {}).values()]
     return TickEvent(
         type=TickEventType.SCENE_SETUP,
         tick=state.get("tick", 0),
@@ -52,7 +48,7 @@ def _scene_event(state: OverallState) -> TickEvent | None:
             "scene": scene,
             "pcs": pcs,
             "actors": actors,
-            "scene_objects": scene_info.get("scene_objects", []),
+            "scene_objects": state.get("scene_objects", []),
         },
     )
 
@@ -61,7 +57,37 @@ _EVENT_TYPE_MAP: dict[str, TickEventType] = {
     "talk": TickEventType.PC_TALK,
     "interact": TickEventType.PC_INTERACT,
     "explore": TickEventType.PC_EXPLORE,
+    "combat": TickEventType.PC_COMBAT,
 }
+
+
+def _decision_events(state: OverallState) -> list[TickEvent]:
+    """从 pc_decisions 构造 pc_decision 事件（思考+决策），在动作执行前展示."""
+    pc_decisions: list[dict[str, Any]] = state.get("pc_decisions", [])
+    if not pc_decisions:
+        return []
+    tick = state.get("tick", 0)
+    events: list[TickEvent] = []
+    for decision in pc_decisions:
+        pc_id = decision.get("pc_id", "")
+        pc_name = getattr(state.get("pcs", {}).get(pc_id), "name", pc_id)
+        events.append(
+            TickEvent(
+                type=TickEventType.PC_DECISION,
+                tick=tick,
+                world_id=state.get("world_id", ""),
+                payload={
+                    "pc_id": pc_id,
+                    "pc_name": pc_name,
+                    "action_type": decision.get("type", "wait"),
+                    "target_id": decision.get("target_id", ""),
+                    "target_type": decision.get("target_type", ""),
+                    "thought": decision.get("thought", ""),
+                    "reasoning": decision.get("description", ""),
+                },
+            )
+        )
+    return events
 
 
 def _action_events(state: OverallState) -> list[TickEvent]:
@@ -84,7 +110,7 @@ def _action_events(state: OverallState) -> list[TickEvent]:
         else:
             result = raw_result.model_dump() if hasattr(raw_result, "model_dump") else {}
         pc_id = action.get("pc_id", "")
-        pc_name = (state.get("pc_state_map", {}).get(pc_id, {}) or {}).get("name", pc_id)
+        pc_name = getattr(state.get("pcs", {}).get(pc_id), "name", pc_id)
         payload = {
             "order": action.get("order"),
             "pc_id": pc_id,
@@ -102,6 +128,13 @@ def _action_events(state: OverallState) -> list[TickEvent]:
         if event_type == TickEventType.PC_INTERACT:
             payload["waypoints"] = result.get("waypoints", [])
             payload["narration"] = result.get("narration", "")
+        if event_type == TickEventType.PC_COMBAT:
+            payload["waypoints"] = result.get("waypoints", [])
+            payload["narration"] = result.get("narration", "")
+            payload["combat_log"] = result.get("combat_log", [])
+            payload["winner"] = result.get("winner")
+            payload["target_defeated"] = result.get("target_defeated", False)
+            payload["result"] = result.get("result", "")
         events.append(
             TickEvent(
                 type=event_type,
@@ -122,6 +155,7 @@ def flush_events(state: OverallState, config: RunnableConfig = None) -> dict:
     """从 state 各阶段产出统一构造 TickEvent 列表，存入 _pending_events 供 data_service 落盘."""
     events = [
         *_pick(_dm_create_event(state), _scene_event(state)),
+        *_decision_events(state),
         *_action_events(state),
     ]
     tick = state.get("tick", 0)

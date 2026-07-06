@@ -1,122 +1,160 @@
-"""Combat Engine 单元测试——回合制战斗全流程 / Combat Engine unit tests with full turn-based flow.
+"""Combat Engine 单元测试——纯 LLM 驱动战斗 / Combat engine tests for LLM-driven combat."""
 
-per test-driven-development: 先写测试再实现
-"""
+from unittest.mock import AsyncMock
 
-from unittest.mock import patch
+import pytest
 
-from src.engine.combat.combat_engine import resolve_combat
-from src.schemas.request import CombatParticipant, CombatRequest
+from src.domain.actor import Actor
+from src.domain.player_character import PlayerCharacter
+from src.engine.combat.combat_engine import process_combat_action
+from src.schemas.llm_output import CombatNarrationSchema
 
 
-def _party(name="hero", hp=20, ac=14, atk=5, dmg="1d8+3", dex=2):
-    return CombatParticipant(
+def _pc(
+    pc_id: str = "pc1",
+    name: str = "英雄",
+    position_x: int = 0,
+    position_y: int = 0,
+    hp: int = 20,
+    ac: int = 14,
+    attack_bonus: int = 5,
+    damage_dice: str = "1d8+3",
+) -> PlayerCharacter:
+    return PlayerCharacter(
+        id=pc_id,
         name=name,
-        team="party",
-        hp=hp,
-        max_hp=hp,
-        ac=ac,
-        atk_bonus=atk,
-        damage_dice=dmg,
-        dex_mod=dex,
+        position_x=position_x,
+        position_y=position_y,
+        combat_json=f'{{"hp":{hp},"max_hp":{hp},"ac":{ac},"attack_bonus":{attack_bonus},"damage_dice":"{damage_dice}"}}',
+        attributes_json='{"strength":14,"dexterity":12}',
     )
 
 
-def _enemy(name="goblin", hp=7, ac=12, atk=3, dmg="1d6+1", dex=1):
-    return CombatParticipant(
+def _actor(
+    actor_id: str = "goblin",
+    name: str = "地精",
+    position_x: int = 5,
+    position_y: int = 5,
+    hp: int = 7,
+    ac: int = 12,
+    attack_bonus: int = 3,
+    damage_dice: str = "1d6+1",
+) -> Actor:
+    return Actor(
+        id=actor_id,
         name=name,
-        team="enemy",
-        hp=hp,
-        max_hp=hp,
-        ac=ac,
-        atk_bonus=atk,
-        damage_dice=dmg,
-        dex_mod=dex,
+        position_x=position_x,
+        position_y=position_y,
+        combat_json=f'{{"hp":{hp},"max_hp":{hp},"ac":{ac},"attack_bonus":{attack_bonus},"damage_dice":"{damage_dice}"}}',
+        attributes_json='{"strength":10,"dexterity":10}',
     )
 
 
-class TestCombatBasics:
-    def test_empty_participants(self):
-        r = resolve_combat(CombatRequest(participants=[]))
-        assert r.winner is None
-        assert r.rounds == 0
+class TestCombatAction:
+    """process_combat_action 单动作执行测试 / Single-action combat execution tests."""
 
-    def test_only_party_wins_immediately(self):
-        r = resolve_combat(CombatRequest(participants=[_party("alex")]))
-        assert r.winner == "party"
+    @pytest.mark.asyncio
+    async def test_non_combat_action_skipped(self):
+        event = await process_combat_action(
+            decision={"type": "talk", "pc_id": "pc1", "target_id": "npc1"},
+        )
+        assert event is None
 
-    def test_only_enemy_wins_immediately(self):
-        r = resolve_combat(CombatRequest(participants=[_enemy("goblin")]))
-        assert r.winner == "enemy"
+    @pytest.mark.asyncio
+    async def test_combat_without_target_skipped(self):
+        event = await process_combat_action(
+            decision={"type": "combat", "pc_id": "pc1"},
+        )
+        assert event is None
 
+    @pytest.mark.asyncio
+    async def test_combat_moves_pc_adjacent_to_actor(self):
+        """combat 将 PC 移动到目标 Actor 旁边 / Combat moves PC adjacent to target actor."""
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(
+            return_value=CombatNarrationSchema(narration="他一剑劈向地精。")
+        )
+        pcs = {"pc1": _pc(position_x=0, position_y=0)}
+        actors = {"goblin": _actor(position_x=5, position_y=5)}
+        event = await process_combat_action(
+            decision={
+                "type": "combat",
+                "pc_id": "pc1",
+                "target_id": "goblin",
+                "target_type": "actor",
+            },
+            scene={"id": "forest", "name": "森林", "type": "wilderness"},
+            pcs=pcs,
+            actors=actors,
+            tick=1,
+            config={"configurable": {"llm": llm}},
+        )
+        assert event is not None
+        assert event.kind == "pc_combat"
+        assert event.target_id == "goblin"
+        assert len(event.waypoints) == 2
+        final = event.waypoints[-1]
+        assert abs(final["x"] - 5) <= 1 and abs(final["y"] - 5) <= 1
+        assert pcs["pc1"].position_x == final["x"]
+        assert pcs["pc1"].position_y == final["y"]
 
-class TestInitiative:
-    def test_higher_dex_goes_first(self):
-        alex = _party("alex", dex=4)
-        gob = _enemy("goblin", dex=1)
-        with (
-            patch("src.rules.dnd_rules.roll_d20", return_value=10),
-            patch("src.engine.combat.combat_engine_engine.roll_initiative", side_effect=[14, 11]),
-        ):
-            r = resolve_combat(CombatRequest(participants=[alex, gob]))
-            log_names = [e["attacker"] for e in r.combat_log if "attacker" in e]
-            assert log_names[0] == "alex"
+    @pytest.mark.asyncio
+    async def test_combat_defeats_target(self):
+        """LLM 判定目标被击败时更新目标状态 / LLM defeat updates target state."""
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(
+            return_value=CombatNarrationSchema(
+                narration="他一剑刺穿地精的胸膛，地精倒地不起。",
+                target_defeated=True,
+                result="地精被击败",
+            )
+        )
+        pcs = {"pc1": _pc(position_x=4, position_y=5)}
+        actors = {"goblin": _actor(position_x=5, position_y=5)}
+        event = await process_combat_action(
+            decision={
+                "type": "combat",
+                "pc_id": "pc1",
+                "target_id": "goblin",
+                "target_type": "actor",
+            },
+            scene={"id": "forest", "name": "森林", "type": "wilderness"},
+            pcs=pcs,
+            actors=actors,
+            tick=2,
+            config={"configurable": {"llm": llm}},
+        )
+        assert event.target_defeated is True
+        assert event.winner == "party"
+        assert actors["goblin"].status == "dead"
+        assert actors["goblin"].combat_json.count('"hp"') == 1
+        assert '"hp": 0' in actors["goblin"].combat_json or '"hp":0' in actors["goblin"].combat_json
 
-
-class TestCombatFlow:
-    def test_1v1_party_wins(self):
-        hero = _party("hero", hp=20, ac=16, atk=5, dmg="1d8+3")
-        gob = _enemy("gob", hp=5, ac=10, atk=2, dmg="1d4")
-        with (
-            patch("src.rules.dnd_rules.roll_d20", return_value=15),  # 命中
-            patch("src.rules.dnd_rules.random.randint", return_value=4),  # 1d8=4
-        ):
-            r = resolve_combat(CombatRequest(participants=[hero, gob]))
-            assert r.winner == "party"
-            assert r.rounds >= 1
-            assert len(r.survivors) == 1
-            assert r.survivors[0]["name"] == "hero"
-
-    def test_high_ac_char_evades(self):
-        """高 AC 角色难以被命中，双方可能超时。"""
-        hero = _party("hero", hp=10, ac=20, atk=2, dmg="1d4")
-        gob = _enemy("gob", hp=10, ac=20, atk=2, dmg="1d4")
-        with patch("src.rules.dnd_rules.roll_d20", return_value=5):
-            r = resolve_combat(CombatRequest(participants=[hero, gob]))
-            # 双方 AC 20, atk=2, roll=5 → 5+2=7 < 20 必定 miss, 战斗超时
-            assert r.winner is None
-
-    def test_combat_log_has_details(self):
-        hero = _party("hero", hp=10, ac=12, atk=3, dmg="1d6")
-        gob = _enemy("gob", hp=3, ac=8, atk=1, dmg="1d4")
-        with (
-            patch("src.rules.dnd_rules.roll_d20", return_value=18),
-            patch("src.rules.dnd_rules.random.randint", return_value=3),
-        ):
-            r = resolve_combat(CombatRequest(participants=[hero, gob]))
-            for entry in r.combat_log:
-                assert "attacker" in entry
-                assert "target" in entry
-                assert "hit" in entry
-
-    def test_critical_hit_in_combat(self):
-        hero = _party("hero", hp=20, ac=12, atk=3, dmg="1d6+2")
-        gob = _enemy("gob", hp=10, ac=14, atk=1, dmg="1d4")
-        with (
-            patch("src.rules.dnd_rules.roll_d20", return_value=20),  # 重击！
-            patch("src.rules.dnd_rules.random.randint", return_value=3),
-        ):
-            r = resolve_combat(CombatRequest(participants=[hero, gob]))
-            # nat20 hit, damage doubled
-            assert r.winner in ("party", "enemy")
-
-    def test_party_wipes(self):
-        hero = _party("hero", hp=3, ac=10, atk=1, dmg="1d4")
-        gob = _enemy("gob", hp=20, ac=14, atk=5, dmg="2d6+3")
-        with (
-            patch("src.rules.dnd_rules.roll_d20", return_value=12),
-            patch("src.rules.dnd_rules.random.randint", return_value=4),
-        ):
-            r = resolve_combat(CombatRequest(participants=[hero, gob]))
-            assert r.winner == "enemy"
-            assert any(s["name"] == "gob" for s in r.survivors)
+    @pytest.mark.asyncio
+    async def test_combat_stores_memory(self):
+        """combat 结果写入 pc_memory_map / Combat result is staged into state memory map."""
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(
+            return_value=CombatNarrationSchema(narration="他击中了敌人。")
+        )
+        pc_memory_map: dict[str, list[dict]] = {}
+        pcs = {"pc1": _pc(position_x=4, position_y=5)}
+        actors = {"goblin": _actor(position_x=5, position_y=5)}
+        await process_combat_action(
+            decision={
+                "type": "combat",
+                "pc_id": "pc1",
+                "target_id": "goblin",
+                "target_type": "actor",
+            },
+            scene={"id": "forest", "name": "森林", "type": "wilderness"},
+            pcs=pcs,
+            actors=actors,
+            tick=3,
+            pc_memory_map=pc_memory_map,
+            config={"configurable": {"llm": llm}},
+        )
+        assert len(pc_memory_map.get("pc1", [])) == 1
+        mem = pc_memory_map["pc1"][0]
+        assert mem["memory_type"] == "combat"
+        assert mem["tick"] == 3

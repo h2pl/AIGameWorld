@@ -4,7 +4,9 @@
 Service 负责 State↔Request 适配，Engine 负责业务逻辑 + 从 config 取 repos 调用 Repository。
 """
 
+import json
 from pathlib import Path
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -13,7 +15,7 @@ from langchain_core.runnables.config import RunnableConfig
 from ...schemas.llm_output import DMNarrativeSchema, DMOutput
 from ...schemas.request import DMCreateRequest, DMNarrateRequest
 from ...schemas.response import DMCreateResponse, DMNarrateResponse
-from ...services.memory_service import retrieve_memories
+from ...services.memory_service import retrieve_dm_records
 from ...utils.helpers import get_llm, get_repo
 from ...utils.logging import get_logger
 
@@ -21,7 +23,6 @@ logger = get_logger(__name__)
 
 _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
-_DM_MEMORY_ID = "dm"  # DM 全局记忆 id
 
 
 async def dm_create(
@@ -35,15 +36,22 @@ async def dm_create(
 
     scene_repo = get_repo(config, "scene")
     scenes: list[dict] = []
+    scene_objects_by_scene: dict[str, list[dict]] = {}
     if scene_repo and req.world_id:
-        scenes = await scene_repo.list_scenes(req.world_id)
+        raw_scenes = await scene_repo.list_scenes(req.world_id)
+        all_objects = await scene_repo.list_objects_by_world(req.world_id)
+        for obj in all_objects:
+            scene_objects_by_scene.setdefault(obj.get("scene_id", ""), []).append(obj)
+        scenes = [
+            _enrich_scene(s, scene_objects_by_scene.get(s.get("id", ""), [])) for s in raw_scenes
+        ]
 
-    # 检索 DM 记忆 / Retrieve DM memories
+    # 检索 DM 记忆（复用 dm_records）/ Retrieve DM memories from dm_records
     recent_summary = ""
     memories: list[str] = []
     try:
-        mems = await retrieve_memories(
-            _DM_MEMORY_ID, req.plot_brief or "recent", config=config, top_k=5
+        mems = await retrieve_dm_records(
+            req.world_id or "", config=config, top_k=5, before_tick=req.tick
         )
         memories = list(mems) if mems else []
     except Exception:
@@ -66,9 +74,8 @@ async def dm_create(
     if len(result.hints) > 4:
         result.hints = result.hints[:4]
 
-    # 存入 DM 记忆 / Store DM memory
-    await _store_dm_memory(req.world_id, req.tick, result.plot_brief, config)
-
+    # plot_brief 由 data_service.persist_tick 统一写入 dm_records，
+    # 这里不需要单独存储 DM 记忆。
     return DMCreateResponse(
         hints=result.hints,
         plot_brief=result.plot_brief,
@@ -78,37 +85,83 @@ async def dm_create(
 
 
 async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DMNarrateResponse:
-    """Phase 6: DM 叙事 / DM narrates."""
+    """Phase 6: DM 叙事 / DM narrates.
+
+    注意：本函数不再提供 fallback 叙事。LLM 返回空视为后端/模型异常，
+    必须抛出并记录完整上下文，方便排查根因。
+    """
     llm = get_llm(config)
     if llm is None:
         raise RuntimeError("[dm_narrate] LLM client not configured")
 
-    # 检索 DM 记忆 / Retrieve DM memories
+    # 检索 DM 记忆（复用 dm_records）/ Retrieve DM memories from dm_records
     memories: list[str] = []
     try:
-        mems = await retrieve_memories(
-            _DM_MEMORY_ID, req.plot_brief or "recent", config=config, top_k=3
+        mems = await retrieve_dm_records(
+            req.world_id or "", config=config, top_k=3, before_tick=req.tick
         )
         memories = list(mems) if mems else []
     except Exception:
         logger.warning("[engine] dm_narrate memory retrieval failed, continuing without memories")
 
+    # pending_actions.result 可能是 Pydantic 模型，模板用 dict.get，需要统一转 dict
+    # / Normalize action results so Jinja can safely use .get()
+    pending_actions = _normalize_pending_actions(req.pending_actions)
+
     system_prompt = await _render_dm_system(config, req.world_id)
     prompt = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
+        tick=req.tick,
         plot_brief=req.plot_brief,
         hints=req.hints,
+        scene=req.scene,
+        scene_objects=req.scene_objects,
+        pcs=list(req.pcs.values()),
+        actors=list(req.actors.values()),
         events=req.events,
+        pending_actions=pending_actions,
         memories=memories,
     )
+
     result = await llm.call_structured(
         "dm_narrate",
         DMNarrativeSchema,
         [SystemMessage(content=system_prompt), HumanMessage(content=prompt)],
     )
-    narrative = result.narrative
-    logger.info("[engine] dm_narrate tick=%s narrative_len=%s", req.tick, len(narrative or ""))
 
+    narrative = (result.narrative or "").strip()
+    if not narrative:
+        logger.error(
+            "[engine] dm_narrate produced empty narrative; tick=%s prompt_len=%s prompt_preview=%s",
+            req.tick,
+            len(prompt),
+            prompt[:1200],
+        )
+        raise RuntimeError(
+            f"[dm_narrate] LLM returned empty narrative at tick={req.tick}; "
+            "check model/prompt. Raw response should be in debug logs."
+        )
+
+    logger.info("[engine] dm_narrate tick=%s narrative_len=%s", req.tick, len(narrative))
     return DMNarrateResponse(narrative_out=narrative)
+
+
+def _normalize_pending_actions(actions: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """把 action.result 中的 Pydantic/对象统一转成 dict，供模板安全使用 / Normalize action results to dicts."""
+    if not actions:
+        return []
+    normalized: list[dict[str, Any]] = []
+    for action in actions:
+        if not isinstance(action, dict):
+            normalized.append({"raw": str(action)[:200]})
+            continue
+        item = dict(action)
+        result = item.get("result")
+        if hasattr(result, "model_dump"):
+            item["result"] = result.model_dump()
+        elif hasattr(result, "__dict__"):
+            item["result"] = {k: v for k, v in result.__dict__.items() if not k.startswith("_")}
+        normalized.append(item)
+    return normalized
 
 
 async def _render_dm_system(config: RunnableConfig | None, world_id: str) -> str:
@@ -123,14 +176,28 @@ async def _render_dm_system(config: RunnableConfig | None, world_id: str) -> str
     return _PROMPTS.get_template("dm/_dm_system.jinja").render(world=world)
 
 
-async def _store_dm_memory(
-    world_id: str,
-    tick: int,
-    plot_brief: str,
-    config: RunnableConfig = None,
-) -> None:
-    """存入 DM 全局记忆 / Store DM global memory."""
-    memory_repo = get_repo(config, "memory")
-    if not memory_repo or not plot_brief:
-        return
-    await memory_repo.store(_DM_MEMORY_ID, f"[tick {tick}] {plot_brief}", tick, importance=5)
+def _enrich_scene(scene: dict, objects: list[dict]) -> dict:
+    """解析 ext_json 并补充场景物体信息 / Parse ext_json and attach scene objects."""
+    ext = {}
+    ext_json = scene.get("ext_json", "{}")
+    if isinstance(ext_json, str) and ext_json.strip():
+        try:
+            ext = json.loads(ext_json)
+        except json.JSONDecodeError:
+            ext = {}
+    return {
+        "id": scene.get("id", ""),
+        "name": scene.get("name", ""),
+        "type": scene.get("type", ""),
+        "description": scene.get("description", ""),
+        "map_key": scene.get("map_key", ""),
+        "spawn_x": scene.get("spawn_x", 0),
+        "spawn_y": scene.get("spawn_y", 0),
+        "map_width": scene.get("map_width", 40),
+        "map_height": scene.get("map_height", 40),
+        "tilemap_summary": scene.get("tilemap_summary", ""),
+        "landmarks": ext.get("landmarks", []),
+        "exits": ext.get("exits", []),
+        "environment": ext.get("environment", {}),
+        "objects": objects,
+    }

@@ -15,7 +15,7 @@ class SceneRepo:
     async def list_scenes(self, world_id: str) -> list[dict]:
         """按 world_id 加载场景摘要列表."""
         rows = await self._db.fetch_all(
-            "SELECT id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, ext_json FROM scenes WHERE world_id = ?",
+            "SELECT id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json FROM scenes WHERE world_id = ?",
             (world_id,),
         )
         return [
@@ -29,6 +29,7 @@ class SceneRepo:
                 "spawn_y": r.get("spawn_y", 0),
                 "map_width": r.get("map_width", 40),
                 "map_height": r.get("map_height", 40),
+                "tilemap_summary": r.get("tilemap_summary", ""),
                 "ext_json": r.get("ext_json", "{}"),
             }
             for r in rows
@@ -37,7 +38,7 @@ class SceneRepo:
     async def get_scene(self, scene_id: str) -> dict | None:
         """按 scene_id 加载单个场景."""
         row = await self._db.fetch_one(
-            "SELECT id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, ext_json FROM scenes WHERE id = ?",
+            "SELECT id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json FROM scenes WHERE id = ?",
             (scene_id,),
         )
         if not row:
@@ -52,6 +53,7 @@ class SceneRepo:
             "spawn_y": row.get("spawn_y", 0),
             "map_width": row.get("map_width", 40),
             "map_height": row.get("map_height", 40),
+            "tilemap_summary": row.get("tilemap_summary", ""),
             "ext_json": row.get("ext_json", "{}"),
         }
 
@@ -66,8 +68,8 @@ class SceneRepo:
         """写入单条场景."""
         await self._db.execute(
             "INSERT OR REPLACE INTO scenes "
-            "(id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, ext_json, world_id, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
+            "(id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json, world_id, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
             (
                 scene.get("id", ""),
                 scene.get("name", ""),
@@ -78,9 +80,18 @@ class SceneRepo:
                 scene.get("spawn_y", 0),
                 scene.get("map_width", 40),
                 scene.get("map_height", 40),
+                scene.get("tilemap_summary", ""),
                 scene.get("ext_json", "{}"),
                 world_id,
             ),
+        )
+        await self._db.commit()
+
+    async def save_tilemap_summary(self, scene_id: str, summary: str) -> None:
+        """更新场景 tilemap 语义摘要 / Update tilemap semantic summary."""
+        await self._db.execute(
+            "UPDATE scenes SET tilemap_summary = ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
+            (summary, scene_id),
         )
         await self._db.commit()
 

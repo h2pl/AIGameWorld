@@ -6,7 +6,7 @@ START
  dm_service.dm_create              [node]      DM 创造情境
  |
  v
- scene_service.build_scene_info    [node]      构建场景信息
+ scene_subgraph                    [subgraph]  构建场景信息
  |
  v
  pc_subgraph                       [subgraph]  角色决策+行动
@@ -36,7 +36,6 @@ from ..services import (
     dm_service,
     event_service,
     reflection_service,
-    scene_service,
 )
 from ..utils.logging import get_logger
 
@@ -45,6 +44,7 @@ from .state import OverallState
 
 # 子图 / Subgraphs
 from .subgraphs import pc_subgraph as pc_subgraph_module
+from .subgraphs import scene_subgraph as scene_subgraph_module
 
 logger = get_logger(__name__)
 
@@ -55,7 +55,7 @@ def build_tick_graph() -> StateGraph:
     graph = StateGraph(OverallState)
 
     graph.add_node("dm_service.dm_create", dm_service.dm_create)
-    graph.add_node("scene_service.build_scene_info", scene_service.build_scene_info)
+    graph.add_node("scene_subgraph", scene_subgraph_module.scene_subgraph)
     graph.add_node("pc_subgraph", pc_subgraph_module.pc_subgraph)
     graph.add_node("event_service.flush_events", event_service.flush_events)
     graph.add_node("dm_service.dm_narrate", dm_service.dm_narrate)
@@ -64,8 +64,8 @@ def build_tick_graph() -> StateGraph:
     graph.add_node("reflection_service.reflect", reflection_service.reflect)
 
     graph.set_entry_point("dm_service.dm_create")
-    graph.add_edge("dm_service.dm_create", "scene_service.build_scene_info")
-    graph.add_edge("scene_service.build_scene_info", "pc_subgraph")
+    graph.add_edge("dm_service.dm_create", "scene_subgraph")
+    graph.add_edge("scene_subgraph", "pc_subgraph")
     graph.add_edge("pc_subgraph", "event_service.flush_events")
     graph.add_edge("event_service.flush_events", "dm_service.dm_narrate")
     graph.add_edge("dm_service.dm_narrate", "event_service.emit_narrative_event")

@@ -1,0 +1,32 @@
+{# Phase 4d: 战斗旁白上下文 / Combat narration context #}
+剧情情境：{{ plot_brief }}
+
+{% if hints %}
+环境提示：
+{% for hint in hints %}
+- {{ hint }}
+{% endfor %}
+{% endif %}
+
+当前场景：{{ scene.name or scene.id }}（{{ scene.type }}）
+{{ scene.description or "无" }}
+{% if scene.tilemap_summary %}
+地图语义摘要：{{ scene.tilemap_summary }}
+{% endif %}
+
+攻击者：{{ pc.name }}（id: {{ pc.id }}，{{ pc.role }}{% if pc.race %}，{{ pc.race }}{% endif %}）
+- 生命：{{ pc.hp }} / {{ pc.max_hp }}，护甲：{{ pc.ac }}，命中加值：{{ pc.attack_bonus }}，伤害骰：{{ pc.damage_dice }}
+- 力量：{{ pc.strength }}，敏捷：{{ pc.dexterity }}
+
+目标：{{ target.name }}（id: {{ target.id }}，{{ target.role }}{% if target.race %}，{{ target.race }}{% endif %}）
+- 生命：{{ target.hp }} / {{ target.max_hp }}，护甲：{{ target.ac }}，命中加值：{{ target.attack_bonus }}，伤害骰：{{ target.damage_dice }}
+- 力量：{{ target.strength }}，敏捷：{{ target.dexterity }}
+
+{% if memories %}
+相关记忆：
+{% for mem in memories %}
+- {{ mem }}
+{% endfor %}
+{% endif %}
+
+请根据双方实力和当前情境，直接生成战斗交锋描述与结果。

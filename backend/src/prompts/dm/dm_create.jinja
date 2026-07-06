@@ -1,20 +1,13 @@
 {# Phase 1: DM 创造情境 / DM creates the scene #}
 
-你的职责：根据可用场景列表创建当前场景的情境。选择当前场景，提供环境线索（hints），编写剧情梗概（plot_brief）。
+你的职责：根据可用场景列表为当前 tick 选择并创造一个具体、可感知的场景情境。
+你需要给出场景 id、剧情梗概（plot_brief）以及 2-4 条环境线索（hints）。
 
 {# 记忆 / DM memories #}
 {% if memories %}
 最近的故事发展：
 {% for mem in memories %}
 - {{ mem }}
-{% endfor %}
-{% endif %}
-
-{# 场景列表 / Available scenes #}
-{% if scenes %}
-当前世界的场景列表（请从以下 id 中选择）：
-{% for s in scenes %}
-- {{ s.id }}：{{ s.name }}（{{ s.description }}）
 {% endfor %}
 {% endif %}
 
@@ -27,13 +20,52 @@
 上一步剧情：{{ plot_brief_prev }}
 {% endif %}
 
+{# 场景列表 / Available scenes #}
+{% if scenes %}
+可用场景列表（请从以下 id 中精确选择当前场景）：
+{% for s in scenes %}
+- {{ s.id }}：{{ s.name }}（{{ s.type }}）
+  描述：{{ s.description or "无" }}
+  {% if s.tilemap_summary %}
+  地图语义摘要：{{ s.tilemap_summary }}
+  {% endif %}
+  地图尺寸：{{ s.map_width }} × {{ s.map_height }}
+  出生点：({{ s.spawn_x }}, {{ s.spawn_y }})
+  {% if s.environment %}
+  环境：{% if s.environment.weather %}天气 {{ s.environment.weather }}{% endif %}{% if s.environment.time_of_day %} / 时间 {{ s.environment.time_of_day }}{% endif %}
+  {% endif %}
+  {% if s.landmarks %}
+  地标：
+  {% for lm in s.landmarks %}
+    · {{ lm.name }} @({{ lm.position.x }}, {{ lm.position.y }})
+  {% endfor %}
+  {% endif %}
+  {% if s.exits %}
+  出口：
+  {% for ex in s.exits %}
+    · {{ ex.description }} → {{ ex.target_scene }} @({{ ex.position.x }}, {{ ex.position.y }})
+  {% endfor %}
+  {% endif %}
+  {% if s.objects %}
+  场景物体：
+  {% for obj in s.objects %}
+    · {{ obj.name }}（{{ obj.object_type }}）@({{ obj.position_x }}, {{ obj.position_y }})
+  {% endfor %}
+  {% endif %}
+{% endfor %}
+{% endif %}
+
 {# 输出约束 / Output spec #}
 严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）。
 
 字段约束：
-- hints（string[]）：2-4 条环境提示。DM 不直接指引玩家行动，只描述环境中可感知的信息。
-  必须使用简体中文。好的示例："地上有血迹通向左边走廊"、"右边房间传来低语"、"北门被重锁封死"。
-- plot_brief（string）：2-3 句场景设置。描述角色行动"之前"发生了什么，不要写角色已做的事。
+- hints（string[]）：2-4 条环境提示。必须是当前场景中玩家可以直接感知到的信息，比如视觉、听觉、气味、温度等。
+  必须使用简体中文。好的示例：
+  - "地上有血迹通向左边走廊"
+  - "右边房间传来低语"
+  - "北门被重锁封死"
+  - "祭坛上的刻文在月光下泛着冷光"
+- plot_brief（string）：2-3 句场景设置。描述角色行动"之前"现场发生了什么，营造具体画面，不要写角色已做的事。
   必须使用简体中文。
 - scene_id（string）：当前场景 id。必须从上方场景列表中精确选择一个 id，不得编造。
 

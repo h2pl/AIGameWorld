@@ -67,8 +67,10 @@ export class TickPlayer {
       throw e;
     }
 
+    this._emitWaiting(true);
     let delivered = 0;
     while (this._state === "running" && this._lastTick < targetTick) {
+      this._emitWaiting(true);
       try {
         const data = await API.fetchEvents(this._baseUrl, this._worldId, this._lastTick);
         if (data.events?.length) {
@@ -79,6 +81,7 @@ export class TickPlayer {
             continue;
           }
           this._lastTick = tick;
+          this._emitWaiting(false);
           await this._playTick(tick, evs, onTick);
           await API.syncDisplayTick(this._baseUrl, this._worldId, tick);
           delivered++;
@@ -90,6 +93,7 @@ export class TickPlayer {
       await _sleep(speedMs(500));
     }
     this._state = "idle";
+    this._emitWaiting(false);
     return delivered;
   }
 
@@ -108,6 +112,7 @@ export class TickPlayer {
     this._state = "idle";
     this._stopPolling();
     this._eventManager.running = false;
+    this._emitWaiting(false);
     await API.pauseLoop(this._baseUrl, this._worldId).catch((e) => log.warn(`pause failed`, e));
   }
 
@@ -125,6 +130,7 @@ export class TickPlayer {
     this._stopPolling();
     this._lastTick = 0;
     this._eventManager.running = false;
+    this._emitWaiting(false);
     await API.resetWorld(this._baseUrl, this._worldId);
   }
 
@@ -133,12 +139,14 @@ export class TickPlayer {
     this._state = "idle";
     this._stopPolling();
     this._eventManager.running = false;
+    this._emitWaiting(false);
   }
 
   private _startPolling(onTick: (tick: number, events: any[]) => void): void {
     if (this._pollTimer) return;
     const poll = async () => {
       if (this._state !== "running") return;
+      this._emitWaiting(true);
       try {
         const data = await API.fetchEvents(this._baseUrl, this._worldId, this._lastTick);
         if (data.events?.length) {
@@ -146,6 +154,7 @@ export class TickPlayer {
           const evs = data.events.filter((ev) => ev.tick === tick);
           if (evs.length) {
             this._lastTick = tick;
+            this._emitWaiting(false);
             await this._playTick(tick, evs, onTick);
           }
         }
@@ -162,6 +171,10 @@ export class TickPlayer {
       window.clearTimeout(this._pollTimer);
       this._pollTimer = null;
     }
+  }
+
+  private _emitWaiting(waiting: boolean, message?: string): void {
+    window.dispatchEvent(new CustomEvent("tick-waiting", { detail: { waiting, message } }));
   }
 
   private async _playTick(

@@ -312,11 +312,10 @@ def _node_out(name: str, result: object) -> dict:
         if isinstance(brief, str):
             out["plot_brief"] = brief[:80]
     elif name in ("scene.build",):
-        info = result.get("scene_info", {})
-        out["scene_id"] = info.get("scene", {}).get("id", "")
-        out["pcs"] = len(info.get("pcs", []))
-        out["actors"] = len(info.get("actors", []))
-        out["objects"] = len(info.get("scene_objects", []))
+        out["scene_id"] = result.get("scene", {}).get("id", "")
+        out["pcs"] = len(result.get("pcs", {}))
+        out["actors"] = len(result.get("actors", {}))
+        out["objects"] = len(result.get("scene_objects", []))
     elif name in ("pc.decide",):
         decs = result.get("pc_decisions", [])
         out["decisions"] = len(decs)

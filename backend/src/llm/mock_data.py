@@ -85,6 +85,24 @@ _PC_DECISIONS: list[dict] = [
         "target_type": "scene_object",
         "reasoning": "角落里有个古旧的木箱，上面雕刻着奇怪的符文。",
     },
+    {
+        "action_type": "combat",
+        "target_id": "goblin",
+        "target_type": "actor",
+        "reasoning": "那只地精虎视眈眈，必须先下手为强。",
+    },
+    {
+        "action_type": "combat",
+        "target_id": "skeleton",
+        "target_type": "actor",
+        "reasoning": "不死生物不能放任它在村子里游荡。",
+    },
+    {
+        "action_type": "combat",
+        "target_id": "orc_boss",
+        "target_type": "actor",
+        "reasoning": "首领才是威胁的根源，集中火力解决它。",
+    },
 ]
 
 
@@ -249,6 +267,23 @@ DATASET_TAVERN: MockDataset = {
         {
             "success": True,
             "narration": "他用匕首挑开箱盖的铜锁，里面露出一枚刻着龙纹的徽章和一小袋金币。",
+        },
+    ],
+    "combat": [
+        {
+            "narration": "他挥剑劈向地精，剑锋在烛光下划出一道弧光，将敌人逼得连退两步。",
+            "target_defeated": False,
+            "result": "地精受创但仍站立",
+        },
+        {
+            "narration": "长矛擦过他的护甲，火星四溅；他趁机反手一击，重创了面前的敌人。",
+            "target_defeated": False,
+            "result": "敌人受创",
+        },
+        {
+            "narration": "他一个侧身躲过挥来的木棒，匕首顺势刺入敌人的软肋，地精发出一声惨叫。",
+            "target_defeated": True,
+            "result": "地精倒地不起",
         },
     ],
     "actor_decision": [
@@ -427,6 +462,23 @@ DATASET_DESERT: MockDataset = {
             "narration": "他拧开古老的水壶盖，里面盛着的液体散发出一股草药清香——这是沙漠旅人用来抵御中暑的秘方。",
         },
     ],
+    "combat": [
+        {
+            "narration": "他迎着沙龙喷出的烈焰冲出，长剑刺入怪物坚硬的鳞片缝隙，暗红的血液渗入黄沙。",
+            "target_defeated": False,
+            "result": "沙龙受创但更加狂暴",
+        },
+        {
+            "narration": "蝎尾如闪电般袭来，他翻滚躲开，反手一箭射中了守护者的眼睛。",
+            "target_defeated": True,
+            "result": "蝎尾狮倒地不起",
+        },
+        {
+            "narration": "他高举盾牌挡下石像守卫的重击，震得双臂发麻，但仍稳住身形挥出反击。",
+            "target_defeated": False,
+            "result": "石像守卫出现裂痕",
+        },
+    ],
     "actor_decision": [
         {
             "action_type": "talk",
@@ -534,6 +586,23 @@ DATASET_COMBAT: MockDataset = {
                 {"speaker_id": "fighter", "text": "你怎么不说弱点是脚趾？眼睛离地三米怎么打！"},
                 {"speaker_id": "rogue", "text": "这不是在想办法嘛……脚趾也许行！"},
             ],
+        },
+    ],
+    "combat": [
+        {
+            "narration": "地精尖叫着扑上来，他侧身避过生锈的短剑，反手一剑将敌人砍翻在地。",
+            "target_defeated": True,
+            "result": "地精倒地不起",
+        },
+        {
+            "narration": "兽人军阀咆哮着挥下战斧，他举盾格挡，金属撞击声震耳欲聋，随即还以一记重击。",
+            "target_defeated": False,
+            "result": "兽人军阀受创但仍站立",
+        },
+        {
+            "narration": "食人魔的树干带着风声砸下，他灵活地滚到怪物脚边，匕首深深刺入粗糙的脚踝。",
+            "target_defeated": False,
+            "result": "食人魔受创但仍在咆哮",
         },
     ],
     "actor_decision": [

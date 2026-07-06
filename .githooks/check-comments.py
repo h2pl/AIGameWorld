@@ -25,9 +25,19 @@ SKIP_GLOBS = [
     ".pytest_cache/*",
     ".ruff_cache/*",
     ".mypy_cache/*",
+    "*.jinja",           # 提示词模板以自然语言为主 / Prompt templates are mostly natural language
+    "*.test.ts",         # 前端测试文件 / Frontend test files
+    "test_*.py",         # 后端测试文件 / Backend test files
 ]
 # 白名单确切文件名（不含路径）/ Whitelist exact filenames
-SKIP_FILES = {".gitkeep", "package-lock.json", "package.json", ".prettierrc", "tuxemon-town.json"}
+SKIP_FILES = {
+    ".gitkeep",
+    "package-lock.json",
+    "package.json",
+    ".prettierrc",
+    "tuxemon-town.json",
+    "mock_data.py",  # LLM mock 数据集，以自然语言样本为主 / LLM mock dataset, mostly natural language samples
+}
 
 # 最低注释率 / Minimum comment ratio
 MIN_COMMENT_RATIO = 0.05

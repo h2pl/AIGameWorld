@@ -1,10 +1,21 @@
 """Services 测试——对齐当前 graph/service/engine 结构。"""
 
+import json
+import tempfile
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from src.domain.player_character import PlayerCharacter
+from src.schemas.llm_output import (
+    ActorGenerationSchema,
+    GeneratedActorSchema,
+    GeneratedSceneObjectSchema,
+    SceneObjectGenerationSchema,
+    TilemapInterpretationSchema,
+)
 from src.services import (
     dm_service,
     event_service,
@@ -20,13 +31,16 @@ def _overall_state(**overrides):
     return {
         "tick": 0,
         "world_id": "world-1",
-        "scene_info": {},
+        "scene": {},
+        "scene_objects": [],
         "pending_actions": [],
         "hints": [],
         "plot_brief": "",
         "scene_id": "scene-1",
         "pc_decisions": [],
         "narrative": "",
+        "pcs": {},
+        "actors": {},
         **overrides,
     }
 
@@ -68,10 +82,9 @@ class TestCharacterService:
     @pytest.mark.asyncio
     async def test_decide_delegates_each_pc_to_decision_engine(self):
         """decide 逐个把场景内的 PC 交给 decision_engine / decide delegates each PC in the scene to decision_engine."""
-        scene_info = {"scene": {"id": "scene-1"}, "scene_objects": [{"id": "obj-1"}]}
-        pc_state_map = {
-            "pc-1": {"name": "Alex", "role": "fighter", "position_x": 0, "position_y": 0}
-        }
+        scene = {"id": "scene-1"}
+        scene_objects = [{"id": "obj-1"}]
+        pcs = {"pc-1": PlayerCharacter(id="pc-1", name="Alex", role="fighter")}
         decision = [{"pc_id": "pc-1", "type": "talk", "description": "先交涉"}]
         with patch.object(
             pc_service.decision_engine,
@@ -83,16 +96,19 @@ class TestCharacterService:
                     tick=3,
                     plot_brief="战斗开始",
                     scene_id="scene-1",
-                    scene_info=scene_info,
-                    pc_state_map=pc_state_map,
+                    scene=scene,
+                    scene_objects=scene_objects,
+                    pcs=pcs,
                 )
             )
         mock_decide.assert_awaited_once()
         assert mock_decide.call_args.kwargs["pc_id"] == "pc-1"
-        assert mock_decide.call_args.kwargs["scene_info"] == scene_info
+        assert mock_decide.call_args.kwargs["scene"] == scene
         assert mock_decide.call_args.kwargs["plot_brief"] == "战斗开始"
         assert mock_decide.call_args.kwargs["scene_id"] == "scene-1"
         assert mock_decide.call_args.kwargs["tick"] == 3
+        assert mock_decide.call_args.kwargs["pcs"] == pcs
+        assert mock_decide.call_args.kwargs["scene_objects"] == scene_objects
         assert result == {"pc_decisions": decision}
 
     @pytest.mark.asyncio
@@ -127,22 +143,32 @@ class TestCharacterService:
             hints=[],
             scene_id="scene-1",
             tick=2,
-            pc_state_map={},
-            actor_state_map={},
+            pcs={},
+            actors={},
+            pc_memory_map={},
             config=None,
         )
         mock_interact.assert_awaited_once_with(
             decision=decision,
-            scene_info={},
-            pc_state_map={},
-            actor_state_map={},
+            scene={},
+            scene_objects=[],
+            pcs={},
+            actors={},
             tick=2,
             plot_brief="",
             hints=[],
+            pc_memory_map={},
             config=None,
         )
         mock_combat.assert_awaited_once_with(
             decision=decision,
+            scene={},
+            pcs={},
+            actors={},
+            plot_brief="",
+            hints=[],
+            tick=2,
+            pc_memory_map={},
             config=None,
         )
         assert result == {"pending_actions": []}
@@ -190,16 +216,18 @@ class TestSceneAndMessageService:
     """场景服务测试 / Scene service tests."""
 
     @pytest.mark.asyncio
-    async def test_build_scene_info_returns_empty_without_repo(self):
-        """没有 pc_repo/scene_id 时返回空场景信息 / Returns empty scene info without pc_repo/scene_id."""
+    async def test_build_scene_state_returns_empty_without_repo(self):
+        """没有 repo 时仍返回场景上下文，PC/Actor map 为空 / Returns scene context with empty state maps when repos are missing."""
         state = _overall_state(tick=1, world_id="world-x", scene_id="scene-x")
-        result = await scene_service.build_scene_info(state)
-        assert result == {"scene_info": {}, "pc_state_map": {}}
+        result = await scene_service.build_scene_state(state)
+        assert result["pcs"] == {}
+        assert result["actors"] == {}
+        assert result["scene"]["id"] == "scene-x"
 
     @pytest.mark.asyncio
-    async def test_build_scene_info_builds_scene_info(self):
+    async def test_build_scene_state_builds_scene_state(self):
         """场景服务构建当前场景的完整信息 / Scene service builds the current scene's full info."""
-        pc = SimpleNamespace(
+        pc = PlayerCharacter(
             id="pc-1",
             scene_id="scene-1",
             name="Alex",
@@ -211,10 +239,9 @@ class TestSceneAndMessageService:
         )
         config = _pc_repo_config([pc], object_ids=["obj-1"])
         state = _overall_state(tick=1, world_id="world-1", scene_id="scene-1")
-        result = await scene_service.build_scene_info(state, config)
-        info = result["scene_info"]
-        assert "pc-1" in result["pc_state_map"]
-        assert [o["id"] for o in info["scene_objects"]] == ["obj-1"]
+        result = await scene_service.build_scene_state(state, config)
+        assert "pc-1" in result["pcs"]
+        assert [o["id"] for o in result["scene_objects"]] == ["obj-1"]
 
 
 class TestDMAndReflectionService:
@@ -333,18 +360,18 @@ class TestEventService:
         assert events == []
 
     @pytest.mark.asyncio
-    async def test_flush_events_builds_scene_setup_from_scene_info(self):
-        """从 scene_service 写入的 scene_info 构造 scene_setup 事件 /
-        Build a scene_setup event from the scene_info scene_service wrote."""
+    async def test_flush_events_builds_scene_setup_from_scene(self):
+        """从 scene_service 写入的 scene 构造 scene_setup 事件 /
+        Build a scene_setup event from the scene state scene_service wrote."""
         event_repo = AsyncMock()
         config = {"configurable": {"repos": {"event": event_repo}}}
         state = _overall_state(
             tick=1,
             scene_id="",
-            scene_info={
-                "scene": {"id": "scene-1", "name": "Tavern"},
-                "scene_objects": [{"id": "obj-1", "name": "Chest", "object_type": "container"}],
-            },
+            scene={"id": "scene-1", "name": "Tavern"},
+            scene_objects=[{"id": "obj-1", "name": "Chest", "object_type": "container"}],
+            pcs={"pc-1": PlayerCharacter(id="pc-1", name="Alex")},
+            actors={},
             pending_actions=[],
         )
         result = event_service.flush_events(state, config)
@@ -369,9 +396,38 @@ class TestEventService:
         assert len(events) > 0
 
     @pytest.mark.asyncio
+    async def test_flush_events_builds_pc_decision_events(self):
+        """从 pc_decisions 构造 pc_decision 事件 / Build pc_decision events from pc_decisions."""
+        event_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo}}}
+        state = _overall_state(
+            tick=2,
+            scene_id="",
+            pcs={"pc-1": PlayerCharacter(id="pc-1", name="Alex")},
+            pc_decisions=[
+                {
+                    "pc_id": "pc-1",
+                    "type": "talk",
+                    "target_id": "npc-1",
+                    "target_type": "actor",
+                    "thought": "我想找 NPC 打听消息。",
+                    "description": "先交谈收集情报。",
+                }
+            ],
+            pending_actions=[],
+        )
+        result = event_service.flush_events(state, config)
+        events = result.get("_pending_events", [])
+        decision_events = [e for e in events if e.type.value == "pc_decision"]
+        assert len(decision_events) == 1
+        assert decision_events[0].payload["pc_id"] == "pc-1"
+        assert decision_events[0].payload["thought"] == "我想找 NPC 打听消息。"
+        assert decision_events[0].payload["reasoning"] == "先交谈收集情报。"
+
+    @pytest.mark.asyncio
     async def test_flush_events_drops_unknown_kinds(self):
-        """未在 5 种已知类型内的原始结果（如未结算的 character_combat）不落盘 /
-        Raw results outside the 5 known kinds (e.g. unresolved character_combat) are dropped."""
+        """未在已知 action 类型内的原始结果（如未结算的 character_combat）不落盘 /
+        Raw results outside known action types (e.g. unresolved character_combat) are dropped."""
         event_repo = AsyncMock()
         config = {"configurable": {"repos": {"event": event_repo}}}
         state = _overall_state(
@@ -380,10 +436,10 @@ class TestEventService:
             pending_actions=[
                 {
                     "order": 0,
-                    "action_type": "combat",
+                    "action_type": "character_combat",
                     "target_id": "npc-1",
                     "target_type": "actor",
-                    "result": {"kind": "pc_combat", "pc_id": "pc-1"},
+                    "result": {"kind": "character_combat", "pc_id": "pc-1"},
                 }
             ],
         )
@@ -392,9 +448,9 @@ class TestEventService:
         assert events == []
 
     @pytest.mark.asyncio
-    async def test_flush_events_builds_narrative_event_from_state(self):
-        """从 dm_service.dm_narrate 写入的 narrative 构造 dm_narrative 事件 /
-        Build a dm_narrative event from the narrative dm_service.dm_narrate wrote."""
+    async def test_flush_events_does_not_include_narrative(self):
+        """flush_events 不处理 narrative，narrative 由 emit_narrative_event 追加 /
+        flush_events ignores narrative; emit_narrative_event appends it."""
         event_repo = AsyncMock()
         config = {"configurable": {"repos": {"event": event_repo}}}
         state = _overall_state(
@@ -404,6 +460,243 @@ class TestEventService:
             narrative="夜幕降临，酒馆里灯火通明。",
         )
         result = event_service.flush_events(state, config)
-        # narrative 事件已删除，无事件时 insert_tick_events 不会被调用
         events = result.get("_pending_events", [])
         assert events == []
+
+    @pytest.mark.asyncio
+    async def test_emit_narrative_event_appends_dm_narrative(self):
+        """emit_narrative_event 把 state.narrative 追加为 dm_narrative 事件 /
+        emit_narrative_event converts state.narrative into a dm_narrative event."""
+        state = _overall_state(
+            tick=2,
+            scene_id="",
+            pending_actions=[],
+            narrative="夜幕降临，酒馆里灯火通明。",
+        )
+        result = event_service.emit_narrative_event(state)
+        events = result.get("_pending_events", [])
+        assert len(events) == 1
+        assert events[0].type.value == "dm_narrative"
+        assert events[0].payload["text"] == "夜幕降临，酒馆里灯火通明。"
+
+    @pytest.mark.asyncio
+    async def test_emit_narrative_event_skips_empty_narrative(self):
+        """narrative 为空时不追加 dm_narrative 事件 /
+        Empty narrative does not create a dm_narrative event."""
+        state = _overall_state(
+            tick=2,
+            scene_id="",
+            pending_actions=[],
+            narrative="",
+        )
+        result = event_service.emit_narrative_event(state)
+        events = result.get("_pending_events", [])
+        assert events == []
+
+
+class TestSpawnService:
+    """动态生成 Actor / SceneObject 测试 / Dynamic spawn service tests."""
+
+    @pytest.mark.asyncio
+    async def test_generate_actors_skips_when_scene_has_actors(self):
+        """当前场景已有 Actor 时跳过生成 / Skip actor generation when scene already has actors."""
+        actor_repo = AsyncMock()
+        actor_repo.load_all = AsyncMock(return_value=[SimpleNamespace(id="a1", scene_id="scene-1")])
+        actor_repo.save = AsyncMock()
+        config = {"configurable": {"repos": {"actor": actor_repo}}}
+        state = _overall_state(world_id="w-1", scene_id="scene-1", scene={"id": "scene-1"})
+        result = await scene_service.generate_actors(state, config)
+        assert result["_generated_actors"] == []
+        actor_repo.save.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_generate_actors_saves_llm_generated_actors(self):
+        """场景无 Actor 时 LLM 生成并保存 / LLM generates and saves actors when scene is empty."""
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(
+            return_value=ActorGenerationSchema(
+                actors=[
+                    GeneratedActorSchema(
+                        id="actor_bartender",
+                        name="酒保",
+                        role="bartender",
+                        race="human",
+                        disposition="neutral",
+                        position_x=10,
+                        position_y=10,
+                    )
+                ]
+            )
+        )
+        saved = []
+        actor_repo = AsyncMock()
+        actor_repo.load_all = AsyncMock(return_value=[])
+        actor_repo.save = AsyncMock(side_effect=saved.append)
+        config = {
+            "configurable": {
+                "repos": {"actor": actor_repo},
+                "llm": llm,
+            }
+        }
+        state = _overall_state(
+            world_id="w-1",
+            scene_id="scene-1",
+            scene={"id": "scene-1", "name": "Tavern", "map_width": 40, "map_height": 40},
+            plot_brief="酒馆里暗流涌动。",
+        )
+        result = await scene_service.generate_actors(state, config)
+        assert result["_generated_actors"] == ["actor_bartender"]
+        assert len(saved) == 1
+        assert saved[0].id == "actor_bartender"
+        assert saved[0].scene_id == "scene-1"
+        assert saved[0].world_id == "w-1"
+
+    @pytest.mark.asyncio
+    async def test_generate_scene_objects_skips_when_scene_has_objects(self):
+        """当前场景已有物体时跳过生成 / Skip object generation when scene already has objects."""
+        scene_repo = AsyncMock()
+        scene_repo.get_object_ids = AsyncMock(return_value=["obj-1"])
+        scene_repo.save_object = AsyncMock()
+        config = {"configurable": {"repos": {"scene": scene_repo}}}
+        state = _overall_state(world_id="w-1", scene_id="scene-1", scene={"id": "scene-1"})
+        result = await scene_service.generate_scene_objects(state, config)
+        assert result["_generated_scene_objects"] == []
+        scene_repo.save_object.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_generate_scene_objects_saves_llm_generated_objects(self):
+        """场景无物体时 LLM 生成并保存 / LLM generates and saves objects when scene is empty."""
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(
+            return_value=SceneObjectGenerationSchema(
+                objects=[
+                    GeneratedSceneObjectSchema(
+                        id="obj_chest",
+                        name="宝箱",
+                        object_type="container",
+                        position_x=5,
+                        position_y=5,
+                        interact_data={"locked": False},
+                    )
+                ]
+            )
+        )
+        saved = []
+        scene_repo = AsyncMock()
+        scene_repo.get_object_ids = AsyncMock(return_value=[])
+        scene_repo.save_object = AsyncMock(side_effect=saved.append)
+        scene_repo.load_all = AsyncMock(return_value={})
+        config = {
+            "configurable": {
+                "repos": {"scene": scene_repo},
+                "llm": llm,
+            }
+        }
+        state = _overall_state(
+            world_id="w-1",
+            scene_id="scene-1",
+            scene={"id": "scene-1", "name": "Tavern", "map_width": 40, "map_height": 40},
+            plot_brief="酒馆里暗流涌动。",
+            actors={},
+        )
+        result = await scene_service.generate_scene_objects(state, config)
+        assert result["_generated_scene_objects"] == ["obj_chest"]
+        assert len(saved) == 1
+        assert saved[0].id == "obj_chest"
+        assert saved[0].scene_id == "scene-1"
+        assert saved[0].world_id == "w-1"
+
+
+class TestTilemapService:
+    """Tilemap 语义解读测试 / Tilemap interpretation service tests."""
+
+    @pytest.mark.asyncio
+    async def test_interpret_tilemap_skips_when_summary_exists(self):
+        """已有 tilemap_summary 时跳过 LLM / Skip interpretation when summary already exists."""
+        scene_repo = AsyncMock()
+        scene_repo.save_tilemap_summary = AsyncMock()
+        config = {"configurable": {"repos": {"scene": scene_repo}}}
+        state = _overall_state(
+            scene_id="scene-1",
+            scene={"id": "scene-1", "tilemap_summary": "已有摘要"},
+        )
+        result = await scene_service.interpret_tilemap(state, config)
+        assert result["scene"]["tilemap_summary"] == "已有摘要"
+        scene_repo.save_tilemap_summary.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_interpret_tilemap_skips_when_no_tilemap_file(self):
+        """找不到 tilemap 文件时跳过 / Skip when tilemap file is missing."""
+        scene_repo = AsyncMock()
+        scene_repo.save_tilemap_summary = AsyncMock()
+        config = {"configurable": {"repos": {"scene": scene_repo}}}
+        state = _overall_state(
+            scene_id="scene-1",
+            scene={"id": "scene-1", "map_key": "not-exist"},
+        )
+        result = await scene_service.interpret_tilemap(state, config)
+        assert result["scene"].get("tilemap_summary", "") == ""
+        scene_repo.save_tilemap_summary.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_interpret_tilemap_generates_and_saves_summary(self):
+        """读取 tilemap 文件，LLM 生成摘要并保存 / Generate and save tilemap summary via LLM."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            assets_dir = Path(tmpdir)
+            tilemap = {
+                "width": 10,
+                "height": 10,
+                "tilewidth": 32,
+                "tileheight": 32,
+                "orientation": "orthogonal",
+                "layers": [
+                    {"name": "Ground", "type": "tilelayer", "visible": True, "data": [1] * 100}
+                ],
+                "tilesets": [
+                    {"name": "TestSet", "image": "test.png", "tilewidth": 32, "tileheight": 32}
+                ],
+                "properties": {},
+            }
+            (assets_dir / "scene-1.json").write_text(json.dumps(tilemap), encoding="utf-8")
+
+            llm = AsyncMock()
+            llm.call_structured = AsyncMock(
+                return_value=TilemapInterpretationSchema(summary="一片荒凉的沙漠，中央有口水井。")
+            )
+            scene_repo = AsyncMock()
+            scene_repo.save_tilemap_summary = AsyncMock()
+            config = {
+                "configurable": {
+                    "repos": {"scene": scene_repo},
+                    "llm": llm,
+                }
+            }
+            state = _overall_state(
+                scene_id="scene-1",
+                scene={"id": "scene-1", "map_key": "scene-1"},
+            )
+            result = await scene_service.interpret_tilemap(state, config, assets_dir=assets_dir)
+            assert result["scene"]["tilemap_summary"] == "一片荒凉的沙漠，中央有口水井。"
+            scene_repo.save_tilemap_summary.assert_awaited_once_with(
+                "scene-1", "一片荒凉的沙漠，中央有口水井。"
+            )
+
+    def test_summarize_tilemap_compacts_layer_data(self):
+        """_summarize_tilemap 不发送完整 data 数组 / Summarizer excludes full data arrays."""
+        tilemap = {
+            "width": 2,
+            "height": 2,
+            "tilewidth": 32,
+            "tileheight": 32,
+            "orientation": "orthogonal",
+            "layers": [
+                {"name": "Ground", "type": "tilelayer", "visible": True, "data": [1, 2, 3, 4]}
+            ],
+            "tilesets": [{"name": "Set", "image": "set.png", "tilewidth": 32, "tileheight": 32}],
+            "properties": {"foo": "bar"},
+        }
+        text = scene_service._summarize_tilemap(tilemap)
+        assert "地图尺寸: 2x2" in text
+        assert "Ground" in text
+        assert "non_empty_tiles=4" in text
+        assert "[1, 2, 3, 4]" not in text

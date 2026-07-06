@@ -30,7 +30,12 @@ class DMNarrateRequest(BaseModel):
     plot_brief: str = ""
     hints: list[str] = []
     tick_message_id: str = ""
-    events: list[dict[str, Any]] = []  # 本 tick 已发生事件 / Events occurred this tick
+    events: list[dict[str, Any]] = []  # 本 tick 已发生事件摘要 / Events summary
+    scene: dict[str, Any] = {}  # 当前场景信息 / Current scene context
+    scene_objects: list[dict[str, Any]] = []  # 场景物体列表 / Scene objects
+    pcs: dict[str, dict[str, Any]] = {}  # PC 运行时状态 / PC runtime state
+    actors: dict[str, dict[str, Any]] = {}  # Actor 运行时状态 / Actor runtime state
+    pending_actions: list[dict[str, Any]] = []  # 本 tick 执行的动作详情 / Action details
 
 
 # === Phase 2: World ===

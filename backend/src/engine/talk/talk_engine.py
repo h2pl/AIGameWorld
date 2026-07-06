@@ -10,6 +10,7 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
+from ...domain import Actor, PlayerCharacter
 from ...schemas.engine_result import TalkActionResult
 from ...schemas.llm_output import DialogueSchema
 from ...services.memory_service import retrieve_memories
@@ -28,11 +29,12 @@ async def process_talk_action(
     hints: list[str],
     scene_id: str,
     tick: int,
-    pc_state_map: dict[str, dict] | None = None,
-    actor_state_map: dict[str, dict] | None = None,
+    pcs: dict[str, PlayerCharacter] | None = None,
+    actors: dict[str, Actor] | None = None,
+    pc_memory_map: dict[str, list[dict]] | None = None,
     config: RunnableConfig = None,
 ) -> TalkActionResult | None:
-    """处理单个 talk 决策 → 生成多轮对话，更新发起者坐标到目标旁边"""
+    """处理单个 talk 决策 → 生成多轮对话，更新发起者坐标到目标旁边，写入 pc_memory_map"""
     if decision.get("type") != "talk":
         return None
 
@@ -42,7 +44,16 @@ async def process_talk_action(
     reason = decision.get("description", "")
 
     turns = await _generate_dialogue(
-        char_id, target_id, target_type, reason, plot_brief, hints, scene_id, config
+        char_id,
+        target_id,
+        target_type,
+        reason,
+        plot_brief,
+        hints,
+        scene_id,
+        tick,
+        pc_memory_map,
+        config,
     )
     if not turns:
         turns = [{"speaker_id": char_id, "text": reason or f"{char_id} 发起交谈。"}]
@@ -51,13 +62,11 @@ async def process_talk_action(
 
     # PC 记对话记忆，Actor 不记 / Only PC stores dialogue memory, actors don't
     if target_type != "actor":
-        await _store_dialogue_memory(char_id, target_id, turns, tick, config)
+        _store_dialogue_memory(char_id, target_id, target_type, turns, tick, pc_memory_map)
     else:
-        await _store_dialogue_memory(char_id, None, turns, tick, config)
+        _store_dialogue_memory(char_id, None, target_type, turns, tick, pc_memory_map)
 
-    waypoints = _update_talker_position(
-        char_id, target_id, target_type, pc_state_map, actor_state_map
-    )
+    waypoints = _update_talker_position(char_id, target_id, target_type, pcs, actors)
 
     logger.info("[engine] %s ↔ %s : %d turns", char_id, target_id, len(turns))
     return TalkActionResult(
@@ -75,6 +84,8 @@ async def _generate_dialogue(
     plot_brief: str,
     hints: list[str],
     scene_id: str,
+    tick: int,
+    pc_memory_map: dict[str, list[dict]] | None,
     config: RunnableConfig = None,
 ) -> list[dict]:
     """单次 LLM 调用生成双方多轮对话 / Generate a multi-turn dialogue in a single LLM call."""
@@ -91,7 +102,9 @@ async def _generate_dialogue(
     scene = await _fetch_scene(scene_id, config)
 
     query = f"{reason} {plot_brief} {scene.get('description', '')}".strip()
-    memories = await retrieve_memories(char_id, query, config=config, top_k=5)
+    memories = await retrieve_memories(
+        char_id, query, config=config, top_k=5, pc_memory_map=pc_memory_map, current_tick=tick
+    )
 
     ctx = {
         "initiator": _character_ctx(char_id, initiator),
@@ -178,49 +191,68 @@ def _normalize_speaker_ids(turns: list[dict], char_id: str, target_id: str) -> l
     ]
 
 
-async def _store_dialogue_memory(
+def _store_dialogue_memory(
     char_id: str,
     target_id: str,
+    target_type: str,
     turns: list[dict],
     tick: int,
-    config: RunnableConfig = None,
+    pc_memory_map: dict[str, list[dict]] | None,
 ) -> None:
-    """把对话记录存入双方记忆，供后续决策/反思检索 / Store the exchange into both participants' memory."""
-    memory_repo = get_repo(config, "memory")
-    if not memory_repo:
+    """把对话记录写入 pc_memory_map，供后续决策/反思检索 / Stage dialogue memory into state."""
+    if pc_memory_map is None:
         return
     transcript = "；".join(f"{t['speaker_id']}：{t['text']}" for t in turns)
     if char_id:
-        await memory_repo.store(char_id, f"与 {target_id} 的对话：{transcript}", tick, importance=3)
+        pc_memory_map.setdefault(char_id, []).append(
+            {
+                "pc_id": char_id,
+                "content": f"与 {target_id} 的对话：{transcript}",
+                "tick": tick,
+                "importance": 3,
+                "memory_type": "talk",
+                "entity_type": "pc",
+            }
+        )
     if target_id:
-        await memory_repo.store(target_id, f"与 {char_id} 的对话：{transcript}", tick, importance=3)
+        pc_memory_map.setdefault(target_id, []).append(
+            {
+                "pc_id": target_id,
+                "content": f"与 {char_id} 的对话：{transcript}",
+                "tick": tick,
+                "importance": 3,
+                "memory_type": "talk",
+                "entity_type": "pc" if target_type == "pc" else "actor",
+            }
+        )
 
 
 def _update_talker_position(
     pc_id: str,
     target_id: str,
     target_type: str,
-    pc_state_map: dict[str, dict] | None,
-    actor_state_map: dict[str, dict] | None = None,
+    pcs: dict[str, PlayerCharacter] | None,
+    actors: dict[str, Actor] | None = None,
 ) -> list[dict]:
     """谈话者移到目标旁边空位，返回 waypoints / Move talker to vacant adjacent cell"""
-    if not pc_state_map or pc_id not in pc_state_map:
+    if not pcs or pc_id not in pcs:
         return []
-    target_map = pc_state_map if target_type == "pc" else actor_state_map
-    target = (target_map or {}).get(target_id, {})
-    tx, ty = target.get("position_x", 0), target.get("position_y", 0)
+    pc = pcs[pc_id]
+    target = (pcs if target_type == "pc" else actors or {}).get(target_id)
+    if target is None:
+        return []
+    tx, ty = target.position_x, target.position_y
     if tx == 0 and ty == 0:
         return []
-    old_x = pc_state_map[pc_id].get("position_x", 0)
-    old_y = pc_state_map[pc_id].get("position_y", 0)
+    old_x, old_y = pc.position_x, pc.position_y
 
     from ...utils.helpers import build_occupied_set, find_vacant_adjacent
 
-    occupied = build_occupied_set(pc_state_map, actor_state_map, exclude_id=pc_id)
+    occupied = build_occupied_set(pcs, actors, exclude_id=pc_id)
     new_x, new_y = find_vacant_adjacent(tx, ty, occupied)
 
-    pc_state_map[pc_id]["position_x"] = new_x
-    pc_state_map[pc_id]["position_y"] = new_y
+    pc.position_x = new_x
+    pc.position_y = new_y
     if old_x == new_x and old_y == new_y:
         return []
     return [{"x": old_x, "y": old_y}, {"x": new_x, "y": new_y}]

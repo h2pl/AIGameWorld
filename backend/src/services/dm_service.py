@@ -33,6 +33,8 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
 @trace_node("dm.narrate")
 async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict:
     """Phase 6: DM 叙事——产出 narrative 写入 state."""
+    pcs = state.get("pcs", {})
+    actors = state.get("actors", {})
     result = await dm_engine.dm_narrate(
         DMNarrateRequest(
             tick=state.get("tick", 0),
@@ -40,6 +42,11 @@ async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict
             plot_brief=state.get("plot_brief", ""),
             hints=state.get("hints", []),
             events=_summarize_events(state.get("_pending_events", [])),
+            scene=state.get("scene", {}),
+            scene_objects=state.get("scene_objects", []),
+            pcs={pc_id: pc.model_dump() for pc_id, pc in pcs.items()},
+            actors={actor_id: actor.model_dump() for actor_id, actor in actors.items()},
+            pending_actions=state.get("pending_actions", []),
         ),
         config=config,
     )

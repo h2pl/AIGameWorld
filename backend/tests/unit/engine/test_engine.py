@@ -5,13 +5,14 @@ from unittest.mock import AsyncMock
 import pytest
 
 # ── Engine imports / 引擎导入 ──
-from src.engine.combat.combat_engine import process_combat_action, resolve_combat
+from src.domain.actor import Actor
+from src.domain.player_character import PlayerCharacter
+from src.engine.combat.combat_engine import process_combat_action
 from src.engine.interact.interact_engine import process_interact_action
 from src.engine.quest.quest_engine import check_quests
 from src.engine.reflection.reflection_engine import reflect
 from src.engine.talk.talk_engine import process_talk_action
 from src.schemas.request import (
-    CombatRequest,
     QuestRequest,
     ReflectionRequest,
 )
@@ -40,22 +41,6 @@ def _scene_char_config(scene_obj=None, pc=None, llm=None):
     return cfg
 
 
-class TestCombatEngine:
-    def test_empty_participants(self):
-        r = resolve_combat(CombatRequest(participants=[]))
-        assert r.winner is None
-
-    def test_party_auto_wins_against_nothing(self):
-        from src.schemas.request import CombatParticipant
-
-        r = resolve_combat(
-            CombatRequest(
-                participants=[CombatParticipant(name="hero", team="party", hp=10, max_hp=10)]
-            )
-        )
-        assert r.winner == "party"
-
-
 class TestTalkEngine:
     @pytest.mark.asyncio
     async def test_non_talk_action_skipped(self):
@@ -71,11 +56,9 @@ class TestTalkEngine:
 
     @pytest.mark.asyncio
     async def test_talk_generates_multi_turn_dialogue(self):
-        """有 LLM + target 时生成多轮对话，双方都存记忆 / With LLM + target, generates multi-turn dialogue and stores memory for both."""
+        """有 LLM + target 时生成多轮对话，PC 记忆写入 pc_memory_map / With LLM + target, generates multi-turn dialogue and stages memory."""
         from src.schemas.llm_output import DialogueSchema, DialogueTurnSchema
 
-        memory_repo = AsyncMock()
-        memory_repo.store = AsyncMock(return_value=None)
         llm = AsyncMock()
         llm.call_structured = AsyncMock(
             return_value=DialogueSchema(
@@ -88,9 +71,10 @@ class TestTalkEngine:
         config = {
             "configurable": {
                 "llm": llm,
-                "repos": {"char": None, "memory": memory_repo},
+                "repos": {"char": None},
             }
         }
+        pc_memory_map: dict[str, list[dict]] = {}
         event = await process_talk_action(
             decision={
                 "type": "talk",
@@ -103,6 +87,7 @@ class TestTalkEngine:
             hints=["注意酒馆里的异动"],
             scene_id="tavern",
             tick=1,
+            pc_memory_map=pc_memory_map,
             config=config,
         )
         turns = event.turns
@@ -110,8 +95,9 @@ class TestTalkEngine:
         assert turns[0]["speaker_id"] == "pc1"
         assert turns[1]["speaker_id"] == "npc1"
         assert event.participants == ["pc1", "npc1"]
-        # Actor 不记记忆 / Actors don't store memories
-        assert memory_repo.store.call_count == 1
+        # Actor 不记记忆，只有 PC 写入 pc_memory_map / Actors don't store memories
+        assert len(pc_memory_map.get("pc1", [])) == 1
+        assert pc_memory_map["pc1"][0]["memory_type"] == "talk"
 
 
 class TestInteractAction:
@@ -134,6 +120,7 @@ class TestInteractAction:
     @pytest.mark.asyncio
     async def test_interact_returns_kind_and_narration(self):
         """LLM 生成交互返回 success + narration / LLM generates interact with success + narration."""
+        from src.domain.player_character import PlayerCharacter
         from src.domain.scene_object import SceneObject, SceneObjectType
         from src.schemas.llm_output import InteractOutputSchema
 
@@ -142,6 +129,14 @@ class TestInteractAction:
             name="宝箱",
             object_type=SceneObjectType.CONTAINER,
             interact_data={"locked": False},
+            position_x=5,
+            position_y=5,
+        )
+        pc = PlayerCharacter(
+            id="pc1",
+            name="pc1",
+            position_x=0,
+            position_y=0,
         )
         llm = AsyncMock()
         llm.call_structured = AsyncMock(
@@ -153,6 +148,18 @@ class TestInteractAction:
         config = _scene_char_config(scene_obj=chest, llm=llm)
         event = await process_interact_action(
             decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
+            scene={"map_width": 40, "map_height": 40},
+            scene_objects=[
+                {
+                    "id": "chest1",
+                    "name": "宝箱",
+                    "object_type": "container",
+                    "position_x": 5,
+                    "position_y": 5,
+                    "interact_data": {"locked": False},
+                },
+            ],
+            pcs={"pc1": pc},
             config=config,
         )
         assert event.kind == "pc_interact"
@@ -178,14 +185,151 @@ class TestCombatAction:
         assert event is None
 
     @pytest.mark.asyncio
-    async def test_combat_records_intent_without_resolving(self):
-        """combat 只记录意图，不结算 / combat only records intent, not resolved."""
-        event = await process_combat_action(
-            decision={"type": "combat", "pc_id": "pc1", "target_id": "npc_goblin"},
+    async def test_combat_moves_pc_adjacent_to_actor(self):
+        """combat 将 PC 移动到目标 Actor 旁边 / Combat moves PC adjacent to target actor."""
+        from src.schemas.llm_output import CombatNarrationSchema
+
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(
+            return_value=CombatNarrationSchema(narration="他一剑劈向地精。")
         )
-        assert event["kind"] == "pc_combat"
-        assert event["target_id"] == "npc_goblin"
-        assert event["resolved"] is False
+        pcs = {
+            "pc1": PlayerCharacter(
+                id="pc1",
+                name="pc1",
+                position_x=0,
+                position_y=0,
+                combat_json='{"hp":10,"max_hp":10,"ac":12,"attack_bonus":2,"damage_dice":"1d8"}',
+                attributes_json='{"strength":14,"dexterity":12}',
+            ),
+        }
+        actors = {
+            "goblin": Actor(
+                id="goblin",
+                name="地精",
+                position_x=5,
+                position_y=5,
+                combat_json='{"hp":5,"max_hp":5,"ac":10,"attack_bonus":1,"damage_dice":"1d4"}',
+                attributes_json='{"strength":10,"dexterity":10}',
+            ),
+        }
+        event = await process_combat_action(
+            decision={
+                "type": "combat",
+                "pc_id": "pc1",
+                "target_id": "goblin",
+                "target_type": "actor",
+            },
+            pcs=pcs,
+            actors=actors,
+            tick=1,
+            config={"configurable": {"llm": llm}},
+        )
+        assert event.kind == "pc_combat"
+        assert event.target_id == "goblin"
+        assert len(event.waypoints) == 2
+        final = event.waypoints[-1]
+        assert abs(final["x"] - 5) <= 1 and abs(final["y"] - 5) <= 1
+        assert pcs["pc1"].position_x == final["x"]
+        assert pcs["pc1"].position_y == final["y"]
+
+    @pytest.mark.asyncio
+    async def test_combat_defeats_target_via_llm(self):
+        """LLM 判定击败时同步更新 Actor 状态 / LLM defeat updates actor state."""
+        from src.schemas.llm_output import CombatNarrationSchema
+
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(
+            return_value=CombatNarrationSchema(
+                narration="他闪过敌人的攻击，反手刺出一剑。",
+                target_defeated=True,
+                result="地精被击败",
+            )
+        )
+        pcs = {
+            "pc1": PlayerCharacter(
+                id="pc1",
+                name="pc1",
+                position_x=4,
+                position_y=5,
+                combat_json='{"hp":10,"max_hp":10,"ac":12,"attack_bonus":2,"damage_dice":"1d8"}',
+                attributes_json='{"strength":14,"dexterity":12}',
+            ),
+        }
+        actors = {
+            "goblin": Actor(
+                id="goblin",
+                name="地精",
+                position_x=5,
+                position_y=5,
+                combat_json='{"hp":5,"max_hp":5,"ac":10,"attack_bonus":1,"damage_dice":"1d4"}',
+                attributes_json='{"strength":10,"dexterity":10}',
+            ),
+        }
+        event = await process_combat_action(
+            decision={
+                "type": "combat",
+                "pc_id": "pc1",
+                "target_id": "goblin",
+                "target_type": "actor",
+            },
+            pcs=pcs,
+            actors=actors,
+            tick=2,
+            pc_memory_map={},
+            config={"configurable": {"llm": llm}},
+        )
+        assert "反手刺出一剑" in event.narration
+        assert event.target_defeated is True
+        assert actors["goblin"].status == "dead"
+
+    @pytest.mark.asyncio
+    async def test_combat_stores_memory(self):
+        """combat 结果写入 pc_memory_map / Combat result is staged into state memory map."""
+        from src.schemas.llm_output import CombatNarrationSchema
+
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(
+            return_value=CombatNarrationSchema(narration="他击中了敌人。")
+        )
+        pc_memory_map: dict[str, list[dict]] = {}
+        pcs = {
+            "pc1": PlayerCharacter(
+                id="pc1",
+                name="pc1",
+                position_x=4,
+                position_y=5,
+                combat_json='{"hp":10,"max_hp":10,"ac":12,"attack_bonus":2,"damage_dice":"1d8"}',
+                attributes_json='{"strength":14,"dexterity":12}',
+            ),
+        }
+        actors = {
+            "goblin": Actor(
+                id="goblin",
+                name="地精",
+                position_x=5,
+                position_y=5,
+                combat_json='{"hp":5,"max_hp":5,"ac":10,"attack_bonus":1,"damage_dice":"1d4"}',
+                attributes_json='{"strength":10,"dexterity":10}',
+            ),
+        }
+        await process_combat_action(
+            decision={
+                "type": "combat",
+                "pc_id": "pc1",
+                "target_id": "goblin",
+                "target_type": "actor",
+            },
+            pcs=pcs,
+            actors=actors,
+            tick=3,
+            pc_memory_map=pc_memory_map,
+            config={"configurable": {"llm": llm}},
+        )
+        assert len(pc_memory_map.get("pc1", [])) == 1
+        mem = pc_memory_map["pc1"][0]
+        assert mem["memory_type"] == "combat"
+        assert mem["tick"] == 3
 
 
 class TestQuestEngine:

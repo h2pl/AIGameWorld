@@ -273,6 +273,9 @@ class LLMClient:
             ("pc_decision", llm_config.pc_decision),
             ("actor_decision", llm_config.actor_decision),
             ("talk", llm_config.talk),
+            ("interact", llm_config.interact),
+            ("explore", llm_config.explore),
+            ("combat", llm_config.combat),
             ("reflection", llm_config.reflection),
         ]:
             model_url = cfg.base_url or primary_url
@@ -436,6 +439,8 @@ class LLMClient:
                         elapsed=f"{elapsed:.1f}s",
                         raw_len=len(content),
                         json_len=len(json_str),
+                        raw_preview=content[:400],
+                        parsed_preview=str(parsed.model_dump())[:400],
                     ),
                 )
                 return parsed

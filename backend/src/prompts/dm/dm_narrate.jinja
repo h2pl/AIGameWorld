@@ -1,6 +1,7 @@
-{# Phase 6: DM 叙事渲染 / DM narrates the scene #}
+{# Phase 6: DM 叙事渲染 / DM narrates the tick #}
 
-你的职责：基于剧情梗概、环境提示和实际发生的事件，以第三人称 DND DM 口吻讲述一段 3-5 句的叙事。
+你的职责：以第三人称 DND DM 口吻，把本 tick（第 {{ tick }} 轮）中实际发生的事情讲清楚。
+请基于下面的完整上下文，写出一段连贯、有画面感的叙事。
 
 {# 记忆 / DM memories #}
 {% if memories %}
@@ -10,8 +11,53 @@
 {% endfor %}
 {% endif %}
 
-{# 上下文注入 / Context injection #}
-剧情梗概：{{ plot_brief }}
+{# 当前场景 / Current scene #}
+{% if scene %}
+场景：{{ scene.name or scene.id }}（{{ scene.type }}）
+描述：{{ scene.description or "无" }}
+{% if scene.tilemap_summary %}
+地图语义摘要：{{ scene.tilemap_summary }}
+{% endif %}
+地图尺寸：{{ scene.map_width | default(40) }} × {{ scene.map_height | default(40) }}
+出生点：({{ scene.spawn_x | default(0) }}, {{ scene.spawn_y | default(0) }})
+{% if scene.landmarks %}
+地标：
+{% for lm in scene.landmarks %}
+- {{ lm.name }} ({{ lm.position.x }}, {{ lm.position.y }})
+{% endfor %}
+{% endif %}
+{% if scene.exits %}
+出口：
+{% for ex in scene.exits %}
+- {{ ex.description }} → {{ ex.target_scene }} ({{ ex.position.x }}, {{ ex.position.y }})
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{# 场景物体 / Scene objects #}
+{% if scene_objects %}
+场景中的物体：
+{% for obj in scene_objects %}
+- {{ obj.name }}（{{ obj.object_type }}）@({{ obj.position_x }}, {{ obj.position_y }}){% if obj.interactable %} 可交互{% endif %}
+{% endfor %}
+{% endif %}
+
+{# 角色位置 / Character positions #}
+{% if pcs %}
+主角团位置：
+{% for pc in pcs %}
+- {{ pc.name }} @({{ pc.position_x }}, {{ pc.position_y }}){% if pc.role %} | {{ pc.role }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if actors %}
+在场配角：
+{% for actor in actors %}
+- {{ actor.name }} @({{ actor.position_x }}, {{ actor.position_y }}){% if actor.role %} | {{ actor.role }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{# 剧情与提示 / Plot and hints #}
+剧情梗概：{{ plot_brief or "无" }}
 
 {% if hints %}
 环境提示：
@@ -20,19 +66,45 @@
 {% endfor %}
 {% endif %}
 
-{% if events %}
-发生的事件：
-{% for ev in events %}
-- {{ ev.get("type", "?") }}：{{ ev.get("description", ev) }}
+{# 本 tick 动作详情 / Action details #}
+{% if pending_actions %}
+本 tick 发生的行动（按执行顺序）：
+{% for action in pending_actions %}
+- 第 {{ action.order }} 步：{{ action.pc_id }} 执行 {{ action.action_type }}
+  目标：{{ action.target_id }}（{{ action.target_type }}）
+  {% set result = action.result or {} %}
+  {% if action.action_type == "talk" and result.get("turns") %}
+  对话内容：
+    {% for turn in result.turns %}
+    · {{ turn.speaker_id }}：{{ turn.text }}
+    {% endfor %}
+  {% elif action.action_type == "explore" %}
+  探索记录：{{ result.get("explore_record") or "无" }}
+  {% if result.get("waypoints") %}
+  路径：({{ result.waypoints[0].x }}, {{ result.waypoints[0].y }}) → ({{ result.waypoints[-1].x }}, {{ result.waypoints[-1].y }})
+  {% endif %}
+  {% elif action.action_type == "interact" %}
+  交互结果：{{ "成功" if result.get("success") else "失败" }} — {{ result.get("narration") or "无" }}
+  {% elif action.action_type == "combat" %}
+  战斗结果：{{ result.get("result") or "无" }}
+  {% endif %}
 {% endfor %}
+{% elif events %}
+本 tick 事件摘要：
+{% for ev in events %}
+- {{ ev.type }}：{{ ev.description }}
+{% endfor %}
+{% else %}
+本 tick 暂无角色行动。
 {% endif %}
 
 {# 叙事要求 / Narration requirements #}
 要求：
-- 必须是第三人称 DND DM 口吻，简体中文
-- 3-5 句，调动至少一种感官（视觉/听觉/嗅觉/触觉）
-- 将环境提示和事件自然融入叙事，不要复述数据
-- 结尾留一个钩子或悬念，不要把话说满
+- 必须是第三人称 DND DM 口吻，使用简体中文。
+- 3-5 句，先讲清楚本 tick 发生了什么（谁在什么位置做了什么、结果如何），再渲染氛围。
+- 自然融入环境提示和感官细节（视觉/听觉/嗅觉/触觉至少一种）。
+- 不要罗列坐标或数据，把它们转化为场景描写。
+- 结尾留一个钩子或悬念，不要把话说满。
 
 {# 输出约束 / Output spec #}
 严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）。
@@ -47,5 +119,5 @@
 
 示例：
 {
-  "narrative": "雾气在 Alex 脚边盘旋，祭坛的刻文在月光下泛着冷光。旅人收刀入鞘，嘴角扬起一个意味不明的笑。远处石塔传来一声沉闷的钟响，惊起一群乌鸦。"
+  "narrative": "Alex 穿过石柱间的阴影，低声告诉盗贼自己的计划。远处，祭坛上的符文忽然亮起，空气中弥漫着硫磺味。旅人握紧刀柄，目光投向石塔方向——那里的钟声似乎正倒计时着什么。"
 }

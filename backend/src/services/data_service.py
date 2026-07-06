@@ -4,6 +4,7 @@ event_service.flush_events 负责构造事件，data_service.persist_tick 负责
 1. 写入 dm_records
 2. 写入 tick_events
 3. 写入变更的 PC 状态
+4. 写入变更的 Actor 状态（死亡/hp 等）
 """
 
 from typing import Any
@@ -49,19 +50,43 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
             await event_repo.insert_tick_events(tick, events, world_id=world_id)
             logger.info("[data] wrote events tick=%s count=%d", tick, len(events))
 
-    # 3. 持久化 PC 运行时状态 / Persist PC runtime state
-    pc_state_map: dict[str, dict[str, Any]] = state.get("pc_state_map", {})
-    if pc_state_map:
+    # 3. 持久化 PC 领域模型 / Persist PC domain models
+    pcs = state.get("pcs", {})
+    if pcs:
         pc_repo = get_repo(config, "char")
         if pc_repo:
-            for pc_id, info in pc_state_map.items():
-                pc = await pc_repo.load_one(pc_id)
-                if pc:
-                    pc.position_x = info.get("position_x", 0)
-                    pc.position_y = info.get("position_y", 0)
-                    if "scene_id" in info:
-                        pc.scene_id = info["scene_id"]
-                    await pc_repo.save(pc)
-            logger.info("[data] persisted pc_state_map count=%d tick=%s", len(pc_state_map), tick)
+            for pc in pcs.values():
+                await pc_repo.save(pc)
+            logger.info("[data] persisted pcs count=%d tick=%s", len(pcs), tick)
+
+    # 4. 持久化 Actor 领域模型 / Persist Actor domain models
+    actors = state.get("actors", {})
+    if actors:
+        actor_repo = get_repo(config, "actor")
+        if actor_repo:
+            for actor in actors.values():
+                await actor_repo.save(actor)
+            logger.info("[data] persisted actors count=%d tick=%s", len(actors), tick)
+
+    # 5. 统一落盘本 tick 产生的新记忆 / Persist new memories created this tick
+    pc_memory_map: dict[str, list[dict[str, Any]]] = state.get("pc_memory_map", {})
+    if pc_memory_map:
+        memory_repo = get_repo(config, "memory")
+        if memory_repo:
+            total = 0
+            for pc_id, mems in pc_memory_map.items():
+                for m in mems:
+                    await memory_repo.store(
+                        pc_id=m.get("pc_id", pc_id),
+                        content=m.get("content", ""),
+                        tick=m.get("tick", tick),
+                        importance=m.get("importance", 2),
+                        memory_type=m.get("memory_type", "observation"),
+                        period=m.get("period", ""),
+                        entity_type=m.get("entity_type", "pc"),
+                        world_id=m.get("world_id", world_id),
+                    )
+                    total += 1
+            logger.info("[data] persisted memories count=%d tick=%s", total, tick)
 
     return {}

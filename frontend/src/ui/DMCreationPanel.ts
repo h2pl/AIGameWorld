@@ -3,10 +3,12 @@ import { Panel } from "./Panel";
 
 /** tick 开始时清空，dm_create 时逐字展开，居中弹窗历史 / typewriter + centered history overlay */
 export class DMCreationPanel extends Panel {
-  private contentEl!: HTMLElement; // 正文区 / Main content
+  private briefEl!: HTMLElement; // 剧情梗概 / Plot brief
+  private hintsEl!: HTMLElement; // 环境提示 / Hints
   private typingTimer: ReturnType<typeof setInterval> | null = null;
   private displayedBrief = "";
   private targetBrief = "";
+  private currentHints: string[] = [];
   private charIndex = 0;
   private history: string[] = []; // 历史记录缓存 / History cache
   private _onTickStart: () => void;
@@ -31,7 +33,10 @@ export class DMCreationPanel extends Panel {
         <span class="panel-title">DM 创造情境</span>
         <button class="panel-history-btn" id="dm-create-history-btn" title="情境历史">🕓</button>
       </div>
-      <div class="panel-body dm-creation-body"></div>
+      <div class="panel-body dm-creation-body">
+        <div class="dm-creation-brief"></div>
+        <div class="dm-creation-hints" style="display:none"></div>
+      </div>
       <div class="history-overlay" id="dm-create-history-overlay" style="display:none">
         <div class="history-panel">
           <div class="history-header">
@@ -41,7 +46,8 @@ export class DMCreationPanel extends Panel {
           <div class="history-body"></div>
         </div>
       </div>`;
-    this.contentEl = el.querySelector(".dm-creation-body")!;
+    this.briefEl = el.querySelector(".dm-creation-brief")!;
+    this.hintsEl = el.querySelector(".dm-creation-hints")!;
     el.querySelector("#dm-create-history-btn")!.addEventListener("click", () =>
       this._showHistory()
     );
@@ -69,16 +75,25 @@ export class DMCreationPanel extends Panel {
     }
     this.targetBrief = "";
     this.displayedBrief = "";
+    this.currentHints = [];
     this.charIndex = 0;
-    this.contentEl.innerHTML = "";
+    this.briefEl.textContent = "";
+    this.hintsEl.innerHTML = "";
+    this.hintsEl.style.display = "none";
   }
 
   private _handleTickEvent(detail: { type: string; payload: Record<string, unknown> }): void {
     if (detail.type !== "dm_create") return;
     const brief = (detail.payload?.plot_brief as string) || "";
-    if (!brief || brief === this.targetBrief) return;
+    const hints = Array.isArray(detail.payload?.hints) ? (detail.payload?.hints as string[]) : [];
+    if (!brief || brief === this.targetBrief) {
+      // 剧情未变时仍更新 hints，防止同一 tick 重复触发
+      this._renderHints(hints);
+      return;
+    }
     this._clear();
     this.targetBrief = brief;
+    this.currentHints = hints;
     this._startTyping();
   }
 
@@ -91,12 +106,27 @@ export class DMCreationPanel extends Panel {
           this.typingTimer = null;
         }
         this.history.push(this.targetBrief);
+        this._renderHints(this.currentHints);
         return;
       }
       this.charIndex++;
       this.displayedBrief = this.targetBrief.slice(0, this.charIndex);
-      this.contentEl.textContent = this.displayedBrief;
+      this.briefEl.textContent = this.displayedBrief;
     }, 30);
+  }
+
+  /** 渲染环境提示 / Render hints */
+  private _renderHints(hints: string[]): void {
+    if (!hints.length) {
+      this.hintsEl.style.display = "none";
+      return;
+    }
+    this.hintsEl.innerHTML = `
+      <div class="dm-hints-title">环境提示 / Hints</div>
+      <ul class="dm-hints-list">
+        ${hints.map((h) => `<li class="dm-hint-item">${this._escape(h)}</li>`).join("")}
+      </ul>`;
+    this.hintsEl.style.display = "block";
   }
 
   /** 打开情境历史弹窗 / Open DM creation history overlay */

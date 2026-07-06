@@ -1,0 +1,22 @@
+{# tilemap 语义解读 prompt / Tilemap interpretation prompt #}
+场景：{{ scene.name | default("未知场景") }}（{{ scene.type | default("") }}）
+{{ scene.description | default("") }}
+
+{% if plot_brief %}
+当前剧情：{{ plot_brief }}
+{% endif %}
+
+{% if hints %}
+DM 提示：
+{% for hint in hints %}
+- {{ hint }}
+{% endfor %}
+{% endif %}
+
+Tilemap 地图信息：
+{{ tilemap }}
+
+请根据上述地图信息，生成一段关于该场景的中文语义描述，用于后续 DM 和角色决策参考。
+
+严格按以下 JSON 输出，不要输出任何其他内容：
+{"summary": "..."}

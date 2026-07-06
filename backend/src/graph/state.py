@@ -2,6 +2,8 @@
 
 from typing import Any, TypedDict
 
+from ..domain import Actor, PlayerCharacter
+
 
 class OverallState(TypedDict, total=False):
     """根状态——贯穿整个 tick 图 / Root state — flows through entire tick graph.
@@ -9,10 +11,12 @@ class OverallState(TypedDict, total=False):
     初始时只传入 tick 和 world_id，其余字段由各节点逐步填充。
     pc_decisions / pending_actions 不使用累加器，避免节点重试/子图异常时重复累积。
 
-    WARNING: scene_info 只做一次初始化写入，不会在 tick 内更新。
-    PC/Actor 的所有信息（身份+坐标）请从 pc_state_map / actor_state_map 读取，
-    这两个 map 是 tick 内唯一权威数据源（repo 只在 tick 末尾才入库）。
-    scene_info 仅用于：scene（场景静态属性）、scene_objects（场景物体列表）。
+    字段命名统一如下，避免误会：
+    - scene: 单场景信息 dict（仅初始化写入，tick 内不更新）
+    - scene_objects: 场景物体 list（仅初始化写入）
+    - pcs: PlayerCharacter 领域模型 map — tick 内 PC 权威数据源
+    - actors: Actor 领域模型 map — tick 内 Actor 权威数据源
+    所有节点按需直接读取/修改领域模型；data_service 在 tick 末尾直接 save() 落盘。
     """
 
     tick: int
@@ -20,14 +24,17 @@ class OverallState(TypedDict, total=False):
     hints: list[str]
     plot_brief: str
     scene_id: str
-    scene_info: dict[str, Any]  # 仅用于 scene + scene_objects（初始化写入，tick 内不更新）
+    scene: dict[str, Any]  # 单场景信息 / single scene context
+    scene_objects: list[dict[str, Any]]  # 场景物体列表 / scene object list
     pc_decisions: list[dict[str, Any]]
     pending_actions: list[dict[str, Any]]
     narrative: str
-    # PC 运行时状态 — tick 内权威数据源，model_dump() 全量写入
-    pc_state_map: dict[str, dict[str, Any]]
-    # Actor 运行时状态 — 只读，tick 内权威数据源，model_dump() 全量写入
-    actor_state_map: dict[str, dict[str, Any]]
+    # PC 运行时状态 — tick 内权威数据源，领域模型
+    pcs: dict[str, PlayerCharacter]
+    # Actor 运行时状态 — tick 内权威数据源，领域模型
+    actors: dict[str, Actor]
+    # 本 tick 各角色产生的新记忆 — 引擎写入，data_service 统一落盘
+    pc_memory_map: dict[str, list[dict[str, Any]]]
     _pending_events: list[dict[str, Any]]
     _dm_ext: dict[str, Any] | None
 
@@ -35,12 +42,14 @@ class OverallState(TypedDict, total=False):
 class PcSubState(TypedDict):
     """角色子图状态 / Character subgraph state.
 
-    WARNING: scene_info 仅做初始化写入，tick 内不更新。获取 PC 数据请用 pc_state_map。
+    scene / scene_objects 仅做初始化写入，tick 内不更新。
+    获取 PC 数据请用 pcs，获取 Actor 数据请用 actors。
     """
 
     tick: int
     plot_brief: str
-    scene_info: dict[str, Any]  # 仅 scene + scene_objects 可靠，pcs/actors 从 state maps 获取
+    scene: dict[str, Any]
+    scene_objects: list[dict[str, Any]]
     pending_actions: list[dict[str, Any]]
     pc_decisions: list[dict[str, Any]]
 

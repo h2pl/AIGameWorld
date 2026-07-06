@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .logging import get_logger
 
@@ -58,22 +58,28 @@ def is_mock(config: RunnableConfig | None) -> bool:
 # ═══════════════════════════════════════════════════════════════
 
 
+def _position_of(info: Any) -> tuple[int | None, int | None]:
+    """同时支持 dict 和领域模型 / Support both dict and domain models."""
+    if isinstance(info, dict):
+        return info.get("position_x", 0), info.get("position_y", 0)
+    return getattr(info, "position_x", 0), getattr(info, "position_y", 0)
+
+
 def build_occupied_set(
-    pc_state_map: dict[str, dict] | None,
-    actor_state_map: dict[str, dict] | None = None,
+    pcs: dict[str, Any] | None,
+    actors: dict[str, Any] | None = None,
     exclude_id: str = "",
 ) -> set[tuple[int, int]]:
     """收集所有角色占用的坐标（排除 exclude_id）/ Collect all occupied positions, excluding one id."""
     occupied: set[tuple[int, int]] = set()
-    for src in (pc_state_map, actor_state_map):
+    for src in (pcs, actors):
         if not src:
             continue
         for cid, info in src.items():
             if cid == exclude_id:
                 continue
-            x = info.get("position_x", 0)
-            y = info.get("position_y", 0)
-            if x or y:
+            x, y = _position_of(info)
+            if x is not None and y is not None:
                 occupied.add((x, y))
     return occupied
 

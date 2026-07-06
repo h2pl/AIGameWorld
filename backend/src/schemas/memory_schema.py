@@ -1,6 +1,34 @@
 """记忆领域模型 / Memory domain model."""
 
+from enum import StrEnum
+
 from pydantic import BaseModel
+
+
+class MemoryType(StrEnum):
+    """记忆类型 / Memory type."""
+
+    OBSERVATION = "observation"
+    TALK = "talk"
+    EXPLORE = "explore"
+    INTERACT = "interact"
+    COMBAT = "combat"
+    REFLECTION = "reflection"
+
+
+class MemoryPeriod(StrEnum):
+    """记忆周期 / Memory lifecycle period."""
+
+    SHORT_TERM = "short_term"
+    MEDIUM_TERM = "medium_term"
+    LONG_TERM = "long_term"
+
+
+class EntityType(StrEnum):
+    """记忆归属实体 / Memory owner entity."""
+
+    PC = "pc"
+    ACTOR = "actor"
 
 
 class Memory(BaseModel):
@@ -11,7 +39,9 @@ class Memory(BaseModel):
     content: str
     tick: int
     importance: int = 1
-    memory_type: str = "observation"
+    memory_type: str = MemoryType.OBSERVATION.value
+    period: str = MemoryPeriod.MEDIUM_TERM.value
+    entity_type: str = EntityType.PC.value
     world_id: str = ""
 
 

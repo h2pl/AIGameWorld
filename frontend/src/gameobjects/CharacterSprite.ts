@@ -159,6 +159,14 @@ export class CharacterSprite {
     this.bubble = new DialogueBubble(this.scene, x, y, text, undefined, onHide, "narration");
   }
 
+  /** 显示思考泡泡（灯泡样式，角色不动） / Show thought bubble (lightbulb style) */
+  think(text: string, onHide?: () => void): void {
+    this.clearBubble();
+    const x = this.sprite.x;
+    const y = this.sprite.y - this.tileSize * 0.75;
+    this.bubble = new DialogueBubble(this.scene, x, y, text, undefined, onHide, "thought");
+  }
+
   /** 清除当前泡泡 / Clear current bubble */
   clearBubble(): void {
     if (this.bubble) {

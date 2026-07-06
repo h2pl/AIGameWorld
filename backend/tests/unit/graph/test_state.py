@@ -13,13 +13,16 @@ class TestOverallState:
         s: OverallState = {
             "tick": 0,
             "world_id": "",
-            "scene_info": {},
+            "scene": {},
+            "scene_objects": [],
             "pending_actions": [],
             "hints": [],
             "plot_brief": "",
             "scene_id": "",
             "pc_decisions": [],
             "narrative": "",
+            "pcs": {},
+            "actors": {},
         }
         assert s["tick"] == 0
 
@@ -35,7 +38,8 @@ class TestPcSubState:
         s: PcSubState = {
             "tick": 1,
             "plot_brief": "test",
-            "scene_info": {},
+            "scene": {},
+            "scene_objects": [],
             "pending_actions": [],
             "pc_decisions": [],
         }

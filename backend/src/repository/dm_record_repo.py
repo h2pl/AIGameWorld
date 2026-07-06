@@ -29,8 +29,8 @@ class DMRecordRepo:
                 record.world_id,
                 record.tick,
                 record.plot_brief,
-                json.dumps(record.hints),
-                json.dumps(record.ext),
+                json.dumps(record.hints, ensure_ascii=False),
+                json.dumps(record.ext, ensure_ascii=False),
             ),
         )
         await self._db.commit()
@@ -41,7 +41,12 @@ class DMRecordRepo:
         await self._db.execute(
             """UPDATE dm_records SET dm_narrative = ?, ext_json = ?, updated_at = datetime('now', 'localtime')
                WHERE world_id = ? AND tick = ?""",
-            (record.dm_narrative, json.dumps(record.ext), record.world_id, record.tick),
+            (
+                record.dm_narrative,
+                json.dumps(record.ext, ensure_ascii=False),
+                record.world_id,
+                record.tick,
+            ),
         )
         await self._db.commit()
 

@@ -37,6 +37,17 @@ export class ControlBar extends Panel {
   /** 更新状态文本 / Update status text */
   setStatus(text: string): void {
     this.statusEl.textContent = text;
+    this.statusEl.classList.remove("control-status-waiting");
+  }
+
+  /** 设置等待状态 / Set waiting-for-tick state */
+  setWaiting(isWaiting: boolean, text = "等待后端生成 Tick 数据..."): void {
+    if (isWaiting) {
+      this.statusEl.textContent = text;
+      this.statusEl.classList.add("control-status-waiting");
+    } else {
+      this.statusEl.classList.remove("control-status-waiting");
+    }
   }
 
   /** 初始化按钮为就绪状态 / Initialize buttons ready */
@@ -100,6 +111,11 @@ export class ControlBar extends Panel {
     this.btnPause.onclick = () => this._handlePause();
     this.btnResume.onclick = () => this._handleResume();
     this.btnReset.onclick = () => this._handleReset();
+
+    window.addEventListener("tick-waiting", ((ev: CustomEvent) => {
+      const { waiting, message } = (ev.detail || {}) as { waiting?: boolean; message?: string };
+      this.setWaiting(!!waiting, message);
+    }) as EventListener);
   }
 
   /** 跑 N 个 tick / Run N ticks */

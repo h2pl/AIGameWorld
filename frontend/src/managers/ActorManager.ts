@@ -30,6 +30,15 @@ export class ActorManager {
     return this.sprites.get(id);
   }
 
+  /** 移除并销毁指定精灵 / Remove and destroy a sprite */
+  remove(id: string): void {
+    const sprite = this.sprites.get(id);
+    if (sprite) {
+      sprite.destroy();
+      this.sprites.delete(id);
+    }
+  }
+
   /** 销毁所有精灵 / Destroy all sprites */
   destroy(): void {
     this.sprites.forEach((sp) => sp.destroy());

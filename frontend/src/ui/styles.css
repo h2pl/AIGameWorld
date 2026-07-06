@@ -137,6 +137,30 @@
   white-space: pre-wrap;
 }
 
+.dm-creation-hints {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 215, 0, 0.15);
+}
+
+.dm-hints-title {
+  font-size: 11px;
+  color: #aaa;
+  margin-bottom: 4px;
+}
+
+.dm-hints-list {
+  margin: 0;
+  padding-left: 16px;
+  color: #c8d6e5;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dm-hint-item {
+  margin: 2px 0;
+}
+
 /* ===== 叙事面板 — 左下角，展示 DM 生成的叙事文本 / Narrative Panel — bottom-left, shows DM narrative ===== */
 .narrative-panel {
   left: 10px;
@@ -421,4 +445,21 @@
   padding: 1px 6px;
   border-radius: 4px;
   margin-right: 6px;
+}
+
+/* ===== 控制栏等待状态 — 等待后端生成 tick 时闪烁提示 / Control bar waiting state ===== */
+.control-status-waiting {
+  animation: controlWaitingPulse 1.2s ease-in-out infinite;
+  color: #00d2ff !important;
+  border-color: rgba(0, 210, 255, 0.5) !important;
+  background: rgba(0, 210, 255, 0.12) !important;
+}
+
+@keyframes controlWaitingPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }

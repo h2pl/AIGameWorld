@@ -146,8 +146,8 @@ async def _do_run(
     config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
     _use_mock = not use_llm if use_llm else config.llm_mock
     _dataset = mock_dataset or config.mock_dataset
-    config.llm_mock = _use_mock
-    config.mock_dataset = _dataset
+    config.runtime.llm_mock = _use_mock
+    config.runtime.mock_dataset = _dataset
     llm = LLMClient(config)
     if use_llm:
         provider_url = config.llm.providers.primary.base_url or "(default)"
@@ -156,7 +156,8 @@ async def _do_run(
         print(f"  [LLM] mock mode dataset={_dataset}")
 
     chroma = ChromaClient(persist_path="data/chroma")
-    repos["memory"] = MemoryRepo(chroma=chroma)
+    repos["memory"] = MemoryRepo(chroma=chroma, sqlite=db)
+    await repos["memory"].initialize()
 
     # -- Tick 循环 / Tick loop
     world_id = pack_id or await _get_first_world_id(db)

@@ -20,6 +20,9 @@ DM 提示：
 {# 当前场景具体信息 / Concrete current scene info #}
 当前场景：{{ scene.name }}（{{ scene.type }}）
 {{ scene.description }}
+{% if scene.tilemap_summary %}
+地图语义摘要：{{ scene.tilemap_summary }}
+{% endif %}
 {% if scene.landmarks %}
 场景地标：{{ scene.landmarks | join("、") }}
 {% endif %}
@@ -75,7 +78,8 @@ DM 提示：
     - wait: 观望等待，target_id 和 target_type 都必须是 null
   - target_id: 目标 id（必须使用上文括号内列出的 id）；wait / explore 时必须是 null
   - target_type: pc / actor / scene_object 之一；wait / explore 时必须是 null
-  - reasoning: 该动作的决策理由（1-2 句中文）
+  - thought: 完整的思考过程（2-4 句中文）：你观察到了什么、联想到哪些记忆、权衡了哪些选择、为什么最终选这个行动
+  - reasoning: 最终决策理由（1-2 句中文，总结为什么执行这个动作）
 
 输出格式：
 {
@@ -84,12 +88,14 @@ DM 提示：
       "action_type": "talk",
       "target_id": "npc_greta",
       "target_type": "actor",
+      "thought": "Greta 站在告示板旁边，看起来知道很多消息。我记得她上回提过夜里听到奇怪声响。直接找她打听是最快了解异常的办法，比盲目探索更有效。",
       "reasoning": "先向 Greta 打听最近镇上发生了什么异常。"
     },
     {
       "action_type": "explore",
       "target_id": null,
       "target_type": null,
+      "thought": "酒馆里人太多，不适合继续追问。既然听说异响来自北巷，我想绕到后面看看有没有脚印或打斗痕迹，但要保持警惕。",
       "reasoning": "然后四处走走，看看有没有可疑的地方。"
     }
   ]

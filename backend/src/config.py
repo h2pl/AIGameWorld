@@ -52,6 +52,9 @@ class LLMConfig(BaseModel):
     pc_decision: LLMModelConfig  # PC 深层决策（中模型）/ PC deep decision
     actor_decision: LLMModelConfig  # Actor 浅层决策（快模型）/ Actor shallow decision
     talk: LLMModelConfig  # 对话生成（结构化）/ Dialogue generation
+    interact: LLMModelConfig  # 场景物体交互 / Scene object interaction
+    explore: LLMModelConfig  # 探索路径与发现 / Explore path and discovery
+    combat: LLMModelConfig  # 战斗旁白 / Combat narration
     reflection: LLMModelConfig  # 反思洞察（强模型）/ Reflection insight
 
     @property

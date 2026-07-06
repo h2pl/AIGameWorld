@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS scenes (
     map_width       INTEGER NOT NULL DEFAULT 40,
     map_height      INTEGER NOT NULL DEFAULT 40,
     world_id        TEXT NOT NULL,
+    tilemap_summary TEXT,
     ext_json        TEXT NOT NULL DEFAULT '{}',
     created_at      TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     updated_at      TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))

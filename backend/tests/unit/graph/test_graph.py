@@ -9,7 +9,8 @@ def _graph_input(**overrides):
     return {
         "tick": 5,
         "world_id": "world-1",
-        "scene_info": {},
+        "scene": {},
+        "scene_objects": [],
         "pending_actions": [],
         "hints": [],
         "plot_brief": "",

@@ -1,0 +1,50 @@
+{# 动态场景物体生成 prompt / Dynamic scene object generation prompt #}
+当前剧情情境：{{ plot_brief }}
+
+{% if hints %}
+DM 提示：
+{% for hint in hints %}
+- {{ hint }}
+{% endfor %}
+{% endif %}
+
+{# 场景上下文 / Scene context #}
+场景：{{ scene.name | default("未知场景") }}（{{ scene.type | default("") }}）
+{{ scene.description | default("") }}
+{% if scene.tilemap_summary %}
+地图语义摘要：{{ scene.tilemap_summary }}
+{% endif %}
+地图尺寸：{{ map_width }} x {{ map_height }}
+出生点：({{ spawn_x }}, {{ spawn_y }})
+
+{% if existing_actors %}
+已有 NPC：
+{% for actor in existing_actors %}
+- {{ actor.name }} ({{ actor.position_x }}, {{ actor.position_y }})
+{% endfor %}
+{% endif %}
+
+{% if existing_objects %}
+已有物体：
+{% for obj in existing_objects %}
+- {{ obj.name }} ({{ obj.position_x | default(0) }}, {{ obj.position_y | default(0) }}): {{ obj.object_type }}
+{% endfor %}
+{% endif %}
+
+请为上述场景生成 2-5 个合理的可交互物体，使其符合场景氛围和当前剧情。
+物体坐标不要与已有 NPC/物体 重叠，尽量分布在场景内有意义的位置。
+
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
+{
+  "objects": [
+    {
+      "id": "obj_xxx",
+      "name": "名字",
+      "object_type": "container",
+      "interactable": true,
+      "position_x": 0,
+      "position_y": 0,
+      "interact_data": {"locked": false, "contents": []}
+    }
+  ]
+}

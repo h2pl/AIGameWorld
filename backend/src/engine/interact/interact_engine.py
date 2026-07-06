@@ -5,11 +5,13 @@
 """
 
 from pathlib import Path
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
+from ...domain import Actor, PlayerCharacter
 from ...domain.scene_object import SceneObject
 from ...schemas.engine_result import InteractActionResult
 from ...schemas.llm_output import InteractOutputSchema
@@ -25,12 +27,14 @@ _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
 
 async def process_interact_action(
     decision: dict,
-    scene_info: dict | None = None,
-    pc_state_map: dict[str, dict] | None = None,
-    actor_state_map: dict[str, dict] | None = None,
+    scene: dict[str, Any] | None = None,
+    scene_objects: list[dict[str, Any]] | None = None,
+    pcs: dict[str, PlayerCharacter] | None = None,
+    actors: dict[str, Actor] | None = None,
     tick: int = 0,
     plot_brief: str = "",
     hints: list[str] | None = None,
+    pc_memory_map: dict[str, list[dict]] | None = None,
     config: RunnableConfig = None,
 ) -> InteractActionResult | None:
     """处理单个 interact 决策：移动→LLM 裁决→记忆 / Resolve interact: move → LLM judge → memory."""
@@ -41,27 +45,33 @@ async def process_interact_action(
         return None
 
     char_id = decision.get("pc_id", "")
+    pc = (pcs or {}).get(char_id)
+    if pc is None:
+        return None
     scene_obj = await _load_scene_object(get_repo(config, "scene"), object_id)
 
     # 移动到物体旁边并记录路径 / Move PC adjacent to object and record waypoints
-    waypoints = _move_to_object(char_id, object_id, scene_info, pc_state_map, actor_state_map)
+    waypoints = _move_to_object(char_id, object_id, scene, scene_objects, pcs, actors)
 
     # LLM 生成交互结果 / Generate interaction result via LLM
     interact_result = await _generate_interact(
         pc_id=char_id,
         object_id=object_id,
-        scene_info=scene_info,
-        pc_state_map=pc_state_map or {},
+        scene=scene or {},
+        scene_objects=scene_objects or [],
+        pc=pc,
         plot_brief=plot_brief,
         hints=hints or [],
+        tick=tick,
+        pc_memory_map=pc_memory_map,
         config=config,
     )
 
     success = interact_result.get("success", False)
     narration = interact_result.get("narration", "")
 
-    # 存入记忆 / Store memory
-    await _store_interact_memory(char_id, object_id, scene_obj, success, narration, tick, config)
+    # 存入记忆 / Stage memory
+    _store_interact_memory(char_id, object_id, scene_obj, success, narration, tick, pc_memory_map)
 
     logger.info(
         "[interact] %s → %s : %s | %s",
@@ -90,25 +100,28 @@ async def _load_scene_object(scene_repo, object_id: str) -> SceneObject | None:
 async def _generate_interact(
     pc_id: str,
     object_id: str,
-    scene_info: dict | None,
-    pc_state_map: dict[str, dict],
+    scene: dict[str, Any],
+    scene_objects: list[dict[str, Any]],
+    pc: PlayerCharacter,
     plot_brief: str,
     hints: list[str],
+    tick: int,
+    pc_memory_map: dict[str, list[dict]] | None,
     config: RunnableConfig = None,
 ) -> dict:
     """LLM 生成交互结果（success + narration）/ LLM generates interact result."""
     llm = get_llm(config)
     if llm is None:
         raise RuntimeError("[interact] LLM client not configured")
-    pc = _pc_identity(pc_id, pc_state_map)
-    obj = _find_scene_object(object_id, scene_info)
-    scene = (scene_info or {}).get("scene", {})
+    obj = _find_scene_object(object_id, scene, scene_objects)
 
     query = f"{plot_brief} {obj.get('name', '')} {scene.get('description', '')}".strip()
-    memories = await retrieve_memories(pc_id, query, config=config, top_k=5)
+    memories = await retrieve_memories(
+        pc_id, query, config=config, top_k=5, pc_memory_map=pc_memory_map, current_tick=tick
+    )
 
     ctx = {
-        "pc": pc,
+        "pc": _pc_identity(pc),
         "obj": obj,
         "scene": scene,
         "plot_brief": plot_brief,
@@ -130,67 +143,78 @@ async def _generate_interact(
 def _move_to_object(
     pc_id: str,
     object_id: str,
-    scene_info: dict | None,
-    pc_state_map: dict[str, dict] | None,
-    actor_state_map: dict[str, dict] | None = None,
+    scene: dict[str, Any] | None,
+    scene_objects: list[dict[str, Any]] | None,
+    pcs: dict[str, PlayerCharacter] | None,
+    actors: dict[str, Actor] | None = None,
 ) -> list[dict]:
     """将 PC 移动到目标物体旁边的空位，返回 waypoints / Move PC adjacent to object."""
-    if not pc_state_map or pc_id not in pc_state_map:
+    if not pcs or pc_id not in pcs:
         return []
+    pc = pcs[pc_id]
 
-    obj = _find_scene_object(object_id, scene_info)
+    obj = _find_scene_object(object_id, scene, scene_objects)
     tx = obj.get("position_x", 0) if obj else 0
     ty = obj.get("position_y", 0) if obj else 0
     if tx == 0 and ty == 0:
         return []
 
-    old_x = pc_state_map[pc_id].get("position_x", 0)
-    old_y = pc_state_map[pc_id].get("position_y", 0)
+    old_x, old_y = pc.position_x, pc.position_y
 
-    occupied = build_occupied_set(pc_state_map, actor_state_map, exclude_id=pc_id)
+    occupied = build_occupied_set(pcs, actors, exclude_id=pc_id)
     new_x, new_y = find_vacant_adjacent(tx, ty, occupied)
 
-    pc_state_map[pc_id]["position_x"] = new_x
-    pc_state_map[pc_id]["position_y"] = new_y
+    pc.position_x = new_x
+    pc.position_y = new_y
     if old_x == new_x and old_y == new_y:
         return []
     return [{"x": old_x, "y": old_y}, {"x": new_x, "y": new_y}]
 
 
-def _find_scene_object(object_id: str, scene_info: dict | None) -> dict:
-    """在 scene_info 中查找场景物体 / Find scene object in scene_info."""
-    if not scene_info:
-        return {}
-    for obj in scene_info.get("scene_objects", []):
+def _find_scene_object(
+    object_id: str,
+    scene: dict[str, Any] | None,
+    scene_objects: list[dict[str, Any]] | None = None,
+) -> dict:
+    """在 scene 或 scene_objects 中查找场景物体 / Find scene object."""
+    objects = scene_objects or (scene or {}).get("scene_objects", [])
+    for obj in objects:
         if obj.get("id") == object_id:
             return obj
     return {}
 
 
-def _pc_identity(pc_id: str, pc_state_map: dict[str, dict]) -> dict:
-    """从 pc_state_map 读取 PC 身份 / Read PC identity from state map."""
-    info = pc_state_map.get(pc_id, {})
+def _pc_identity(pc: PlayerCharacter) -> dict:
+    """读取 PC 身份 / Read PC identity."""
     return {
-        "id": pc_id,
-        "name": info.get("name", pc_id),
-        "role": info.get("role", ""),
-        "personality": info.get("personality", ""),
+        "id": pc.id,
+        "name": pc.name,
+        "role": pc.role,
+        "personality": pc.personality,
     }
 
 
-async def _store_interact_memory(
+def _store_interact_memory(
     pc_id: str,
     object_id: str,
     scene_obj: SceneObject | None,
     success: bool,
     narration: str,
     tick: int,
-    config: RunnableConfig = None,
+    pc_memory_map: dict[str, list[dict]] | None,
 ) -> None:
-    """把交互结果存入 PC 记忆 / Store interaction result into PC memory."""
-    memory_repo = get_repo(config, "memory")
-    if not memory_repo:
+    """把交互结果写入 pc_memory_map / Stage interaction result into state."""
+    if pc_memory_map is None:
         return
     obj_name = scene_obj.name if scene_obj else object_id
     content = f"与 {obj_name} 交互（{'成功' if success else '失败'}）：{narration}"
-    await memory_repo.store(pc_id, content, tick, importance=4)
+    pc_memory_map.setdefault(pc_id, []).append(
+        {
+            "pc_id": pc_id,
+            "content": content,
+            "tick": tick,
+            "importance": 4,
+            "memory_type": "interact",
+            "entity_type": "pc",
+        }
+    )
