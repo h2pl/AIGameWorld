@@ -13,8 +13,8 @@ class WorldRepo:
 
     async def create(self, w: World) -> None:
         await self._db.execute(
-            "INSERT INTO worlds (id, name, description, version, rule_set, author, data_tick, display_tick) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO worlds (id, name, description, version, rule_set, author, data_tick, display_tick, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
             (
                 w.id,
                 w.name,
@@ -62,7 +62,7 @@ class WorldRepo:
     async def increment_data_tick(self, world_id: str) -> int:
         """data_tick +1 并返回新值."""
         await self._db.execute(
-            "UPDATE worlds SET data_tick = data_tick + 1 WHERE id = ?",
+            "UPDATE worlds SET data_tick = data_tick + 1, updated_at = datetime('now', 'localtime') WHERE id = ?",
             (world_id,),
         )
         await self._db.commit()
@@ -75,7 +75,7 @@ class WorldRepo:
     async def set_display_tick(self, world_id: str, tick: int) -> None:
         """更新前端已展示到的 tick."""
         await self._db.execute(
-            "UPDATE worlds SET display_tick = ? WHERE id = ?",
+            "UPDATE worlds SET display_tick = ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
             (tick, world_id),
         )
         await self._db.commit()
@@ -83,7 +83,7 @@ class WorldRepo:
     async def reset_tick(self, world_id: str) -> None:
         """重置 data_tick 和 display_tick 为 0."""
         await self._db.execute(
-            "UPDATE worlds SET data_tick = 0, display_tick = 0 WHERE id = ?",
+            "UPDATE worlds SET data_tick = 0, display_tick = 0, updated_at = datetime('now', 'localtime') WHERE id = ?",
             (world_id,),
         )
         await self._db.commit()

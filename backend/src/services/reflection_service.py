@@ -1,7 +1,6 @@
-"""Reflection Service——遍历角色 + 重要性阈值检查 + 调用 Engine + 归零.
+"""Reflection Service——遍历 PC + 重要性阈值检查 + 调用 Engine + 归零.
 
-遍历所有角色，对 PC（阈值 100）和 Actor（阈值 200）分别调用反思 Engine。
-反思后 importance_accumulator 归零，insight 存入 MemoryRepo。
+仅对 PC 做反思，Actor 不做反思也不记记忆。
 """
 
 from langchain_core.runnables.config import RunnableConfig
@@ -15,27 +14,19 @@ from ..utils.logging import get_logger
 logger = get_logger(__name__)
 
 _PC_THRESHOLD = 100
-_ACTOR_THRESHOLD = 200
 
 
 async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> dict:
-    """Phase 7: 遍历所有角色执行反思 / Reflect on all characters.
-
-    兼容两种 state：ReflectionSubState（子图）和 OverallState（主图）。
-    当缺少必要 repo 时安全降级，返回空列表。
-    """
+    """Phase 7: 遍历所有 PC 执行反思 / Reflect on all PCs."""
     pc_repo = get_repo(config, "char")
     memory_repo = get_repo(config, "memory")
     if not pc_repo or not memory_repo:
         return {"reflected_pcs": []}
 
-    actor_repo = get_repo(config, "actor")
-
     insights = []
     tick = state.get("tick", 0)
     world_id = state.get("world_id")
 
-    # PC 反思 / PC reflection
     for pc in await pc_repo.load_all(world_id):
         if _needs_reflection(memory_repo, pc.id, _PC_THRESHOLD):
             insight = await _reflect_one(
@@ -54,29 +45,6 @@ async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> d
                 await memory_repo.store_reflection(pc.id, insight["insight"], tick, world_id or "")
                 pc.importance_accumulator = 0.0
                 await pc_repo.save(pc)
-
-    # Actor 反思 / Actor reflection
-    if actor_repo:
-        for actor in await actor_repo.load_all(world_id):
-            if _needs_reflection(memory_repo, actor.id, _ACTOR_THRESHOLD):
-                insight = await _reflect_one(
-                    reflection_engine,
-                    actor.id,
-                    actor.name,
-                    "actor",
-                    actor.character_arc.stage if actor.character_arc else "",
-                    actor.character_arc.description if actor.character_arc else "",
-                    memory_repo,
-                    tick,
-                    config,
-                )
-                if insight:
-                    insights.append(insight)
-                    await memory_repo.store_reflection(
-                        actor.id, insight["insight"], tick, world_id or ""
-                    )
-                    actor.importance_accumulator = 0.0
-                    await actor_repo.save(actor)
 
     return {"reflected_pcs": [i["pc_id"] for i in insights]}
 

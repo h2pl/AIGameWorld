@@ -1,0 +1,53 @@
+{# 探索 prompt — 每次一个探索行动，一条探索记录 / Single explore action per prompt #}
+{# 当前剧情注入 / Current plot injection #}
+当前剧情情境：{{ plot_brief }}
+
+{# DM 环境提示 / DM environmental hints #}
+{% if hints %}
+DM 提示：
+{% for hint in hints %}
+- {{ hint }}
+{% endfor %}
+{% endif %}
+
+{# PC 记忆 / PC memories #}
+{% if memories %}
+你记得：
+{% for mem in memories %}
+- {{ mem }}
+{% endfor %}
+{% endif %}
+
+{# 场景上下文 / Scene context #}
+当前场景：{{ scene.name | default("未知场景") }}（{{ scene.type | default("") }}）
+{{ scene.description | default("") }}
+地图尺寸：{{ map_width }} x {{ map_height }}
+
+{# 地标列表 / Landmarks #}
+{% if landmarks %}
+地标：
+{% for lm in landmarks %}
+- {{ lm.name }} ({{ lm.position.x }}, {{ lm.position.y }}): {{ lm.description | default("") }}
+{% endfor %}
+{% endif %}
+
+{% if scene_objects %}
+场景物体：
+{% for obj in scene_objects %}
+- {{ obj.name }} ({{ obj.position_x | default(0) }}, {{ obj.position_y | default(0) }}): {{ obj.object_type }}
+{% endfor %}
+{% endif %}
+
+{{ pc.name }} 当前位于 ({{ start_x }}, {{ start_y }})，决定探索前方未知区域。
+
+生成要求：
+1. 选择一个与当前位置距离 3-10 格的目的地坐标（end_x, end_y）。
+2. 如果附近有地标或场景物体，目的地应靠近某个有趣的位置。
+3. 撰写一条 1-2 句的第三人称旁白（explore_record），描述到达后发现了什么。
+
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
+{
+  "end_x": <整数>,
+  "end_y": <整数>,
+  "explore_record": "<1-2句中文旁白>"
+}

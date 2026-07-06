@@ -1,17 +1,18 @@
-"""Interact Engine——场景对象交互裁决 + 旁白 / Scene object interaction resolution + narration."""
+"""Interact Engine——场景对象交互 / Scene object interaction.
 
-import json
+一次性 LLM 调用：根据 PC、物体、场景上下文，直接生成交互结果（success + narration）。
+不掷骰、不检定，由 LLM 基于角色能力和物体特性合理判断。
+"""
+
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain.scene_object import SceneObject, SceneObjectType
-from ...rules.dnd_rules import ability_modifier, resolve_check
-from ...schemas.llm_output import InteractNarrationSchema
-from ...schemas.request import SceneObjectInteractRequest
-from ...schemas.response import SceneObjectInteractResponse
+from ...domain.scene_object import SceneObject
+from ...schemas.engine_result import InteractActionResult
+from ...schemas.llm_output import InteractOutputSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import build_occupied_set, find_vacant_adjacent, get_llm, get_repo
 from ...utils.logging import get_logger
@@ -20,61 +21,6 @@ logger = get_logger(__name__)
 
 _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
-
-# object_type/interact_data → (action_type, 检定属性, 默认 dc) / → (action_type, check ability, default dc)
-_TRAP_DC = 12
-_DOOR_DC = 13
-_LOCK_DC = 12
-
-_ACTION_CN = {
-    "pick_lock": "开锁",
-    "disarm_trap": "拆陷阱",
-    "break_door": "破门",
-    "open_chest": "开宝箱",
-    "interact": "交互",
-}
-
-
-def resolve_interact(req: SceneObjectInteractRequest) -> SceneObjectInteractResponse:
-    """对象交互检定 / Object interaction check.
-
-    dc <= 0 表示无需检定（如未上锁的容器/门），直接判定成功，不掷骰 /
-    dc <= 0 means no check is required (e.g. an unlocked container/door);
-    it's an automatic success without rolling.
-    """
-    action_cn = _ACTION_CN.get(req.action_type, req.action_type or "交互")
-    if req.dc <= 0:
-        return SceneObjectInteractResponse(
-            success=True,
-            result={
-                "object_id": req.object_id,
-                "pc_id": req.pc_id,
-                "action": req.action_type,
-                "action_cn": action_cn,
-                "roll": None,
-                "bonus": req.attribute_mod,
-                "dc": req.dc,
-                "total": None,
-                "critical": False,
-                "fumble": False,
-            },
-        )
-    result = resolve_check(bonus=req.attribute_mod, dc=req.dc)
-    return SceneObjectInteractResponse(
-        success=result.success,
-        result={
-            "object_id": req.object_id,
-            "pc_id": req.pc_id,
-            "action": req.action_type,
-            "action_cn": action_cn,
-            "roll": result.roll,
-            "bonus": req.attribute_mod,
-            "dc": req.dc,
-            "total": result.total,
-            "critical": result.is_critical,
-            "fumble": result.is_fumble,
-        },
-    )
 
 
 async def process_interact_action(
@@ -86,8 +32,8 @@ async def process_interact_action(
     plot_brief: str = "",
     hints: list[str] | None = None,
     config: RunnableConfig = None,
-) -> dict | None:
-    """处理单个 interact 决策：移动→检定→旁白→记忆 / Resolve interact: move → check → narrate → memory."""
+) -> InteractActionResult | None:
+    """处理单个 interact 决策：移动→LLM 裁决→记忆 / Resolve interact: move → LLM judge → memory."""
     if decision.get("type") != "interact":
         return None
     object_id = decision.get("target_id", "")
@@ -96,55 +42,41 @@ async def process_interact_action(
 
     char_id = decision.get("pc_id", "")
     scene_obj = await _load_scene_object(get_repo(config, "scene"), object_id)
-    action_type, ability, dc = _interact_requirements(scene_obj)
-    attribute_mod = await _ability_mod_for(get_repo(config, "char"), char_id, ability)
-
-    result = resolve_interact(
-        SceneObjectInteractRequest(
-            object_id=object_id,
-            pc_id=char_id,
-            action_type=action_type,
-            attribute_mod=attribute_mod,
-            dc=dc,
-        )
-    )
 
     # 移动到物体旁边并记录路径 / Move PC adjacent to object and record waypoints
     waypoints = _move_to_object(char_id, object_id, scene_info, pc_state_map, actor_state_map)
 
-    # 生成交互结果旁白 / Generate interaction narration
-    narration = await _generate_narration(
+    # LLM 生成交互结果 / Generate interaction result via LLM
+    interact_result = await _generate_interact(
         pc_id=char_id,
         object_id=object_id,
         scene_info=scene_info,
-        result=result.result if result else {},
-        success=result.success,
+        pc_state_map=pc_state_map or {},
         plot_brief=plot_brief,
         hints=hints or [],
         config=config,
     )
 
+    success = interact_result.get("success", False)
+    narration = interact_result.get("narration", "")
+
     # 存入记忆 / Store memory
-    await _store_interact_memory(
-        char_id, object_id, scene_obj, result.success, narration, tick, config
-    )
+    await _store_interact_memory(char_id, object_id, scene_obj, success, narration, tick, config)
 
     logger.info(
-        "[interact] %s → %s : %s | narration=%s",
+        "[interact] %s → %s : %s | %s",
         char_id,
         object_id,
-        "success" if result.success else "fail",
-        narration[:30] if narration else "(none)",
+        "success" if success else "fail",
+        narration[:30],
     )
-    return {
-        "kind": "pc_interact",
-        "pc_id": char_id,
-        "object_id": object_id,
-        "success": result.success,
-        "result": result.result if result else {},
-        "waypoints": waypoints,
-        "narration": narration,
-    }
+    return InteractActionResult(
+        pc_id=char_id,
+        object_id=object_id,
+        success=success,
+        waypoints=waypoints,
+        narration=narration,
+    )
 
 
 async def _load_scene_object(scene_repo, object_id: str) -> SceneObject | None:
@@ -155,40 +87,42 @@ async def _load_scene_object(scene_repo, object_id: str) -> SceneObject | None:
     return all_objects.get(object_id)
 
 
-def _interact_requirements(obj: SceneObject | None) -> tuple[str, str, int]:
-    """按对象类型 + interact_data 推断 (action_type, 检定属性, dc) /
-    Infer (action_type, check ability, dc) from the object's type + interact_data.
+async def _generate_interact(
+    pc_id: str,
+    object_id: str,
+    scene_info: dict | None,
+    pc_state_map: dict[str, dict],
+    plot_brief: str,
+    hints: list[str],
+    config: RunnableConfig = None,
+) -> dict:
+    """LLM 生成交互结果（success + narration）/ LLM generates interact result."""
+    llm = get_llm(config)
+    pc = _pc_identity(pc_id, pc_state_map)
+    obj = _find_scene_object(object_id, scene_info)
+    scene = (scene_info or {}).get("scene", {})
 
-    dc <= 0 表示无需检定，直接判定成功 / dc <= 0 means no check is required, auto success.
-    """
-    if obj is None:
-        return "interact", "dex", 0
-    data = obj.interact_data or {}
-    if obj.object_type == SceneObjectType.TRAP:
-        return "disarm_trap", "dex", data.get("dc", _TRAP_DC)
-    if obj.object_type == SceneObjectType.DOOR:
-        if data.get("locked"):
-            return "break_door", "str", data.get("dc", _DOOR_DC)
-        return "interact", "str", 0
-    if obj.object_type == SceneObjectType.CONTAINER:
-        if data.get("locked") and data.get("lock_dc", 0) > 0:
-            return "pick_lock", "dex", data["lock_dc"]
-        return "open_chest", "dex", 0
-    return "interact", "dex", 0
+    query = f"{plot_brief} {obj.get('name', '')} {scene.get('description', '')}".strip()
+    memories = await retrieve_memories(pc_id, query, config=config, top_k=5)
 
+    ctx = {
+        "pc": pc,
+        "obj": obj,
+        "scene": scene,
+        "plot_brief": plot_brief,
+        "hints": hints,
+        "memories": memories,
+    }
 
-async def _ability_mod_for(pc_repo, char_id: str, ability: str) -> int:
-    """加载 PC 属性并计算检定加值 / Load PC attributes and compute the check bonus."""
-    if not pc_repo or not char_id:
-        return 0
-    pc = await pc_repo.load_one(char_id)
-    if not pc:
-        return 0
-    try:
-        attrs = json.loads(pc.attributes_json or "{}")
-    except (TypeError, ValueError):
-        attrs = {}
-    return ability_modifier(attrs.get(ability, 10))
+    system = _PROMPTS.get_template("interact/_interact_system.jinja").render(**ctx)
+    prompt = _PROMPTS.get_template("interact/interact.jinja").render(**ctx)
+
+    raw = await llm.call_structured(
+        "interact",
+        InteractOutputSchema,
+        [SystemMessage(content=system), HumanMessage(content=prompt)],
+    )
+    return {"success": raw.success, "narration": raw.narration}
 
 
 def _move_to_object(
@@ -231,75 +165,15 @@ def _find_scene_object(object_id: str, scene_info: dict | None) -> dict:
     return {}
 
 
-async def _generate_narration(
-    pc_id: str,
-    object_id: str,
-    scene_info: dict | None,
-    result: dict,
-    success: bool,
-    plot_brief: str,
-    hints: list[str],
-    config: RunnableConfig = None,
-) -> str:
-    """调用 LLM 生成交互结果旁白 / Generate interaction result narration via LLM."""
-    llm = get_llm(config)
-    if llm is None:
-        return _fallback_narration(pc_id, object_id, result, success)
-
-    pc = _find_pc(pc_id, scene_info)
-    obj = _find_scene_object(object_id, scene_info)
-    scene = (scene_info or {}).get("scene", {})
-
-    query = f"{plot_brief} {obj.get('name', '')} {scene.get('description', '')}".strip()
-    memories = await retrieve_memories(pc_id, query, config=config, top_k=5)
-
-    ctx = {
-        "pc": pc,
-        "obj": obj,
-        "scene": scene,
-        "result": result,
-        "plot_brief": plot_brief,
-        "hints": hints,
-        "memories": memories,
+def _pc_identity(pc_id: str, pc_state_map: dict[str, dict]) -> dict:
+    """从 pc_state_map 读取 PC 身份 / Read PC identity from state map."""
+    info = pc_state_map.get(pc_id, {})
+    return {
+        "id": pc_id,
+        "name": info.get("name", pc_id),
+        "role": info.get("role", ""),
+        "personality": info.get("personality", ""),
     }
-
-    try:
-        system = _PROMPTS.get_template("interact/_interact_system.jinja").render(**ctx)
-        prompt = _PROMPTS.get_template("interact/interact_narrate.jinja").render(**ctx)
-    except Exception:
-        logger.exception("[interact] prompt render failed")
-        return _fallback_narration(pc_id, object_id, result, success)
-
-    try:
-        raw = await llm.call_structured(
-            "interact",
-            InteractNarrationSchema,
-            [SystemMessage(content=system), HumanMessage(content=prompt)],
-            fallback=lambda: InteractNarrationSchema(
-                narration=_fallback_narration(pc_id, object_id, result, success)
-            ),
-        )
-        return raw.narration or _fallback_narration(pc_id, object_id, result, success)
-    except Exception:
-        logger.exception("[interact] narration generation failed for %s -> %s", pc_id, object_id)
-        return _fallback_narration(pc_id, object_id, result, success)
-
-
-def _fallback_narration(pc_id: str, object_id: str, result: dict, success: bool) -> str:
-    """LLM 不可用时降级旁白 / Fallback narration."""
-    action_cn = result.get("action_cn", "交互")
-    status = "成功" if success else "失败"
-    return f"{pc_id} 对 {object_id} 进行了{action_cn}，结果{status}。"
-
-
-def _find_pc(pc_id: str, scene_info: dict | None) -> dict:
-    """在 scene_info 中查找 PC 信息 / Find PC info in scene_info."""
-    if not scene_info:
-        return {"id": pc_id, "name": pc_id}
-    for pc in scene_info.get("pcs", []):
-        if pc.get("id") == pc_id:
-            return pc
-    return {"id": pc_id, "name": pc_id}
 
 
 async def _store_interact_memory(

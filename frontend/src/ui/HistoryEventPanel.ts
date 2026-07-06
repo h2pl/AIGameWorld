@@ -15,7 +15,9 @@ const EVENT_ICONS: Record<string, string> = {
   character_move: "🚶",
   character_talk: "🗣️",
   pc_talk: "🗣️",
+  pc_explore: "🔍",
   character_explore: "🔍",
+  pc_interact: "🔧",
   combat_event: "⚔️",
   game_event: "🎮",
   state_change: "🔄",
@@ -225,6 +227,8 @@ function _readableType(t: string): string {
     character_talk: "角色对话",
     pc_talk: "角色对话",
     character_explore: "角色探索",
+    pc_explore: "角色探索",
+    pc_interact: "角色互动",
     combat_event: "战斗事件",
     game_event: "游戏事件",
     state_change: "状态变更",
@@ -253,6 +257,18 @@ function _formatPayload(ev: EventData): string {
       const pc = payload.pc_id || payload.character_id || "";
       const fallback = result?.text || result?.content || "";
       return `${pc}: ${fallback}`;
+    }
+    case "pc_explore":
+    case "character_explore": {
+      const wps = payload.waypoints as Array<{ x: number; y: number }> | undefined;
+      const record = payload.explore_record as string | undefined;
+      if (wps?.length) {
+        const s = wps[0],
+          e = wps[wps.length - 1];
+        const pathStr = `(${s.x},${s.y}) → (${e.x},${e.y})`;
+        return record ? `${pathStr}「${record}」` : pathStr;
+      }
+      return record ?? "探索";
     }
     default:
       return JSON.stringify(payload).slice(0, 500);

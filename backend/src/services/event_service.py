@@ -29,12 +29,20 @@ def _dm_create_event(state: OverallState) -> TickEvent | None:
 
 
 def _scene_event(state: OverallState) -> TickEvent | None:
-    """从 scene_info 构造 scene_setup 事件."""
+    """构造 scene_setup 事件。
+
+    scene/objects 来自 scene_info（静态数据），PC/Actor 坐标从 state maps 获取。
+    """
     scene_info: dict[str, Any] = state.get("scene_info", {}) or {}
     scene: dict[str, Any] = scene_info.get("scene", {}) or {}
     scene_id = scene.get("id", "")
     if not scene_id:
         return None
+    # PC/Actor 从 state maps 获取（最新坐标），不从 scene_info["pcs"]/["actors"] 读
+    pc_state_map = state.get("pc_state_map", {})
+    actor_state_map = state.get("actor_state_map", {})
+    pcs = [{**info, "id": pid} for pid, info in pc_state_map.items()]
+    actors = [{**info, "id": aid} for aid, info in actor_state_map.items()]
     return TickEvent(
         type=TickEventType.SCENE_SETUP,
         tick=state.get("tick", 0),
@@ -42,8 +50,8 @@ def _scene_event(state: OverallState) -> TickEvent | None:
         payload={
             "scene_id": scene_id,
             "scene": scene,
-            "pcs": scene_info.get("pcs", []),
-            "actors": scene_info.get("actors", []),
+            "pcs": pcs,
+            "actors": actors,
             "scene_objects": scene_info.get("scene_objects", []),
         },
     )
@@ -69,7 +77,12 @@ def _action_events(state: OverallState) -> list[TickEvent]:
         event_type = _EVENT_TYPE_MAP.get(action_type)
         if event_type is None:
             continue
-        result = action.get("result", {}) or {}
+        raw_result = action.get("result", {}) or {}
+        # 兼容 Pydantic 模型和 dict / Supports both model and dict
+        if isinstance(raw_result, dict):
+            result = raw_result
+        else:
+            result = raw_result.model_dump() if hasattr(raw_result, "model_dump") else {}
         payload = {
             "order": action.get("order"),
             "pc_id": action.get("pc_id", ""),
@@ -80,6 +93,7 @@ def _action_events(state: OverallState) -> list[TickEvent]:
         }
         if event_type == TickEventType.PC_EXPLORE:
             payload["waypoints"] = result.get("waypoints", [])
+            payload["explore_record"] = result.get("explore_record", "")
         if event_type == TickEventType.PC_TALK:
             payload["waypoints"] = result.get("waypoints", [])
         if event_type == TickEventType.PC_INTERACT:
@@ -109,4 +123,20 @@ def flush_events(state: OverallState, config: RunnableConfig = None) -> dict:
     ]
     tick = state.get("tick", 0)
     logger.info("[service] flushed events tick=%s count=%d", tick, len(events))
+    return {"_pending_events": events}
+
+
+def emit_narrative_event(state: OverallState, config: RunnableConfig = None) -> dict:
+    """将 state.narrative 转为 DM_NARRATIVE 事件追加到 _pending_events."""
+    narrative = state.get("narrative", "")
+    events = list(state.get("_pending_events", []))
+    if narrative:
+        events.append(
+            TickEvent(
+                type=TickEventType.DM_NARRATIVE,
+                tick=state.get("tick", 0),
+                world_id=state.get("world_id", ""),
+                payload={"text": narrative},
+            )
+        )
     return {"_pending_events": events}

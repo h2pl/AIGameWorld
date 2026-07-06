@@ -1,4 +1,4 @@
-"""Reflection Engine——LLM 驱动的角色反思 / LLM-driven character reflection_engine.
+"""Reflection Engine——LLM 驱动的角色反思 / LLM-driven character reflection.
 
 PC: 深度反思（弧线分析 + 性格洞察 + 下一步方向）
 Actor: 浅层反思（行为模式总结）
@@ -25,8 +25,6 @@ _ACTOR_TEMPLATE = _PROMPTS.get_template("reflect_actor.jinja")
 async def reflect(req: ReflectionRequest, config: RunnableConfig = None) -> ReflectionResponse:
     """角色反思入口 / Character reflection entry point."""
     llm = get_llm(config)
-    if llm is None:
-        return _fallback(req, ["LLM 不可用，使用降级输出 / LLM unavailable, fallback used"])
 
     template = _PC_TEMPLATE if req.pc_type == "pc" else _ACTOR_TEMPLATE
     prompt = template.render(
@@ -37,18 +35,13 @@ async def reflect(req: ReflectionRequest, config: RunnableConfig = None) -> Refl
         recent_reflections=req.recent_reflections[-3:],
     )
 
-    try:
-        result = await llm.call_structured(
-            f"reflect_{req.pc_type}",
-            None,
-            [{"role": "user", "content": prompt}],
-            fallback=dict,
-        )
-        insight = _format_insight(req, result)
-        return ReflectionResponse(insights_out=[insight])
-    except Exception:
-        logger.exception("reflect failed for %s (%s)", req.pc_id, req.pc_type)
-        return _fallback(req, ["LLM 调用失败，使用降级输出 / LLM call failed, fallback used"])
+    result = await llm.call_structured(
+        f"reflect_{req.pc_type}",
+        None,
+        [{"role": "user", "content": prompt}],
+    )
+    insight = _format_insight(req, result)
+    return ReflectionResponse(insights_out=[insight])
 
 
 def _format_insight(req: ReflectionRequest, result: dict) -> dict:
@@ -70,19 +63,3 @@ def _format_insight(req: ReflectionRequest, result: dict) -> dict:
         "importance": importance,
         "tick": req.tick,
     }
-
-
-def _fallback(req: ReflectionRequest, errors: list[str] | None = None) -> ReflectionResponse:
-    """降级输出 / Fallback output."""
-    return ReflectionResponse(
-        insights_out=[
-            {
-                "pc_id": req.pc_id,
-                "insight": f"{req.pc_name}: 维持当前行为模式。",
-                "memory_type": "reflection",
-                "importance": 0,
-                "tick": req.tick,
-            }
-        ],
-        errors=errors or ["LLM 不可用，使用降级输出"],
-    )

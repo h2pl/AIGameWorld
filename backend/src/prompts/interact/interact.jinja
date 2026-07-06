@@ -1,0 +1,42 @@
+{# 交互 prompt — LLM 裁决交互结果 + 旁白 / Interact: LLM judges result + narration #}
+{# 剧情注入 / Plot injection #}
+当前剧情情境：{{ plot_brief }}
+
+{# DM 提示 / DM hints #}
+{% if hints %}
+DM 提示：
+{% for hint in hints %}
+- {{ hint }}
+{% endfor %}
+{% endif %}
+
+{# PC 记忆 / PC memories #}
+{% if memories %}
+你记得：
+{% for mem in memories %}
+- {{ mem }}
+{% endfor %}
+{% endif %}
+
+当前场景：{{ scene.name | default("未知场景") }}（{{ scene.type | default("") }}）
+{{ scene.description | default("") }}
+
+交互目标详情：
+- 名称：{{ obj.name }}
+- 类型：{{ obj.object_type }}
+- 位置：({{ obj.position_x | default(0) }}, {{ obj.position_y | default(0) }})
+{% if obj.description %}- 外观：{{ obj.description }}{% endif %}
+{% if obj.interact_data %}- 特性：{{ obj.interact_data | tojson }}{% endif %}
+
+{{ pc.name }} 走到 {{ obj.name }} 旁，准备与之交互。
+
+生成要求：
+1. 根据 PC 身份性格、物体类型和特性、当前场景氛围，合理判断交互是成功还是失败。
+2. 成功时描述 PC 如何巧妙或果断地达成目的；失败时描述遇到了什么阻碍或意外。
+3. 结果要有戏剧性和故事感，避免平淡无奇的"打开了一个箱子"。
+
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
+{
+  "success": <true 或 false>,
+  "narration": "<1-2句中文第三人称旁白>"
+}

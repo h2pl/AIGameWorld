@@ -15,8 +15,7 @@ export class InteractHandler {
   constructor(
     private getSprite: (id: string) => CharacterSprite | undefined,
     private getMovementManager: () => MovementManager | undefined,
-    private followSprite: (sprite: any) => void,
-    private onNarrative: (text: string) => void
+    private followSprite: (sprite: any) => void
   ) {}
 
   /** 处理交互事件：走到物体旁并播放结果旁白 / Handle interact: walk to object + show narration */
@@ -42,7 +41,12 @@ export class InteractHandler {
 
     if (narration) {
       log.info(`interact narration: ${pcId} — ${narration}`);
-      this.onNarrative(narration);
+      // 通过 window 广播，由 NarrativePanel 消费
+      window.dispatchEvent(
+        new CustomEvent("tick-event", {
+          detail: { type: "interact_narration", payload: { text: narration } },
+        })
+      );
     }
   }
 

@@ -47,7 +47,7 @@ class MemoryRepo:
                 importance  INTEGER NOT NULL DEFAULT 2,
                 memory_type TEXT    NOT NULL DEFAULT 'observation',
                 world_id    TEXT    NOT NULL DEFAULT '',
-                created_at  TEXT    NOT NULL DEFAULT (datetime('now', '+08:00'))
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
             )
             """
         )

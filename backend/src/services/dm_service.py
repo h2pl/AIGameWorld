@@ -13,7 +13,7 @@ from ..utils.logging import trace_node
 
 @trace_node("dm.create")
 async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
-    """Phase 1: DM 创造情境 / DM creates the scene_engine."""
+    """Phase 1: DM 创造情境 / DM creates the situation."""
     result = await dm_engine.dm_create(
         DMCreateRequest(
             tick=state.get("tick", 0),
@@ -26,23 +26,32 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
         "hints": result.hints,
         "plot_brief": result.plot_brief,
         "scene_id": result.scene_id,
-        "_dm_ext": result.ext,  # LLM 原始输出，供 persist_tick 落 dm_records
+        "_dm_ext": result.ext,
     }
 
 
 @trace_node("dm.narrate")
 async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict:
-    """Phase 6: DM 叙事 / DM narrates the scene_engine."""
+    """Phase 6: DM 叙事——产出 narrative 写入 state."""
     result = await dm_engine.dm_narrate(
         DMNarrateRequest(
             tick=state.get("tick", 0),
             world_id=state.get("world_id", ""),
             plot_brief=state.get("plot_brief", ""),
             hints=state.get("hints", []),
-            tick_message_id=state.get("tick_message_id", ""),
+            events=_summarize_events(state.get("_pending_events", [])),
         ),
         config=config,
     )
-    return {
-        "narrative": result.narrative_out,
-    }
+    return {"narrative": result.narrative_out}
+
+
+def _summarize_events(events: list) -> list[dict]:
+    """把 TickEvent 列表转成 prompt 可读的摘要 / Convert events to prompt-friendly summary."""
+    return [
+        {
+            "type": ev.type.value if hasattr(ev.type, "value") else str(ev.type),
+            "description": str(ev.payload)[:200],
+        }
+        for ev in events
+    ]

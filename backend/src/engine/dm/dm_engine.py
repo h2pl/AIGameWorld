@@ -10,19 +10,18 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain.dm_record import DMRecord
 from ...schemas.llm_output import DMNarrativeSchema, DMOutput
 from ...schemas.request import DMCreateRequest, DMNarrateRequest
 from ...schemas.response import DMCreateResponse, DMNarrateResponse
+from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm, get_repo
 from ...utils.logging import get_logger
 
-# 模块日志 / Module logger
 logger = get_logger(__name__)
 
-# Jinja2 模板环境 / Jinja2 template environment
 _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
+_DM_MEMORY_ID = "dm"  # DM 全局记忆 id
 
 
 async def dm_create(
@@ -30,108 +29,86 @@ async def dm_create(
     config: RunnableConfig = None,
 ) -> DMCreateResponse:
     """Phase 1: DM 创造情境 / DM creates situation."""
-    # 获取 LLM 实例 / Get LLM instance
     llm = get_llm(config)
 
-    if llm is None:
-        return DMCreateResponse(hints=[], plot_brief="平静的一天，没有特别事件。")
-
-    # 加载场景列表供 LLM 选择 / Load scene list for LLM selection
     scene_repo = get_repo(config, "scene")
     scenes: list[dict] = []
     if scene_repo and req.world_id:
         scenes = await scene_repo.list_scenes(req.world_id)
 
+    # 检索 DM 记忆 / Retrieve DM memories
+    recent_summary = ""
+    memories: list[str] = []
     try:
-        logger.info("[engine] dm_create tick=%s world=%s", req.tick, req.world_id or "-")
-        system_prompt = await _render_dm_system(config, req.world_id)
-        prompt = _PROMPTS.get_template("dm/dm_create.jinja").render(
-            scenes=scenes,
-            recent_summary="",
-            plot_brief_prev=req.plot_brief,
-            pacing={},
+        mems = await retrieve_memories(
+            _DM_MEMORY_ID, req.plot_brief or "recent", config=config, top_k=5
         )
-        result = await llm.call_structured(
-            "dm_create",
-            DMOutput,
-            [SystemMessage(content=system_prompt), HumanMessage(content=prompt)],
-            fallback=lambda: DMOutput(
-                hints=[],
-                plot_brief="平静的一天，没有特别事件。",
-            ),
-        )
-        # 限制 hints 数量 / Cap hints count
-        if len(result.hints) > 4:
-            result.hints = result.hints[:4]
-
-        # dm_records 写入已移至 data_service.persist_tick，这里只返回数据
-        # / dm_records write moved to data_service.persist_tick, engine only returns data
-        return DMCreateResponse(
-            hints=result.hints,
-            plot_brief=result.plot_brief,
-            scene_id=result.scene_id,
-            ext=result.model_dump(),  # 原始 LLM 输出，供 persist_tick 落盘 / Raw LLM output for persistence
-        )
+        memories = list(mems) if mems else []
     except Exception:
-        logger.exception("dm_create failed, using fallback")
-        return DMCreateResponse(
-            hints=[],
-            plot_brief="平静的一天，没有特别事件。",
-            scene_id="",
-            errors=["dm_create LLM 调用失败，使用降级输出"],
-        )
+        logger.warning("[engine] dm_create memory retrieval failed, continuing without memories")
+
+    logger.info("[engine] dm_create tick=%s world=%s", req.tick, req.world_id or "-")
+    system_prompt = await _render_dm_system(config, req.world_id)
+    prompt = _PROMPTS.get_template("dm/dm_create.jinja").render(
+        scenes=scenes,
+        recent_summary=recent_summary,
+        plot_brief_prev=req.plot_brief,
+        memories=memories,
+        pacing={},
+    )
+    result = await llm.call_structured(
+        "dm_create",
+        DMOutput,
+        [SystemMessage(content=system_prompt), HumanMessage(content=prompt)],
+    )
+    if len(result.hints) > 4:
+        result.hints = result.hints[:4]
+
+    # 存入 DM 记忆 / Store DM memory
+    await _store_dm_memory(req.world_id, req.tick, result.plot_brief, config)
+
+    return DMCreateResponse(
+        hints=result.hints,
+        plot_brief=result.plot_brief,
+        scene_id=result.scene_id,
+        ext=result.model_dump(),
+    )
 
 
 async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DMNarrateResponse:
-    """Phase 6: DM 叙事，产出写入 dm_records / DM narrates, output to dm_records."""
-    # 获取 LLM 实例 / Get LLM instance
+    """Phase 6: DM 叙事 / DM narrates."""
     llm = get_llm(config)
 
-    if llm is None:
-        return DMNarrateResponse(narrative_out="（DM 沉默了...）")
+    # 检索 DM 记忆 / Retrieve DM memories
+    memories: list[str] = []
     try:
-        system_prompt = await _render_dm_system(config, req.world_id)
-        prompt = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
-            plot_brief=req.plot_brief,
-            hints=req.hints,
-            events=req.events,
+        mems = await retrieve_memories(
+            _DM_MEMORY_ID, req.plot_brief or "recent", config=config, top_k=3
         )
-        result = await llm.call_structured(
-            "dm_narrate",
-            DMNarrativeSchema,
-            [SystemMessage(content=system_prompt), HumanMessage(content=prompt)],
-            fallback=lambda: DMNarrativeSchema(narrative="（DM 沉默了...）"),
-        )
-        # 叙事文本为空时降级 / Fallback when narrative is empty
-        narrative = result.narrative
-        if not narrative or not narrative.strip():
-            narrative = "（DM 沉默了...）"
-        logger.info("[engine] dm_narrate tick=%s narrative_len=%s", req.tick, len(narrative))
-
-        # 更新 dm_records 叙事字段 / Update narrative field in dm_records
-        record_repo = get_repo(config, "dm_record")
-        if record_repo:
-            await record_repo.update_narrative(
-                DMRecord(
-                    world_id=req.world_id,
-                    tick=req.tick,
-                    dm_narrative=narrative,
-                    ext={"narrative": narrative},
-                )
-            )
-            logger.info("[engine] dm_narrate updated narrative in dm_records tick=%s", req.tick)
-
-        return DMNarrateResponse(narrative_out=narrative)
+        memories = list(mems) if mems else []
     except Exception:
-        logger.exception("dm_narrate failed, using fallback")
-        return DMNarrateResponse(
-            narrative_out="（DM 沉默了...）", errors=["dm_narrate LLM 调用失败，使用降级输出"]
-        )
+        logger.warning("[engine] dm_narrate memory retrieval failed, continuing without memories")
+
+    system_prompt = await _render_dm_system(config, req.world_id)
+    prompt = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
+        plot_brief=req.plot_brief,
+        hints=req.hints,
+        events=req.events,
+        memories=memories,
+    )
+    result = await llm.call_structured(
+        "dm_narrate",
+        DMNarrativeSchema,
+        [SystemMessage(content=system_prompt), HumanMessage(content=prompt)],
+    )
+    narrative = result.narrative
+    logger.info("[engine] dm_narrate tick=%s narrative_len=%s", req.tick, len(narrative or ""))
+
+    return DMNarrateResponse(narrative_out=narrative)
 
 
 async def _render_dm_system(config: RunnableConfig | None, world_id: str) -> str:
     """渲染 DM system prompt，注入世界观信息 / Render DM system prompt with world info."""
-    # 从 DB 加载世界观 / Load world info from DB
     world = None
     if world_id:
         world_repo = get_repo(config, "world")
@@ -140,3 +117,16 @@ async def _render_dm_system(config: RunnableConfig | None, world_id: str) -> str
             if w:
                 world = {"name": w.name, "description": w.description, "rule_set": w.rule_set}
     return _PROMPTS.get_template("dm/_dm_system.jinja").render(world=world)
+
+
+async def _store_dm_memory(
+    world_id: str,
+    tick: int,
+    plot_brief: str,
+    config: RunnableConfig = None,
+) -> None:
+    """存入 DM 全局记忆 / Store DM global memory."""
+    memory_repo = get_repo(config, "memory")
+    if not memory_repo or not plot_brief:
+        return
+    await memory_repo.store(_DM_MEMORY_ID, f"[tick {tick}] {plot_brief}", tick, importance=5)

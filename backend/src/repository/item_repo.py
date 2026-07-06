@@ -16,8 +16,8 @@ class ItemRepo:
         """写入单条物品."""
         await self._db.execute(
             "INSERT OR REPLACE INTO items "
-            "(id, name, item_type, rarity, weight, value, description, data, world_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "(id, name, item_type, rarity, weight, value, description, data, world_id, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
             (
                 item.id,
                 item.name,

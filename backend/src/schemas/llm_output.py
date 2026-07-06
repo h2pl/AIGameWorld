@@ -59,25 +59,19 @@ class DialogueSchema(BaseModel):
 
 
 # === Phase 4b: 探索路径 / Explore Path ===
-class ExploreWaypointSchema(BaseModel):
-    """探索路径点——包含坐标和到达时的第三人称旁白 / Explore waypoint with on-arrival narration."""
-
-    x: int = Field(description="地图 x 坐标，必须在 map 范围内")
-    y: int = Field(description="地图 y 坐标，必须在 map 范围内")
-    narration: str = Field(description="到达该点时播放的第三人称旁白（1-2 句中文）")
-
-
 class ExploreOutputSchema(BaseModel):
-    """探索输出——LLM 决定去哪探索以及发现什么 / Explore output: path + narrations."""
+    """探索输出——LLM 决定去哪探索以及发现什么 / Explore output: destination + explore_record."""
 
-    waypoints: list[ExploreWaypointSchema] = Field(
-        default_factory=list,
-        description="1-3 个探索路径点，按顺序访问，每点带一段旁白",
+    end_x: int = Field(description="探索目的地 x 坐标，必须在地图范围内，与起点保持 3-10 格距离")
+    end_y: int = Field(description="探索目的地 y 坐标，必须在地图范围内，与起点保持 3-10 格距离")
+    explore_record: str = Field(
+        description="到达目的地后发现或感受到的内容（1-2 句中文，第三人称旁白）"
     )
 
 
 # === Phase 4c: 场景物体交互 / Scene Object Interaction ===
-class InteractNarrationSchema(BaseModel):
-    """交互结果旁白——LLM 描述 PC 与物体交互后发生的事 / Interaction result narration."""
+class InteractOutputSchema(BaseModel):
+    """交互输出——LLM 决定交互结果 + 撰写旁白 / Interact output: success + narration."""
 
+    success: bool = Field(description="交互是否成功（基于当前场景、角色能力和物体特性合理判断）")
     narration: str = Field(description="第三人称旁白（1-2 句中文），描述 PC 与物体交互的过程和结果")

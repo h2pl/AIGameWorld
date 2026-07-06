@@ -65,32 +65,27 @@ async def _build_scene_info(
     # 按场景出生点给未设置坐标的 PC 分配坐标，避免重叠 / Assign positions to unset PCs
     pc_positions = await _assign_pc_positions(scene_pcs, scene, pc_repo, spawn_radius=1)
 
-    # 构建 PC 运行时状态 map（tick 内各引擎读写此 map，末尾统一入库）
+    # 构建 PC 运行时状态 map — model_dump() 写入全量字段，仅覆盖坐标
     pc_state_map: dict[str, dict[str, Any]] = {}
     for pc in scene_pcs:
         pos = pc_positions.get(pc.id, {"x": pc.position_x, "y": pc.position_y})
-        pc_state_map[pc.id] = {
-            "position_x": pos["x"],
-            "position_y": pos["y"],
-            "scene_id": scene_id,
-            "status": pc.status,
-        }
+        info = pc.model_dump()
+        info["position_x"] = pos["x"]
+        info["position_y"] = pos["y"]
+        info["scene_id"] = scene_id
+        pc_state_map[pc.id] = info
 
-    # 构建 Actor 运行时状态 map（只读，用于查询位置）
+    # 构建 Actor 运行时状态 map — model_dump() 写入全量字段
     actor_state_map: dict[str, dict[str, Any]] = {}
     for actor in scene_actors:
-        actor_state_map[actor.id] = {
-            "position_x": actor.position_x,
-            "position_y": actor.position_y,
-            "scene_id": scene_id,
-        }
+        info = actor.model_dump()
+        info["scene_id"] = scene_id
+        actor_state_map[actor.id] = info
 
     return (
         {
             "scene": scene_ctx,
             "scene_objects": scene_object_ctx,
-            "pcs": [_build_pc_ctx(pc, pc_positions) for pc in scene_pcs],
-            "actors": _build_actor_ctx(scene_actors),
         },
         pc_state_map,
         actor_state_map,
@@ -192,34 +187,4 @@ def _build_scene_object_ctx(objects: list) -> list[dict[str, Any]]:
             "interact_data": obj.interact_data or {},
         }
         for obj in objects
-    ]
-
-
-def _build_pc_ctx(pc: PlayerCharacter, positions: dict[str, dict[str, int]]) -> dict[str, Any]:
-    pos = positions.get(pc.id, {"x": pc.position_x, "y": pc.position_y})
-    return {
-        "id": pc.id,
-        "name": pc.name,
-        "role": pc.role,
-        "race": pc.race or "",
-        "status": pc.status,
-        "position_x": pos["x"],
-        "position_y": pos["y"],
-    }
-
-
-def _build_actor_ctx(actors: list) -> list[dict[str, Any]]:
-    return [
-        {
-            "id": actor.id,
-            "name": actor.name,
-            "role": actor.role,
-            "race": actor.race or "",
-            "status": actor.status,
-            "position_x": actor.position_x,
-            "position_y": actor.position_y,
-            "personality": actor.personality,
-            "disposition": actor.disposition,
-        }
-        for actor in actors
     ]

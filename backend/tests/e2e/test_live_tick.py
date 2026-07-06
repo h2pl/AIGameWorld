@@ -112,7 +112,8 @@ class TestLiveTickE2E:
                 "scene_objects",
                 "character_move",
                 "pc_talk",
-                "character_explore",
+                "pc_explore",
+                "pc_interact",
                 "dm_narrative",
             ), f"未知事件类型 {ev['type']}"
         print(f"✅ 6. event structure valid: {len(events)} events")

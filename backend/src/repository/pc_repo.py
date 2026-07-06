@@ -21,11 +21,11 @@ class PcRepo:
             """INSERT INTO player_characters (id, name, role, race, status, scene_id,
             position_x, position_y, attributes_json, combat_json, arc_json,
             values_json, equipment_json, inventory_json, relationships_json, world_id, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+08:00'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
             ON CONFLICT(id) DO UPDATE SET
             status=excluded.status, scene_id=excluded.scene_id,
             position_x=excluded.position_x, position_y=excluded.position_y,
-            world_id=excluded.world_id, updated_at=datetime('now', '+08:00')""",
+            world_id=excluded.world_id, updated_at=datetime('now', 'localtime')""",
             (
                 pc.id,
                 pc.name,
@@ -67,7 +67,7 @@ class PcRepo:
 
     async def reset_positions(self, world_id: str) -> None:
         await self._db.execute(
-            "UPDATE player_characters SET position_x = 0, position_y = 0 WHERE world_id = ?",
+            "UPDATE player_characters SET position_x = 0, position_y = 0, updated_at = datetime('now', 'localtime') WHERE world_id = ?",
             (world_id,),
         )
         await self._db.commit()

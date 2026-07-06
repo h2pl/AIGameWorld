@@ -1,6 +1,5 @@
 """Engine 单元测试——combat/dialogue/exploration/quest/reflection/summarizer/world."""
 
-from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -24,13 +23,21 @@ def _event_repo_config():
     return {"configurable": {"repos": {"event": event_repo}}}, event_repo
 
 
-def _scene_char_config(scene_obj=None, pc=None):
-    """构造带 scene_repo/pc_repo mock 的 config / Build config with scene_repo/pc_repo mocks."""
+def _scene_char_config(scene_obj=None, pc=None, llm=None):
+    """构造带 scene_repo/pc_repo/memory_repo mock 的 config / Build config with repo mocks."""
     scene_repo = AsyncMock()
     scene_repo.load_all = AsyncMock(return_value={scene_obj.id: scene_obj} if scene_obj else {})
     pc_repo = AsyncMock()
     pc_repo.load_one = AsyncMock(return_value=pc)
-    return {"configurable": {"repos": {"scene": scene_repo, "char": pc_repo}}}
+    memory_repo = AsyncMock()
+    memory_repo.retrieve = AsyncMock(return_value=[])
+    memory_repo.store = AsyncMock(return_value=None)
+    cfg: dict = {
+        "configurable": {"repos": {"scene": scene_repo, "char": pc_repo, "memory": memory_repo}}
+    }
+    if llm:
+        cfg["configurable"]["llm"] = llm
+    return cfg
 
 
 class TestCombatEngine:
@@ -61,26 +68,6 @@ class TestTalkEngine:
             tick=0,
         )
         assert event is None
-
-    @pytest.mark.asyncio
-    async def test_talk_without_llm_falls_back_to_single_line(self):
-        """无 LLM 时降级为发起者一句话 / Without an LLM, falls back to a single initiator line."""
-        event = await process_talk_action(
-            decision={
-                "type": "talk",
-                "pc_id": "pc1",
-                "target_id": "npc1",
-                "description": "先打个招呼",
-            },
-            plot_brief="",
-            hints=[],
-            scene_id="",
-            tick=1,
-        )
-        turns = event["turns"]
-        assert len(turns) == 1
-        assert turns[0]["speaker_id"] == "pc1"
-        assert turns[0]["text"] == "先打个招呼"
 
     @pytest.mark.asyncio
     async def test_talk_generates_multi_turn_dialogue(self):
@@ -118,49 +105,12 @@ class TestTalkEngine:
             tick=1,
             config=config,
         )
-        turns = event["turns"]
+        turns = event.turns
         assert len(turns) == 2
         assert turns[0]["speaker_id"] == "pc1"
         assert turns[1]["speaker_id"] == "npc1"
-        assert event["participants"] == ["pc1", "npc1"]
+        assert event.participants == ["pc1", "npc1"]
         assert memory_repo.store.call_count == 2
-
-
-class TestInteractEngine:
-    def test_pick_lock(self):
-        from src.engine.interact.interact_engine import resolve_interact
-        from src.schemas.request import SceneObjectInteractRequest
-
-        r = resolve_interact(
-            SceneObjectInteractRequest(
-                object_id="chest1",
-                pc_id="pc1",
-                action_type="pick_lock",
-                attribute_mod=3,
-                dc=12,
-            )
-        )
-        assert isinstance(r.success, bool)
-        assert r.result is not None
-        assert r.result["action_cn"] == "开锁"
-        assert "roll" in r.result
-
-    def test_break_door(self):
-        from src.engine.interact.interact_engine import resolve_interact
-        from src.schemas.request import SceneObjectInteractRequest
-
-        r = resolve_interact(
-            SceneObjectInteractRequest(
-                object_id="door1",
-                pc_id="pc1",
-                action_type="break_door",
-                attribute_mod=4,
-                dc=15,
-            )
-        )
-        assert isinstance(r.success, bool)
-        assert r.result is not None
-        assert r.result["action_cn"] == "破门"
 
 
 class TestInteractAction:
@@ -181,40 +131,10 @@ class TestInteractAction:
         assert event is None
 
     @pytest.mark.asyncio
-    async def test_interact_without_scene_object_auto_succeeds(self):
-        """找不到目标物体时降级为无需检定直接成功 / No matching scene object falls back to an auto-success interact."""
-        event = await process_interact_action(
-            decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
-        )
-        assert event["kind"] == "pc_interact"
-        assert event["object_id"] == "chest1"
-        assert event["success"] is True
-
-    @pytest.mark.asyncio
-    async def test_interact_locked_chest_uses_dex_check(self):
-        """上锁容器按 lock_dc 用敏捷检定开锁 / A locked container is resolved with a DEX check against lock_dc."""
+    async def test_interact_returns_kind_and_narration(self):
+        """LLM 生成交互返回 success + narration / LLM generates interact with success + narration."""
         from src.domain.scene_object import SceneObject, SceneObjectType
-
-        chest = SceneObject(
-            id="chest1",
-            name="宝箱",
-            object_type=SceneObjectType.CONTAINER,
-            interact_data={"locked": True, "lock_dc": 5},
-        )
-        pc = SimpleNamespace(attributes_json='{"dex": 18}')
-        config = _scene_char_config(scene_obj=chest, pc=pc)
-        event = await process_interact_action(
-            decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
-            config=config,
-        )
-        assert event["kind"] == "pc_interact"
-        assert event["result"]["action"] == "pick_lock"
-        assert event["result"]["bonus"] == 4  # (18-10)//2
-
-    @pytest.mark.asyncio
-    async def test_interact_unlocked_chest_auto_succeeds(self):
-        """未上锁容器无需检定，直接成功 / An unlocked container needs no check, auto success."""
-        from src.domain.scene_object import SceneObject, SceneObjectType
+        from src.schemas.llm_output import InteractOutputSchema
 
         chest = SceneObject(
             id="chest1",
@@ -222,14 +142,21 @@ class TestInteractAction:
             object_type=SceneObjectType.CONTAINER,
             interact_data={"locked": False},
         )
-        config = _scene_char_config(scene_obj=chest)
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(
+            return_value=InteractOutputSchema(
+                success=True,
+                narration="他打开宝箱，金币的光芒照亮了脸庞。",
+            )
+        )
+        config = _scene_char_config(scene_obj=chest, llm=llm)
         event = await process_interact_action(
             decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
             config=config,
         )
-        assert event["success"] is True
-        assert event["result"]["action"] == "open_chest"
-        assert event["result"]["roll"] is None
+        assert event.kind == "pc_interact"
+        assert event.success is True
+        assert "金币" in event.narration
 
 
 class TestCombatAction:

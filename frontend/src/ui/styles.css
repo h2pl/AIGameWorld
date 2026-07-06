@@ -154,11 +154,33 @@
   line-height: 1.5;
   color: #c8d6e5;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  opacity: 0;
+  animation: narrativeFadeIn 0.8s ease-out forwards;
 }
 .narrative-line:last-child {
   color: #fff;
   font-weight: 500;
   border-bottom: none;
+}
+
+@keyframes narrativeFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 渐变闪烁光标，模拟打字效果 */
+.narrative-line::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #ffd700;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 0.8s step-end infinite;
+}
+@keyframes blink {
+  50% { opacity: 0; }
 }
 
 /* ===== 事件面板 — 右上角，增量追加 tick 事件日志 / Event Panel — top-right, append tick event logs ===== */

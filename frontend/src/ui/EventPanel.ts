@@ -8,9 +8,18 @@ import { Panel } from "./Panel";
 import type { EventData } from "../types";
 
 const EVENT_ICONS: Record<string, string> = {
-  dm_create: "🎲", dm_narrative: "📖", scene_setup: "🗺️", scene_objects: "📦",
-  character_move: "🚶", pc_explore: "🔍", character_talk: "🗣️", pc_talk: "🗣️",
-  character_explore: "🔍", combat_event: "⚔️", game_event: "🎮", state_change: "🔄",
+  dm_create: "🎲",
+  dm_narrative: "📖",
+  scene_setup: "🗺️",
+  scene_objects: "📦",
+  character_move: "🚶",
+  pc_explore: "🔍",
+  character_talk: "🗣️",
+  pc_talk: "🗣️",
+  character_explore: "🔍",
+  combat_event: "⚔️",
+  game_event: "🎮",
+  state_change: "🔄",
 };
 
 export class EventPanel extends Panel {
@@ -43,7 +52,8 @@ export class EventPanel extends Panel {
     this.listEl = el.querySelector(".event-body")!;
     this.tickBadgeEl = el.querySelector("#event-tick-badge")!;
     el.querySelector("#event-history-btn")!.addEventListener("click", () =>
-      window.dispatchEvent(new CustomEvent("show-event-history")));
+      window.dispatchEvent(new CustomEvent("show-event-history"))
+    );
     return el;
   }
 
@@ -56,12 +66,14 @@ export class EventPanel extends Panel {
     const tick = (e as CustomEvent).detail.tick as number;
     this.tickBadgeEl.textContent = `Display_Tick=${tick}`;
     this.currentTick = tick;
-    this.listEl.innerHTML = tick === 0
-      ? `<div class="event-empty">等待开始...</div>`
-      : "";
+    this.listEl.innerHTML = tick === 0 ? `<div class="event-empty">等待开始...</div>` : "";
   }
 
-  private _handleTickEvent(detail: { type: string; payload: Record<string, unknown>; phase?: "done" }): void {
+  private _handleTickEvent(detail: {
+    type: string;
+    payload: Record<string, unknown>;
+    phase?: "done";
+  }): void {
     if (detail.phase === "done") {
       const a = this.listEl.querySelector(".event-active");
       if (a) a.classList.remove("event-active");
@@ -101,31 +113,52 @@ export class EventPanel extends Panel {
   }
 }
 
+/** 事件类型中文名 / Event type Chinese labels */
 function _readableType(t: string): string {
   const map: Record<string, string> = {
-    dm_create: "DM 创建情境", dm_narrative: "DM 叙事", scene_setup: "场景设置",
-    pc_explore: "角色探索", pc_talk: "角色对话", pc_interact: "角色互动",
-    character_move: "角色移动", combat_event: "战斗事件", state_change: "状态变更",
+    dm_create: "DM 创建情境",
+    dm_narrative: "DM 叙事",
+    scene_setup: "场景设置",
+    pc_explore: "角色探索",
+    pc_talk: "角色对话",
+    pc_interact: "角色互动",
+    character_move: "角色移动",
+    combat_event: "战斗事件",
+    state_change: "状态变更",
   };
   return map[t] || t;
 }
 
+/** 格式化事件 payload 为可读文本 / Format event payload for display */
 function _formatPayload(ev: EventData): string {
   const p = ev.payload || {};
   switch (ev.type) {
-    case "dm_create": return String(p.plot_brief || p.scene_id || "");
-    case "dm_narrative": return String(p.text || p.narrative || "");
-    case "scene_setup": return String(p.scene_id || "");
-    case "pc_explore": case "character_explore":
-      const wp = p.waypoints as Array<{ x: number; y: number }> | undefined;
-      if (wp?.length) return wp.map(w => `(${w.x},${w.y})`).join(" → ");
-      return "探索";
-    case "pc_talk": case "character_talk": {
+    case "dm_create":
+      return String(p.plot_brief || p.scene_id || "");
+    case "dm_narrative":
+      return String(p.text || p.narrative || "");
+    case "scene_setup":
+      return String(p.scene_id || "");
+    case "pc_explore":
+    case "character_explore": {
+      const wps = p.waypoints as Array<{ x: number; y: number }> | undefined;
+      const record = p.explore_record as string | undefined;
+      if (wps?.length) {
+        const s = wps[0],
+          e = wps[wps.length - 1];
+        const pathStr = `(${s.x},${s.y}) → (${e.x},${e.y})`;
+        return record ? `${pathStr}「${record}」` : pathStr;
+      }
+      return record ?? "探索";
+    }
+    case "pc_talk":
+    case "character_talk": {
       const r = p.result as Record<string, unknown> | undefined;
       const turns = (r?.turns ?? []) as Array<{ speaker_id: string; text: string }>;
-      if (turns.length) return turns.map(t => `${t.speaker_id}: ${t.text}`).join("；");
+      if (turns.length) return turns.map((t) => `${t.speaker_id}: ${t.text}`).join("；");
       return `${p.pc_id || ""}: ${r?.text || r?.content || ""}`;
     }
-    default: return JSON.stringify(p).slice(0, 80);
+    default:
+      return JSON.stringify(p).slice(0, 80);
   }
 }

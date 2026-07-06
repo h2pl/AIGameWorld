@@ -97,25 +97,15 @@ export class GameScene extends Phaser.Scene {
     const follow = (sprite: any) => this.cameras.main.startFollow(sprite, true, 0.1, 0.1);
     const getSprite = (id: string) =>
       this.pcManager?.getSprite(id) || this.actorManager?.getSprite(id);
-    this.exploreHandler = new ExploreHandler(
-      getSprite,
-      () => this.movementManager,
-      follow,
-      (text) => this.hud.setNarrative(text)
-    );
+    this.exploreHandler = new ExploreHandler(getSprite, () => this.movementManager, follow);
     this.talkHandler = new TalkHandler(
       getSprite,
       () => this.movementManager,
       () => this.sceneBuilt,
       follow
     );
-    this.narrativeHandler = new NarrativeHandler((text) => this.hud.setNarrative(text));
-    this.interactHandler = new InteractHandler(
-      getSprite,
-      () => this.movementManager,
-      follow,
-      (text) => this.hud.setNarrative(text)
-    );
+    this.narrativeHandler = new NarrativeHandler();
+    this.interactHandler = new InteractHandler(getSprite, () => this.movementManager, follow);
     this.sceneSetupHandler = new SceneSetupHandler((d) => this.ensureScene(d));
   }
 

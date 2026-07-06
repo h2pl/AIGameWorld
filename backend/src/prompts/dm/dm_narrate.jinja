@@ -1,6 +1,16 @@
 {# Phase 6: DM 叙事渲染 / DM narrates the scene #}
 
-{# === 上下文注入 / Context injection #}
+你的职责：基于剧情梗概、环境提示和实际发生的事件，以第三人称 DND DM 口吻讲述一段 3-5 句的叙事。
+
+{# 记忆 / DM memories #}
+{% if memories %}
+最近的故事发展：
+{% for mem in memories %}
+- {{ mem }}
+{% endfor %}
+{% endif %}
+
+{# 上下文注入 / Context injection #}
 剧情梗概：{{ plot_brief }}
 
 {% if hints %}
@@ -17,14 +27,14 @@
 {% endfor %}
 {% endif %}
 
-{# === 叙事风格 / Narration style === #}
-叙事要求：
-- 第三人称 DND DM 口吻，必须使用简体中文
+{# 叙事要求 / Narration requirements #}
+要求：
+- 必须是第三人称 DND DM 口吻，简体中文
 - 3-5 句，调动至少一种感官（视觉/听觉/嗅觉/触觉）
 - 将环境提示和事件自然融入叙事，不要复述数据
 - 结尾留一个钩子或悬念，不要把话说满
 
-{# === 输出约束 / Output spec === #}
+{# 输出约束 / Output spec #}
 严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）。
 
 字段约束：

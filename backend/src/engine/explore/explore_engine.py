@@ -1,19 +1,20 @@
 """Explore Engine——LLM 驱动的角色探索 / LLM-driven character explore actions.
 
-从 PC 当前位置出发，LLM 决定 1-3 个探索路径点，每点生成一段第三人称旁白。
-最终坐标更新到 pc_state_map。
+一次只处理一个 explore 决策 → LLM 决定终点坐标 + 探索记录，更新 pc_state_map。
+与 talk/interact 一致：一次行动，一条路径，一条探索记录。
+目标坐标会避开其他角色（build_occupied_set + find_vacant_adjacent）。
 """
 
-import random
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...schemas.llm_output import ExploreOutputSchema, ExploreWaypointSchema
+from ...schemas.engine_result import ExploreActionResult
+from ...schemas.llm_output import ExploreOutputSchema
 from ...services.memory_service import retrieve_memories
-from ...utils.helpers import get_llm, get_repo
+from ...utils.helpers import build_occupied_set, find_vacant_adjacent, get_llm, get_repo
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -21,23 +22,18 @@ logger = get_logger(__name__)
 _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
 
-# 随机路径参数 / Random path fallback params
-SEGMENT_MIN = 2
-SEGMENT_MAX = 4
-STEP_MIN = 3
-STEP_MAX = 8
-MAP_MARGIN = 1
-
 
 async def process_explore_action(
     decision: dict,
     scene_info: dict,
     pc_state_map: dict[str, dict],
     actor_state_map: dict[str, dict] | None = None,
+    plot_brief: str = "",
+    hints: list[str] | None = None,
     tick: int = 0,
     config: RunnableConfig = None,
-) -> dict | None:
-    """处理单个 explore 决策 → LLM 生成路径+旁白，更新 pc_state_map."""
+) -> ExploreActionResult | None:
+    """处理单个 explore 决策 → LLM 生成终点+探索记录，更新 pc_state_map，防重叠."""
     if decision.get("type") != "explore":
         return None
 
@@ -45,70 +41,80 @@ async def process_explore_action(
     map_width, map_height = _get_map_bounds(scene_info)
     start_x, start_y = _get_pc_position(pc_id, pc_state_map)
 
-    waypoints = await _generate_waypoints(
+    result = await _generate_explore_data(
         pc_id=pc_id,
         scene_info=scene_info,
+        plot_brief=plot_brief,
+        hints=hints or [],
         start_x=start_x,
         start_y=start_y,
         map_width=map_width,
         map_height=map_height,
+        pc_state_map=pc_state_map,
         config=config,
     )
 
-    if not waypoints:
-        # 降级：LLM 不可用时用随机路径 + 简单旁白
-        waypoints = _fallback_waypoints(
-            start_x, start_y, map_width, map_height, pc_state_map, actor_state_map, pc_id
+    if not result:
+        return None
+
+    end_x = result.end_x
+    end_y = result.end_y
+    explore_record = result.explore_record
+
+    # 防止角色重叠：检查目的地方格是否被占用，找最近空位
+    occupied = build_occupied_set(pc_state_map, actor_state_map, exclude_id=pc_id)
+    if (end_x, end_y) in occupied:
+        adj_x, adj_y = find_vacant_adjacent(end_x, end_y, occupied)
+        logger.info(
+            "[engine] %s explore: dest (%d,%d) occupied, adjusted to (%d,%d)",
+            pc_id,
+            end_x,
+            end_y,
+            adj_x,
+            adj_y,
         )
+        end_x, end_y = adj_x, adj_y
 
-    # 更新 PC 运行时状态到最终路径点
-    final = waypoints[-1]
+    # 更新 PC 坐标
     if pc_id in pc_state_map:
-        pc_state_map[pc_id]["position_x"] = final["x"]
-        pc_state_map[pc_id]["position_y"] = final["y"]
+        pc_state_map[pc_id]["position_x"] = end_x
+        pc_state_map[pc_id]["position_y"] = end_y
 
-    # 存储探索记忆 / Store exploration memory
-    await _store_explore_memory(pc_id, waypoints, tick, config)
+    await _store_explore_memory(pc_id, explore_record, tick, config)
 
     logger.info(
-        "[engine] %s explore: (%d,%d) → %d waypoints → final (%d,%d)",
+        "[engine] %s explore: (%d,%d) → (%d,%d) | %s",
         pc_id,
         start_x,
         start_y,
-        len(waypoints),
-        final["x"],
-        final["y"],
+        end_x,
+        end_y,
+        explore_record[:30],
     )
 
-    return {
-        "kind": "pc_explore",
-        "pc_id": pc_id,
-        "start_x": start_x,
-        "start_y": start_y,
-        "waypoints": waypoints,
-        "final_x": final["x"],
-        "final_y": final["y"],
-    }
+    return ExploreActionResult(
+        pc_id=pc_id,  # 探索者 id
+        waypoints=[{"x": start_x, "y": start_y}, {"x": end_x, "y": end_y}],  # 起点→终点
+        explore_record=explore_record,  # LLM 生成的探索记录
+    )
 
 
-async def _generate_waypoints(
+async def _generate_explore_data(
     pc_id: str,
     scene_info: dict,
+    plot_brief: str,
+    hints: list[str],
     start_x: int,
     start_y: int,
     map_width: int,
     map_height: int,
+    pc_state_map: dict[str, dict],
     config: RunnableConfig = None,
-) -> list[dict]:
-    """调用 LLM 生成探索路径点 + 旁白."""
+) -> ExploreOutputSchema | None:
+    """LLM 生成探索终点坐标 + 探索记录 / LLM generates destination + explore_record."""
     llm = get_llm(config)
-    if llm is None:
-        return []
-
-    pc = _find_pc(pc_id, scene_info)
     scene = scene_info.get("scene", {})
-    plot_brief = scene_info.get("plot_brief", "")
-    hints = scene_info.get("hints", [])
+    pc = _pc_identity(pc_id, pc_state_map)
 
     query = f"{plot_brief} {scene.get('description', '')}".strip()
     memories = await retrieve_memories(pc_id, query, config=config, top_k=5)
@@ -127,92 +133,23 @@ async def _generate_waypoints(
         "start_y": start_y,
     }
 
-    try:
-        system = _PROMPTS.get_template("explore/_explore_system.jinja").render(**ctx)
-        prompt = _PROMPTS.get_template("explore/explore_path.jinja").render(**ctx)
-    except Exception:
-        logger.exception("[engine] explore prompt render failed")
-        return []
+    system = _PROMPTS.get_template("explore/_explore_system.jinja").render(**ctx)
+    prompt = _PROMPTS.get_template("explore/explore.jinja").render(**ctx)
 
-    try:
-        result = await llm.call_structured(
-            "explore",
-            ExploreOutputSchema,
-            [SystemMessage(content=system), HumanMessage(content=prompt)],
-            fallback=lambda: ExploreOutputSchema(waypoints=[]),
-        )
-    except Exception:
-        logger.exception("[engine] explore generation failed for %s", pc_id)
-        return []
+    result = await llm.call_structured(
+        "explore",
+        ExploreOutputSchema,
+        [SystemMessage(content=system), HumanMessage(content=prompt)],
+    )
 
-    return _clamp_and_validate(result.waypoints, map_width, map_height, start_x, start_y)
+    result.end_x = max(0, min(map_width - 1, result.end_x))
+    result.end_y = max(0, min(map_height - 1, result.end_y))
 
+    if result.end_x == start_x and result.end_y == start_y:
+        logger.info("[engine] %s explore: LLM returned same position, skipping", pc_id)
+        return None
 
-def _clamp_and_validate(
-    waypoints: list[ExploreWaypointSchema],
-    map_width: int,
-    map_height: int,
-    start_x: int,
-    start_y: int,
-) -> list[dict]:
-    """校验并裁剪 LLM 坐标到地图范围内，至少保留起点."""
-    valid: list[dict] = []
-    prev_x, prev_y = start_x, start_y
-    for wp in waypoints:
-        x = max(0, min(map_width - 1, wp.x))
-        y = max(0, min(map_height - 1, wp.y))
-        # 跳过原地踏步 / Skip no-op
-        if x == prev_x and y == prev_y:
-            continue
-        valid.append({"x": x, "y": y, "narration": wp.narration or "此处一片寂静。"})
-        prev_x, prev_y = x, y
-    return valid
-
-
-def _fallback_waypoints(
-    start_x: int,
-    start_y: int,
-    map_width: int,
-    map_height: int,
-    pc_state_map: dict[str, dict] | None,
-    actor_state_map: dict[str, dict] | None,
-    pc_id: str,
-) -> list[dict]:
-    """LLM 不可用时生成随机路径 + 简单旁白."""
-    from ...utils.helpers import build_occupied_set
-
-    occupied = build_occupied_set(pc_state_map, actor_state_map, exclude_id=pc_id)
-    segment_count = random.randint(SEGMENT_MIN, SEGMENT_MAX)
-    x_bounds = (MAP_MARGIN, max(MAP_MARGIN, map_width - MAP_MARGIN - 1))
-    y_bounds = (MAP_MARGIN, max(MAP_MARGIN, map_height - MAP_MARGIN - 1))
-
-    waypoints: list[dict] = []
-    cur_x, cur_y = start_x, start_y
-    for _ in range(segment_count):
-        for _retry in range(8):
-            step_x = random.randint(STEP_MIN, STEP_MAX) * random.choice((-1, 1))
-            step_y = random.randint(STEP_MIN, STEP_MAX) * random.choice((-1, 1))
-            next_x = max(x_bounds[0], min(x_bounds[1], cur_x + step_x))
-            next_y = max(y_bounds[0], min(y_bounds[1], cur_y + step_y))
-            if next_x == cur_x and next_y == cur_y:
-                continue
-            if (next_x, next_y) not in occupied:
-                break
-        else:
-            next_x, next_y = cur_x, cur_y
-        cur_x, cur_y = next_x, next_y
-        waypoints.append(
-            {"x": cur_x, "y": cur_y, "narration": f"探索到了 ({cur_x}, {cur_y}) 附近。"}
-        )
-    return waypoints
-
-
-def _find_pc(pc_id: str, scene_info: dict) -> dict:
-    """在 scene_info 中查找 PC 信息."""
-    for pc in scene_info.get("pcs", []):
-        if pc.get("id") == pc_id:
-            return pc
-    return {"id": pc_id, "name": pc_id}
+    return result
 
 
 def _get_map_bounds(scene_info: dict) -> tuple[int, int]:
@@ -227,16 +164,22 @@ def _get_pc_position(pc_id: str, pc_state_map: dict[str, dict]) -> tuple[int, in
 
 async def _store_explore_memory(
     pc_id: str,
-    waypoints: list[dict],
+    explore_record: str,
     tick: int,
     config: RunnableConfig = None,
 ) -> None:
-    """把探索到的内容存入 PC 记忆 / Store exploration findings into PC memory."""
     memory_repo = get_repo(config, "memory")
-    if not memory_repo or not waypoints:
+    if not memory_repo or not explore_record:
         return
-    narrations = [wp.get("narration", "") for wp in waypoints if wp.get("narration")]
-    if not narrations:
-        return
-    content = "探索发现：" + "；".join(narrations)
+    content = f"探索发现：{explore_record}"
     await memory_repo.store(pc_id, content, tick, importance=2)
+
+
+def _pc_identity(pc_id: str, pc_state_map: dict[str, dict]) -> dict:
+    info = pc_state_map.get(pc_id, {})
+    return {
+        "id": pc_id,
+        "name": info.get("name", pc_id),
+        "role": info.get("role", ""),
+        "personality": info.get("personality", ""),
+    }

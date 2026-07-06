@@ -20,10 +20,11 @@ class DMRecordRepo:
         """写入 plot_brief + hints + ext（dm_create 阶段）."""
         logger.info("[repo] save_plot_brief tick=%s", record.tick)
         await self._db.execute(
-            """INSERT INTO dm_records (world_id, tick, plot_brief, hint_list, dm_narrative, ext_json)
-               VALUES (?, ?, ?, ?, '', ?)
+            """INSERT INTO dm_records (world_id, tick, plot_brief, hint_list, dm_narrative, ext_json, updated_at)
+               VALUES (?, ?, ?, ?, '', ?, datetime('now', 'localtime'))
                ON CONFLICT(world_id, tick) DO UPDATE SET
-               plot_brief = excluded.plot_brief, hint_list = excluded.hint_list, ext_json = excluded.ext_json""",
+               plot_brief = excluded.plot_brief, hint_list = excluded.hint_list, ext_json = excluded.ext_json,
+               updated_at = datetime('now', 'localtime')""",
             (
                 record.world_id,
                 record.tick,
@@ -38,7 +39,7 @@ class DMRecordRepo:
         """更新 dm_narrative + ext（dm_narrate 阶段）."""
         logger.info("[repo] update_narrative tick=%s", record.tick)
         await self._db.execute(
-            """UPDATE dm_records SET dm_narrative = ?, ext_json = ?, updated_at = datetime('now', '+08:00')
+            """UPDATE dm_records SET dm_narrative = ?, ext_json = ?, updated_at = datetime('now', 'localtime')
                WHERE world_id = ? AND tick = ?""",
             (record.dm_narrative, json.dumps(record.ext), record.world_id, record.tick),
         )

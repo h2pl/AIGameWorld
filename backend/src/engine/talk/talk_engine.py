@@ -10,6 +10,7 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
+from ...schemas.engine_result import TalkActionResult
 from ...schemas.llm_output import DialogueSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm, get_repo
@@ -30,7 +31,7 @@ async def process_talk_action(
     pc_state_map: dict[str, dict] | None = None,
     actor_state_map: dict[str, dict] | None = None,
     config: RunnableConfig = None,
-) -> dict | None:
+) -> TalkActionResult | None:
     """处理单个 talk 决策 → 生成多轮对话，更新发起者坐标到目标旁边"""
     if decision.get("type") != "talk":
         return None
@@ -48,19 +49,22 @@ async def process_talk_action(
     else:
         turns = _normalize_speaker_ids(turns, char_id, target_id)
 
-    await _store_dialogue_memory(char_id, target_id, turns, tick, config)
+    # PC 记对话记忆，Actor 不记 / Only PC stores dialogue memory, actors don't
+    if target_type != "actor":
+        await _store_dialogue_memory(char_id, target_id, turns, tick, config)
+    else:
+        await _store_dialogue_memory(char_id, None, turns, tick, config)
 
     waypoints = _update_talker_position(
         char_id, target_id, target_type, pc_state_map, actor_state_map
     )
 
     logger.info("[engine] %s ↔ %s : %d turns", char_id, target_id, len(turns))
-    return {
-        "kind": "pc_talk",
-        "participants": [pid for pid in (char_id, target_id) if pid],
-        "turns": turns,
-        "waypoints": waypoints,
-    }
+    return TalkActionResult(
+        participants=[pid for pid in (char_id, target_id) if pid],
+        turns=turns,
+        waypoints=waypoints,
+    )
 
 
 async def _generate_dialogue(
@@ -75,7 +79,7 @@ async def _generate_dialogue(
 ) -> list[dict]:
     """单次 LLM 调用生成双方多轮对话 / Generate a multi-turn dialogue in a single LLM call."""
     llm = get_llm(config)
-    if not llm or not target_id:
+    if not target_id:
         return []
 
     pc_repo = get_repo(config, "char")
@@ -103,20 +107,11 @@ async def _generate_dialogue(
         logger.exception("[engine] dialogue prompt render failed")
         return []
 
-    try:
-        result = await llm.call_structured(
-            "talk",
-            DialogueSchema,
-            [
-                SystemMessage(content=system),
-                HumanMessage(content=prompt),
-            ],
-            fallback=lambda: DialogueSchema(turns=[]),
-        )
-    except Exception:
-        logger.exception("[engine] dialogue generation failed for %s -> %s", char_id, target_id)
-        return []
-
+    result = await llm.call_structured(
+        "talk",
+        DialogueSchema,
+        [SystemMessage(content=system), HumanMessage(content=prompt)],
+    )
     return [t.model_dump() for t in result.turns]
 
 

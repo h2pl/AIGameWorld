@@ -3,19 +3,25 @@
 START
  |
  v
- dm_service.dm_create              [node]      DM 创造情境   dm_create
+ dm_service.dm_create              [node]      DM 创造情境
  |
  v
- scene_service.build_scene_info    [node]      构建场景信息  build_scene_info
+ scene_service.build_scene_info    [node]      构建场景信息
  |
  v
- pc_subgraph                       [subgraph]  角色决策+行动   pc_subgraph
+ pc_subgraph                       [subgraph]  角色决策+行动
  |
  v
- event_service.flush_events        [node]      构造事件     flush_events
+ event_service.flush_events        [node]      构造事件（dm/scene/actions）
  |
  v
- data_service.persist_tick         [node]      数据持久化   persist_tick
+ dm_service.dm_narrate             [node]      DM 叙事 → state.narrative
+ |
+ v
+ event_service.emit_narrative_event [node]     叙事 → DM_NARRATIVE 事件
+ |
+ v
+ data_service.persist_tick         [node]      数据持久化
  |
  v
  END
@@ -31,7 +37,6 @@ from ..services import (
     event_service,
     reflection_service,
     scene_service,
-    summarizer_service,
 )
 from ..utils.logging import get_logger
 
@@ -45,7 +50,7 @@ logger = get_logger(__name__)
 
 
 def build_tick_graph() -> StateGraph:
-    """构建主 tick 图：5 节点 / Build main tick graph: 5 nodes."""
+    """构建主 tick 图 / Build main tick graph."""
     logger.info("[graph] building tick graph")
     graph = StateGraph(OverallState)
 
@@ -53,7 +58,8 @@ def build_tick_graph() -> StateGraph:
     graph.add_node("scene_service.build_scene_info", scene_service.build_scene_info)
     graph.add_node("pc_subgraph", pc_subgraph_module.pc_subgraph)
     graph.add_node("event_service.flush_events", event_service.flush_events)
-    graph.add_node("summarizer_service.narrate", summarizer_service.narrate)
+    graph.add_node("dm_service.dm_narrate", dm_service.dm_narrate)
+    graph.add_node("event_service.emit_narrative_event", event_service.emit_narrative_event)
     graph.add_node("data_service.persist_tick", data_service.persist_tick)
     graph.add_node("reflection_service.reflect", reflection_service.reflect)
 
@@ -61,8 +67,9 @@ def build_tick_graph() -> StateGraph:
     graph.add_edge("dm_service.dm_create", "scene_service.build_scene_info")
     graph.add_edge("scene_service.build_scene_info", "pc_subgraph")
     graph.add_edge("pc_subgraph", "event_service.flush_events")
-    graph.add_edge("event_service.flush_events", "summarizer_service.narrate")
-    graph.add_edge("summarizer_service.narrate", "data_service.persist_tick")
+    graph.add_edge("event_service.flush_events", "dm_service.dm_narrate")
+    graph.add_edge("dm_service.dm_narrate", "event_service.emit_narrative_event")
+    graph.add_edge("event_service.emit_narrative_event", "data_service.persist_tick")
     graph.add_edge("data_service.persist_tick", "reflection_service.reflect")
     graph.add_edge("reflection_service.reflect", END)
 

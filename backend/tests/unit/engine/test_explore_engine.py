@@ -5,7 +5,18 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.engine.explore.explore_engine import process_explore_action
-from src.schemas.llm_output import ExploreOutputSchema, ExploreWaypointSchema
+from src.schemas.llm_output import ExploreOutputSchema
+
+
+def _mock_config(llm=None):
+    """构造带 repo mock 的 config / Build config with repo mocks."""
+    memory_repo = AsyncMock()
+    memory_repo.retrieve = AsyncMock(return_value=[])
+    memory_repo.store = AsyncMock(return_value=None)
+    cfg = {"configurable": {"repos": {"memory": memory_repo}}}
+    if llm:
+        cfg["configurable"]["llm"] = llm
+    return cfg
 
 
 class TestExploreEngine:
@@ -20,42 +31,28 @@ class TestExploreEngine:
         assert event is None
 
     @pytest.mark.asyncio
-    async def test_without_llm_falls_back_to_random_waypoints_with_narrations(self):
-        """无 LLM 时生成随机路径和简单旁白 / Without LLM, random waypoints + narrations."""
-        pc_state_map = {"pc1": {"position_x": 5, "position_y": 5}}
-        scene_info = {
-            "scene": {"map_width": 40, "map_height": 40},
-            "pcs": [{"id": "pc1", "name": "pc1"}],
-        }
-        event = await process_explore_action(
-            decision={"type": "explore", "pc_id": "pc1"},
-            scene_info=scene_info,
-            pc_state_map=pc_state_map,
-        )
-        assert event["kind"] == "pc_explore"
-        assert event["pc_id"] == "pc1"
-        assert len(event["waypoints"]) >= 2
-        assert all("narration" in wp for wp in event["waypoints"])
-        assert pc_state_map["pc1"]["position_x"] == event["final_x"]
-        assert pc_state_map["pc1"]["position_y"] == event["final_y"]
-
-    @pytest.mark.asyncio
-    async def test_llm_waypoints_are_clamped_and_annotated(self):
-        """LLM 返回的坐标会被裁剪到地图范围内，并附带旁白 / LLM waypoints clamped + narrated."""
+    async def test_llm_destination_clamped(self):
+        """LLM 返回的终点坐标被裁剪到地图范围内 / LLM destination clamped to map bounds."""
         llm = AsyncMock()
         llm.call_structured = AsyncMock(
             return_value=ExploreOutputSchema(
-                waypoints=[
-                    ExploreWaypointSchema(x=999, y=-5, narration="发现一枚古币。"),
-                    ExploreWaypointSchema(x=10, y=12, narration="草丛里有动静。"),
-                ]
+                end_x=999,
+                end_y=-5,
+                explore_record="发现一枚古币。",
             )
         )
-        config = {"configurable": {"llm": llm}}
-        pc_state_map = {"pc1": {"position_x": 0, "position_y": 0}}
+        config = _mock_config(llm=llm)
+        pc_state_map = {
+            "pc1": {
+                "name": "pc1",
+                "role": "adventurer",
+                "personality": "",
+                "position_x": 5,
+                "position_y": 5,
+            },
+        }
         scene_info = {
             "scene": {"map_width": 40, "map_height": 40},
-            "pcs": [{"id": "pc1", "name": "pc1", "role": "adventurer"}],
         }
         event = await process_explore_action(
             decision={"type": "explore", "pc_id": "pc1"},
@@ -63,12 +60,38 @@ class TestExploreEngine:
             pc_state_map=pc_state_map,
             config=config,
         )
-        assert event["kind"] == "pc_explore"
-        # 第一个坐标被裁剪 / First waypoint clamped
-        assert event["waypoints"][0]["x"] == 39
-        assert event["waypoints"][0]["y"] == 0
-        assert event["waypoints"][0]["narration"] == "发现一枚古币。"
-        # 原地踏步点（0,0）被跳过 / No-op skipped
-        assert len(event["waypoints"]) == 2
-        assert event["waypoints"][1]["x"] == 10
-        assert event["waypoints"][1]["y"] == 12
+        assert event is not None
+        assert event.kind == "pc_explore"
+        assert event.pc_id == "pc1"
+        assert event.explore_record == "发现一枚古币。"
+        assert len(event.waypoints) == 2
+        assert event.waypoints[0] == {"x": 5, "y": 5}
+        assert event.waypoints[1] == {"x": 39, "y": 0}
+        assert pc_state_map["pc1"]["position_x"] == 39
+        assert pc_state_map["pc1"]["position_y"] == 0
+
+    @pytest.mark.asyncio
+    async def test_same_position_returns_none(self):
+        """LLM 返回终点=起点时返回 None / Returns None when destination = start."""
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(
+            return_value=ExploreOutputSchema(
+                end_x=5,
+                end_y=5,
+                explore_record="原地不动。",
+            )
+        )
+        config = _mock_config(llm=llm)
+        pc_state_map = {
+            "pc1": {"name": "pc1", "role": "", "personality": "", "position_x": 5, "position_y": 5},
+        }
+        scene_info = {
+            "scene": {"map_width": 40, "map_height": 40},
+        }
+        event = await process_explore_action(
+            decision={"type": "explore", "pc_id": "pc1"},
+            scene_info=scene_info,
+            pc_state_map=pc_state_map,
+            config=config,
+        )
+        assert event is None

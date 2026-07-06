@@ -66,8 +66,8 @@ class SceneRepo:
         """写入单条场景."""
         await self._db.execute(
             "INSERT OR REPLACE INTO scenes "
-            "(id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, ext_json, world_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "(id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, ext_json, world_id, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
             (
                 scene.get("id", ""),
                 scene.get("name", ""),
@@ -88,8 +88,8 @@ class SceneRepo:
         """写入单条场景对象."""
         await self._db.execute(
             "INSERT OR REPLACE INTO scene_objects "
-            "(id, name, object_type, scene_id, position_x, position_y, interactable, interact_data, world_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "(id, name, object_type, scene_id, position_x, position_y, interactable, interact_data, world_id, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
             (
                 obj.id,
                 obj.name,

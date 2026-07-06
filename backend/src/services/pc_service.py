@@ -14,24 +14,28 @@ from ..utils.logging import trace_node
 
 @trace_node("pc.decide")
 async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
-    """为场景内每个 PC 决策"""
-    scene_info = state.get("scene_info", {})
-    pcs = scene_info.get("pcs", [])
-    if not pcs:
+    """为场景内每个 PC 决策。PC 列表从 pc_state_map 获取（实时），不从 scene_info["pcs"] 读."""
+    pc_state_map = state.get("pc_state_map", {})
+    if not pc_state_map:
         return {"pc_decisions": []}
 
+    scene_info = state.get("scene_info", {})
     plot_brief = state.get("plot_brief", "")
     hints = state.get("hints", [])
     scene_id = state.get("scene_id", "")
+    actor_state_map = state.get("actor_state_map", {})
+    tick = state.get("tick", 0)
     decisions: list[dict] = []
-    for pc in pcs:
+    for pc_id in pc_state_map:
         pc_decisions = await decision_engine.decide(
-            pc_id=pc.get("id", ""),
+            pc_id=pc_id,
             scene_info=scene_info,
             plot_brief=plot_brief,
             hints=hints,
             scene_id=scene_id,
-            tick=state.get("tick", 0),
+            tick=tick,
+            pc_state_map=pc_state_map,
+            actor_state_map=actor_state_map,
             config=config,
         )
         decisions.extend(pc_decisions)
@@ -85,22 +89,25 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
             scene_info=scene_info,
             pc_state_map=pc_state_map,
             actor_state_map=actor_state_map,
+            plot_brief=plot_brief,
+            hints=hints,
             tick=tick,
             config=config,
         )
 
+        # 一个 decision 只对应一个 effective action / One decision → one effective action
         result = talk_result or interact_result or combat_result or explore_result
         if result is None:
             continue
 
         pending_actions.append(
             {
-                "order": order,
-                "pc_id": pc_id,
-                "action_type": decision.get("type", ""),
-                "target_id": target_id,
-                "target_type": decision.get("target_type", ""),
-                "result": result,
+                "order": order,  # 执行顺序 / Execution order
+                "pc_id": pc_id,  # 执行者 / Executor
+                "action_type": decision.get("type", ""),  # talk/interact/combat/explore
+                "target_id": target_id,  # 目标 / Target
+                "target_type": decision.get("target_type", ""),  # pc/actor/scene_object
+                "result": result,  # engine 返回模型 / Engine result model
             }
         )
 

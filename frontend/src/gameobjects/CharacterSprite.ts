@@ -151,6 +151,14 @@ export class CharacterSprite {
     this.bubble = new DialogueBubble(this.scene, x, y, text, this.data.name, onHide);
   }
 
+  /** 显示探索记录（无说话者，旁白风格） / Show exploration record bubble (no speaker, narration style) */
+  showExploreRecord(text: string, onHide?: () => void): void {
+    this.clearBubble();
+    const x = this.sprite.x;
+    const y = this.sprite.y - this.tileSize * 0.75;
+    this.bubble = new DialogueBubble(this.scene, x, y, text, undefined, onHide);
+  }
+
   /** 清除当前泡泡 / Clear current bubble */
   clearBubble(): void {
     if (this.bubble) {

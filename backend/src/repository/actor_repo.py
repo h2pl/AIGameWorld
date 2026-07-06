@@ -22,12 +22,12 @@ class ActorRepo:
             position_x, position_y, attributes_json, combat_json, functions_json,
             function_data_json, inventory_json, relationships_json, dm_assigned,
             motivation_injected, world_id, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+08:00'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
             ON CONFLICT(id) DO UPDATE SET
             status=excluded.status, disposition=excluded.disposition, scene_id=excluded.scene_id,
             position_x=excluded.position_x, position_y=excluded.position_y,
             dm_assigned=excluded.dm_assigned, motivation_injected=excluded.motivation_injected,
-            world_id=excluded.world_id, updated_at=datetime('now', '+08:00')""",
+            world_id=excluded.world_id, updated_at=datetime('now', 'localtime')""",
             (
                 actor.id,
                 actor.name,

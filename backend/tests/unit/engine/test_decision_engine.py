@@ -40,15 +40,27 @@ class TestValidateActionTarget:
         assert result.target_type is None
 
     def test_talk_with_valid_target_kept(self):
-        """talk 有合法 target 时保留 / talk with a valid target is kept as-is."""
+        """talk 有合法 target 且在当前场景中时保留 / talk with valid target present in scene is kept."""
         result = _validate(
             CharacterActionSchema(
                 action_type="talk", target_id="npc_greta", target_type="actor", reasoning="打听消息"
-            )
+            ),
+            actor_state_map={"npc_greta": {}},
         )
         assert result.action_type == "talk"
         assert result.target_id == "npc_greta"
         assert result.target_type == "actor"
+
+    def test_talk_with_target_not_in_scene_downgrades(self):
+        """talk 目标不在当前场景中时降级为 wait / talk target not in scene → wait."""
+        result = _validate(
+            CharacterActionSchema(
+                action_type="talk", target_id="npc_missing", target_type="actor", reasoning="找人"
+            ),
+            actor_state_map={},
+        )
+        assert result.action_type == "wait"
+        assert result.target_id is None
 
     def test_interact_requires_scene_object_target(self):
         """interact 的 target_type 必须是 scene_object / interact requires scene_object target_type."""

@@ -1,6 +1,16 @@
 {# Phase 1: DM 创造情境 / DM creates the scene #}
 
-{# === 场景列表 / Available scenes === #}
+你的职责：根据可用场景列表创建当前场景的情境。选择当前场景，提供环境线索（hints），编写剧情梗概（plot_brief）。
+
+{# 记忆 / DM memories #}
+{% if memories %}
+最近的故事发展：
+{% for mem in memories %}
+- {{ mem }}
+{% endfor %}
+{% endif %}
+
+{# 场景列表 / Available scenes #}
 {% if scenes %}
 当前世界的场景列表（请从以下 id 中选择）：
 {% for s in scenes %}
@@ -8,7 +18,7 @@
 {% endfor %}
 {% endif %}
 
-{# === 上下文注入 / Context injection #}
+{# 上下文注入 / Context injection #}
 {% if recent_summary %}
 最近摘要：{{ recent_summary }}
 {% endif %}
@@ -17,12 +27,12 @@
 上一步剧情：{{ plot_brief_prev }}
 {% endif %}
 
-{# === 输出约束 / Output spec === #}
+{# 输出约束 / Output spec #}
 严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）。
 
 字段约束：
 - hints（string[]）：2-4 条环境提示。DM 不直接指引玩家行动，只描述环境中可感知的信息。
-  必须使用简体中文。好的示例："地上有血迹通向左边走廊"、"右边房间传来低语"、"北门被重锁封死"。坏的示例："检查祭坛"、"攻击怪物"（直接命令，不是环境提示）。
+  必须使用简体中文。好的示例："地上有血迹通向左边走廊"、"右边房间传来低语"、"北门被重锁封死"。
 - plot_brief（string）：2-3 句场景设置。描述角色行动"之前"发生了什么，不要写角色已做的事。
   必须使用简体中文。
 - scene_id（string）：当前场景 id。必须从上方场景列表中精确选择一个 id，不得编造。

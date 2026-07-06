@@ -220,6 +220,37 @@ DATASET_TAVERN: MockDataset = {
             ],
         },
     ],
+    "explore": [
+        {
+            "end_x": 10,
+            "end_y": 12,
+            "explore_record": "吧台后方的木地板有一块微微翘起，下面似乎藏着一张泛黄的羊皮纸。",
+        },
+        {
+            "end_x": 8,
+            "end_y": 15,
+            "explore_record": "酒馆后门的台阶上有一串湿脚印，通向小巷深处，泥里还嵌着一枚银币。",
+        },
+        {
+            "end_x": 12,
+            "end_y": 8,
+            "explore_record": "窗台上摆着一个积满灰尘的陶罐，罐底隐约可见缕刻的纹路——像是某种古老的徽记。",
+        },
+    ],
+    "interact": [
+        {
+            "success": True,
+            "narration": "他轻轻撬开木箱的锁扣，箱盖发出一声沉闷的吱呀。里面整齐地码放着几卷羊皮纸，墨迹虽已泛黄，但字迹依然清晰。",
+        },
+        {
+            "success": False,
+            "narration": "他用力推动地窖门，但门板纹丝不动——铁栓从内侧锁死了，除非找到钥匙或另寻他路。",
+        },
+        {
+            "success": True,
+            "narration": "他用匕首挑开箱盖的铜锁，里面露出一枚刻着龙纹的徽章和一小袋金币。",
+        },
+    ],
     "actor_decision": [
         {
             "action_type": "talk",
@@ -363,6 +394,37 @@ DATASET_DESERT: MockDataset = {
                     "text": "是沙龙——这里的传说。它能钻到地下，喷出的火焰比岩浆还烫。",
                 },
             ],
+        },
+    ],
+    "explore": [
+        {
+            "end_x": 12,
+            "end_y": 15,
+            "explore_record": "沙地上散落着几块碎裂的陶片，上面刻着与石柱相同的象形文字。",
+        },
+        {
+            "end_x": 25,
+            "end_y": 10,
+            "explore_record": "一只蜥蜴从岩石缝隙中探出头，嘴里叼着一枚生锈的箭头。",
+        },
+        {
+            "end_x": 8,
+            "end_y": 25,
+            "explore_record": "枯死的棕榈树旁有一个干涸的水井，井壁上攀附着发光的苔藓。",
+        },
+    ],
+    "interact": [
+        {
+            "success": True,
+            "narration": "他拂去石柱表面的沙尘，指尖沿着古老的刻文滑动。突然，一块石板轻轻下陷，露出一个隐藏的凹槽。",
+        },
+        {
+            "success": False,
+            "narration": "他试图推开沉重的石门，但门轴早已锈死。沙漠的风从缝隙中呼啸而过，发出低沉的呜咽。",
+        },
+        {
+            "success": True,
+            "narration": "他拧开古老的水壶盖，里面盛着的液体散发出一股草药清香——这是沙漠旅人用来抵御中暑的秘方。",
         },
     ],
     "actor_decision": [
@@ -519,19 +581,20 @@ DATASET_COMBAT: MockDataset = {
 # 数据集注册 / Dataset registry
 # ═══════════════════════════════════════════════════════════════
 # 所有数据集注册表 / All datasets registry
+# 数据集注册 / Dataset registry
 DATASETS: dict[str, MockDataset] = {
     "tavern": DATASET_TAVERN,
     "desert": DATASET_DESERT,
     "combat": DATASET_COMBAT,
 }
 
-DEFAULT_DATASET = "tavern"
+DEFAULT_DATASET = "tavern"  # 默认数据集
 
 
 # ═══════════════════════════════════════════════════════════════
 # 通用池（跨数据集的 talk / actor_decision / reflection / summarize）
 # ═══════════════════════════════════════════════════════════════
-# 跨数据集共享池 / Cross-dataset shared pool
+# 跨数据集共享池 / Cross-dataset shared pool — aggregates all dataset keys
 _POOL: dict[str, list[dict]] = {}
 for _ds in DATASETS.values():
     for _key, _examples in _ds.items():
