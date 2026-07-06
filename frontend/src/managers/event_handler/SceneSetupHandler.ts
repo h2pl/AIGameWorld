@@ -1,8 +1,6 @@
 /** 场景设置事件处理器 / Scene setup event handler — 直连 GameScene + 更新 WorldStore */
 import type { EventData } from "../../types";
 import { worldStore } from "../../state/WorldStore";
-import { createLogger } from "../../utils/logger";
-const log = createLogger("SceneSetupHandler");
 
 export type SceneSetupData = {
   sceneId: string;
@@ -28,10 +26,15 @@ export class SceneSetupHandler {
     const scene = payload.scene as Record<string, unknown> | undefined;
     const mapKey = scene ? String(scene.map_key || "") : "";
     const sceneName = scene ? String(scene.name || "") : "";
-    const extJson: Record<string, string> = scene?.ext_json ? JSON.parse(scene.ext_json as string) : {};
+    const extJson: Record<string, string> = scene?.ext_json
+      ? JSON.parse(scene.ext_json as string)
+      : {};
 
     this.ensureScene({
-      sceneId, mapKey, sceneName, extJson,
+      sceneId,
+      mapKey,
+      sceneName,
+      extJson,
       pcs: (payload.pcs || []) as any[],
       actors: (payload.actors || []) as any[],
       sceneObjects: (payload.scene_objects || []) as any[],

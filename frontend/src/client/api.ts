@@ -1,9 +1,5 @@
 // -- file start -- / file start
 /** HTTP API 层 / HTTP API layer — 纯网络调用，无业务逻辑 */
-import type { EventData } from "../types";
-
-import { createLogger } from "../utils/logger";
-const log = createLogger("api");
 
 // ── 响应类型 / Response types ──
 

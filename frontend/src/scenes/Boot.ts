@@ -16,14 +16,17 @@ export class Boot extends Phaser.Scene {
     this.load.on("complete", () => log.info(`all assets loaded`));
 
     const scenes = sceneList as any[];
-    log.info(`world has ${scenes.length} scenes:`, scenes.map((s) => `${s.id}(${s.map_key})`).join(", "));
+    log.info(
+      `world has ${scenes.length} scenes:`,
+      scenes.map((s) => `${s.id}(${s.map_key})`).join(", ")
+    );
 
     const loaded = new Set<string>();
     for (const sc of scenes) {
       let ext: any = {};
       try {
         ext = sc.ext_json ? JSON.parse(sc.ext_json) : {};
-      } catch (e) {
+      } catch {
         log.error(`bad ext_json for ${sc.id}:`, sc.ext_json);
       }
       const tilemapUrl = ext.tilemap_url;
@@ -31,7 +34,9 @@ export class Boot extends Phaser.Scene {
       const tilesetImageKey = ext.tileset_image_key;
       const tilesetName = ext.tileset_name;
 
-      log.info(`scene ${sc.id}: map_key=${sc.map_key} tilemap=${tilemapUrl} tileset=${tilesetUrl} key=${tilesetImageKey} name=${tilesetName}`);
+      log.info(
+        `scene ${sc.id}: map_key=${sc.map_key} tilemap=${tilemapUrl} tileset=${tilesetUrl} key=${tilesetImageKey} name=${tilesetName}`
+      );
 
       if (tilesetUrl && !loaded.has(tilesetUrl)) {
         loaded.add(tilesetUrl);

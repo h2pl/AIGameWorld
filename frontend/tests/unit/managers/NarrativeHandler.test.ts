@@ -2,7 +2,6 @@
 /** NarrativeHandler 单元测试 */
 import { describe, it, expect, vi } from "vitest";
 import { NarrativeHandler } from "../../../src/managers/event_handler/NarrativeHandler";
-import type { EventData } from "../../../src/types";
 
 describe("NarrativeHandler", () => {
   it("should call onNarrative when text exists", () => {
