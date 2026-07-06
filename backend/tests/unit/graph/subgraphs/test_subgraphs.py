@@ -14,7 +14,8 @@ class TestCharacterSubgraph:
     @pytest.mark.asyncio
     async def test_pc_subgraph_runs_decide_act_chain(self):
         """角色子图执行 decide → act 两阶段链路（场景信息已由 scene_service 提前构建好，不区分 PC）/ Subgraph runs decide → act (scene info precomputed by scene_service, not per-PC)."""
-        scene_info = {"scene": {}, "scene_objects": [], "pcs": [{"id": "pc-1"}], "actors": []}
+        scene_info = {"scene": {"id": "tavern"}, "scene_objects": []}
+        pc_state_map = {"pc-1": {"name": "pc-1", "role": "", "position_x": 0, "position_y": 0}}
         state = {
             "tick": 1,
             "world_id": "world-1",
@@ -23,6 +24,7 @@ class TestCharacterSubgraph:
             "scene_id": "tavern",
             "pc_decisions": [],
             "scene_info": scene_info,
+            "pc_state_map": pc_state_map,
         }
 
         decision = [{"pc_id": "pc-1", "type": "talk", "description": "先问话"}]

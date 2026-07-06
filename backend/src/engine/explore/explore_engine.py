@@ -113,7 +113,10 @@ async def _generate_explore_data(
 ) -> ExploreOutputSchema | None:
     """LLM 生成探索终点坐标 + 探索记录 / LLM generates destination + explore_record."""
     llm = get_llm(config)
+    if llm is None:
+        raise RuntimeError("[explore] LLM client not configured")
     scene = scene_info.get("scene", {})
+
     pc = _pc_identity(pc_id, pc_state_map)
 
     query = f"{plot_brief} {scene.get('description', '')}".strip()

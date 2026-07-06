@@ -4,9 +4,12 @@ import { DEPTH, TILEMAP } from "../constants";
 import { createLogger } from "../utils/logger";
 const log = createLogger("MapManager");
 
+/** 地图管理器类 / Map manager class */
 export class MapManager {
+  /** 当前 tilemap 实例 / Current tilemap instance */
   tilemap: Phaser.Tilemaps.Tilemap | null = null;
 
+  /** 构造函数 / Constructor */
   constructor(private scene: Phaser.Scene) {}
 
   /** 加载并构建 tilemap / Load and build tilemap with layers */
@@ -14,13 +17,16 @@ export class MapManager {
     const { tileset_name, tileset_image_key } = extJson;
     log.info(`build mapKey=${mapKey} tileset=${tileset_name}/${tileset_image_key}`);
     this.tilemap = this.scene.make.tilemap({ key: mapKey });
-    if (!this.tilemap) { log.error(`tilemap null for key=${mapKey}`); return; }
+    if (!this.tilemap) {
+      log.error(`tilemap null for key=${mapKey}`);
+      return;
+    }
     log.info(`tilemap loaded`);
 
     const tileset = this.tilemap.addTilesetImage(tileset_name, tileset_image_key);
     if (!tileset) {
       log.error(`tileset FAIL: ${tileset_name}/${tileset_image_key} — available textures:`);
-      this.scene.textures.getTextureKeys().forEach(k => log.error(`  texture: ${k}`));
+      this.scene.textures.getTextureKeys().forEach((k) => log.error(`  texture: ${k}`));
       return;
     }
     log.info(`tileset OK`);
@@ -38,6 +44,9 @@ export class MapManager {
   }
 
   destroy(): void {
-    if (this.tilemap) { this.tilemap.destroy(); this.tilemap = null; }
+    if (this.tilemap) {
+      this.tilemap.destroy();
+      this.tilemap = null;
+    }
   }
 }

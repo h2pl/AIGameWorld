@@ -164,23 +164,14 @@
 }
 
 @keyframes narrativeFadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* 渐变闪烁光标，模拟打字效果 */
-.narrative-line::after {
-  content: '';
-  display: inline-block;
-  width: 2px;
-  height: 1em;
-  background: #ffd700;
-  margin-left: 2px;
-  vertical-align: text-bottom;
-  animation: blink 0.8s step-end infinite;
-}
-@keyframes blink {
-  50% { opacity: 0; }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ===== 事件面板 — 右上角，增量追加 tick 事件日志 / Event Panel — top-right, append tick event logs ===== */
@@ -430,33 +421,4 @@
   padding: 1px 6px;
   border-radius: 4px;
   margin-right: 6px;
-}
-
-/* DM 面板内嵌历史 / DM panel inline history overlay */
-.dm-history-overlay {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(15, 15, 30, 0.97);
-  padding: 10px;
-  overflow-y: auto;
-  z-index: 10;
-  border-radius: 6px;
-}
-.dm-history-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 8px; color: #ffd700; font-size: 13px; font-weight: bold;
-  border-bottom: 1px solid rgba(255,215,0,0.2); padding-bottom: 6px;
-}
-.dm-history-list {
-  max-height: calc(100% - 40px); overflow-y: auto;
-}
-.dm-history-list .history-line {
-  padding: 5px 0; color: #c8d6e5; font-size: 12px; line-height: 1.5;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.dm-history-list .history-tick {
-  color: #ffd700; font-size: 10px; margin-right: 6px; font-weight: bold;
-}
-.dm-history-list .history-empty {
-  color: #666; font-size: 12px; text-align: center; padding: 20px 0;
 }

@@ -36,9 +36,13 @@ async function main(): Promise<void> {
   const eventManager = new EventManager();
   const player = new TickPlayer(CONFIG.API.base, world.world_id, eventManager);
   const game = new Phaser.Game({
-    type: Phaser.AUTO, width: CONFIG.CANVAS.width, height: CONFIG.CANVAS.height,
-    autoFocus: true, backgroundColor: CONFIG.COLOR.background,
-    pixelArt: true, roundPixels: true,
+    type: Phaser.AUTO,
+    width: CONFIG.CANVAS.width,
+    height: CONFIG.CANVAS.height,
+    autoFocus: true,
+    backgroundColor: CONFIG.COLOR.background,
+    pixelArt: true,
+    roundPixels: true,
     physics: { default: "arcade", arcade: { gravity: { x: 0, y: 0 }, debug: false } },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [Boot, GameScene],
@@ -56,7 +60,9 @@ async function main(): Promise<void> {
   new MockConfigPanel().mount(app);
   const historyPanel = new HistoryEventPanel(world.world_id);
   historyPanel.mount(app);
-  window.addEventListener("show-event-history", () => historyPanel.open(worldStore.getState().display_tick));
+  window.addEventListener("show-event-history", () =>
+    historyPanel.open(worldStore.getState().display_tick)
+  );
 
   // ── 5. 控制栏 ──
   const bar = new ControlBar();
@@ -74,7 +80,9 @@ async function main(): Promise<void> {
 
   bar.setCallbacks({
     getTickCount: () => player.lastTick,
-    onRun: async (n) => { await player.runTicks(n, onTickCallback); },
+    onRun: async (n) => {
+      await player.runTicks(n, onTickCallback);
+    },
     onStart: async () => player.startLoop(onTickCallback),
     onPause: async () => player.pauseLoop(),
     onResume: async () => player.resumeLoop(onTickCallback),

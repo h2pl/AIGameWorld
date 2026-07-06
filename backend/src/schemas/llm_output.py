@@ -75,3 +75,18 @@ class InteractOutputSchema(BaseModel):
 
     success: bool = Field(description="交互是否成功（基于当前场景、角色能力和物体特性合理判断）")
     narration: str = Field(description="第三人称旁白（1-2 句中文），描述 PC 与物体交互的过程和结果")
+
+
+# === Phase 7: 反思与摘要 / Reflection & Summary ===
+class ReflectionOutputSchema(BaseModel):
+    """角色反思输出 / Reflection output."""
+
+    arc_analysis: str = Field(default="", description="角色弧线分析（PC）")
+    personality_insight: str = Field(default="", description="性格洞察（PC）")
+    behavior_summary: str = Field(default="", description="行为模式总结（Actor）")
+
+
+class SummaryOutputSchema(BaseModel):
+    """Tick 摘要输出 / Tick summary output."""
+
+    summary: str = Field(default="", description="事件摘要（1-2 句中文）")

@@ -79,6 +79,8 @@ async def _generate_dialogue(
 ) -> list[dict]:
     """单次 LLM 调用生成双方多轮对话 / Generate a multi-turn dialogue in a single LLM call."""
     llm = get_llm(config)
+    if llm is None:
+        raise RuntimeError("[talk] LLM client not configured")
     if not target_id:
         return []
 

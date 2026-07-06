@@ -2,6 +2,7 @@
 /** EventManager 单元测试 / EventManager unit tests — register + dispatch + order */
 import { describe, it, expect, vi } from "vitest";
 import { EventManager } from "../../../src/managers/EventManager";
+import { playState } from "../../../src/utils/playState";
 import type { EventData } from "../../../src/types";
 
 /** 构造测试事件 / Build a test event */
@@ -22,8 +23,13 @@ describe("EventManager", () => {
   it("should process events sequentially and wait for async handlers", async () => {
     const em = new EventManager();
     const order: string[] = [];
-    em.register("a", async () => { await new Promise(r => setTimeout(r, 30)); order.push("a"); });
-    em.register("b", () => { order.push("b"); });
+    em.register("a", async () => {
+      await new Promise((r) => setTimeout(r, 30));
+      order.push("a");
+    });
+    em.register("b", () => {
+      order.push("b");
+    });
     await em.processTick(1, [makeEv("a"), makeEv("b")]);
     expect(order).toEqual(["a", "b"]);
   });
@@ -52,6 +58,7 @@ describe("EventManager", () => {
   });
 
   it("should replay events via replayTick without animation delays", async () => {
+    playState.playing = true; // 保证 replay 不被前面的 abort 测试影响 / ensure replay not affected by prior abort test
     const em = new EventManager();
     const handler = vi.fn();
     em.register("scene_setup", handler);

@@ -29,12 +29,14 @@ export class EventPanel extends Panel {
   private _onTickStart: (e: Event) => void;
   private _onTickEvent: (e: Event) => void;
 
+  /** 构造函数 / Constructor */
   constructor() {
     super("event-panel");
     this._onTickStart = (e: Event) => this._clearPanel(e);
     this._onTickEvent = (e: Event) => this._handleTickEvent((e as CustomEvent).detail);
   }
 
+  /** 构建 DOM 结构 / Build DOM structure */
   protected buildDOM(): HTMLElement {
     const el = document.createElement("div");
     el.className = "panel event-panel";
@@ -57,11 +59,13 @@ export class EventPanel extends Panel {
     return el;
   }
 
+  /** 绑定窗口事件 / Bind window events */
   protected bindStore(): void {
     window.addEventListener("tick-start", this._onTickStart);
     window.addEventListener("tick-event", this._onTickEvent);
   }
 
+  /** 清空面板并更新 tick 徽章 / Clear panel and update tick badge */
   private _clearPanel(e: Event): void {
     const tick = (e as CustomEvent).detail.tick as number;
     this.tickBadgeEl.textContent = `Display_Tick=${tick}`;
@@ -69,6 +73,10 @@ export class EventPanel extends Panel {
     this.listEl.innerHTML = tick === 0 ? `<div class="event-empty">等待开始...</div>` : "";
   }
 
+  // 内部窗口事件，不展示在事件面板 / Internal window events, skip
+  private static _SKIP = new Set(["explore_record", "interact_narration"]);
+
+  /** 处理单个 tick 事件 / Handle single tick event */
   private _handleTickEvent(detail: {
     type: string;
     payload: Record<string, unknown>;
@@ -79,6 +87,7 @@ export class EventPanel extends Panel {
       if (a) a.classList.remove("event-active");
       return;
     }
+    if (EventPanel._SKIP.has(detail.type)) return;
 
     const ev: EventData = { type: detail.type, tick: 0, payload: detail.payload };
     if (this.listEl.querySelector(".event-empty")) this.listEl.innerHTML = "";
@@ -92,6 +101,7 @@ export class EventPanel extends Panel {
     this.listEl.scrollTop = this.listEl.scrollHeight;
   }
 
+  /** 创建事件行元素 / Create event line element */
   private _createLine(ev: EventData): HTMLElement {
     const icon = EVENT_ICONS[ev.type] || "📌";
     const content = _formatPayload(ev);
@@ -101,11 +111,13 @@ export class EventPanel extends Panel {
     return el;
   }
 
+  /** 判断是否需要自动滚动 / Check whether auto-scroll is needed */
   private _shouldAutoScroll(): boolean {
     const { scrollTop, clientHeight, scrollHeight } = this.listEl;
     return scrollTop + clientHeight >= scrollHeight - 12;
   }
 
+  /** 销毁并移除事件监听 / Destroy and remove event listeners */
   destroy(): void {
     window.removeEventListener("tick-start", this._onTickStart);
     window.removeEventListener("tick-event", this._onTickEvent);
@@ -132,33 +144,66 @@ function _readableType(t: string): string {
 /** 格式化事件 payload 为可读文本 / Format event payload for display */
 function _formatPayload(ev: EventData): string {
   const p = ev.payload || {};
+  const pcName = String(p.pc_name || p.pc_id || "");
   switch (ev.type) {
     case "dm_create":
-      return String(p.plot_brief || p.scene_id || "");
+      return String(p.plot_brief || "");
     case "dm_narrative":
-      return String(p.text || p.narrative || "");
+      return trunc(String(p.text || p.narrative || ""));
     case "scene_setup":
-      return String(p.scene_id || "");
-    case "pc_explore":
-    case "character_explore": {
-      const wps = p.waypoints as Array<{ x: number; y: number }> | undefined;
+      return `进入「${String(p.scene_id || "")}」`;
+    case "pc_explore": {
       const record = p.explore_record as string | undefined;
-      if (wps?.length) {
-        const s = wps[0],
-          e = wps[wps.length - 1];
-        const pathStr = `(${s.x},${s.y}) → (${e.x},${e.y})`;
-        return record ? `${pathStr}「${record}」` : pathStr;
-      }
-      return record ?? "探索";
+      const wps = p.waypoints as Array<{ x: number; y: number }> | undefined;
+      const path = wps?.length
+        ? `(${wps[0].x},${wps[0].y}) → (${wps[wps.length - 1].x},${wps[wps.length - 1].y})`
+        : "";
+      const body = record ? `${path}  「${trunc(record, 24)}」` : path;
+      return `【${pcName}】${body || "探索"}`;
     }
-    case "pc_talk":
+    case "pc_talk": {
+      const r = p.result as Record<string, unknown> | undefined;
+      const turns = (r?.turns ?? []) as Array<{ speaker_id: string; text: string }>;
+      if (turns.length) {
+        const body = turns.map((t) => `${t.speaker_id}: "${trunc(t.text, 16)}"`).join(" → ");
+        return `【${pcName}】${body}`;
+      }
+      return `【${pcName}】交谈`;
+    }
+    case "pc_interact": {
+      const narration = (p.narration as string) || "";
+      return narration ? `【${pcName}】${trunc(narration)}` : `【${pcName}】与物体交互`;
+    }
+    case "character_move": {
+      const wps = p.waypoints as Array<{ x: number; y: number }> | undefined;
+      const path = wps?.length
+        ? `(${wps[0].x},${wps[0].y}) → (${wps[wps.length - 1].x},${wps[wps.length - 1].y})`
+        : "";
+      return `【${pcName}】${path ? path : "移动"}`;
+    }
     case "character_talk": {
       const r = p.result as Record<string, unknown> | undefined;
       const turns = (r?.turns ?? []) as Array<{ speaker_id: string; text: string }>;
-      if (turns.length) return turns.map((t) => `${t.speaker_id}: ${t.text}`).join("；");
-      return `${p.pc_id || ""}: ${r?.text || r?.content || ""}`;
+      if (turns.length) {
+        const body = turns.map((t) => `${t.speaker_id}: "${trunc(t.text, 16)}"`).join(" → ");
+        return `【${pcName}】${body}`;
+      }
+      return `【${pcName}】交谈`;
+    }
+    case "character_explore": {
+      const record = p.explore_record as string | undefined;
+      const wps = p.waypoints as Array<{ x: number; y: number }> | undefined;
+      const path = wps?.length
+        ? `(${wps[0].x},${wps[0].y}) → (${wps[wps.length - 1].x},${wps[wps.length - 1].y})`
+        : "";
+      const body = record ? `${path}  「${trunc(record, 24)}」` : path;
+      return `【${pcName}】${body || "探索"}`;
     }
     default:
-      return JSON.stringify(p).slice(0, 80);
+      return `[${_readableType(ev.type)}]`;
   }
+}
+
+function trunc(s: string, n = 30): string {
+  return s.length > n ? s.slice(0, n) + "…" : s;
 }

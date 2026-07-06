@@ -9,7 +9,10 @@ export class ActorManager {
   private scene: Phaser.Scene;
   private ts: number;
 
-  constructor(scene: Phaser.Scene, tileSize: number) { this.scene = scene; this.ts = tileSize; }
+  constructor(scene: Phaser.Scene, tileSize: number) {
+    this.scene = scene;
+    this.ts = tileSize;
+  }
 
   /** 批量创建 Actor 精灵 / Create all actor sprites from data */
   createAll(chars: any[]): void {
@@ -23,8 +26,13 @@ export class ActorManager {
   }
 
   /** 按 id 获取精灵 / Get sprite by id */
-  getSprite(id: string): CharacterSprite | undefined { return this.sprites.get(id); }
+  getSprite(id: string): CharacterSprite | undefined {
+    return this.sprites.get(id);
+  }
 
   /** 销毁所有精灵 / Destroy all sprites */
-  destroy(): void { this.sprites.forEach((sp) => sp.destroy()); this.sprites.clear(); }
+  destroy(): void {
+    this.sprites.forEach((sp) => sp.destroy());
+    this.sprites.clear();
+  }
 }

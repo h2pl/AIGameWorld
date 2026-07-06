@@ -30,6 +30,8 @@ async def dm_create(
 ) -> DMCreateResponse:
     """Phase 1: DM 创造情境 / DM creates situation."""
     llm = get_llm(config)
+    if llm is None:
+        raise RuntimeError("[dm_create] LLM client not configured")
 
     scene_repo = get_repo(config, "scene")
     scenes: list[dict] = []
@@ -78,6 +80,8 @@ async def dm_create(
 async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DMNarrateResponse:
     """Phase 6: DM 叙事 / DM narrates."""
     llm = get_llm(config)
+    if llm is None:
+        raise RuntimeError("[dm_narrate] LLM client not configured")
 
     # 检索 DM 记忆 / Retrieve DM memories
     memories: list[str] = []

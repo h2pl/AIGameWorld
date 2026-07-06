@@ -178,7 +178,7 @@ class TestInteractEngine:
             config=_config(scene_obj=trap, llm=llm),
         )
         assert event.success is False
-        assert "毒刺" in event.narration
+        assert "毒针" in event.narration
 
     @pytest.mark.asyncio
     async def test_interact_stores_memory(self):

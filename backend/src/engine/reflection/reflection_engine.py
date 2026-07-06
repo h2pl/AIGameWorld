@@ -9,6 +9,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.runnables.config import RunnableConfig
 
+from ...schemas.llm_output import ReflectionOutputSchema
 from ...schemas.request import ReflectionRequest
 from ...schemas.response import ReflectionResponse
 from ...utils.helpers import get_llm
@@ -25,6 +26,11 @@ _ACTOR_TEMPLATE = _PROMPTS.get_template("reflect_actor.jinja")
 async def reflect(req: ReflectionRequest, config: RunnableConfig = None) -> ReflectionResponse:
     """角色反思入口 / Character reflection entry point."""
     llm = get_llm(config)
+    if llm is None:
+        logger.warning("[reflection] LLM not configured, returning empty insight for %s", req.pc_id)
+        return ReflectionResponse(
+            insights_out=[_format_insight(req, ReflectionOutputSchema().model_dump())]
+        )
 
     template = _PC_TEMPLATE if req.pc_type == "pc" else _ACTOR_TEMPLATE
     prompt = template.render(
@@ -37,10 +43,10 @@ async def reflect(req: ReflectionRequest, config: RunnableConfig = None) -> Refl
 
     result = await llm.call_structured(
         f"reflect_{req.pc_type}",
-        None,
+        ReflectionOutputSchema,
         [{"role": "user", "content": prompt}],
     )
-    insight = _format_insight(req, result)
+    insight = _format_insight(req, result.model_dump())
     return ReflectionResponse(insights_out=[insight])
 
 

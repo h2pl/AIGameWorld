@@ -42,6 +42,8 @@ async def decide(
     logger.info("[engine] decide tick=%s pc=%s", tick, pc_id or "-")
 
     llm = get_llm(config)
+    if llm is None:
+        raise RuntimeError("[decide] LLM client not configured")
     pc_map = pc_state_map or {}
 
     # 从 state map 读当前 PC 身份 / Read current PC identity from state map

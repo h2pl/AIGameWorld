@@ -13,10 +13,10 @@ export type SceneSetupData = {
 };
 
 export class SceneSetupHandler {
-  constructor(private ensureScene: (data: SceneSetupData) => void) {}
+  constructor(private ensureScene: (data: SceneSetupData) => Promise<void>) {}
 
   /** 处理场景设置事件，构建场景后更新 store / Handle scene_setup, build then update store */
-  handle(ev: EventData): void {
+  async handle(ev: EventData): Promise<void> {
     const payload = ev.payload;
     if (!payload) return;
     const sceneId = String(payload.scene_id || "");
@@ -30,7 +30,7 @@ export class SceneSetupHandler {
       ? JSON.parse(scene.ext_json as string)
       : {};
 
-    this.ensureScene({
+    await this.ensureScene({
       sceneId,
       mapKey,
       sceneName,

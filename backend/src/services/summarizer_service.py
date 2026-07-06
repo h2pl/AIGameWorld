@@ -9,6 +9,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.runnables.config import RunnableConfig
 
+from ..schemas.llm_output import SummaryOutputSchema
 from ..utils.helpers import get_llm
 from ..utils.logging import get_logger, trace_node
 
@@ -28,15 +29,19 @@ async def summarize(state: dict, config: RunnableConfig = None) -> dict:
         return {"summary_compressed": False, "tick_events": events}
 
     llm = get_llm(config)
+    if llm is None:
+        logger.warning("[summarizer] LLM not configured, skipping compression")
+        return {"summary_compressed": False, "tick_events": events}
+
     prompt = _PROMPTS.get_template("reflection/summarize.jinja").render(
         events=events, event_count=len(events), char_count=character_count
     )
     result = await llm.call_structured(
         "summarize",
-        None,
+        SummaryOutputSchema,
         [{"role": "user", "content": prompt}],
     )
-    summary = result.get("summary", "")
+    summary = result.summary
     return {
         "summary_compressed": bool(summary),
         "summary_text": summary,

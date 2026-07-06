@@ -3,6 +3,10 @@
 let _playing = true;
 
 export const playState = {
-  get playing(): boolean { return _playing; },
-  set playing(v: boolean) { _playing = v; },
+  get playing(): boolean {
+    return _playing;
+  },
+  set playing(v: boolean) {
+    _playing = v;
+  },
 };

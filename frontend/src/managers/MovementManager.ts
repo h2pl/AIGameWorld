@@ -118,5 +118,4 @@ export class MovementManager {
       this.walkTo(sprite, best.tx, best.ty, { onComplete: () => resolve() });
     });
   }
-
 }

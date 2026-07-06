@@ -41,12 +41,8 @@ export class InteractHandler {
 
     if (narration) {
       log.info(`interact narration: ${pcId} — ${narration}`);
-      // 通过 window 广播，由 NarrativePanel 消费
-      window.dispatchEvent(
-        new CustomEvent("tick-event", {
-          detail: { type: "interact_narration", payload: { text: narration } },
-        })
-      );
+      // 头顶浮字与探索风格一致 / Float text above head, same style as explore
+      await new Promise<void>((resolve) => sprite.showExploreRecord(narration, resolve));
     }
   }
 

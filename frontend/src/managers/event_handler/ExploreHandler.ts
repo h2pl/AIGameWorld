@@ -1,4 +1,4 @@
-/** 探索事件处理器 / Explore event handler — 走到终点 + 浮字 + 广播到 NarrativePanel */
+/** 探索事件处理器 / Explore event handler — 走到终点 + 头顶浮字 */
 import { createLogger } from "../../utils/logger";
 const log = createLogger("ExploreHandler");
 import type { CharacterSprite } from "../../gameobjects/CharacterSprite";
@@ -40,19 +40,10 @@ export class ExploreHandler {
         await this._walkTo(sprite, mm, end.x, end.y);
       }
     }
-
-    // 浮字 + NarrativePanel 广播
+    // 浮字
     if (exploreRecord) {
       log.info(`explore: ${pcId} — ${exploreRecord}`);
-      this._showFloatText(sprite, exploreRecord);
-      window.dispatchEvent(
-        new CustomEvent("tick-event", {
-          detail: {
-            type: "explore_record",
-            payload: { text: `【${pcId}】发现：${exploreRecord}` },
-          },
-        })
-      );
+      await new Promise<void>((resolve) => sprite.showExploreRecord(exploreRecord, resolve));
     }
   }
 
@@ -63,37 +54,5 @@ export class ExploreHandler {
     ty: number
   ): Promise<void> {
     return new Promise((r) => mm.walkTo(sprite, tx, ty, { onComplete: () => r() }));
-  }
-
-  /** 轻量浮字，无气泡框 / Lightweight floating text, no bubble */
-  private _showFloatText(sprite: CharacterSprite, text: string): Promise<void> {
-    return new Promise((resolve) => {
-      const scene = this.getScene();
-      if (!scene) {
-        resolve();
-        return;
-      }
-      const t = scene.add
-        .text(sprite.rawSprite.x, sprite.rawSprite.y - 40, text, {
-          font: "13px Segoe UI, Microsoft YaHei, sans-serif",
-          color: "#a0d8ef",
-          stroke: "#000",
-          strokeThickness: 2,
-        })
-        .setOrigin(0.5)
-        .setDepth(300)
-        .setAlpha(1);
-      scene.tweens.add({
-        targets: t,
-        y: t.y - 30,
-        alpha: 0,
-        duration: 2500,
-        ease: "Power2",
-        onComplete: () => {
-          t.destroy();
-          resolve();
-        },
-      });
-    });
   }
 }

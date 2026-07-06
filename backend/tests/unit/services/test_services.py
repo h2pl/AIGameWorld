@@ -68,7 +68,10 @@ class TestCharacterService:
     @pytest.mark.asyncio
     async def test_decide_delegates_each_pc_to_decision_engine(self):
         """decide 逐个把场景内的 PC 交给 decision_engine / decide delegates each PC in the scene to decision_engine."""
-        scene_info = {"pcs": [{"id": "pc-1"}], "scene_objects": [{"id": "obj-1"}]}
+        scene_info = {"scene": {"id": "scene-1"}, "scene_objects": [{"id": "obj-1"}]}
+        pc_state_map = {
+            "pc-1": {"name": "Alex", "role": "fighter", "position_x": 0, "position_y": 0}
+        }
         decision = [{"pc_id": "pc-1", "type": "talk", "description": "先交涉"}]
         with patch.object(
             pc_service.decision_engine,
@@ -81,6 +84,7 @@ class TestCharacterService:
                     plot_brief="战斗开始",
                     scene_id="scene-1",
                     scene_info=scene_info,
+                    pc_state_map=pc_state_map,
                 )
             )
         mock_decide.assert_awaited_once()
@@ -280,8 +284,12 @@ class TestSummarizerService:
     @pytest.mark.asyncio
     async def test_summarize_with_llm_compresses(self):
         """有 LLM + 事件时压缩成功 / With LLM + events, compression succeeds."""
+        from src.schemas.llm_output import SummaryOutputSchema
+
         llm = AsyncMock()
-        llm.call_structured = AsyncMock(return_value={"summary": "酒馆里发生了冲突。"})
+        llm.call_structured = AsyncMock(
+            return_value=SummaryOutputSchema(summary="酒馆里发生了冲突。")
+        )
         config = {"configurable": {"llm": llm}}
         result = await summarizer_service.summarize({"tick_events": [{"type": "pc_talk"}]}, config)
         assert result["summary_compressed"] is True

@@ -36,7 +36,12 @@ export interface FrontendLogger {
 export function createLogger(module: string): FrontendLogger {
   const prefix = `[${module}]`;
 
-  const logAt = (lv: LogLevel, fn: (...args: unknown[]) => void, msg: string, ...args: unknown[]) => {
+  const logAt = (
+    lv: LogLevel,
+    fn: (...args: unknown[]) => void,
+    msg: string,
+    ...args: unknown[]
+  ) => {
     if (LEVELS[lv] < LEVELS[CONFIG.LOG.level]) return;
     const ts = new Date().toISOString().slice(11, 23);
     fn(`${ts} ${prefix} ${msg}`, ...args);

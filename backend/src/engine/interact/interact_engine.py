@@ -98,6 +98,8 @@ async def _generate_interact(
 ) -> dict:
     """LLM 生成交互结果（success + narration）/ LLM generates interact result."""
     llm = get_llm(config)
+    if llm is None:
+        raise RuntimeError("[interact] LLM client not configured")
     pc = _pc_identity(pc_id, pc_state_map)
     obj = _find_scene_object(object_id, scene_info)
     scene = (scene_info or {}).get("scene", {})

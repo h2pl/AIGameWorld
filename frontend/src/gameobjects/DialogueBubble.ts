@@ -18,11 +18,14 @@ const CORNER_RADIUS = 10;
 const ARROW_HEIGHT = 8;
 const MAX_LINES = 4;
 const TEXT_FONT = "14px Segoe UI, Microsoft YaHei, sans-serif";
+const NAR_FONT = "italic 12px Segoe UI, Microsoft YaHei, sans-serif";
 const TEXT_COLOR = "#1a1a1a";
 // 旁白风格颜色 / Narration style colors
 const NAR_BG = 0x1a1a2e;
 const NAR_BORDER = 0x16213e;
 const NAR_TEXT = "#c8d6e5";
+// 探索/交互浮字固定停留时长（含翻页） / Fixed duration for explore/interact narration bubbles
+const NAR_FIXED_MS = 2000;
 
 export type BubbleStyle = "dialogue" | "narration";
 
@@ -56,7 +59,7 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     const isNarration = style === "narration";
     this.textObj = scene.add
       .text(0, -ARROW_HEIGHT - PADDING_Y, "", {
-        font: isNarration ? "italic " + TEXT_FONT : TEXT_FONT,
+        font: isNarration ? NAR_FONT : TEXT_FONT,
         color: isNarration ? NAR_TEXT : TEXT_COLOR,
         wordWrap: { width: MAX_WIDTH - PADDING_X * 2, useAdvancedWrap: true },
         align: "center",
@@ -120,10 +123,16 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
   /** 按文本长度计算当前页自动翻页/关闭时间 / Auto-advance duration by text length */
   private _scheduleAutoAdvance(): void {
     const text = this.pages[this.pageIndex];
-    const minMs = speedMs(800);
-    const perChar = speedMs(40);
-    const maxMs = speedMs(4000);
-    const showMs = Math.min(maxMs, Math.max(minMs, minMs + text.length * perChar));
+    let showMs: number;
+    if (this.style === "narration") {
+      // 旁白风格使用固定时长，确保探索/交互文本停留一致 / Narration uses fixed duration
+      showMs = NAR_FIXED_MS;
+    } else {
+      const minMs = speedMs(800);
+      const perChar = speedMs(40);
+      const maxMs = speedMs(4000);
+      showMs = Math.min(maxMs, Math.max(minMs, minMs + text.length * perChar));
+    }
     this.timer = window.setTimeout(() => this._advance(), showMs);
   }
 

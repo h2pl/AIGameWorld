@@ -5,6 +5,7 @@ import { CONFIG } from "../config";
 import { DEPTH, TILEMAP } from "../constants";
 import { gridToWorld } from "../utils/tile";
 import { makeCharTexture, makeObjectTexture } from "../utils/textures";
+import { BGMPlayer } from "../utils/BGMPlayer";
 import { MapManager } from "../managers/MapManager";
 import { PcManager } from "../managers/PcManager";
 import { ActorManager } from "../managers/ActorManager";
@@ -31,6 +32,7 @@ export class GameScene extends Phaser.Scene {
   private mapManager!: MapManager;
   private hud!: GameHUD;
   private eventManager!: EventManager;
+  private bgm!: BGMPlayer;
   private terrainSprites: Phaser.GameObjects.Sprite[] = [];
   private sceneBuilt = false;
   private sceneData: SceneSetupData | null = null;
@@ -76,8 +78,8 @@ export class GameScene extends Phaser.Scene {
     this.game.events.off("scene-reset");
   }
 
-  /** 确保场景已构建，scene_id 变化时自动切换 / Ensure scene built, auto-switch on change */
-  ensureScene(data: SceneSetupData): void {
+  /** 确保场景已构建 + 等待渲染就绪 / Ensure scene built + wait for render ready */
+  async ensureScene(data: SceneSetupData): Promise<void> {
     const curId = worldStore.getState().current_scene_id;
     if (this.sceneBuilt && curId === data.sceneId) return;
     if (this.sceneBuilt) {
@@ -85,6 +87,10 @@ export class GameScene extends Phaser.Scene {
       this._destroyScene();
     }
     this._buildScene(data);
+    // 等 3 帧确保 Phaser 完成精灵渲染 / Wait 3 frames for Phaser rendering
+    for (let i = 0; i < 3; i++) {
+      await new Promise((r) => this.time.delayedCall(16, r));
+    }
   }
 
   /** 销毁当前场景 / Destroy current scene */
@@ -141,6 +147,10 @@ export class GameScene extends Phaser.Scene {
     this.sceneBuilt = true;
     this.sceneData = data;
     this.hud.hideWaiting();
+
+    // 启动背景音乐 / Start background music
+    this.bgm = new BGMPlayer();
+    this.bgm.play().catch(() => {});
 
     log.info(
       `build scene=${data.sceneId} map=${data.mapKey} pcs=${data.pcs.length} actors=${data.actors.length}`
@@ -222,6 +232,7 @@ export class GameScene extends Phaser.Scene {
   /** 销毁当前场景所有对象 / Destroy all scene objects */
   private _destroyScene(): void {
     this.sceneBuilt = false;
+    this.bgm?.stop();
     this.pcManager?.destroy();
     this.pcManager = undefined as any;
     this.actorManager?.destroy();

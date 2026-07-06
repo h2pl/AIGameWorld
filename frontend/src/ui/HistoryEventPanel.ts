@@ -236,41 +236,53 @@ function _readableType(t: string): string {
   return map[t] || t;
 }
 
-/** 格式化 payload 为可读文本 — 与事件列表面板保持完全一致 */
+/** 格式化 payload 为可读文本 — 与 EventPanel 保持一致 */
 function _formatPayload(ev: EventData): string {
-  const payload = ev.payload || {};
-
+  const p = ev.payload || {};
+  const pcName = String(p.pc_name || p.pc_id || "");
   switch (ev.type) {
     case "dm_create":
-      return String(payload.plot_brief || payload.scene_id || "");
+      return String(p.plot_brief || "");
     case "dm_narrative":
-      return String(payload.text || payload.narrative || "");
+      return trunc2(String(p.text || p.narrative || ""));
     case "scene_setup":
-      return String(payload.scene_id || "");
-    case "character_talk":
-    case "pc_talk": {
-      const result = payload.result as Record<string, unknown> | undefined;
-      const turns = (result?.turns ?? []) as Array<{ speaker_id: string; text: string }>;
-      if (turns.length) {
-        return turns.map((t) => `${t.speaker_id}: ${t.text}`).join("；");
-      }
-      const pc = payload.pc_id || payload.character_id || "";
-      const fallback = result?.text || result?.content || "";
-      return `${pc}: ${fallback}`;
-    }
+      return `进入「${String(p.scene_id || "")}」`;
     case "pc_explore":
     case "character_explore": {
-      const wps = payload.waypoints as Array<{ x: number; y: number }> | undefined;
-      const record = payload.explore_record as string | undefined;
-      if (wps?.length) {
-        const s = wps[0],
-          e = wps[wps.length - 1];
-        const pathStr = `(${s.x},${s.y}) → (${e.x},${e.y})`;
-        return record ? `${pathStr}「${record}」` : pathStr;
+      const record = p.explore_record as string | undefined;
+      const wps = p.waypoints as Array<{ x: number; y: number }> | undefined;
+      const path = wps?.length
+        ? `(${wps[0].x},${wps[0].y}) → (${wps[wps.length - 1].x},${wps[wps.length - 1].y})`
+        : "";
+      const body = record ? `${path}  「${trunc2(record, 24)}」` : path;
+      return `【${pcName}】${body || "探索"}`;
+    }
+    case "pc_talk":
+    case "character_talk": {
+      const r = p.result as Record<string, unknown> | undefined;
+      const turns = (r?.turns ?? []) as Array<{ speaker_id: string; text: string }>;
+      if (turns.length) {
+        const body = turns.map((t) => `${t.speaker_id}: "${trunc2(t.text, 16)}"`).join(" → ");
+        return `【${pcName}】${body}`;
       }
-      return record ?? "探索";
+      return `【${pcName}】交谈`;
+    }
+    case "pc_interact": {
+      const narration = (p.narration as string) || "";
+      return narration ? `【${pcName}】${trunc2(narration)}` : `【${pcName}】与物体交互`;
+    }
+    case "character_move": {
+      const wps = p.waypoints as Array<{ x: number; y: number }> | undefined;
+      const path = wps?.length
+        ? `(${wps[0].x},${wps[0].y}) → (${wps[wps.length - 1].x},${wps[wps.length - 1].y})`
+        : "";
+      return `【${pcName}】${path ? path : "移动"}`;
     }
     default:
-      return JSON.stringify(payload).slice(0, 500);
+      return `[${_readableType(ev.type)}]`;
   }
+}
+
+function trunc2(s: string, n = 30): string {
+  return s.length > n ? s.slice(0, n) + "…" : s;
 }

@@ -110,7 +110,8 @@ class TestTalkEngine:
         assert turns[0]["speaker_id"] == "pc1"
         assert turns[1]["speaker_id"] == "npc1"
         assert event.participants == ["pc1", "npc1"]
-        assert memory_repo.store.call_count == 2
+        # Actor 不记记忆 / Actors don't store memories
+        assert memory_repo.store.call_count == 1
 
 
 class TestInteractAction:
@@ -206,18 +207,34 @@ class TestQuestEngine:
 class TestReflectionEngine:
     @pytest.mark.asyncio
     async def test_reflect(self):
+        from src.schemas.llm_output import ReflectionOutputSchema
+
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(
+            return_value=ReflectionOutputSchema(
+                arc_analysis="弧线推进", personality_insight="性格更坚毅"
+            )
+        )
+        config = {"configurable": {"llm": llm}}
         r = await reflect(
             ReflectionRequest(pc_id="pc1", pc_name="P1", pc_type="pc"),
-            None,
+            config,
         )
         assert len(r.insights_out) == 1
         assert r.insights_out[0]["pc_id"] == "pc1"
 
     @pytest.mark.asyncio
     async def test_reflect_unknown_character(self):
+        from src.schemas.llm_output import ReflectionOutputSchema
+
+        llm = AsyncMock()
+        llm.call_structured = AsyncMock(
+            return_value=ReflectionOutputSchema(arc_analysis="", personality_insight="")
+        )
+        config = {"configurable": {"llm": llm}}
         r = await reflect(
             ReflectionRequest(pc_id="", pc_name="Unknown", pc_type="pc"),
-            None,
+            config,
         )
         assert len(r.insights_out) == 1
 

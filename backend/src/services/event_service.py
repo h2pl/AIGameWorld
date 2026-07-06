@@ -83,9 +83,12 @@ def _action_events(state: OverallState) -> list[TickEvent]:
             result = raw_result
         else:
             result = raw_result.model_dump() if hasattr(raw_result, "model_dump") else {}
+        pc_id = action.get("pc_id", "")
+        pc_name = (state.get("pc_state_map", {}).get(pc_id, {}) or {}).get("name", pc_id)
         payload = {
             "order": action.get("order"),
-            "pc_id": action.get("pc_id", ""),
+            "pc_id": pc_id,
+            "pc_name": pc_name,
             "action_type": action_type,
             "target_id": action.get("target_id", ""),
             "target_type": action.get("target_type", ""),

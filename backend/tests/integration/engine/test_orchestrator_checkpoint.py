@@ -8,7 +8,7 @@ from src.orchestrator import Orchestrator
 @pytest.mark.asyncio
 async def test_session_isolation(mock_repos):
     """不同 world_id 的状态互不影响."""
-    orch = Orchestrator(repos=mock_repos)
+    orch = Orchestrator(repos=mock_repos, llm=mock_repos["llm"])
 
     result_a = await orch.run_tick("world-a")
     result_b = await orch.run_tick("world-b")
@@ -24,7 +24,7 @@ async def test_session_isolation(mock_repos):
 @pytest.mark.asyncio
 async def test_tick_returns_result(mock_repos):
     """每次 tick 后返回有效结果."""
-    orch = Orchestrator(repos=mock_repos)
+    orch = Orchestrator(repos=mock_repos, llm=mock_repos["llm"])
 
     result = await orch.run_tick("test")
     assert "tick" in result

@@ -1,24 +1,23 @@
-// --- / ---
-/** 叙事面板 — dm/multi-type narration, typewriter reveal + inline history */
+/** 叙事面板 — 仅显示 DM 叙事、探索/交互记录，历史改为居中弹窗列表 */
 import { Panel } from "./Panel";
 
 const CHAR_MS = 40; // 逐字速度 / Per-char speed
 
-/** tick 清空 + 逐字展开 + 内嵌历史 / clear on tick + typewriter + history */
+/** tick 清空 + 逐字展开 + 居中弹窗历史 / clear on tick + typewriter + centered history overlay */
 export class NarrativePanel extends Panel {
   private contentEl!: HTMLElement; // 正文区
-  private historyEl!: HTMLElement; // 历史区
-  private displayed = "";
-  private target = "";
-  private timer: ReturnType<typeof setTimeout> | null = null;
   private history: string[] = []; // 历史缓存
   private _onTickStart: () => void;
   private _onTickEvent: (e: Event) => void;
+  private _onKeydown: (e: KeyboardEvent) => void;
 
   constructor() {
     super("narrative-panel");
     this._onTickStart = () => this._clear();
     this._onTickEvent = (e: Event) => this._handle((e as CustomEvent).detail);
+    this._onKeydown = (e) => {
+      if (e.key === "Escape") this._hideHistory();
+    };
   }
 
   protected buildDOM(): HTMLElement {
@@ -30,18 +29,21 @@ export class NarrativePanel extends Panel {
         <button class="panel-history-btn" id="narr-history-btn" title="叙事历史">🕓</button>
       </div>
       <div class="panel-body narrative-body"></div>
-      <div class="dm-history-overlay" id="narr-history-overlay" style="display:none">
-        <div class="dm-history-header">
-          <span>📜 DM 叙事历史</span>
-          <button id="narr-history-close" style="border:none;background:transparent;color:#ffd700;cursor:pointer;font-size:16px">✕</button>
+      <div class="history-overlay" id="narr-history-overlay" style="display:none">
+        <div class="history-panel">
+          <div class="history-header">
+            <span class="history-title">📜 叙事历史 / Narrative History</span>
+            <button class="history-close" title="关闭">✕</button>
+          </div>
+          <div class="history-body"></div>
         </div>
-        <div class="dm-history-list"></div>
       </div>`;
     this.contentEl = el.querySelector(".narrative-body")!;
-    this.historyEl = el.querySelector(".dm-history-list")!;
-    el.querySelector("#narr-history-btn")!.addEventListener("click", () => this._toggleHistory(el));
-    el.querySelector("#narr-history-close")!.addEventListener("click", () => {
-      el.querySelector("#narr-history-overlay")!.setAttribute("style", "display:none");
+    el.querySelector("#narr-history-btn")!.addEventListener("click", () => this._showHistory());
+    const overlay = el.querySelector("#narr-history-overlay") as HTMLElement;
+    overlay.querySelector(".history-close")!.addEventListener("click", () => this._hideHistory());
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) this._hideHistory();
     });
     return el;
   }
@@ -51,26 +53,29 @@ export class NarrativePanel extends Panel {
     window.addEventListener("tick-event", this._onTickEvent);
   }
 
+  protected bindEvents(): void {
+    document.addEventListener("keydown", this._onKeydown);
+  }
+
   private _clear(): void {
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
     }
-    this.displayed = "";
     this.target = "";
+    this.displayed = "";
     this.contentEl.innerHTML = "";
   }
 
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private displayed = "";
+  private target = "";
+
   private _handle(detail: { type: string; payload: Record<string, unknown> }): void {
-    if (!detail?.payload) return;
-    let text = "";
-    if (detail.type === "dm_create") {
-      text = (detail.payload.plot_brief as string) || "";
-    } else if (detail.type === "dm_narrative") {
-      text = (detail.payload.text as string) || (detail.payload.narrative as string) || "";
-    } else if (detail.type === "interact_narration" || detail.type === "explore_record") {
-      text = (detail.payload.text as string) || "";
-    }
+    // 叙事面板只展示 DM 叙事，不处理探索/交互等其他事件
+    if (detail?.type !== "dm_narrative") return;
+    const payload = detail.payload || {};
+    const text = (payload.text as string) || (payload.narrative as string) || "";
     if (!text) return;
     if (this.target === text) return;
 
@@ -94,23 +99,26 @@ export class NarrativePanel extends Panel {
     this.timer = setTimeout(() => this._reveal(), delay);
   }
 
-  private _toggleHistory(el: HTMLElement): void {
-    const overlay = el.querySelector("#narr-history-overlay") as HTMLElement;
+  /** 打开叙事历史弹窗 / Open narrative history overlay */
+  private _showHistory(): void {
+    const overlay = this.el.querySelector("#narr-history-overlay") as HTMLElement;
     if (!overlay) return;
-    const showing = overlay.style.display !== "none";
-    if (showing) {
-      overlay.style.display = "none";
-      return;
-    }
-    this.historyEl.innerHTML = this.history.length
+    const listEl = overlay.querySelector(".history-body") as HTMLElement;
+    listEl.innerHTML = this.history.length
       ? this.history
           .map(
             (h, i) =>
-              `<div class="history-line"><span class="history-tick">#${i + 1}</span> ${h}</div>`
+              `<div class="history-line"><span class="history-tick">#${i + 1}</span><span class="history-text">${this._escape(h)}</span></div>`
           )
           .join("")
-      : `<div class="history-empty">暂无历史</div>`;
-    overlay.style.display = "block";
+      : `<div class="history-empty">暂无叙事历史</div>`;
+    overlay.style.display = "flex";
+  }
+
+  /** 关闭叙事历史弹窗 / Close narrative history overlay */
+  private _hideHistory(): void {
+    const overlay = this.el.querySelector("#narr-history-overlay") as HTMLElement;
+    if (overlay) overlay.style.display = "none";
   }
 
   private _escape(s: string): string {
@@ -119,6 +127,7 @@ export class NarrativePanel extends Panel {
 
   destroy(): void {
     if (this.timer) clearTimeout(this.timer);
+    document.removeEventListener("keydown", this._onKeydown);
     window.removeEventListener("tick-start", this._onTickStart);
     window.removeEventListener("tick-event", this._onTickEvent);
     super.destroy();

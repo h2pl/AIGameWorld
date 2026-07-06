@@ -9,7 +9,10 @@ export class PcManager {
   private scene: Phaser.Scene;
   private ts: number;
 
-  constructor(scene: Phaser.Scene, tileSize: number) { this.scene = scene; this.ts = tileSize; }
+  constructor(scene: Phaser.Scene, tileSize: number) {
+    this.scene = scene;
+    this.ts = tileSize;
+  }
 
   /** 批量创建 PC 精灵 / Create all PC sprites from data */
   createAll(chars: any[]): void {
@@ -23,20 +26,33 @@ export class PcManager {
   }
 
   /** 按 id 获取精灵 / Get sprite by id */
-  getSprite(id: string): CharacterSprite | undefined { return this.sprites.get(id); }
+  getSprite(id: string): CharacterSprite | undefined {
+    return this.sprites.get(id);
+  }
 
   /** 计算包围盒居中偏移 / Calculate bounding-box center scroll offset */
   calcCameraScroll(canvasW: number, canvasH: number): { sx: number; sy: number } {
-    let minX = 99, minY = 99, maxX = -99, maxY = -99;
+    let minX = 99,
+      minY = 99,
+      maxX = -99,
+      maxY = -99;
     this.sprites.forEach((sp) => {
       const { tx, ty } = sp.getGridPos(this.ts);
-      minX = Math.min(minX, tx); maxX = Math.max(maxX, tx);
-      minY = Math.min(minY, ty); maxY = Math.max(maxY, ty);
+      minX = Math.min(minX, tx);
+      maxX = Math.max(maxX, tx);
+      minY = Math.min(minY, ty);
+      maxY = Math.max(maxY, ty);
     });
     if (minX > maxX) return { sx: 0, sy: 0 };
-    return { sx: ((minX + maxX) / 2 + 0.5) * this.ts - canvasW / 2, sy: ((minY + maxY) / 2 + 0.5) * this.ts - canvasH / 2 };
+    return {
+      sx: ((minX + maxX) / 2 + 0.5) * this.ts - canvasW / 2,
+      sy: ((minY + maxY) / 2 + 0.5) * this.ts - canvasH / 2,
+    };
   }
 
   /** 销毁所有精灵 / Destroy all sprites */
-  destroy(): void { this.sprites.forEach((sp) => sp.destroy()); this.sprites.clear(); }
+  destroy(): void {
+    this.sprites.forEach((sp) => sp.destroy());
+    this.sprites.clear();
+  }
 }

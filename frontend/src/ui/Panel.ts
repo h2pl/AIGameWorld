@@ -3,7 +3,9 @@ export abstract class Panel {
   protected el!: HTMLElement;
   protected containerId: string;
 
-  constructor(containerId: string) { this.containerId = containerId; }
+  constructor(containerId: string) {
+    this.containerId = containerId;
+  }
 
   mount(parent: HTMLElement): void {
     this.el = this.buildDOM();
@@ -21,7 +23,13 @@ export abstract class Panel {
   /** 子类可选：绑定 DOM 事件 / Bind DOM events */
   protected bindEvents?(): void;
 
-  show(): void { this.el.style.display = "block"; }
-  hide(): void { this.el.style.display = "none"; }
-  destroy(): void { this.el?.remove(); }
+  show(): void {
+    this.el.style.display = "block";
+  }
+  hide(): void {
+    this.el.style.display = "none";
+  }
+  destroy(): void {
+    this.el?.remove();
+  }
 }
