@@ -54,17 +54,46 @@ def _ensure_llm_mock(monkeypatch):
     """确保测试环境 LLM 走 mock / Ensure tests always have mock LLM."""
     from unittest.mock import AsyncMock
 
-    from src.schemas.llm_output import DMOutput
-
     mock_llm = AsyncMock()
-    mock_llm.call_structured = AsyncMock(
-        return_value=DMOutput(plot_brief="test", scene_id="village_elderwood")
-    )
+    mock_llm.call_structured = AsyncMock(side_effect=_mock_result)
 
     def _mock_get_llm(config=None):
         return mock_llm
 
     monkeypatch.setattr("src.utils.helpers.get_llm", _mock_get_llm)
+
+
+def _mock_result(purpose, schema, messages, **kw):
+    """根据 purpose 返回合适的 mock / Return appropriate mock per purpose."""
+    from src.schemas.llm_output import (
+        CharacterActionSchema,
+        DialogueSchema,
+        DialogueTurnSchema,
+        DMNarrativeSchema,
+        DMOutput,
+        ExploreOutputSchema,
+        InteractOutputSchema,
+        PCDecideListSchema,
+    )
+
+    return {
+        "dm_create": DMOutput(plot_brief="test", scene_id="village_elderwood", hints=["hint1"]),
+        "dm_narrate": DMNarrativeSchema(narrative="测试叙事。"),
+        "talk": DialogueSchema(
+            turns=[
+                DialogueTurnSchema(speaker_id="pc1", text="你好"),
+                DialogueTurnSchema(speaker_id="npc1", text="你好啊"),
+            ]
+        ),
+        "explore": ExploreOutputSchema(end_x=10, end_y=12, explore_record="发现了一些东西。"),
+        "interact": InteractOutputSchema(success=True, narration="操作成功。"),
+        "pc_decision": PCDecideListSchema(
+            actions=[CharacterActionSchema(action_type="wait", reasoning="观察。")]
+        ),
+        "reflect_pc": {"arc_analysis": "稳定", "personality_insight": "谨慎"},
+        "reflect_actor": {"behavior_summary": "正常"},
+        "summarize": {"summary": "事件总结。"},
+    }.get(purpose, {"result": "ok"})
 
 
 @pytest.fixture

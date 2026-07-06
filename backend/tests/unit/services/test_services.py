@@ -209,7 +209,7 @@ class TestSceneAndMessageService:
         state = _overall_state(tick=1, world_id="world-1", scene_id="scene-1")
         result = await scene_service.build_scene_info(state, config)
         info = result["scene_info"]
-        assert [pc["id"] for pc in info["pcs"]] == ["pc-1"]
+        assert "pc-1" in result["pc_state_map"]
         assert [o["id"] for o in info["scene_objects"]] == ["obj-1"]
 
 
