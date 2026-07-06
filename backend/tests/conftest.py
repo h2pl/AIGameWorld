@@ -49,6 +49,24 @@ def seed_db(test_db_path: Path):
         test_db_path.unlink(missing_ok=True)
 
 
+@pytest.fixture(autouse=True)
+def _ensure_llm_mock(monkeypatch):
+    """确保测试环境 LLM 走 mock / Ensure tests always have mock LLM."""
+    from unittest.mock import AsyncMock
+
+    from src.schemas.llm_output import DMOutput
+
+    mock_llm = AsyncMock()
+    mock_llm.call_structured = AsyncMock(
+        return_value=DMOutput(plot_brief="test", scene_id="village_elderwood")
+    )
+
+    def _mock_get_llm(config=None):
+        return mock_llm
+
+    monkeypatch.setattr("src.utils.helpers.get_llm", _mock_get_llm)
+
+
 @pytest.fixture
 def base_state() -> OverallState:
     """基础 mock state / Base mock state."""

@@ -69,7 +69,7 @@ async def _build_scene_info(
     pc_state_map: dict[str, dict[str, Any]] = {}
     for pc in scene_pcs:
         pos = pc_positions.get(pc.id, {"x": pc.position_x, "y": pc.position_y})
-        info = pc.model_dump()
+        info = pc.model_dump() if hasattr(pc, "model_dump") else _model_to_dict(pc)
         info["position_x"] = pos["x"]
         info["position_y"] = pos["y"]
         info["scene_id"] = scene_id
@@ -78,7 +78,7 @@ async def _build_scene_info(
     # 构建 Actor 运行时状态 map — model_dump() 写入全量字段
     actor_state_map: dict[str, dict[str, Any]] = {}
     for actor in scene_actors:
-        info = actor.model_dump()
+        info = actor.model_dump() if hasattr(actor, "model_dump") else _model_to_dict(actor)
         info["scene_id"] = scene_id
         actor_state_map[actor.id] = info
 
@@ -188,3 +188,10 @@ def _build_scene_object_ctx(objects: list) -> list[dict[str, Any]]:
         }
         for obj in objects
     ]
+
+
+def _model_to_dict(obj: Any) -> dict[str, Any]:
+    """兼容 SimpleNamespace 等非 Pydantic 对象 / Fallback for non-Pydantic objects."""
+    if hasattr(obj, "__dict__"):
+        return {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
+    return {}
