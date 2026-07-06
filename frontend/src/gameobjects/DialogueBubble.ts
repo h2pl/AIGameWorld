@@ -19,6 +19,12 @@ const ARROW_HEIGHT = 8;
 const MAX_LINES = 4;
 const TEXT_FONT = "14px Segoe UI, Microsoft YaHei, sans-serif";
 const TEXT_COLOR = "#1a1a1a";
+// 旁白风格颜色 / Narration style colors
+const NAR_BG = 0x1a1a2e;
+const NAR_BORDER = 0x16213e;
+const NAR_TEXT = "#c8d6e5";
+
+export type BubbleStyle = "dialogue" | "narration";
 
 export class DialogueBubble extends Phaser.GameObjects.Container {
   private bg!: Phaser.GameObjects.Graphics;
@@ -27,6 +33,7 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
   private pageIndex = 0;
   private timer?: number;
   private onHide?: () => void;
+  private style: BubbleStyle;
 
   constructor(
     scene: Phaser.Scene,
@@ -34,21 +41,23 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     y: number,
     text: string,
     speakerName?: string,
-    onHide?: () => void
+    onHide?: () => void,
+    style: BubbleStyle = "dialogue"
   ) {
     super(scene, x, y);
     this.onHide = onHide;
+    this.style = style;
     scene.add.existing(this);
-    // 泡泡在角色和 HUD 之上 / Bubble above characters and HUD
     this.setDepth(200);
 
     const fullText = speakerName?.trim() ? `${speakerName.trim()}: ${text}` : text;
     this.pages = this._splitPages(scene, fullText);
 
+    const isNarration = style === "narration";
     this.textObj = scene.add
       .text(0, -ARROW_HEIGHT - PADDING_Y, "", {
-        font: TEXT_FONT,
-        color: TEXT_COLOR,
+        font: isNarration ? "italic " + TEXT_FONT : TEXT_FONT,
+        color: isNarration ? NAR_TEXT : TEXT_COLOR,
         wordWrap: { width: MAX_WIDTH - PADDING_X * 2, useAdvancedWrap: true },
         align: "center",
       })
@@ -62,7 +71,6 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
 
     this._showPage(0);
 
-    // setSize 必须在 setInteractive 之前 / setSize before setInteractive
     this.setInteractive({ useHandCursor: true });
     this.on("pointerdown", () => this._advance());
   }
@@ -83,14 +91,12 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     const w = Math.min(Math.max(rawW, MIN_WIDTH), MAX_WIDTH);
     const h = bounds.height + PADDING_Y * 2;
 
+    const isNarration = this.style === "narration";
     this.bg.clear();
-    // 米白底色 / Cream background
-    this.bg.fillStyle(0xfff8e7, 0.98);
-    // 深棕边框 / Dark brown border
-    this.bg.lineStyle(2, 0x5d4037, 0.9);
+    this.bg.fillStyle(isNarration ? NAR_BG : 0xfff8e7, 0.98);
+    this.bg.lineStyle(2, isNarration ? NAR_BORDER : 0x5d4037, 0.9);
     this.bg.fillRoundedRect(-w / 2, -h - ARROW_HEIGHT, w, h, CORNER_RADIUS);
     this.bg.strokeRoundedRect(-w / 2, -h - ARROW_HEIGHT, w, h, CORNER_RADIUS);
-    // 指向下方的三角 / Downward arrow
     this.bg.fillTriangle(0, 0, -6, -ARROW_HEIGHT, 6, -ARROW_HEIGHT);
     this.bg.lineBetween(-6, -ARROW_HEIGHT, 0, 0);
     this.bg.lineBetween(6, -ARROW_HEIGHT, 0, 0);

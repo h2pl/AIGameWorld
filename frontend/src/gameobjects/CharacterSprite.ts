@@ -151,12 +151,12 @@ export class CharacterSprite {
     this.bubble = new DialogueBubble(this.scene, x, y, text, this.data.name, onHide);
   }
 
-  /** 显示探索记录（无说话者，旁白风格） / Show exploration record bubble (no speaker, narration style) */
+  /** 显示探索记录（旁白风格，深色背景浅色字） / Show exploration record bubble (narration style) */
   showExploreRecord(text: string, onHide?: () => void): void {
     this.clearBubble();
     const x = this.sprite.x;
     const y = this.sprite.y - this.tileSize * 0.75;
-    this.bubble = new DialogueBubble(this.scene, x, y, text, undefined, onHide);
+    this.bubble = new DialogueBubble(this.scene, x, y, text, undefined, onHide, "narration");
   }
 
   /** 清除当前泡泡 / Clear current bubble */

@@ -1,9 +1,4 @@
-/** 探索事件处理器 / Explore event handler — 从起点走到终点，展示探索记录
- *
- * 数据结构：
- * - waypoints: [{x:start, y:start}, {x:end, y:end}]
- * - explore_record: 第三人称旁白（角色头顶气泡展示）
- */
+/** 探索事件处理器 / Explore event handler — 走到终点 + 浮字 + 广播到 NarrativePanel */
 import { createLogger } from "../../utils/logger";
 const log = createLogger("ExploreHandler");
 import type { CharacterSprite } from "../../gameobjects/CharacterSprite";
@@ -19,10 +14,11 @@ export class ExploreHandler {
   constructor(
     private getSprite: (id: string) => CharacterSprite | undefined,
     private getMovementManager: () => MovementManager | undefined,
-    private followSprite: (sprite: any) => void
+    private followSprite: (sprite: any) => void,
+    private getScene: () => Phaser.Scene
   ) {}
 
-  /** 走到终点 → 展示探索记录气泡 / Walk to destination → show explore record bubble */
+  /** 走到终点 → 浮字 + 广播 / Walk + float text + broadcast */
   async handle(ev: EventData): Promise<void> {
     const payload = ev.payload;
     if (!payload) return;
@@ -31,12 +27,12 @@ export class ExploreHandler {
     const exploreRecord = String(payload.explore_record || "");
     if (!pcId) return;
 
-    const sprite = this.getSprite(pcId);
+    const sprite = this.getSprite(pcId); // 探索者精灵
     if (!sprite) return;
 
-    this.followSprite(sprite.rawSprite);
+    this.followSprite(sprite.rawSprite); // 镜头跟随
 
-    // 1. 走到终点坐标
+    // 走到终点
     if (waypoints?.length) {
       const mm = this.getMovementManager();
       if (mm) {
@@ -45,11 +41,10 @@ export class ExploreHandler {
       }
     }
 
-    // 2. 角色头顶气泡展示探索记录
+    // 浮字 + NarrativePanel 广播
     if (exploreRecord) {
       log.info(`explore: ${pcId} — ${exploreRecord}`);
-      await this._showBubble(sprite, exploreRecord);
-      // 同时广播到 NarrativePanel
+      this._showFloatText(sprite, exploreRecord);
       window.dispatchEvent(
         new CustomEvent("tick-event", {
           detail: {
@@ -67,14 +62,38 @@ export class ExploreHandler {
     tx: number,
     ty: number
   ): Promise<void> {
-    return new Promise((resolve) => {
-      mm.walkTo(sprite, tx, ty, { onComplete: () => resolve() });
-    });
+    return new Promise((r) => mm.walkTo(sprite, tx, ty, { onComplete: () => r() }));
   }
 
-  private _showBubble(sprite: CharacterSprite, text: string): Promise<void> {
+  /** 轻量浮字，无气泡框 / Lightweight floating text, no bubble */
+  private _showFloatText(sprite: CharacterSprite, text: string): Promise<void> {
     return new Promise((resolve) => {
-      sprite.showExploreRecord(text, resolve);
+      const scene = this.getScene();
+      if (!scene) {
+        resolve();
+        return;
+      }
+      const t = scene.add
+        .text(sprite.rawSprite.x, sprite.rawSprite.y - 40, text, {
+          font: "13px Segoe UI, Microsoft YaHei, sans-serif",
+          color: "#a0d8ef",
+          stroke: "#000",
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5)
+        .setDepth(300)
+        .setAlpha(1);
+      scene.tweens.add({
+        targets: t,
+        y: t.y - 30,
+        alpha: 0,
+        duration: 2500,
+        ease: "Power2",
+        onComplete: () => {
+          t.destroy();
+          resolve();
+        },
+      });
     });
   }
 }
