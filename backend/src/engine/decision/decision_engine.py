@@ -8,6 +8,7 @@ from langchain_core.runnables.config import RunnableConfig
 
 from ...schemas.llm_output import CharacterActionSchema, PCDecideListSchema
 from ...schemas.response import PCDecideResponse
+from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm
 from ...utils.logging import get_logger
 
@@ -53,11 +54,16 @@ async def decide(
         }
         # 同场景其他 PC / Other PCs in the same scene
         nearby_pcs = [pc for pc in pcs if pc.get("id") != pc_id]
+        # 检索相关记忆 / Retrieve relevant memories
+        query = f"{plot_brief} {scene_info.get('scene', {}).get('description', '')}".strip()
+        memories = await retrieve_memories(pc_id, query, config=config, top_k=5)
+
         # 渲染 prompt 所需的上下文 / Context for prompt rendering
         ctx = {
             "me": me,
             "plot_brief": plot_brief,
             "hints": hints,
+            "memories": memories,
             "scene": scene_info.get("scene")
             or {
                 "id": scene_id,

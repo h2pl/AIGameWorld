@@ -35,14 +35,20 @@ def _pc_repo_config(pcs: list, object_ids: list[str] | None = None) -> dict:
     """构造带 pc_repo/scene_repo 的 config / Build config with char/scene repo mocks."""
     object_ids = object_ids or []
     pc_repo = AsyncMock()
-    pc_repo.load_pcs = AsyncMock(return_value=pcs)
-    pc_repo.load_actors = AsyncMock(return_value=[])
+    pc_repo.load_all = AsyncMock(return_value=pcs)
+    pc_repo.load_one = AsyncMock(return_value=None)
     scene_repo = AsyncMock()
     scene_repo.get_scene = AsyncMock(return_value=None)
     scene_repo.get_object_ids = AsyncMock(return_value=object_ids)
     scene_objects = {
         oid: SimpleNamespace(
-            id=oid, name=oid, object_type=SimpleNamespace(value="prop"), interactable=True
+            id=oid,
+            name=oid,
+            object_type=SimpleNamespace(value="prop"),
+            interactable=True,
+            position_x=1,
+            position_y=1,
+            interact_data={},
         )
         for oid in object_ids
     }
@@ -117,10 +123,18 @@ class TestCharacterService:
             hints=[],
             scene_id="scene-1",
             tick=2,
+            pc_state_map={},
+            actor_state_map={},
             config=None,
         )
         mock_interact.assert_awaited_once_with(
             decision=decision,
+            scene_info={},
+            pc_state_map={},
+            actor_state_map={},
+            tick=2,
+            plot_brief="",
+            hints=[],
             config=None,
         )
         mock_combat.assert_awaited_once_with(

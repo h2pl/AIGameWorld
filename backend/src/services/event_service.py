@@ -82,6 +82,9 @@ def _action_events(state: OverallState) -> list[TickEvent]:
             payload["waypoints"] = result.get("waypoints", [])
         if event_type == TickEventType.PC_TALK:
             payload["waypoints"] = result.get("waypoints", [])
+        if event_type == TickEventType.PC_INTERACT:
+            payload["waypoints"] = result.get("waypoints", [])
+            payload["narration"] = result.get("narration", "")
         events.append(
             TickEvent(
                 type=event_type,

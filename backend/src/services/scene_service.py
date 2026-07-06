@@ -32,7 +32,10 @@ async def build_scene_info(state: OverallState, config=None) -> dict:
     tick_message_id = state.get("tick_message_id", "")
     logger.info("[service] tick=%s scene_id=%s tick_message_id=%s", tick, scene_id, tick_message_id)
     info, pc_state_map, actor_state_map = await _build_scene_info(state, config)
-    return {"scene_info": info, "pc_state_map": pc_state_map, "actor_state_map": actor_state_map}
+    result: dict[str, Any] = {"scene_info": info, "pc_state_map": pc_state_map}
+    if actor_state_map:
+        result["actor_state_map"] = actor_state_map
+    return result
 
 
 async def _build_scene_info(
@@ -48,7 +51,7 @@ async def _build_scene_info(
         return {}, {}, {}
 
     pcs = await pc_repo.load_all(world_id) if world_id else []
-    actors = await actor_repo.load_all(world_id) if world_id else []
+    actors = await actor_repo.load_all(world_id) if world_id and actor_repo else []
     # 主角团默认都在当前场景 / All PCs are always in the current scene
     scene_pcs = list(pcs)
     scene_actors = [actor for actor in actors if getattr(actor, "scene_id", "") == scene_id]
@@ -184,6 +187,9 @@ def _build_scene_object_ctx(objects: list) -> list[dict[str, Any]]:
             "name": obj.name,
             "object_type": obj.object_type.value,
             "interactable": obj.interactable,
+            "position_x": obj.position_x,
+            "position_y": obj.position_y,
+            "interact_data": obj.interact_data or {},
         }
         for obj in objects
     ]

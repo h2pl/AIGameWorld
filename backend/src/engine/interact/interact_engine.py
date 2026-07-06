@@ -1,17 +1,25 @@
-"""Interact Engine——场景对象交互裁决 / Scene object interaction resolution."""
+"""Interact Engine——场景对象交互裁决 + 旁白 / Scene object interaction resolution + narration."""
 
 import json
+from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
 from ...domain.scene_object import SceneObject, SceneObjectType
 from ...rules.dnd_rules import ability_modifier, resolve_check
+from ...schemas.llm_output import InteractNarrationSchema
 from ...schemas.request import SceneObjectInteractRequest
 from ...schemas.response import SceneObjectInteractResponse
-from ...utils.helpers import get_repo
+from ...services.memory_service import retrieve_memories
+from ...utils.helpers import build_occupied_set, find_vacant_adjacent, get_llm, get_repo
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+_PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
+_PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
 
 # object_type/interact_data → (action_type, 检定属性, 默认 dc) / → (action_type, check ability, default dc)
 _TRAP_DC = 12
@@ -23,6 +31,7 @@ _ACTION_CN = {
     "disarm_trap": "拆陷阱",
     "break_door": "破门",
     "open_chest": "开宝箱",
+    "interact": "交互",
 }
 
 
@@ -68,10 +77,17 @@ def resolve_interact(req: SceneObjectInteractRequest) -> SceneObjectInteractResp
     )
 
 
-async def process_interact_action(decision: dict, config: RunnableConfig = None) -> dict | None:
-    """处理单个 interact 决策 → 按场景对象规则检定，返回原始检定结果（不构造事件）/
-    Resolve a single interact decision against the target scene object's D&D rules,
-    return the raw check result (not an event)."""
+async def process_interact_action(
+    decision: dict,
+    scene_info: dict | None = None,
+    pc_state_map: dict[str, dict] | None = None,
+    actor_state_map: dict[str, dict] | None = None,
+    tick: int = 0,
+    plot_brief: str = "",
+    hints: list[str] | None = None,
+    config: RunnableConfig = None,
+) -> dict | None:
+    """处理单个 interact 决策：移动→检定→旁白→记忆 / Resolve interact: move → check → narrate → memory."""
     if decision.get("type") != "interact":
         return None
     object_id = decision.get("target_id", "")
@@ -92,8 +108,33 @@ async def process_interact_action(decision: dict, config: RunnableConfig = None)
             dc=dc,
         )
     )
+
+    # 移动到物体旁边并记录路径 / Move PC adjacent to object and record waypoints
+    waypoints = _move_to_object(char_id, object_id, scene_info, pc_state_map, actor_state_map)
+
+    # 生成交互结果旁白 / Generate interaction narration
+    narration = await _generate_narration(
+        pc_id=char_id,
+        object_id=object_id,
+        scene_info=scene_info,
+        result=result.result if result else {},
+        success=result.success,
+        plot_brief=plot_brief,
+        hints=hints or [],
+        config=config,
+    )
+
+    # 存入记忆 / Store memory
+    await _store_interact_memory(
+        char_id, object_id, scene_obj, result.success, narration, tick, config
+    )
+
     logger.info(
-        "[interact] %s → %s : %s", char_id, object_id, "success" if result.success else "fail"
+        "[interact] %s → %s : %s | narration=%s",
+        char_id,
+        object_id,
+        "success" if result.success else "fail",
+        narration[:30] if narration else "(none)",
     )
     return {
         "kind": "pc_interact",
@@ -101,6 +142,8 @@ async def process_interact_action(decision: dict, config: RunnableConfig = None)
         "object_id": object_id,
         "success": result.success,
         "result": result.result if result else {},
+        "waypoints": waypoints,
+        "narration": narration,
     }
 
 
@@ -146,3 +189,132 @@ async def _ability_mod_for(pc_repo, char_id: str, ability: str) -> int:
     except (TypeError, ValueError):
         attrs = {}
     return ability_modifier(attrs.get(ability, 10))
+
+
+def _move_to_object(
+    pc_id: str,
+    object_id: str,
+    scene_info: dict | None,
+    pc_state_map: dict[str, dict] | None,
+    actor_state_map: dict[str, dict] | None = None,
+) -> list[dict]:
+    """将 PC 移动到目标物体旁边的空位，返回 waypoints / Move PC adjacent to object."""
+    if not pc_state_map or pc_id not in pc_state_map:
+        return []
+
+    obj = _find_scene_object(object_id, scene_info)
+    tx = obj.get("position_x", 0) if obj else 0
+    ty = obj.get("position_y", 0) if obj else 0
+    if tx == 0 and ty == 0:
+        return []
+
+    old_x = pc_state_map[pc_id].get("position_x", 0)
+    old_y = pc_state_map[pc_id].get("position_y", 0)
+
+    occupied = build_occupied_set(pc_state_map, actor_state_map, exclude_id=pc_id)
+    new_x, new_y = find_vacant_adjacent(tx, ty, occupied)
+
+    pc_state_map[pc_id]["position_x"] = new_x
+    pc_state_map[pc_id]["position_y"] = new_y
+    if old_x == new_x and old_y == new_y:
+        return []
+    return [{"x": old_x, "y": old_y}, {"x": new_x, "y": new_y}]
+
+
+def _find_scene_object(object_id: str, scene_info: dict | None) -> dict:
+    """在 scene_info 中查找场景物体 / Find scene object in scene_info."""
+    if not scene_info:
+        return {}
+    for obj in scene_info.get("scene_objects", []):
+        if obj.get("id") == object_id:
+            return obj
+    return {}
+
+
+async def _generate_narration(
+    pc_id: str,
+    object_id: str,
+    scene_info: dict | None,
+    result: dict,
+    success: bool,
+    plot_brief: str,
+    hints: list[str],
+    config: RunnableConfig = None,
+) -> str:
+    """调用 LLM 生成交互结果旁白 / Generate interaction result narration via LLM."""
+    llm = get_llm(config)
+    if llm is None:
+        return _fallback_narration(pc_id, object_id, result, success)
+
+    pc = _find_pc(pc_id, scene_info)
+    obj = _find_scene_object(object_id, scene_info)
+    scene = (scene_info or {}).get("scene", {})
+
+    query = f"{plot_brief} {obj.get('name', '')} {scene.get('description', '')}".strip()
+    memories = await retrieve_memories(pc_id, query, config=config, top_k=5)
+
+    ctx = {
+        "pc": pc,
+        "obj": obj,
+        "scene": scene,
+        "result": result,
+        "plot_brief": plot_brief,
+        "hints": hints,
+        "memories": memories,
+    }
+
+    try:
+        system = _PROMPTS.get_template("interact/_interact_system.jinja").render(**ctx)
+        prompt = _PROMPTS.get_template("interact/interact_narrate.jinja").render(**ctx)
+    except Exception:
+        logger.exception("[interact] prompt render failed")
+        return _fallback_narration(pc_id, object_id, result, success)
+
+    try:
+        raw = await llm.call_structured(
+            "interact",
+            InteractNarrationSchema,
+            [SystemMessage(content=system), HumanMessage(content=prompt)],
+            fallback=lambda: InteractNarrationSchema(
+                narration=_fallback_narration(pc_id, object_id, result, success)
+            ),
+        )
+        return raw.narration or _fallback_narration(pc_id, object_id, result, success)
+    except Exception:
+        logger.exception("[interact] narration generation failed for %s -> %s", pc_id, object_id)
+        return _fallback_narration(pc_id, object_id, result, success)
+
+
+def _fallback_narration(pc_id: str, object_id: str, result: dict, success: bool) -> str:
+    """LLM 不可用时降级旁白 / Fallback narration."""
+    action_cn = result.get("action_cn", "交互")
+    status = "成功" if success else "失败"
+    return f"{pc_id} 对 {object_id} 进行了{action_cn}，结果{status}。"
+
+
+def _find_pc(pc_id: str, scene_info: dict | None) -> dict:
+    """在 scene_info 中查找 PC 信息 / Find PC info in scene_info."""
+    if not scene_info:
+        return {"id": pc_id, "name": pc_id}
+    for pc in scene_info.get("pcs", []):
+        if pc.get("id") == pc_id:
+            return pc
+    return {"id": pc_id, "name": pc_id}
+
+
+async def _store_interact_memory(
+    pc_id: str,
+    object_id: str,
+    scene_obj: SceneObject | None,
+    success: bool,
+    narration: str,
+    tick: int,
+    config: RunnableConfig = None,
+) -> None:
+    """把交互结果存入 PC 记忆 / Store interaction result into PC memory."""
+    memory_repo = get_repo(config, "memory")
+    if not memory_repo:
+        return
+    obj_name = scene_obj.name if scene_obj else object_id
+    content = f"与 {obj_name} 交互（{'成功' if success else '失败'}）：{narration}"
+    await memory_repo.store(pc_id, content, tick, importance=4)

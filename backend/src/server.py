@@ -11,6 +11,7 @@ Orchestrator 直接驱动 graph，无后台任务 / Orchestrator drives graph di
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -75,11 +76,16 @@ async def lifespan(app: FastAPI):
     from .repository.actor_repo import ActorRepo
     from .repository.dm_record_repo import DMRecordRepo
     from .repository.event_repo import TickEventRepo
+    from .repository.memory_repo import MemoryRepo
     from .repository.pc_repo import PcRepo
     from .repository.scene_repo import SceneRepo
     from .repository.world_repo import WorldRepo
+    from .storage.chroma_client import ChromaClient
 
     llm = LLMClient(cfg)
+    chroma = ChromaClient(Path(__file__).parent.parent / "data" / "chroma")
+    memory_repo = MemoryRepo(chroma=chroma, sqlite=db)
+    await memory_repo.initialize()
     app.state.orchestrator = Orchestrator(
         llm=llm,
         repos={
@@ -89,6 +95,7 @@ async def lifespan(app: FastAPI):
             "scene": SceneRepo(db),
             "world": WorldRepo(db),
             "event": TickEventRepo(db),
+            "memory": memory_repo,
         },
     )
     logger.info("[lifespan] orchestrator ready")

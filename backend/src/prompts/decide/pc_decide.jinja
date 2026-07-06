@@ -9,6 +9,14 @@ DM 提示：
 {% endfor %}
 {% endif %}
 
+{# 角色记忆 / Character memories #}
+{% if memories %}
+你记得：
+{% for mem in memories %}
+- {{ mem }}
+{% endfor %}
+{% endif %}
+
 {# 当前场景具体信息 / Concrete current scene info #}
 当前场景：{{ scene.name }}（{{ scene.type }}）
 {{ scene.description }}

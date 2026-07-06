@@ -94,28 +94,28 @@ class TestPcRepo:
             id="test_pc",
             name="TestHero",
             role="fighter",
+            scene_id="scene-1",
         )
-        await repo.save_pc(pc)
-        await db.commit()
+        await repo.save(pc)
 
-        pcs = await repo.load_pcs()
+        pcs = await repo.load_all()
         assert len(pcs) == 1
         assert pcs[0].id == "test_pc"
         assert pcs[0].name == "TestHero"
 
     async def test_save_and_load_actor(self, db):
         from src.domain import Actor
-        from src.repository.pc_repo import PcRepo
+        from src.repository.actor_repo import ActorRepo
 
-        repo = PcRepo(db)
+        repo = ActorRepo(db)
         actor = Actor(
             id="test_actor",
             name="Greta",
             role="innkeeper",
+            scene_id="scene-1",
         )
-        await repo.save_actor(actor)
-        await db.commit()
+        await repo.save(actor)
 
-        actors = await repo.load_actors()
+        actors = await repo.load_all()
         assert len(actors) == 1
         assert actors[0].id == "test_actor"

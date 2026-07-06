@@ -1,7 +1,7 @@
 """Engine 单元测试——combat/dialogue/exploration/quest/reflection/summarizer/world."""
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -29,7 +29,7 @@ def _scene_char_config(scene_obj=None, pc=None):
     scene_repo = AsyncMock()
     scene_repo.load_all = AsyncMock(return_value={scene_obj.id: scene_obj} if scene_obj else {})
     pc_repo = AsyncMock()
-    pc_repo.load_pc = AsyncMock(return_value=pc)
+    pc_repo.load_one = AsyncMock(return_value=pc)
     return {"configurable": {"repos": {"scene": scene_repo, "char": pc_repo}}}
 
 
@@ -87,7 +87,8 @@ class TestTalkEngine:
         """有 LLM + target 时生成多轮对话，双方都存记忆 / With LLM + target, generates multi-turn dialogue and stores memory for both."""
         from src.schemas.llm_output import DialogueSchema, DialogueTurnSchema
 
-        memory_repo = Mock()
+        memory_repo = AsyncMock()
+        memory_repo.store = AsyncMock(return_value=None)
         llm = AsyncMock()
         llm.call_structured = AsyncMock(
             return_value=DialogueSchema(

@@ -12,6 +12,7 @@ class Memory(BaseModel):
     tick: int
     importance: int = 1
     memory_type: str = "observation"
+    world_id: str = ""
 
 
 def importance_of(event_type: str) -> int:

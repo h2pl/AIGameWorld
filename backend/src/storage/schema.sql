@@ -192,3 +192,19 @@ CREATE TABLE IF NOT EXISTS story_summaries (
     UNIQUE(world_id, tick_start)
 );
 CREATE INDEX IF NOT EXISTS idx_summaries_world ON story_summaries(world_id);
+
+-- ============================================================
+--  memories: 角色/世界记忆（中期记忆）/ Character/world memories (mid-term)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS memories (
+    id              TEXT PRIMARY KEY,
+    pc_id           TEXT    NOT NULL,
+    content         TEXT    NOT NULL,
+    tick            INTEGER NOT NULL DEFAULT 0,
+    importance      INTEGER NOT NULL DEFAULT 2,
+    memory_type     TEXT    NOT NULL DEFAULT 'observation',
+    world_id        TEXT    NOT NULL DEFAULT '',
+    created_at      TEXT    NOT NULL DEFAULT (datetime('now', '+08:00'))
+);
+CREATE INDEX IF NOT EXISTS idx_memories_pc_tick ON memories(pc_id, tick);
+CREATE INDEX IF NOT EXISTS idx_memories_world ON memories(world_id);

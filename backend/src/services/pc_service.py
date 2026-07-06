@@ -70,14 +70,23 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
             config=config,
         )
         interact_result = await interact_engine.process_interact_action(
-            decision=decision, config=config
-        )
-        combat_result = await combat_engine.process_combat_action(decision=decision, config=config)
-        explore_result = explore_engine.process_explore_action(
             decision=decision,
             scene_info=scene_info,
             pc_state_map=pc_state_map,
             actor_state_map=actor_state_map,
+            tick=tick,
+            plot_brief=plot_brief,
+            hints=hints,
+            config=config,
+        )
+        combat_result = await combat_engine.process_combat_action(decision=decision, config=config)
+        explore_result = await explore_engine.process_explore_action(
+            decision=decision,
+            scene_info=scene_info,
+            pc_state_map=pc_state_map,
+            actor_state_map=actor_state_map,
+            tick=tick,
+            config=config,
         )
 
         result = talk_result or interact_result or combat_result or explore_result
@@ -95,4 +104,7 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
             }
         )
 
-    return {"pending_actions": pending_actions, "pc_state_map": pc_state_map}
+    result = {"pending_actions": pending_actions}
+    if pc_state_map:
+        result["pc_state_map"] = pc_state_map
+    return result

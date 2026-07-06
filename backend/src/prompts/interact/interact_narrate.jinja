@@ -1,0 +1,40 @@
+{# 交互旁白 prompt / Interaction narration prompt #}
+{# 注入剧情梗概与交互上下文 / Inject plot brief and interaction context #}
+【剧情梗概】
+{{ plot_brief }}
+
+{% if hints %}
+【环境提示】
+{% for hint in hints %}- {{ hint }}
+{% endfor %}
+{% endif %}
+
+{% if memories %}
+【记忆】
+{% for mem in memories %}- {{ mem }}
+{% endfor %}
+{% endif %}
+
+【场景】
+名称：{{ scene.name | default("未知场景") }}
+类型：{{ scene.type | default("") }}
+描述：{{ scene.description | default("") }}
+
+【交互者】
+ID：{{ pc.id }}
+名称：{{ pc.name }}
+角色：{{ pc.role | default("") }}
+性格：{{ pc.personality | default("") }}
+
+【交互目标】
+ID：{{ obj.id }}
+名称：{{ obj.name }}
+类型：{{ obj.object_type }}
+位置：({{ obj.position_x | default(0) }}, {{ obj.position_y | default(0) }})
+
+【检定结果】
+动作：{{ result.action_cn | default(result.action) }}
+成功：{{ "是" if result.success else "否" }}
+{% if result.roll is not none %}骰子：{{ result.roll }} + 加值 {{ result.bonus }} = 总计 {{ result.total }} / DC {{ result.dc }}{% endif %}
+
+请为 {{ pc.name }} 与 {{ obj.name }} 的交互生成一段第三人称旁白，说明 PC 走到物体旁、做了什么、以及成功或失败的细节。

@@ -19,18 +19,24 @@ _ACTOR_THRESHOLD = 200
 
 
 async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> dict:
-    """Phase 7: 遍历所有角色执行反思 / Reflect on all characters."""
+    """Phase 7: 遍历所有角色执行反思 / Reflect on all characters.
+
+    兼容两种 state：ReflectionSubState（子图）和 OverallState（主图）。
+    当缺少必要 repo 时安全降级，返回空列表。
+    """
     pc_repo = get_repo(config, "char")
-    actor_repo = get_repo(config, "actor")
     memory_repo = get_repo(config, "memory")
     if not pc_repo or not memory_repo:
         return {"reflected_pcs": []}
 
+    actor_repo = get_repo(config, "actor")
+
     insights = []
     tick = state.get("tick", 0)
+    world_id = state.get("world_id")
 
     # PC 反思 / PC reflection
-    for pc in await pc_repo.load_all():
+    for pc in await pc_repo.load_all(world_id):
         if _needs_reflection(memory_repo, pc.id, _PC_THRESHOLD):
             insight = await _reflect_one(
                 reflection_engine,
@@ -45,29 +51,32 @@ async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> d
             )
             if insight:
                 insights.append(insight)
-                memory_repo.store_reflection(pc.id, insight["insight"], tick)
+                await memory_repo.store_reflection(pc.id, insight["insight"], tick, world_id or "")
                 pc.importance_accumulator = 0.0
                 await pc_repo.save(pc)
 
     # Actor 反思 / Actor reflection
-    for actor in await actor_repo.load_all():
-        if _needs_reflection(memory_repo, actor.id, _ACTOR_THRESHOLD):
-            insight = await _reflect_one(
-                reflection_engine,
-                actor.id,
-                actor.name,
-                "actor",
-                actor.character_arc.stage if actor.character_arc else "",
-                actor.character_arc.description if actor.character_arc else "",
-                memory_repo,
-                tick,
-                config,
-            )
-            if insight:
-                insights.append(insight)
-                memory_repo.store_reflection(actor.id, insight["insight"], tick)
-                actor.importance_accumulator = 0.0
-                await actor_repo.save(actor)
+    if actor_repo:
+        for actor in await actor_repo.load_all(world_id):
+            if _needs_reflection(memory_repo, actor.id, _ACTOR_THRESHOLD):
+                insight = await _reflect_one(
+                    reflection_engine,
+                    actor.id,
+                    actor.name,
+                    "actor",
+                    actor.character_arc.stage if actor.character_arc else "",
+                    actor.character_arc.description if actor.character_arc else "",
+                    memory_repo,
+                    tick,
+                    config,
+                )
+                if insight:
+                    insights.append(insight)
+                    await memory_repo.store_reflection(
+                        actor.id, insight["insight"], tick, world_id or ""
+                    )
+                    actor.importance_accumulator = 0.0
+                    await actor_repo.save(actor)
 
     return {"reflected_pcs": [i["pc_id"] for i in insights]}
 
@@ -91,7 +100,7 @@ async def _reflect_one(
 ) -> dict | None:
     """对单个角色执行反思 / Reflect on a single character."""
     recent_mems = list(memory_repo._short_queue(char_id))[-5:]
-    past_refs = memory_repo.retrieve_reflections(char_id, "behavior growth", top_k=3)
+    past_refs = await memory_repo.retrieve_reflections(char_id, "behavior growth", top_k=3)
     past_texts = [r.content for r in past_refs]
 
     result = await engine.reflect(

@@ -25,7 +25,14 @@ START
 from langgraph.graph import END, StateGraph
 
 # 服务层 / Service layer
-from ..services import data_service, dm_service, event_service, scene_service
+from ..services import (
+    data_service,
+    dm_service,
+    event_service,
+    reflection_service,
+    scene_service,
+    summarizer_service,
+)
 from ..utils.logging import get_logger
 
 # 根状态定义 / Root state definition
@@ -46,13 +53,17 @@ def build_tick_graph() -> StateGraph:
     graph.add_node("scene_service.build_scene_info", scene_service.build_scene_info)
     graph.add_node("pc_subgraph", pc_subgraph_module.pc_subgraph)
     graph.add_node("event_service.flush_events", event_service.flush_events)
+    graph.add_node("summarizer_service.narrate", summarizer_service.narrate)
     graph.add_node("data_service.persist_tick", data_service.persist_tick)
+    graph.add_node("reflection_service.reflect", reflection_service.reflect)
 
     graph.set_entry_point("dm_service.dm_create")
     graph.add_edge("dm_service.dm_create", "scene_service.build_scene_info")
     graph.add_edge("scene_service.build_scene_info", "pc_subgraph")
     graph.add_edge("pc_subgraph", "event_service.flush_events")
-    graph.add_edge("event_service.flush_events", "data_service.persist_tick")
-    graph.add_edge("data_service.persist_tick", END)
+    graph.add_edge("event_service.flush_events", "summarizer_service.narrate")
+    graph.add_edge("summarizer_service.narrate", "data_service.persist_tick")
+    graph.add_edge("data_service.persist_tick", "reflection_service.reflect")
+    graph.add_edge("reflection_service.reflect", END)
 
     return graph

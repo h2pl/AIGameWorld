@@ -11,6 +11,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
 from ...schemas.llm_output import DialogueSchema
+from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm, get_repo
 from ...utils.logging import get_logger
 
@@ -47,7 +48,7 @@ async def process_talk_action(
     else:
         turns = _normalize_speaker_ids(turns, char_id, target_id)
 
-    _store_dialogue_memory(char_id, target_id, turns, tick, config)
+    await _store_dialogue_memory(char_id, target_id, turns, tick, config)
 
     waypoints = _update_talker_position(
         char_id, target_id, target_type, pc_state_map, actor_state_map
@@ -83,12 +84,16 @@ async def _generate_dialogue(
     target = await _load_target(pc_repo, actor_repo, target_id, target_type)
     scene = await _fetch_scene(scene_id, config)
 
+    query = f"{reason} {plot_brief} {scene.get('description', '')}".strip()
+    memories = await retrieve_memories(char_id, query, config=config, top_k=5)
+
     ctx = {
         "initiator": _character_ctx(char_id, initiator),
         "target": _character_ctx(target_id, target),
         "reason": reason,
         "plot_brief": plot_brief,
         "hints": hints,
+        "memories": memories,
         "scene": scene,
     }
     try:
@@ -176,7 +181,7 @@ def _normalize_speaker_ids(turns: list[dict], char_id: str, target_id: str) -> l
     ]
 
 
-def _store_dialogue_memory(
+async def _store_dialogue_memory(
     char_id: str,
     target_id: str,
     turns: list[dict],
@@ -189,9 +194,9 @@ def _store_dialogue_memory(
         return
     transcript = "；".join(f"{t['speaker_id']}：{t['text']}" for t in turns)
     if char_id:
-        memory_repo.store(char_id, f"与 {target_id} 的对话：{transcript}", tick, importance=3)
+        await memory_repo.store(char_id, f"与 {target_id} 的对话：{transcript}", tick, importance=3)
     if target_id:
-        memory_repo.store(target_id, f"与 {char_id} 的对话：{transcript}", tick, importance=3)
+        await memory_repo.store(target_id, f"与 {char_id} 的对话：{transcript}", tick, importance=3)
 
 
 def _update_talker_position(
