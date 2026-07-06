@@ -373,7 +373,7 @@ class LLMClient:
         purpose: str,
         schema: type[BaseModel],
         tick_messages: list[BaseMessage],
-        fallback: Callable[[], BaseModel],
+        fallback: Callable[[], BaseModel] | None = None,
     ) -> BaseModel:
         """结构化调用——标准用 response_format，Proxy 用 JSON 提示."""
         if self._mock:
@@ -383,7 +383,9 @@ class LLMClient:
             try:
                 return schema(**data)
             except Exception:
-                return fallback()
+                if fallback:
+                    return fallback()
+                raise
 
         model = self._models[purpose]
         timeout = self._timeouts[purpose]
@@ -497,7 +499,11 @@ class LLMClient:
             f"[{purpose}] 全部 {max_attempts} 次结构化调用均失败，启用 fallback",
             extra=_log_ctx(purpose, max_attempts - 1, max_attempts, result="degraded"),
         )
-        return fallback()
+        if fallback:
+            return fallback()
+        raise RuntimeError(
+            f"[{purpose}] all {max_attempts} attempts failed and no fallback configured"
+        )
 
 
 # Mock 数据已统一迁移至 mock_data.py / Mock data centralized in mock_data.py
