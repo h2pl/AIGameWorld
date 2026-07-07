@@ -1,6 +1,5 @@
 """Graph Subgraphs 测试——对齐当前子图结构。"""
 
-from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -10,12 +9,6 @@ from src.domain.player_character import PlayerCharacter
 from src.graph.subgraphs.pc_subgraph import pc_subgraph
 from src.graph.subgraphs.reflection_subgraph import reflection_subgraph
 from src.graph.subgraphs.scene_subgraph import scene_subgraph
-from src.schemas.llm_output import (
-    ActorGenerationSchema,
-    GeneratedActorSchema,
-    GeneratedSceneObjectSchema,
-    SceneObjectGenerationSchema,
-)
 
 
 class TestCharacterSubgraph:
@@ -154,99 +147,3 @@ class TestSceneSubgraph:
         assert [o.id for o in result["scene_objects"]] == ["obj-1"]
         assert "pc-1" in result["pcs"]
         assert result["actors"] == {}
-
-    @pytest.mark.asyncio
-    async def test_scene_subgraph_generates_actors_and_objects_when_empty(self):
-        """场景为空时 LLM 动态生成 Actor 和 SceneObject / Subgraph spawns actors and objects via LLM when empty."""
-        pc = PlayerCharacter(
-            id="pc-1",
-            scene_id="scene-1",
-            name="Alex",
-            role="fighter",
-            position_x=0,
-            position_y=0,
-        )
-        pc_repo = AsyncMock()
-        pc_repo.load_all = AsyncMock(return_value=[pc])
-        pc_repo.load_one = AsyncMock(return_value=None)
-
-        scene = Scene(
-            id="scene-1",
-            name="Tavern",
-            type="indoor",
-            description="一个热闹的酒馆。",
-            spawn_x=10,
-            spawn_y=10,
-            map_width=40,
-            map_height=40,
-        )
-        saved_objects: dict[str, Any] = {}
-
-        def _store_object(o):
-            """把生成的 object 存入 saved_objects / Store generated object."""
-            saved_objects[o.id] = o
-
-        scene_repo = AsyncMock()
-        scene_repo.get_scene = AsyncMock(return_value=scene)
-        scene_repo.get_object_ids = AsyncMock(side_effect=lambda sid: list(saved_objects.keys()))
-        scene_repo.save_object = AsyncMock(side_effect=_store_object)
-        scene_repo.load_all = AsyncMock(return_value=saved_objects)
-
-        saved_actors: list = []
-        actor_repo = AsyncMock()
-        actor_repo.load_all = AsyncMock(return_value=saved_actors)
-        actor_repo.save = AsyncMock(side_effect=saved_actors.append)
-
-        llm = AsyncMock()
-        llm.call_structured = AsyncMock(
-            side_effect=lambda purpose, schema, messages: (
-                ActorGenerationSchema(
-                    actors=[
-                        GeneratedActorSchema(
-                            id="actor_bartender",
-                            name="酒保",
-                            role="bartender",
-                            position_x=12,
-                            position_y=10,
-                        )
-                    ]
-                )
-                if purpose == "spawn_actors"
-                else SceneObjectGenerationSchema(
-                    objects=[
-                        GeneratedSceneObjectSchema(
-                            id="obj_barrel",
-                            name="酒桶",
-                            object_type="container",
-                            position_x=11,
-                            position_y=10,
-                        )
-                    ]
-                )
-            )
-        )
-
-        config = {
-            "configurable": {
-                "repos": {
-                    "char": pc_repo,
-                    "scene": scene_repo,
-                    "actor": actor_repo,
-                },
-                "llm": llm,
-            }
-        }
-        state = {
-            "tick": 1,
-            "world_id": "world-1",
-            "scene_id": "scene-1",
-            "pc_decisions": [],
-            "actions": [],
-        }
-        result = await scene_subgraph.ainvoke(state, config)
-        assert result["scene"].id == "scene-1"
-        assert "actor_bartender" in result["actors"]
-        assert any(o.id == "obj_barrel" for o in result["scene_objects"])
-        assert "pc-1" in result["pcs"]
-        actor_repo.save.assert_awaited_once()
-        scene_repo.save_object.assert_awaited_once()

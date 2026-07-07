@@ -287,9 +287,6 @@ class LLMClient:
             ("explore", llm_config.explore),
             ("combat", llm_config.combat),
             ("reflection", llm_config.reflection),
-            ("interpret_tilemap", llm_config.interpret_tilemap),
-            ("spawn_actors", llm_config.spawn_actors),
-            ("spawn_objects", llm_config.spawn_objects),
         ]:
             model_url = cfg.base_url or primary_url
             self._models[purpose] = _build_model(cfg, model_url, primary_key)

@@ -97,7 +97,7 @@ class TestLLMClientInit:
         monkeypatch.setenv("LLM_PROVIDER", "deepseek")
         config = load_config(CONFIG_PATH)
         client = LLMClient(config)
-        assert len(client._models) == 12
+        assert len(client._models) == 9
         assert set(client._models.keys()) == {
             "dm_create",
             "dm_narrate",
@@ -108,9 +108,6 @@ class TestLLMClientInit:
             "explore",
             "combat",
             "reflection",
-            "interpret_tilemap",
-            "spawn_actors",
-            "spawn_objects",
         }
 
     def test_timeouts_loaded_correctly(self, monkeypatch):

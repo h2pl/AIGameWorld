@@ -11,9 +11,7 @@ export class MapManager {
 
   /** 加载并构建 tilemap / Load and build tilemap with layers */
   build(sceneId: string, extJson: Record<string, any>): void {
-    // ── 多 tileset 数组 / Tilesets array ──
     const tilesets: Array<{ name: string; url: string }> = extJson.tilesets || [];
-    // 兼容旧格式
     if (tilesets.length === 0 && extJson.tileset_name && extJson.tileset_image_key) {
       tilesets.push({ name: extJson.tileset_name, url: extJson.tileset_image_key });
     }
@@ -27,7 +25,7 @@ export class MapManager {
       return;
     }
 
-    // 添加所有 tileset
+    // 添加所有 tileset / Add all tilesets
     const allTilesets: Phaser.Tilemaps.Tileset[] = [];
     for (const ts of tilesets) {
       const t = this.tilemap.addTilesetImage(ts.name, ts.name);
@@ -42,40 +40,36 @@ export class MapManager {
         );
       }
     }
-
     if (allTilesets.length === 0) return;
 
-    // ── 动态图层：从 tilemap JSON 自动检测图层名 / Dynamic layer detection ──
-    const layerNames: string[] = [];
-    for (const ly of (this.tilemap as any).layers || []) {
-      if (ly.type === "tilelayer" && ly.name) {
-        layerNames.push(ly.name);
-      }
-    }
+    // 从 tilemap 官方 API 获取图层名 / Get layer names via official API
+    const layerNames: string[] = this.tilemap.getTileLayerNames();
     log.info(`  layers: %s`, layerNames.join(", "));
 
-    const hasAbove = layerNames.some(
-      (n) => n.toLowerCase().includes("above") || n.toLowerCase() === "overlay"
-    );
-    const belowLayers = layerNames.filter(
-      (n) => !n.toLowerCase().includes("above") && n.toLowerCase() !== "overlay"
-    );
-
-    // 底层
-    for (const name of belowLayers) {
-      const ts = allTilesets[0]; // use first tileset for rendering
-      this.tilemap.createLayer(name, ts, 0, 0);
+    // 底层（非 above/overlay 的图层）
+    for (const name of layerNames) {
+      if (name.toLowerCase().includes("above") || name.toLowerCase() === "overlay") {
+        continue;
+      }
+      const layer = this.tilemap.createLayer(name, allTilesets, 0, 0);
+      if (layer) {
+        log.info(`  layer OK: %s`, name);
+      } else {
+        log.error(`  layer FAIL: %s`, name);
+      }
     }
 
     // 顶层（above player）
-    if (hasAbove) {
-      const aboveName = layerNames.find(
-        (n) => n.toLowerCase().includes("above") || n.toLowerCase() === "overlay"
-      );
-      if (aboveName) {
-        const ts = allTilesets[0];
-        const aboveLayer = this.tilemap.createLayer(aboveName, ts, 0, 0);
-        if (aboveLayer) aboveLayer.setDepth(DEPTH.ABOVE_PLAYER);
+    const aboveName = layerNames.find(
+      (n) => n.toLowerCase().includes("above") || n.toLowerCase() === "overlay"
+    );
+    if (aboveName) {
+      const aboveLayer = this.tilemap.createLayer(aboveName, allTilesets, 0, 0);
+      if (aboveLayer) {
+        aboveLayer.setDepth(DEPTH.ABOVE_PLAYER);
+        log.info(`  above layer OK: %s`, aboveName);
+      } else {
+        log.error(`  above layer FAIL: %s`, aboveName);
       }
     }
 
