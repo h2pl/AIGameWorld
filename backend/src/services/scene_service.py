@@ -441,7 +441,7 @@ def _build_scene_object_ctx(objects: list) -> list[dict[str, Any]]:
 
 def _default_assets_dir() -> Path:
     """默认 tilemap 资源目录：backend 的 sibling frontend/public/assets."""
-    backend_root = Path(__file__).parent.parent
+    backend_root = Path(__file__).parent.parent.parent
     return backend_root.parent / "frontend" / "public" / "assets"
 
 

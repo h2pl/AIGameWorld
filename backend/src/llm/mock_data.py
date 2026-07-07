@@ -106,6 +106,16 @@ _PC_DECISIONS: list[dict] = [
 ]
 
 
+def _normalize_action(action: dict) -> dict:
+    """补全 PC decision 的 thought/reasoning 字段，避免 schema 校验失败."""
+    normalized = dict(action)
+    if "thought" not in normalized:
+        normalized["thought"] = normalized.get("reasoning", "我做出了这个决定。")
+    if "reasoning" not in normalized:
+        normalized["reasoning"] = normalized.get("thought", "等待时机。")
+    return normalized
+
+
 class _PcDecisionRotator:
     def __init__(self) -> None:
         self._idx = 0
@@ -115,7 +125,7 @@ class _PcDecisionRotator:
         self._idx += 1
         a2 = _PC_DECISIONS[self._idx % len(_PC_DECISIONS)]
         self._idx += 1
-        return {"actions": [a1, a2]}
+        return {"actions": [_normalize_action(a1), _normalize_action(a2)]}
 
 
 _pc_rotator = _PcDecisionRotator()
@@ -324,6 +334,60 @@ DATASET_TAVERN: MockDataset = {
         {"summary": "冒险者抵达酒馆，从老板娘 Greta 口中得知北方森林有危险，镇上悬赏调查。"},
         {"summary": "冒险者与铁匠交谈，得知曾有伤员带着奇怪爪痕回来，此事不简单。"},
         {"summary": "多方打听后，冒险者拼凑出真相：北方废弃神殿有超自然力量，镇上已有数人失踪。"},
+    ],
+    # ═══════════════════════════════════════════════════════════════
+    # tilemap 语义解读 / Dynamic scene entity generation
+    # ═══════════════════════════════════════════════════════════════
+    "interpret_tilemap": [
+        {
+            "summary": "边境小镇的街道图：东侧是铁匠铺和酒馆，中央有喷泉广场，西侧是民居和一口古井。镇子被木栅栏围绕，南边是通往森林的出口，北边是通往山区的崎岖小路。"
+        },
+    ],
+    "spawn_actors": [
+        {
+            "actors": [
+                {
+                    "id": "actor_blacksmith",
+                    "name": "铁匠",
+                    "role": "blacksmith",
+                    "race": "dwarf",
+                    "disposition": "friendly",
+                    "position_x": 10,
+                    "position_y": 10,
+                },
+                {
+                    "id": "actor_merchant",
+                    "name": "旅行商人",
+                    "role": "merchant",
+                    "race": "human",
+                    "disposition": "neutral",
+                    "position_x": 12,
+                    "position_y": 12,
+                },
+            ]
+        },
+    ],
+    "spawn_objects": [
+        {
+            "objects": [
+                {
+                    "id": "obj_chest",
+                    "name": "旧木箱",
+                    "object_type": "container",
+                    "position_x": 14,
+                    "position_y": 14,
+                    "interact_data": {"locked": False, "items": ["旧地图"]},
+                },
+                {
+                    "id": "obj_well",
+                    "name": "古井",
+                    "object_type": "decoration",
+                    "position_x": 20,
+                    "position_y": 20,
+                    "interactable": False,
+                },
+            ]
+        },
     ],
 }
 
