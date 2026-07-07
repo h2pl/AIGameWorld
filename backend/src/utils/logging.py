@@ -400,10 +400,10 @@ def log_db(table: str, op: str, rows: int = 0, **extra) -> None:
 
 def log_graph(node: str, tick: int, latency_ms: float | None = None, **extra) -> None:
     is_error = extra.get("event") == "error" or bool(extra.get("error"))
-    # 保持 event 为 graph.<node>，避免 error 调用方覆盖事件名
-    # Keep event name as graph.<node> so callers cannot overwrite it with event="error".
-    event_name = f"graph.{node}"
-    data = {"event": event_name, "node": node, "tick": tick, **extra}
+    # error 调用方会传入 event="error"，我们用它判断级别，但不应覆盖事件名
+    # Callers pass event="error" for errors; use it for level decision but keep event name.
+    cleaned = {k: v for k, v in extra.items() if k != "event"}
+    data = {"event": f"graph.{node}", "node": node, "tick": tick, **cleaned}
     if latency_ms is not None:
         data["latency_ms"] = latency_ms
     if is_error:

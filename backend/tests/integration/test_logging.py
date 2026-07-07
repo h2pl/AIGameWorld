@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from src.utils.logging import get_logger, setup_logging
+from src.utils.logging import get_logger, log_graph, setup_logging
 
 
 def _active_log_path(tmp_path: Path, base_name: str) -> Path:
@@ -133,3 +133,57 @@ class TestSetupLogging:
         app_log = today_dir / "app.log"
         assert app_log.exists()
         assert "date partitioned" in app_log.read_text(encoding="utf-8")
+
+
+class TestLogGraph:
+    """验证 log_graph 日志级别 / Verify log_graph log level."""
+
+    @pytest.fixture(autouse=True)
+    def reset_logging(self, monkeypatch, tmp_path):
+        """每个用例前重置 logging."""
+        monkeypatch.setattr("src.utils.logging._LOG_DIR", tmp_path)
+        root = logging.getLogger()
+        for h in list(root.handlers):
+            root.removeHandler(h)
+            with suppress(Exception):
+                h.close()
+        root.setLevel(logging.NOTSET)
+        for name in list(logging.Logger.manager.loggerDict):
+            logger = logging.getLogger(name)
+            logger.handlers.clear()
+            logger.setLevel(logging.NOTSET)
+            logger.propagate = True
+
+    def test_log_graph_info_for_normal_event(self, tmp_path):
+        """普通 graph 事件使用 INFO 级别."""
+        setup_logging("INFO", json_fmt=True)
+        log_graph("dm.create", tick=1, latency_ms=12.3)
+        for h in logging.getLogger().handlers:
+            if hasattr(h, "flush"):
+                h.flush()
+            if hasattr(h, "close"):
+                h.close()
+
+        app_log = _active_log_path(tmp_path, "app").read_text(encoding="utf-8")
+        record = json.loads(app_log.strip().splitlines()[0])
+        assert record["levelname"] == "INFO"
+        assert record["event"] == "graph.dm.create"
+        assert record.get("status") != "error"
+
+    def test_log_graph_error_for_error_event(self, tmp_path):
+        """graph error 事件使用 ERROR 级别."""
+        setup_logging("INFO", json_fmt=True)
+        log_graph("unknown", tick=1, event="error", error="boom")
+        for h in logging.getLogger().handlers:
+            if hasattr(h, "flush"):
+                h.flush()
+            if hasattr(h, "close"):
+                h.close()
+
+        error_log = "\n".join(p.read_text(encoding="utf-8") for p in tmp_path.rglob("error.log*"))
+        app_log = _active_log_path(tmp_path, "app").read_text(encoding="utf-8")
+        record = json.loads(app_log.strip().splitlines()[0])
+        assert record["levelname"] == "ERROR"
+        assert record["event"] == "graph.unknown"
+        assert record["status"] == "error"
+        assert "boom" in error_log
