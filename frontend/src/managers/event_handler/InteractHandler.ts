@@ -39,10 +39,9 @@ export class InteractHandler {
       await this._walkTo(sprite, mm, end.x, end.y);
     }
 
+    // 交互结果不再自动弹出头顶浮字，改为仅记录日志；物体详情由用户点击场景物体后通过 ObjectPanel 查看
     if (narration) {
       log.info(`interact narration: ${pcId} — ${narration}`);
-      // 头顶浮字与探索风格一致 / Float text above head, same style as explore
-      await new Promise<void>((resolve) => sprite.showExploreRecord(narration, resolve));
     }
   }
 

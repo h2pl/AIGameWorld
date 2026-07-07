@@ -41,7 +41,9 @@ async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
             scene_objects=scene_objects,
             config=config,
         )
-        decisions.extend(pc_decisions)
+        # 每个 PC 每 tick 只执行一个决策，避免前端重复展示 / One decision per PC per tick
+        if pc_decisions:
+            decisions.append(pc_decisions[0])
     return {"pc_decisions": decisions}
 
 

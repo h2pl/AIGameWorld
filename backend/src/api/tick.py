@@ -38,9 +38,11 @@ async def loop_start(world_id: str, orch=Depends(get_orch)):
 
 @router.post("/{world_id}/loop/pause")
 async def loop_pause(world_id: str):
-    """暂停持续 Tick 循环."""
+    """暂停持续 Tick 循环，同时取消正在运行的一次性 batch."""
     loop_manager.stop(world_id)
-    return {"status": "ok", "running": False}
+    was_running = batch_runner.is_running(world_id)
+    batch_runner.cancel(world_id)
+    return {"status": "ok", "running": False, "batch_cancelled": was_running}
 
 
 @router.post("/{world_id}/loop/resume")

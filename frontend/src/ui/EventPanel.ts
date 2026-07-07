@@ -13,10 +13,12 @@ const EVENT_ICONS: Record<string, string> = {
   scene_setup: "🗺️",
   scene_objects: "📦",
   character_move: "🚶",
+  pc_decision: "💡",
   pc_explore: "🔍",
   character_talk: "🗣️",
   pc_talk: "🗣️",
   character_explore: "🔍",
+  pc_interact: "🔧",
   combat_event: "⚔️",
   game_event: "🎮",
   state_change: "🔄",
@@ -131,6 +133,7 @@ function _readableType(t: string): string {
     dm_create: "DM 创建情境",
     dm_narrative: "DM 叙事",
     scene_setup: "场景设置",
+    pc_decision: "角色决策",
     pc_explore: "角色探索",
     pc_talk: "角色对话",
     pc_interact: "角色互动",
@@ -150,6 +153,14 @@ function _formatPayload(ev: EventData): string {
       return String(p.plot_brief || "");
     case "dm_narrative":
       return trunc(String(p.text || p.narrative || ""));
+    case "pc_decision": {
+      const action = String(p.action_type || "wait");
+      const target = String(p.target_id || "");
+      const reason = String(p.reasoning || p.thought || "");
+      const actionLabel = _actionLabel(action);
+      const body = target ? `${actionLabel} → ${target}` : actionLabel;
+      return reason ? `【${pcName}】${body} · ${trunc(reason, 24)}` : `【${pcName}】${body}`;
+    }
     case "scene_setup":
       return `进入「${String(p.scene_id || "")}」`;
     case "pc_explore": {
@@ -206,4 +217,15 @@ function _formatPayload(ev: EventData): string {
 
 function trunc(s: string, n = 30): string {
   return s.length > n ? s.slice(0, n) + "…" : s;
+}
+
+function _actionLabel(actionType: string): string {
+  const map: Record<string, string> = {
+    talk: "交谈",
+    interact: "交互",
+    combat: "战斗",
+    explore: "探索",
+    wait: "等待",
+  };
+  return map[actionType] || actionType;
 }

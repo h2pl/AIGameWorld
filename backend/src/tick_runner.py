@@ -109,6 +109,14 @@ class TickBatchRunner:
         self._targets[world_id] = n
         self._tasks[world_id] = asyncio.create_task(self._run(world_id, orch, n))
 
+    def cancel(self, world_id: str) -> bool:
+        """取消正在运行的 batch 任务 / Cancel running batch task."""
+        task = self._tasks.get(world_id)
+        if task is not None and not task.done():
+            task.cancel()
+            return True
+        return False
+
     def is_running(self, world_id: str) -> bool:
         task = self._tasks.get(world_id)
         return task is not None and not task.done()

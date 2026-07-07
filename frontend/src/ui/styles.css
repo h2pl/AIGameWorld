@@ -126,15 +126,16 @@
   left: 10px;
   top: 90px;
   width: 320px;
-  max-height: 35%;
+  /* 高度由内容自适应，不固定 / Height adapts to content */
+  max-height: none;
 }
 
 .dm-creation-body {
-  max-height: 200px;
   color: #ffd700;
   line-height: 1.6;
   font-size: 13px;
   white-space: pre-wrap;
+  overflow-y: visible;
 }
 
 .dm-creation-hints {

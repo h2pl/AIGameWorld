@@ -8,12 +8,14 @@ import type { EventData } from "./types";
 import * as API from "./client/api";
 import { speedMs } from "./config/playback";
 import { createLogger } from "./utils/logger";
+import { worldStore } from "./state/WorldStore";
 const log = createLogger("TickPlayer");
 
-export type PlayerState = "idle" | "running" | "stopped";
+export type PlayerState = "idle" | "running" | "paused" | "stopped";
 
 export class TickPlayer {
   private _state: PlayerState = "idle";
+  private _pending = false;
   private _pollTimer: number | null = null;
   private _lastTick = 0;
   private _baseUrl: string;
@@ -56,7 +58,8 @@ export class TickPlayer {
 
   /** 运行 N 个 tick */
   async runTicks(n: number, onTick: (tick: number, events: any[]) => void): Promise<number> {
-    if (this._state === "running") return 0;
+    if (this._state === "running" || this._pending) return 0;
+    this._pending = true;
     this._state = "running";
     this._eventManager.running = true;
     const targetTick = this._lastTick + n;
@@ -64,6 +67,7 @@ export class TickPlayer {
       await API.triggerBatch(this._baseUrl, this._worldId, n);
     } catch (e) {
       this._state = "idle";
+      this._pending = false;
       throw e;
     }
 
@@ -93,23 +97,32 @@ export class TickPlayer {
       await _sleep(speedMs(500));
     }
     this._state = "idle";
+    this._pending = false;
     this._emitWaiting(false);
     return delivered;
   }
 
   /** 启动自动循环播放 / Start auto-play loop */
   async startLoop(onTick: (tick: number, events: any[]) => void): Promise<void> {
-    if (this._state === "running") return;
+    if (this._state === "running" || this._pending) return;
+    this._pending = true;
     this._state = "running";
     this._eventManager.running = true;
-    await API.startLoop(this._baseUrl, this._worldId);
+    try {
+      await API.startLoop(this._baseUrl, this._worldId);
+    } catch (e) {
+      this._state = "idle";
+      this._pending = false;
+      throw e;
+    }
+    this._pending = false;
     this._startPolling(onTick);
   }
 
   /** 暂停自动循环 / Pause auto-play loop */
   async pauseLoop(): Promise<void> {
     if (this._state !== "running") return;
-    this._state = "idle";
+    this._state = "paused";
     this._stopPolling();
     this._eventManager.running = false;
     this._emitWaiting(false);
@@ -117,10 +130,18 @@ export class TickPlayer {
   }
 
   async resumeLoop(onTick: (tick: number, events: any[]) => void): Promise<void> {
-    if (this._state === "running") return;
+    if (this._state !== "paused" || this._pending) return;
+    this._pending = true;
     this._state = "running";
     this._eventManager.running = true;
-    await API.resumeLoop(this._baseUrl, this._worldId);
+    try {
+      await API.resumeLoop(this._baseUrl, this._worldId);
+    } catch (e) {
+      this._state = "paused";
+      this._pending = false;
+      throw e;
+    }
+    this._pending = false;
     this._startPolling(onTick);
   }
 
@@ -174,7 +195,12 @@ export class TickPlayer {
   }
 
   private _emitWaiting(waiting: boolean, message?: string): void {
-    window.dispatchEvent(new CustomEvent("tick-waiting", { detail: { waiting, message } }));
+    const runtime = worldStore.getState().runtime;
+    const isMock = runtime.llm_mock || runtime.data_mode === "mock";
+    const defaultMessage = isMock ? "生成 Tick 数据中..." : "等待后端生成 Tick 数据...";
+    window.dispatchEvent(
+      new CustomEvent("tick-waiting", { detail: { waiting, message: message || defaultMessage } })
+    );
   }
 
   private async _playTick(
