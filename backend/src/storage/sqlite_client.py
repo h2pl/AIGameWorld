@@ -33,11 +33,48 @@ class SQLiteClient:
             logger.info("[storage] closed")
 
     async def init_schema(self) -> None:
-        """执行 schema.sql."""
+        """执行 schema.sql 并应用兼容性迁移 / Execute schema.sql and apply compatibility migrations."""
         schema = (Path(__file__).parent / "schema.sql").read_text(encoding="utf-8")
         await self._db.executescript(schema)
         await self._db.commit()
+        await self._migrate_drop_map_key()
         logger.info("[storage] schema initialized")
+
+    async def _migrate_drop_map_key(self) -> None:
+        """删除 scenes 表历史 map_key 列 / Drop legacy map_key column from scenes."""
+        rows = await self.fetch_all("PRAGMA table_info(scenes)")
+        if not any(r.get("name") == "map_key" for r in rows):
+            return
+        logger.info("[storage] migrating: dropping scenes.map_key")
+        await self.execute("PRAGMA foreign_keys=OFF")
+        await self.execute("BEGIN")
+        try:
+            await self.execute(
+                "CREATE TABLE scenes_new ("
+                "id TEXT PRIMARY KEY, name TEXT NOT NULL, type TEXT NOT NULL, "
+                "description TEXT, spawn_x INTEGER NOT NULL DEFAULT 0, "
+                "spawn_y INTEGER NOT NULL DEFAULT 0, map_width INTEGER NOT NULL DEFAULT 40, "
+                "map_height INTEGER NOT NULL DEFAULT 40, world_id TEXT NOT NULL, "
+                "tilemap_summary TEXT, ext_json TEXT NOT NULL DEFAULT '{}', "
+                "created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')), "
+                "updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))"
+                ")"
+            )
+            await self.execute(
+                "INSERT INTO scenes_new (id, name, type, description, spawn_x, spawn_y, "
+                "map_width, map_height, world_id, tilemap_summary, ext_json, created_at, updated_at) "
+                "SELECT id, name, type, description, spawn_x, spawn_y, map_width, map_height, "
+                "world_id, tilemap_summary, ext_json, created_at, updated_at FROM scenes"
+            )
+            await self.execute("DROP TABLE scenes")
+            await self.execute("ALTER TABLE scenes_new RENAME TO scenes")
+            await self.execute("CREATE INDEX IF NOT EXISTS idx_scenes_world ON scenes(world_id)")
+            await self.execute("COMMIT")
+        except Exception:
+            await self.execute("ROLLBACK")
+            raise
+        finally:
+            await self.execute("PRAGMA foreign_keys=ON")
 
     @property
     def db(self) -> aiosqlite.Connection:

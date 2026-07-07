@@ -56,6 +56,7 @@ async def build_scene_state(state: OverallState, config=None) -> dict:
 async def build_scene_info(state: OverallState, config=None) -> dict:
     """第一步：构建单场景信息 / Build single scene context."""
     scene_id = state.get("scene_id", "")
+    world_id = state.get("world_id", "")
     scene_repo = get_repo(config, "scene")
     scene = await scene_repo.get_scene(scene_id) if scene_repo else None
     if scene is None:
@@ -71,7 +72,10 @@ async def build_scene_info(state: OverallState, config=None) -> dict:
             tilemap_summary="",
             landmarks=[],
             exits=[],
+            world_id=world_id,
         )
+        if scene_repo:
+            await scene_repo.save_scene(scene, world_id)
     return {"scene": scene}
 
 
