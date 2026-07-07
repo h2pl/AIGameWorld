@@ -12,6 +12,7 @@ describe("MapManager", () => {
         setCollisionByProperty: vi.fn(),
         setDepth: vi.fn(),
       })),
+      getTileLayerNames: vi.fn(() => ["Below Player", "World", "Above Player"]),
       destroy: vi.fn(),
     };
     const scene = {
