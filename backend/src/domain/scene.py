@@ -12,9 +12,9 @@ class Scene(DomainModel):
     name: str = ""
     type: str = ""  # outdoor / indoor / underground
     description: str = ""
-    spawn_x: int = 0  # 初始出生点 X / Spawn point X
-    spawn_y: int = 0  # 初始出生点 Y / Spawn point Y
     map_key: str = ""
+    spawn_x: int = 0
+    spawn_y: int = 0
     map_width: int = Field(default=40, ge=1)
     map_height: int = Field(default=40, ge=1)
     tilemap_summary: str = ""

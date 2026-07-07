@@ -34,8 +34,10 @@ export class Boot extends Phaser.Scene {
       const tilesetImageKey = ext.tileset_image_key;
       const tilesetName = ext.tileset_name;
 
+      const mapKey = sc.map_key || sc.id;
+
       log.info(
-        `scene ${sc.id}: map_key=${sc.map_key} tilemap=${tilemapUrl} tileset=${tilesetUrl} key=${tilesetImageKey} name=${tilesetName}`
+        `scene ${sc.id}: map_key=${mapKey} tilemap=${tilemapUrl} tileset=${tilesetUrl} key=${tilesetImageKey} name=${tilesetName}`
       );
 
       if (tilesetUrl && !loaded.has(tilesetUrl)) {
@@ -43,9 +45,9 @@ export class Boot extends Phaser.Scene {
         this.load.image(tilesetImageKey || "tileset", tilesetUrl);
         log.info(`loading image: %s ← %s`, tilesetImageKey, tilesetUrl);
       }
-      if (tilemapUrl && sc.map_key) {
-        this.load.tilemapTiledJSON(sc.map_key, tilemapUrl);
-        log.info(`loading tilemap: %s ← %s`, sc.map_key, tilemapUrl);
+      if (tilemapUrl && mapKey) {
+        this.load.tilemapTiledJSON(mapKey, tilemapUrl);
+        log.info(`loading tilemap: %s ← %s`, mapKey, tilemapUrl);
       }
     }
   }

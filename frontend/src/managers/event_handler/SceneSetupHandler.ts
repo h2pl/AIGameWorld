@@ -4,8 +4,8 @@ import { worldStore } from "../../state/WorldStore";
 
 export type SceneSetupData = {
   sceneId: string;
-  mapKey: string;
   sceneName: string;
+  mapKey: string;
   extJson: Record<string, string>;
   pcs: any[];
   actors: any[];
@@ -24,16 +24,16 @@ export class SceneSetupHandler {
 
     // 解析场景数据 / Parse scene data
     const scene = payload.scene as Record<string, unknown> | undefined;
-    const mapKey = scene ? String(scene.map_key || "") : "";
     const sceneName = scene ? String(scene.name || "") : "";
+    const mapKey = scene ? String(scene.map_key || sceneId) : sceneId;
     const extJson: Record<string, string> = scene?.ext_json
       ? JSON.parse(scene.ext_json as string)
       : {};
 
     await this.ensureScene({
       sceneId,
-      mapKey,
       sceneName,
+      mapKey,
       extJson,
       pcs: (payload.pcs || []) as any[],
       actors: (payload.actors || []) as any[],

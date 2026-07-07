@@ -15,7 +15,7 @@ class SceneRepo:
     async def list_scenes(self, world_id: str) -> list[Scene]:
         """按 world_id 加载场景摘要列表."""
         rows = await self._db.fetch_all(
-            "SELECT id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json FROM scenes WHERE world_id = ?",
+            "SELECT id, name, type, description, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json FROM scenes WHERE world_id = ?",
             (world_id,),
         )
         return [_row_to_scene(r, world_id) for r in rows]
@@ -23,7 +23,7 @@ class SceneRepo:
     async def get_scene(self, scene_id: str) -> Scene | None:
         """按 scene_id 加载单个场景."""
         row = await self._db.fetch_one(
-            "SELECT id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json, world_id FROM scenes WHERE id = ?",
+            "SELECT id, name, type, description, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json, world_id FROM scenes WHERE id = ?",
             (scene_id,),
         )
         if not row:
@@ -34,14 +34,13 @@ class SceneRepo:
         """写入单条场景."""
         await self._db.execute(
             "INSERT OR REPLACE INTO scenes "
-            "(id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json, world_id, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
+            "(id, name, type, description, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json, world_id, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
             (
                 scene.id,
                 scene.name,
                 scene.type,
                 scene.description,
-                scene.map_key,
                 scene.spawn_x,
                 scene.spawn_y,
                 scene.map_width,
@@ -99,6 +98,14 @@ class SceneRepo:
             for r in rows
         ]
 
+    async def get_object_ids(self, scene_id: str) -> list[str]:
+        """按 scene_id 查询场景物体 id 列表 / List scene object ids by scene."""
+        rows = await self._db.fetch_all(
+            "SELECT id FROM scene_objects WHERE scene_id = ?",
+            (scene_id,),
+        )
+        return [r["id"] for r in rows]
+
     async def delete_by_world(self, world_id: str) -> None:
         """删除指定 world 下所有场景及场景对象 / Delete all scenes and objects for a world."""
         await self._db.execute("DELETE FROM scene_objects WHERE world_id = ?", (world_id,))
@@ -137,7 +144,6 @@ def _row_to_scene(row, world_id: str = "") -> Scene:
         name=row.get("name", ""),
         type=row.get("type", ""),
         description=row.get("description", ""),
-        map_key=row.get("map_key", ""),
         spawn_x=row.get("spawn_x", 0),
         spawn_y=row.get("spawn_y", 0),
         map_width=row.get("map_width", 40),

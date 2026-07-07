@@ -399,10 +399,20 @@ def log_db(table: str, op: str, rows: int = 0, **extra) -> None:
 
 
 def log_graph(node: str, tick: int, latency_ms: float | None = None, **extra) -> None:
-    data = {"event": f"graph.{node}", "node": node, "tick": tick, **extra}
+    is_error = extra.get("event") == "error" or bool(extra.get("error"))
+    # 保持 event 为 graph.<node>，避免 error 调用方覆盖事件名
+    # Keep event name as graph.<node> so callers cannot overwrite it with event="error".
+    event_name = f"graph.{node}"
+    data = {"event": event_name, "node": node, "tick": tick, **extra}
     if latency_ms is not None:
         data["latency_ms"] = latency_ms
-    logging.getLogger("graph").info(f"[graph] {node} tick={tick}", extra=data)
+    if is_error:
+        data["status"] = "error"
+    logger = logging.getLogger("graph")
+    if is_error:
+        logger.error(f"[graph] {node} tick={tick} error", extra=data)
+    else:
+        logger.info(f"[graph] {node} tick={tick}", extra=data)
 
 
 def log_svc(svc: str, tick: int, **extra) -> None:
