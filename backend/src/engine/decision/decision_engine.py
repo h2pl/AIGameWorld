@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
 from ...domain import Actor, PlayerCharacter
-from ...schemas.llm_output import CharacterActionSchema, PCDecideListSchema
+from ...schemas.llm_output import CharacterActionSchema, PCDecideSchema
 from ...schemas.response import PCDecideResponse
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm
@@ -37,8 +37,8 @@ async def decide(
     actors: dict[str, Actor] | None = None,
     scene_objects: list[dict[str, Any]] | None = None,
     config: RunnableConfig = None,
-) -> list[dict]:
-    """为单个 PC 决策 / Decide for a PC, return 1-3 actions.
+) -> dict:
+    """为单个 PC 决策 / Decide for a PC, return exactly one action.
 
     PC/Actor 身份和坐标统一从 pcs / actors 读取（tick 内权威数据源）。
     """
@@ -84,26 +84,19 @@ async def decide(
 
     result = await llm.call_structured(
         "pc_decision",
-        PCDecideListSchema,
+        PCDecideSchema,
         [SystemMessage(content=system), HumanMessage(content=prompt)],
     )
 
-    decisions: list[dict] = []
-    for action in result.actions:
-        validated = _validate(action, scene, pc_map, actor_map)
-        decisions.append(
-            PCDecideResponse(
-                pc_id=pc_id,
-                type=validated.action_type,
-                target_id=validated.target_id,
-                target_type=validated.target_type,
-                thought=validated.thought,
-                description=validated.reasoning,
-            ).model_dump()
-        )
-    if not decisions:
-        decisions = [_fallback_decision(pc_id)]
-    return decisions
+    validated = _validate(result.action, scene, pc_map, actor_map)
+    return PCDecideResponse(
+        pc_id=pc_id,
+        type=validated.action_type,
+        target_id=validated.target_id,
+        target_type=validated.target_type,
+        thought=validated.thought,
+        description=validated.thought,  # thought 即决策理由 / thought IS the rationale
+    ).model_dump()
 
 
 def _fallback_decision(pc_id: str) -> dict:
@@ -111,7 +104,7 @@ def _fallback_decision(pc_id: str) -> dict:
         pc_id=pc_id,
         type="wait",
         thought="当前没有明确目标，先观察局势。",
-        description="等待时机。",
+        description="当前没有明确目标，先观察局势。",
     ).model_dump()
 
 
@@ -167,8 +160,6 @@ def _validate(
             result.target_type = None
     if not result.thought or not result.thought.strip():
         result.thought = "我做出了这个决定。"
-    if not result.reasoning or not result.reasoning.strip():
-        result.reasoning = "等待时机。"
     return result
 
 

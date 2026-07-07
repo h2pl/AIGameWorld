@@ -5,12 +5,14 @@
  */
 import { Panel } from "./Panel";
 import type { SceneObjectData } from "../types";
+import { worldStore } from "../state/WorldStore";
 
 /** 物品类型 → 图标+中文映射 / Object type → icon mapping */
 const OBJ_TYPES: Record<string, string> = {
   container: "📦 宝箱 / Chest",
   door: "🚪 门 / Door",
   landmark: "📍 地标 / Landmark",
+  decoration: "🖼️ 装饰 / Decoration",
 };
 
 export class ObjectPanel extends Panel {
@@ -56,9 +58,14 @@ export class ObjectPanel extends Panel {
    * TODO: 接入后端后，物品交互数据（描述/内容/触发效果）由 object-interacted 的 detail 字段携带
    */
   private showObj(obj: SceneObjectData): void {
+    // 切换场景期间忽略 object-interacted 事件，避免旧/未就绪对象误弹窗
+    const currentSceneId = worldStore.getState().current_scene_id;
+    if (obj.scene_id && currentSceneId && obj.scene_id !== currentSceneId) {
+      return;
+    }
     this.contentEl.innerHTML = `
       <div class="char-name">${OBJ_TYPES[obj.object_type] || obj.object_type} — ${obj.name}</div>
-      <div class="char-meta">场景: ${obj.scene_id}　|　位置: (${obj.position_x}, ${obj.position_y})</div>
+      <div class="char-meta">场景: ${obj.scene_id || "-"}　|　位置: (${obj.position_x}, ${obj.position_y})</div>
       <div class="section">
         <div class="section-title">📋 类型 / Type</div>
         <p>${obj.object_type} — 交互功能待开发 / Interaction TBD</p>

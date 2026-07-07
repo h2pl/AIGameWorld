@@ -65,6 +65,14 @@ async def seed_mock_data(db: Any, world_id: str = MOCK_WORLD_ID) -> None:
     await item_repo.delete_by_world(world_id)
     await world_repo.delete(world_id)
 
+    # 同步清理 tick_events / dm_records / memories，保持数据一致性
+    from src.repository.dm_record_repo import DMRecordRepo  # noqa: E402
+    from src.repository.event_repo import TickEventRepo  # noqa: E402
+
+    await TickEventRepo(db).delete_by_world(world_id)
+    await DMRecordRepo(db).delete_by_world(world_id)
+    await DMRecordRepo(db).delete_summaries_by_world(world_id)
+
     await _seed_world(world_repo, world_id)
     await _seed_scenes(scene_repo, world_id)
     await _seed_items(item_repo, world_id)

@@ -13,7 +13,7 @@ world:
 # === 运行时配置 / Runtime configuration ===
 # 这些字段描述后端以何种模式运行，与 world 业务配置相互独立、同时生效
 runtime:
-  llm_mock: true              # LLM 是否走 mock / Whether LLM returns mock data
+  llm_mock: false              # LLM 是否走 mock / Whether LLM returns mock data
   data_mode: mock             # 数据模式：mock|real；mock 模式下启动时自动注入 mock 数据 / Data mode: mock or real
   db_name: "data/dev.db"      # 指定使用的 SQLite DB 路径 / Active SQLite DB path
   mock_dataset: "tavern"      # mock 数据集 / Mock dataset name
@@ -76,6 +76,19 @@ llm_purposes:
   reflection:
     temperature: 0.5
     timeout: 15
+    retries: 1
+  # === 场景生成 / Scene generation ===
+  interpret_tilemap:
+    temperature: 0.5
+    timeout: 15
+    retries: 1
+  spawn_actors:
+    temperature: 0.8
+    timeout: 20
+    retries: 1
+  spawn_objects:
+    temperature: 0.7
+    timeout: 20
     retries: 1
 
 # === 数据库 / Database ===

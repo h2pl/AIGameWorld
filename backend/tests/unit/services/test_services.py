@@ -85,7 +85,7 @@ class TestCharacterService:
         scene = {"id": "scene-1"}
         scene_objects = [{"id": "obj-1"}]
         pcs = {"pc-1": PlayerCharacter(id="pc-1", name="Alex", role="fighter")}
-        decision = [{"pc_id": "pc-1", "type": "talk", "description": "先交涉"}]
+        decision = {"pc_id": "pc-1", "type": "talk", "description": "先交涉"}
         with patch.object(
             pc_service.decision_engine,
             "decide",
@@ -109,7 +109,7 @@ class TestCharacterService:
         assert mock_decide.call_args.kwargs["tick"] == 3
         assert mock_decide.call_args.kwargs["pcs"] == pcs
         assert mock_decide.call_args.kwargs["scene_objects"] == scene_objects
-        assert result == {"pc_decisions": decision}
+        assert result == {"pc_decisions": [decision]}
 
     @pytest.mark.asyncio
     async def test_act_dispatches_talk_and_interact(self):
@@ -422,7 +422,6 @@ class TestEventService:
         assert len(decision_events) == 1
         assert decision_events[0].payload["pc_id"] == "pc-1"
         assert decision_events[0].payload["thought"] == "我想找 NPC 打听消息。"
-        assert decision_events[0].payload["reasoning"] == "先交谈收集情报。"
 
     @pytest.mark.asyncio
     async def test_flush_events_drops_unknown_kinds(self):

@@ -75,9 +75,28 @@ class Orchestrator:
         return config
 
     async def reset(self, world_id: str) -> None:
-        """重置 world data_tick 和 display_tick 为 0 / Reset world ticks to 0."""
+        """重置 world：清零 tick + 清理事件/DM记录/摘要 + 重置角色坐标."""
+        # 1. 清零 tick / Reset ticks to 0
         world_repo = self._repos.get("world")
         if not world_repo:
             logger.error("[orchestrator] world repo not found")
             raise RuntimeError("world repo not found")
         await world_repo.reset_tick(world_id)
+
+        # 2. 清空 tick 事件 / Clear tick events
+        event_repo = self._repos.get("event")
+        if event_repo:
+            await event_repo.delete_by_world(world_id)
+
+        # 3. 清空 DM 记录 + 摘要 / Clear DM records and summaries
+        dm_repo = self._repos.get("dm_record")
+        if dm_repo:
+            await dm_repo.delete_by_world(world_id)
+            await dm_repo.delete_summaries_by_world(world_id)
+
+        # 4. 重置 PC 坐标 / Reset PC positions
+        pc_repo = self._repos.get("char")
+        if pc_repo:
+            await pc_repo.reset_positions(world_id)
+
+        logger.info("[orchestrator] reset complete for %s", world_id)

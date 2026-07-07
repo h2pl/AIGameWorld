@@ -83,7 +83,6 @@ def _decision_events(state: OverallState) -> list[TickEvent]:
                     "target_id": decision.get("target_id", ""),
                     "target_type": decision.get("target_type", ""),
                     "thought": decision.get("thought", ""),
-                    "reasoning": decision.get("description", ""),
                 },
             )
         )
@@ -151,13 +150,46 @@ def _pick(*evs: TickEvent | None) -> list[TickEvent]:
     return [e for e in evs if e is not None]
 
 
+def _group_decision_action_pairs(
+    decisions: list[TickEvent],
+    actions: list[TickEvent],
+) -> list[TickEvent]:
+    """按 PC 交织决策和行动事件：每个 PC 的 决策→行动 依次排列."""
+    # 构建 pc_id → action_event 映射 / Build pc_id → action_event map
+    action_map: dict[str, TickEvent] = {}
+    unmatched: list[TickEvent] = []
+    for a in actions:
+        pc_id = a.payload.get("pc_id", "")
+        if pc_id:
+            action_map[pc_id] = a
+        else:
+            unmatched.append(a)
+
+    paired: list[TickEvent] = []
+    for d in decisions:
+        pc_id = d.payload.get("pc_id", "")
+        paired.append(d)  # 先放决策 / decision first
+        action = action_map.pop(pc_id, None)
+        if action:
+            paired.append(action)  # 再放行动 / action after
+    # 兜底：未匹配到 decision 的 action 放末尾 / unmatched actions at end
+    paired.extend(action_map.values())
+    paired.extend(unmatched)
+
+    return paired
+
+
 def flush_events(state: OverallState, config: RunnableConfig = None) -> dict:
-    """从 state 各阶段产出统一构造 TickEvent 列表，存入 _pending_events 供 data_service 落盘."""
-    events = [
-        *_pick(_dm_create_event(state), _scene_event(state)),
-        *_decision_events(state),
-        *_action_events(state),
-    ]
+    """从 state 各阶段产出统一构造 TickEvent 列表，存入 _pending_events 供 data_service 落盘.
+
+    顺序：dm_create → scene_setup → 每个 PC 的 决策→行动 → ...，保证前端逐 PC 串行展示.
+    """
+    dm_evts = _pick(_dm_create_event(state), _scene_event(state))
+    decisions = _decision_events(state)
+    actions = _action_events(state)
+    pc_evts = _group_decision_action_pairs(decisions, actions)
+
+    events = [*dm_evts, *pc_evts]
     tick = state.get("tick", 0)
     logger.info("[service] flushed events tick=%s count=%d", tick, len(events))
     return {"_pending_events": events}

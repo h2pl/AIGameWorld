@@ -31,17 +31,15 @@ class CharacterActionSchema(BaseModel):
     target_id: str | None = Field(default=None, description="目标 id（pc/actor/场景物体）")
     target_type: str | None = Field(default=None, description="pc / actor / scene_object")
     thought: str = Field(
-        description="完整的思考过程（2-4句中文）：观察到了什么、联想到哪些记忆、权衡了哪些选择、为什么选这个行动"
+        description="思考过程（2-4句中文）：观察到什么、如何权衡、为什么选这个行动"
     )
-    reasoning: str = Field(description="最终决策理由（1-2句中文，总结为什么执行这个动作）")
 
 
-class PCDecideListSchema(BaseModel):
-    """PC 多行动决策列表——每 tick 可执行 1~3 个动作 / PC multi-action decision list."""
+class PCDecideSchema(BaseModel):
+    """PC 单行动决策——每 tick 只输出一个动作 / PC single-action decision."""
 
-    actions: list[CharacterActionSchema] = Field(
-        default_factory=list,
-        description="按顺序执行的行动列表，通常 1~3 个",
+    action: CharacterActionSchema = Field(
+        description="本 tick 要执行的唯一动作",
     )
 
 

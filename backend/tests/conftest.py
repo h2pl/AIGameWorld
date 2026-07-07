@@ -71,7 +71,7 @@ def _make_mock_llm():
         DMOutput,
         ExploreOutputSchema,
         InteractOutputSchema,
-        PCDecideListSchema,
+        PCDecideSchema,
         ReflectionOutputSchema,
         SummaryOutputSchema,
     )
@@ -82,15 +82,13 @@ def _make_mock_llm():
         if purpose == "dm_narrate":
             return DMNarrativeSchema(narrative="夜幕降临，酒馆里灯火通明。")
         if purpose == "pc_decision":
-            return PCDecideListSchema(
-                actions=[
-                    {
-                        "action_type": "wait",
-                        "target_id": None,
-                        "target_type": None,
-                        "reasoning": "等待时机。",
-                    }
-                ]
+            return PCDecideSchema(
+                action={
+                    "action_type": "wait",
+                    "target_id": None,
+                    "target_type": None,
+                    "thought": "等待时机。",
+                }
             )
         if purpose == "talk":
             return DialogueSchema(turns=[])

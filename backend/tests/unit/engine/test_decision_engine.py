@@ -15,7 +15,6 @@ class TestValidateActionTarget:
                 target_id="npc_greta",
                 target_type="actor",
                 thought="先看看情况。",
-                reasoning="观望",
             )
         )
         assert result.action_type == "wait"
@@ -24,9 +23,7 @@ class TestValidateActionTarget:
 
     def test_talk_without_target_falls_back_to_wait(self):
         """talk 但没有 target，降级为 wait / talk without a target falls back to wait."""
-        result = _validate(
-            CharacterActionSchema(action_type="talk", thought="想找人聊聊", reasoning="想说点什么")
-        )
+        result = _validate(CharacterActionSchema(action_type="talk", thought="想找人聊聊"))
         assert result.action_type == "wait"
         assert result.target_id is None
         assert result.target_type is None
@@ -39,7 +36,6 @@ class TestValidateActionTarget:
                 target_id="obj_stele",
                 target_type="scene_object",
                 thought="跟石碑说话似乎没用。",
-                reasoning="跟石碑说话？",
             )
         )
         assert result.action_type == "wait"
@@ -56,7 +52,6 @@ class TestValidateActionTarget:
                 target_id="npc_greta",
                 target_type="actor",
                 thought="Greta 应该知道消息。",
-                reasoning="打听消息",
             ),
             actors={"npc_greta": Actor(id="npc_greta", name="Greta")},
         )
@@ -72,7 +67,6 @@ class TestValidateActionTarget:
                 target_id="npc_missing",
                 target_type="actor",
                 thought="人不在场。",
-                reasoning="找人",
             ),
             actors={},
         )
@@ -87,7 +81,6 @@ class TestValidateActionTarget:
                 target_id="npc_greta",
                 target_type="actor",
                 thought="这不是物体。",
-                reasoning="想互动",
             )
         )
         assert result.action_type == "wait"
@@ -100,7 +93,6 @@ class TestValidateActionTarget:
                 target_id="obj_stele",
                 target_type="scene_object",
                 thought="石碑不是敌人。",
-                reasoning="攻击石碑？",
             )
         )
         assert result.action_type == "wait"
@@ -113,21 +105,13 @@ class TestValidateActionTarget:
                 target_id="npc_greta",
                 target_type="actor",
                 thought="先走过去。",
-                reasoning="走过去",
             )
         )
         assert result.action_type == "wait"
         assert result.target_id is None
         assert result.target_type is None
 
-    def test_empty_reasoning_defaults_to_wait_message(self):
-        """空 reasoning 使用默认文案 / Empty reasoning uses the default fallback text."""
-        result = _validate(
-            CharacterActionSchema(action_type="wait", thought="再等等。", reasoning="")
-        )
-        assert result.reasoning == "等待时机。"
-
     def test_empty_thought_gets_default(self):
         """空 thought 使用默认文案 / Empty thought uses the default fallback text."""
-        result = _validate(CharacterActionSchema(action_type="wait", thought="", reasoning="观望"))
+        result = _validate(CharacterActionSchema(action_type="wait", thought=""))
         assert result.thought == "我做出了这个决定。"

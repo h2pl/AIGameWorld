@@ -17,102 +17,100 @@ _PC_DECISIONS: list[dict] = [
         "action_type": "talk",
         "target_id": "merchant",
         "target_type": "actor",
-        "reasoning": "Greta 的眼神暗示她有话要说，先打听一下最近镇上有什么异常。",
+        "thought": "Greta 的眼神暗示她有话要说，先打听一下最近镇上有什么异常。",
     },
     {
         "action_type": "explore",
         "target_id": None,
         "target_type": None,
-        "reasoning": "也许应该在酒馆周围四处看看，说不定能发现什么线索。",
+        "thought": "也许应该在酒馆周围四处看看，说不定能发现什么线索。",
     },
     {
         "action_type": "talk",
         "target_id": "blacksmith",
         "target_type": "actor",
-        "reasoning": "铁匠看起来是个有故事的人，去和他聊聊也许能打听到什么。",
+        "thought": "铁匠看起来是个有故事的人，去和他聊聊也许能打听到什么。",
     },
     {
         "action_type": "interact",
         "target_id": "chest_1",
         "target_type": "scene_object",
-        "reasoning": "角落里那个箱子看起来有点可疑，让我检查一下里面有什么。",
+        "thought": "角落里那个箱子看起来有点可疑，让我检查一下里面有什么。",
     },
     {
         "action_type": "explore",
         "target_id": None,
         "target_type": None,
-        "reasoning": "这个酒馆的布局让人在意，到处巡视一下看看有没有暗门或隐藏的线索。",
+        "thought": "这个酒馆的布局让人在意，到处巡视一下看看有没有暗门或隐藏的线索。",
     },
     {
         "action_type": "talk",
         "target_id": "guard",
         "target_type": "actor",
-        "reasoning": "门口的守卫似乎欲言又止，去和他打探一下消息。",
+        "thought": "门口的守卫似乎欲言又止，去和他打探一下消息。",
     },
     {
         "action_type": "explore",
         "target_id": None,
         "target_type": None,
-        "reasoning": "外面的街道上似乎有什么动静，出去查看一下。",
+        "thought": "外面的街道上似乎有什么动静，出去查看一下。",
     },
     {
         "action_type": "interact",
         "target_id": "door_cellar",
         "target_type": "scene_object",
-        "reasoning": "那个通往地窖的门虚掩着，说不定下面有什么好东西。",
+        "thought": "那个通往地窖的门虚掩着，说不定下面有什么好东西。",
     },
     {
         "action_type": "talk",
         "target_id": "merchant",
         "target_type": "actor",
-        "reasoning": "想问问老板娘关于北边森林的更多细节。",
+        "thought": "想问问老板娘关于北边森林的更多细节。",
     },
     {
         "action_type": "explore",
         "target_id": None,
         "target_type": None,
-        "reasoning": "沙漠中的遗迹似乎有秘密通道，必须仔细搜索。",
+        "thought": "沙漠中的遗迹似乎有秘密通道，必须仔细搜索。",
     },
     {
         "action_type": "talk",
         "target_id": "guard",
         "target_type": "actor",
-        "reasoning": "守卫看起来知道沙漠里的危险，向他打听一下注意事项。",
+        "thought": "守卫看起来知道沙漠里的危险，向他打听一下注意事项。",
     },
     {
         "action_type": "interact",
         "target_id": "chest_wooden",
         "target_type": "scene_object",
-        "reasoning": "角落里有个古旧的木箱，上面雕刻着奇怪的符文。",
+        "thought": "角落里有个古旧的木箱，上面雕刻着奇怪的符文。",
     },
     {
         "action_type": "combat",
         "target_id": "goblin",
         "target_type": "actor",
-        "reasoning": "那只地精虎视眈眈，必须先下手为强。",
+        "thought": "那只地精虎视眈眈，必须先下手为强。",
     },
     {
         "action_type": "combat",
         "target_id": "skeleton",
         "target_type": "actor",
-        "reasoning": "不死生物不能放任它在村子里游荡。",
+        "thought": "不死生物不能放任它在村子里游荡。",
     },
     {
         "action_type": "combat",
         "target_id": "orc_boss",
         "target_type": "actor",
-        "reasoning": "首领才是威胁的根源，集中火力解决它。",
+        "thought": "首领才是威胁的根源，集中火力解决它。",
     },
 ]
 
 
 def _normalize_action(action: dict) -> dict:
-    """补全 PC decision 的 thought/reasoning 字段，避免 schema 校验失败."""
+    """补全 PC decision 的 thought 字段，避免 schema 校验失败."""
     normalized = dict(action)
     if "thought" not in normalized:
-        normalized["thought"] = normalized.get("reasoning", "我做出了这个决定。")
-    if "reasoning" not in normalized:
-        normalized["reasoning"] = normalized.get("thought", "等待时机。")
+        normalized["thought"] = "我做出了这个决定。"
     return normalized
 
 
@@ -121,11 +119,9 @@ class _PcDecisionRotator:
         self._idx = 0
 
     def next(self) -> dict:
-        a1 = _PC_DECISIONS[self._idx % len(_PC_DECISIONS)]
+        action = _PC_DECISIONS[self._idx % len(_PC_DECISIONS)]
         self._idx += 1
-        a2 = _PC_DECISIONS[self._idx % len(_PC_DECISIONS)]
-        self._idx += 1
-        return {"actions": [_normalize_action(a1), _normalize_action(a2)]}
+        return {"action": _normalize_action(action)}
 
 
 _pc_rotator = _PcDecisionRotator()
@@ -301,19 +297,19 @@ DATASET_TAVERN: MockDataset = {
             "action_type": "talk",
             "target_id": "cleric",
             "target_type": "pc",
-            "reasoning": "这些冒险者装备精良，生意来了。DM 让我留意打听商队消息的人。",
+            "thought": "这些冒险者装备精良，生意来了。DM 让我留意打听商队消息的人。",
         },
         {
             "action_type": "talk",
             "target_id": "fighter",
             "target_type": "pc",
-            "reasoning": "终于看到实力不错的冒险者了，得把北边的情况告诉他们。",
+            "thought": "终于看到实力不错的冒险者了，得把北边的情况告诉他们。",
         },
         {
             "action_type": "talk",
             "target_id": "rogue",
             "target_type": "pc",
-            "reasoning": "那个贼头贼脑的家伙看起来对秘密很感兴趣，正好可以利用他。",
+            "thought": "那个贼头贼脑的家伙看起来对秘密很感兴趣，正好可以利用他。",
         },
     ],
     "reflection": [
@@ -548,19 +544,19 @@ DATASET_DESERT: MockDataset = {
             "action_type": "talk",
             "target_id": "wizard",
             "target_type": "pc",
-            "reasoning": "那个法师看起来对古代文字很感兴趣，可以给他指路。",
+            "thought": "那个法师看起来对古代文字很感兴趣，可以给他指路。",
         },
         {
             "action_type": "talk",
             "target_id": "rogue",
             "target_type": "pc",
-            "reasoning": "那个贼头贼脑的家伙想找宝藏，这沙漠里倒是有不少。",
+            "thought": "那个贼头贼脑的家伙想找宝藏，这沙漠里倒是有不少。",
         },
         {
             "action_type": "talk",
             "target_id": "fighter",
             "target_type": "pc",
-            "reasoning": "这个战士看起来很勇敢，也许能帮我们对付沙龙的威胁。",
+            "thought": "这个战士看起来很勇敢，也许能帮我们对付沙龙的威胁。",
         },
     ],
     "reflection": [
@@ -674,19 +670,19 @@ DATASET_COMBAT: MockDataset = {
             "action_type": "combat",
             "target_id": "fighter",
             "target_type": "pc",
-            "reasoning": "那个人类战士看起来最自信，先打垮他！",
+            "thought": "那个人类战士看起来最自信，先打垮他！",
         },
         {
             "action_type": "combat",
             "target_id": "cleric",
             "target_type": "pc",
-            "reasoning": "先干掉治疗者，其他人就容易对付了。",
+            "thought": "先干掉治疗者，其他人就容易对付了。",
         },
         {
             "action_type": "combat",
             "target_id": "wizard",
             "target_type": "pc",
-            "reasoning": "法师最危险，必须先解决掉。",
+            "thought": "法师最危险，必须先解决掉。",
         },
     ],
     "reflection": [

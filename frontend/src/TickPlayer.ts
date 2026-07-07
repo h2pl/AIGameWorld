@@ -22,10 +22,11 @@ export class TickPlayer {
   private _worldId: string;
   private _eventManager: EventManager;
 
-  constructor(baseUrl: string, worldId: string, em: EventManager) {
+  constructor(baseUrl: string, worldId: string, em: EventManager, initialTick: number = 0) {
     this._baseUrl = baseUrl;
     this._worldId = worldId;
     this._eventManager = em;
+    this._lastTick = initialTick;
   }
 
   get state(): PlayerState {

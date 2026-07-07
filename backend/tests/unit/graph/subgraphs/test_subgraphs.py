@@ -40,7 +40,7 @@ class TestCharacterSubgraph:
             "actors": {},
         }
 
-        decision = [{"pc_id": "pc-1", "type": "talk", "description": "先问话"}]
+        decision = {"pc_id": "pc-1", "type": "talk", "description": "先问话"}
         with (
             patch(
                 "src.services.pc_service.decision_engine.decide",
@@ -61,7 +61,7 @@ class TestCharacterSubgraph:
         ):
             result = await pc_subgraph.ainvoke(state)
         assert result["scene"] == scene
-        assert result["pc_decisions"] == decision
+        assert result["pc_decisions"] == [decision]
 
 
 class TestReflectionSubgraph:

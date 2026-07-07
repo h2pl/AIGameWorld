@@ -29,7 +29,7 @@ async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
     tick = state.get("tick", 0)
     decisions: list[dict] = []
     for pc_id in pcs:
-        pc_decisions = await decision_engine.decide(
+        decision = await decision_engine.decide(
             pc_id=pc_id,
             scene=scene,
             plot_brief=plot_brief,
@@ -41,9 +41,8 @@ async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
             scene_objects=scene_objects,
             config=config,
         )
-        # 每个 PC 每 tick 只执行一个决策，避免前端重复展示 / One decision per PC per tick
-        if pc_decisions:
-            decisions.append(pc_decisions[0])
+        if decision:
+            decisions.append(decision)
     return {"pc_decisions": decisions}
 
 

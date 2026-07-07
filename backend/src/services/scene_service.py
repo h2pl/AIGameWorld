@@ -430,6 +430,7 @@ def _build_scene_object_ctx(objects: list) -> list[dict[str, Any]]:
             "id": obj.id,
             "name": obj.name,
             "object_type": obj.object_type.value,
+            "scene_id": getattr(obj, "scene_id", ""),
             "interactable": obj.interactable,
             "position_x": obj.position_x,
             "position_y": obj.position_y,

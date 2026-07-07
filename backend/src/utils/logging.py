@@ -1,20 +1,23 @@
-"""结构化日志辅助 / Structured logging helpers.
+"""Structured logging configuration.
 
-对齐业界推荐：
-- extra 始终包含 event 字段
-- latency_ms 统一命名
-- 性能日志 → logs/perf.log，业务日志 → logs/app.log
-- 控制台输出类别由 config.yaml logging.console 开关控制
-- get_logger(__name__) 自动去除 src. 前缀
-- JSON 格式输出，兼容 ELK/Splunk
+Best practices aligned with observability standards:
+- Single, complete configuration via dictConfig.
+- One console handler: stdout, unfiltered, development-friendly.
+- Rotating file handlers split by subsystem:
+  - app.log     → API, orchestrator, graph, services, repositories, storage
+  - engine.log  → LLM calls and game engines (dm, talk, explore, interact, combat, decision)
+  - error.log   → ERROR level from any source
+  - perf.log    → performance / latency traces
+- JSON format for production; plain text format for development.
+- All third-party noise suppressed.
 """
 
 import contextlib
 import functools
 import logging
+import logging.config
 import sys
 import time as _time
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, cast
 
@@ -25,7 +28,7 @@ _LOG_DIR.mkdir(exist_ok=True)
 
 _json_format: bool = True
 
-# 模块路径 → 类别名 转换，对齐 config.yaml console 下的 key
+# Map module paths to logger names used in config.yaml console toggles
 _MODULE_RENAME: dict[str, str] = {
     "graph.orchestrator": "orchestrator",
     "repository": "repo",
@@ -34,146 +37,227 @@ _MODULE_RENAME: dict[str, str] = {
     "world_pack_loader": "loader",
 }
 
-# 性能日志 logger 名
-_PERF_LOGGERS = {"performance"}
+# Engine logger prefixes (engine.* and llm.* go to engine.log)
+_ENGINE_PREFIXES = ("llm", "llm.", "engine.", "eng", "eng.")
 
-# 控制台开关，category_name → bool
-_console_toggles: dict[str, bool] = {}
+# Performance logger names
+_PERF_LOGGERS = {"performance"}
 
 
 def get_logger(name: str) -> logging.Logger:
-    """获取 logger，去掉 src. 前缀并转换模块路径为类别名.
-
-    services.* → service.*
-    repository.* → repo.*
-    world_pack_loader.* → loader.*
-    graph.orchestrator → orchestrator
-    """
+    """Return a logger with src. prefix removed and module aliases applied."""
     name = name.removeprefix("src.")
-    # 全路径匹配优先
     if name in _MODULE_RENAME:
         return logging.getLogger(_MODULE_RENAME[name])
-    # 首段替换
     parts = name.split(".")
     if parts[0] in _MODULE_RENAME:
         parts[0] = _MODULE_RENAME[parts[0]]
     return logging.getLogger(".".join(parts))
 
 
-def configure_console(toggles: dict[str, bool] | None) -> None:
-    """设置控制台开关，key=类别名 value=True/False."""
-    _console_toggles.clear()
-    if toggles:
-        _console_toggles.update(toggles)
-
-
 def configure_format(json_fmt: bool = True) -> None:
-    """设置日志格式：True=JSON, False=文本."""
+    """Set whether file/console output should be JSON or plain text."""
     globals()["_json_format"] = json_fmt
 
 
 # ═══════════════════════════════════════════════════════════════
-# JSON Formatter / 结构化 JSON 格式化
+# Formatters
 # ═══════════════════════════════════════════════════════════════
 
-_TEXT_FMT = "%(asctime)s | %(name)-24s | %(levelname)-8s | %(message)s"
+_HUMAN_FMT = "%(asctime)s | %(name)-24s | %(levelname)-8s | %(message)s"
 _JSON_FMT = "%(asctime)s %(name)s %(levelname)s %(message)s"
 
 
-def _make_formatter() -> logging.Formatter:
-    if _json_format:
+def _make_formatter(json_fmt: bool | None = None) -> logging.Formatter:
+    use_json = _json_format if json_fmt is None else json_fmt
+    if use_json:
         return JsonFormatter(
             _JSON_FMT,
             datefmt="%Y-%m-%dT%H:%M:%S",
             json_ensure_ascii=False,
         )
-    return logging.Formatter(fmt=_TEXT_FMT, datefmt="%Y-%m-%d %H:%M:%S")
-
-
-class _PerfFilter(logging.Filter):
-    def filter(self, record):
-        return record.name in _PERF_LOGGERS
-
-
-class _BizFilter(logging.Filter):
-    def filter(self, record):
-        return record.name not in _PERF_LOGGERS
-
-
-class _ConsoleFilter(logging.Filter):
-    def filter(self, record):
-        if not _console_toggles:
-            return True
-        name = record.name
-        for cat, enabled in _console_toggles.items():
-            if enabled and (name == cat or name.startswith(cat + ".")):
-                return True
-        return False
-
-
-def setup_logging(level: str = "INFO") -> None:
-    """初始化日志——控制台可配置 + 文件分流 + JSON 格式."""
-    log_level = getattr(logging, level.upper(), logging.INFO)
-
-    for stream in (sys.stdout, sys.stderr):
-        with contextlib.suppress(Exception):
-            # reconfigure 仅在支持的平台可用 / reconfigure may not exist on all platforms
-            if hasattr(stream, "reconfigure"):
-                # pyright 将 stream 推断为 TextIO，实际为 io.TextIOWrapper / pyright sees TextIO, runtime is TextIOWrapper
-                cast(Any, stream).reconfigure(encoding="utf-8", errors="replace")
-
-    root = logging.getLogger()
-    root.setLevel(log_level)
-    if any(isinstance(h, logging.StreamHandler) for h in root.handlers):
-        return
-
-    fmt: logging.Formatter = _make_formatter()
-
-    # ── 控制台：按类别过滤 ──
-    console = logging.StreamHandler(sys.stderr)
-    console.setLevel(log_level)
-    console.setFormatter(fmt)
-    console.addFilter(_ConsoleFilter())
-    root.addHandler(console)
-
-    # ── 性能日志文件 ──
-    perf_file = RotatingFileHandler(
-        str(_LOG_DIR / "perf.log"),
-        maxBytes=10 * 1024 * 1024,
-        backupCount=3,
-        encoding="utf-8",
-    )
-    perf_file.setLevel(logging.DEBUG)
-    perf_file.setFormatter(fmt)
-    perf_file.addFilter(_PerfFilter())
-    root.addHandler(perf_file)
-
-    # ── 业务日志文件 ──
-    biz_file = RotatingFileHandler(
-        str(_LOG_DIR / "app.log"),
-        maxBytes=50 * 1024 * 1024,
-        backupCount=5,
-        encoding="utf-8",
-    )
-    biz_file.setLevel(logging.DEBUG)
-    biz_file.setFormatter(fmt)
-    biz_file.addFilter(_BizFilter())
-    root.addHandler(biz_file)
-
-    for noisy in (
-        "httpx",
-        "httpcore",
-        "chromadb",
-        "urllib3",
-        "openai",
-        "langchain",
-        "langchain_openai",
-    ):
-        logging.getLogger(noisy).setLevel(logging.WARNING)
+    return logging.Formatter(fmt=_HUMAN_FMT, datefmt="%Y-%m-%d %H:%M:%S")
 
 
 # ═══════════════════════════════════════════════════════════════
-# 性能日志 / Performance logs → logger: performance / tick
+# Filters
+# ═══════════════════════════════════════════════════════════════
+
+
+class _EngineFilter(logging.Filter):
+    """Pass records from engine / llm loggers."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        name = record.name
+        return any(name == pfx or name.startswith(pfx) for pfx in _ENGINE_PREFIXES)
+
+
+class _BusinessFilter(logging.Filter):
+    """Pass business records, excluding engine/llm/performance."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        name = record.name
+        if name in _PERF_LOGGERS:
+            return False
+        return not any(name == pfx or name.startswith(pfx) for pfx in _ENGINE_PREFIXES)
+
+
+class _PerformanceFilter(logging.Filter):
+    """Pass only performance loggers."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.name in _PERF_LOGGERS
+
+
+class _ErrorFilter(logging.Filter):
+    """Pass ERROR and above from any logger."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.levelno >= logging.ERROR
+
+
+# ═══════════════════════════════════════════════════════════════
+# Configuration
+# ═══════════════════════════════════════════════════════════════
+
+
+def _build_dict_config(level: str, json_fmt: bool) -> dict[str, Any]:
+    """Build a complete dictConfig for the application."""
+    log_level = getattr(logging, level.upper(), logging.INFO)
+    formatter_name = "json" if json_fmt else "human"
+
+    return {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "json": {
+                "()": "pythonjsonlogger.json.JsonFormatter",
+                "format": _JSON_FMT,
+                "datefmt": "%Y-%m-%dT%H:%M:%S",
+                "json_ensure_ascii": False,
+            },
+            "human": {
+                "format": _HUMAN_FMT,
+                "datefmt": "%Y-%m-%d %H:%M:%S",
+            },
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "level": log_level,
+                "formatter": formatter_name,
+                "stream": "ext://sys.stdout",
+            },
+            "app_file": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "level": "DEBUG",
+                "formatter": formatter_name,
+                "filename": str(_LOG_DIR / "app.log"),
+                "maxBytes": 50 * 1024 * 1024,
+                "backupCount": 5,
+                "encoding": "utf-8",
+                "filters": ["business"],
+            },
+            "engine_file": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "level": "DEBUG",
+                "formatter": formatter_name,
+                "filename": str(_LOG_DIR / "engine.log"),
+                "maxBytes": 30 * 1024 * 1024,
+                "backupCount": 5,
+                "encoding": "utf-8",
+                "filters": ["engine"],
+            },
+            "error_file": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "level": "WARNING",
+                "formatter": formatter_name,
+                "filename": str(_LOG_DIR / "error.log"),
+                "maxBytes": 10 * 1024 * 1024,
+                "backupCount": 5,
+                "encoding": "utf-8",
+                "filters": ["error"],
+            },
+            "perf_file": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "level": "DEBUG",
+                "formatter": formatter_name,
+                "filename": str(_LOG_DIR / "perf.log"),
+                "maxBytes": 10 * 1024 * 1024,
+                "backupCount": 3,
+                "encoding": "utf-8",
+                "filters": ["performance"],
+            },
+        },
+        "filters": {
+            "engine": {"()": __name__ + "._EngineFilter"},
+            "business": {"()": __name__ + "._BusinessFilter"},
+            "performance": {"()": __name__ + "._PerformanceFilter"},
+            "error": {"()": __name__ + "._ErrorFilter"},
+        },
+        "root": {
+            "level": log_level,
+            "handlers": ["console", "app_file", "engine_file", "error_file", "perf_file"],
+        },
+        "loggers": {
+            # Reduce noise from third-party libraries
+            "httpx": {"level": "WARNING"},
+            "httpcore": {"level": "WARNING"},
+            "urllib3": {"level": "WARNING"},
+            "openai": {"level": "WARNING"},
+            "langchain": {"level": "WARNING"},
+            "langchain_openai": {"level": "WARNING"},
+            "chromadb": {"level": "WARNING"},
+            "uvicorn": {
+                "level": "INFO",
+                "propagate": False,
+                "handlers": ["console", "app_file", "error_file"],
+            },
+            "uvicorn.access": {
+                "level": "INFO",
+                "propagate": False,
+                "handlers": ["console", "app_file", "error_file"],
+            },
+            "uvicorn.error": {
+                "level": "INFO",
+                "propagate": False,
+                "handlers": ["console", "app_file", "error_file"],
+            },
+        },
+    }
+
+
+def setup_logging(level: str = "INFO", json_fmt: bool = True) -> None:
+    """Apply a complete logging configuration.
+
+    This replaces any pre-existing handlers (e.g. uvicorn's defaults) so that
+    there is exactly one console stream and the file split we want.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        with contextlib.suppress(Exception):
+            if hasattr(stream, "reconfigure"):
+                cast(Any, stream).reconfigure(encoding="utf-8", errors="replace")
+
+    logging.config.dictConfig(_build_dict_config(level, json_fmt))
+
+
+# Kept for backwards compatibility; no longer has any effect on the console handler.
+_console_toggles: dict[str, bool] = {}
+
+
+def configure_console(toggles: dict[str, bool] | None) -> None:
+    """Backward-compatible no-op.
+
+    The console handler now outputs all records at the configured level.
+    Per-logger toggles are deprecated; use the top-level ``level`` instead.
+    """
+    _console_toggles.clear()
+    if toggles:
+        _console_toggles.update(toggles)
+
+
+# ═══════════════════════════════════════════════════════════════
+# Performance logs
 # ═══════════════════════════════════════════════════════════════
 
 
@@ -192,7 +276,7 @@ def log_node(name: str, tick: int, latency_ms: float, **extra) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
-# 业务日志 / Business logs
+# Business logs
 # ═══════════════════════════════════════════════════════════════
 
 
@@ -207,7 +291,7 @@ def log_llm(purpose: str, action: str, elapsed: float, extra: dict | None = None
         data.update(extra)
     logger = logging.getLogger("llm")
     if action == "error":
-        logger.error(f"[llm] {purpose} 失败", extra=data)
+        logger.error(f"[llm] {purpose} failed", extra=data)
     else:
         logger.info(f"[llm] {purpose} ok", extra=data)
 
@@ -268,7 +352,7 @@ def log_repo(repo: str, op: str, **extra) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
-# 全链路日志装饰器
+# Tracing decorator
 # ═══════════════════════════════════════════════════════════════
 
 
@@ -299,7 +383,7 @@ def trace_node(name: str = ""):
 
 
 def _node_out(name: str, result: object) -> dict:
-    """提取节点返回值关键字段."""
+    """Extract key fields from node return value."""
     if not isinstance(result, dict):
         return {}
     out: dict[str, object] = {}

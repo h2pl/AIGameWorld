@@ -250,7 +250,7 @@ function _formatPayload(ev: EventData): string {
     case "pc_decision": {
       const action = String(p.action_type || "wait");
       const target = String(p.target_id || "");
-      const reason = String(p.reasoning || p.thought || "");
+      const reason = String(p.thought || "");
       const actionLabel = _actionLabel(action);
       const body = target ? `${actionLabel} → ${target}` : actionLabel;
       return reason ? `【${pcName}】${body} · ${trunc2(reason, 24)}` : `【${pcName}】${body}`;

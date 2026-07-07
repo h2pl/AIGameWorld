@@ -16,7 +16,6 @@ export class DecisionHandler {
 
     const pcId = String(payload.pc_id || "");
     const thought = String(payload.thought || "").trim();
-    const reasoning = String(payload.reasoning || "").trim();
     const actionType = String(payload.action_type || "wait");
     const targetId = payload.target_id ? String(payload.target_id) : "";
 
@@ -31,9 +30,8 @@ export class DecisionHandler {
     // 镜头聚焦思考者 / Camera focuses on thinker
     this.followSprite(sprite.rawSprite);
 
-    const decisionLine = reasoning
-      ? `决定：${this._actionLabel(actionType)}${targetId ? " " + targetId : ""} — ${reasoning}`
-      : `决定：${this._actionLabel(actionType)}${targetId ? " " + targetId : ""}`;
+    // 只展示 thought + 决定摘要 / Show thought + decision summary only
+    const decisionLine = `决定：${this._actionLabel(actionType)}${targetId ? " " + targetId : ""}`;
     const text = thought ? `${thought}\n${decisionLine}` : decisionLine;
 
     // 显示思考泡泡，泡泡关闭后 resolve / Show thought bubble and resolve on close

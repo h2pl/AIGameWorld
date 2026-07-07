@@ -23,6 +23,8 @@ async function main(): Promise<void> {
   // ── 1. Bootstrap ──
   const { world } = await bootstrap();
   worldStore.setWorldState(world.world_id, world.llm_mock, world.data_mode, world.db_name);
+  // 同步后端 display_tick 到 store，避免首次进入显示 0
+  worldStore.setDisplayTick(world.display_tick || 0);
   // 场景列表在 Phaser 之前写入，避免 registry 时序问题 / Set scene list before Phaser
   const { setSceneList } = await import("./state/SceneList");
   setSceneList(world.scenes);
@@ -34,7 +36,12 @@ async function main(): Promise<void> {
   const { EventManager } = await import("./managers/EventManager");
   const { TickPlayer } = await import("./TickPlayer");
   const eventManager = new EventManager();
-  const player = new TickPlayer(CONFIG.API.base, world.world_id, eventManager);
+  const player = new TickPlayer(
+    CONFIG.API.base,
+    world.world_id,
+    eventManager,
+    world.display_tick || 0
+  );
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     width: CONFIG.CANVAS.width,

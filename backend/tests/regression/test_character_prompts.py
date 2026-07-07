@@ -133,13 +133,13 @@ class TestPCDecidePrompt:
         rendered = _PROMPTS.get_template("decide/pc_decide.jinja").render(**_pc_context())
         assert '"action_type"' in rendered
         assert '"target_id"' in rendered
-        assert '"reasoning"' in rendered
+        assert '"thought"' in rendered
 
     def test_mentions_combat_option(self):
         """combat 预留动作必须在字段说明中出现 / combat reserved action must appear in the field spec."""
         rendered = _PROMPTS.get_template("decide/pc_decide.jinja").render(**_pc_context())
         assert "combat" in rendered
 
-    def test_requires_chinese_reasoning(self):
+    def test_requires_chinese_thought(self):
         rendered = _PROMPTS.get_template("decide/pc_decide.jinja").render(**_pc_context())
         assert "中文" in rendered

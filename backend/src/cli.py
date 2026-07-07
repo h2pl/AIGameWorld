@@ -483,9 +483,11 @@ async def _shell_clear() -> None:
     await db.connect()
     await db.execute("DELETE FROM tick_events")
     await db.execute("DELETE FROM dm_records")
+    await db.execute("DELETE FROM story_summaries")
+    await db.execute("UPDATE worlds SET data_tick = 0, display_tick = 0")
     await db.commit()
     await db.close()
-    print("  [OK] Cleared tick_events, story")
+    print("  [OK] Cleared tick_events, dm_records, story_summaries, reset world ticks")
 
 
 def _show_current(state: ShellState) -> None:
@@ -801,19 +803,15 @@ async def view_server(args: argparse.Namespace) -> None:
 
 def main() -> None:
     from src.config import load_config
-    from src.utils.logging import configure_console, configure_format
+    from src.utils.logging import configure_format
 
     try:
         config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
         configure_format(config.logging.json_format)
-        setup_logging(config.logging.level)
+        setup_logging(config.logging.level, json_fmt=config.logging.json_format)
     except Exception:
         configure_format(True)
         setup_logging()
-    try:
-        configure_console(config.logging.console.model_dump())
-    except Exception:
-        configure_console(None)
 
     parser = argparse.ArgumentParser(
         prog="aw",

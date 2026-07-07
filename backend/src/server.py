@@ -26,21 +26,20 @@ from src.api.tick import router as tick_router
 from src.api.view import router as view_router
 from src.api.world import router as world_router
 from src.storage.sqlite_client import SQLiteClient
-from src.utils.logging import configure_console, configure_format, get_logger, setup_logging
+from src.utils.logging import configure_format, get_logger, setup_logging
 
 logger = get_logger(__name__)
 
-# 在应用创建前初始化日志 / Initialize logging before app creation
+# ── 预加载配置，供 lifespan 使用 / Preload config for lifespan use ──
 try:
     from .config import load_config
 
-    _cfg = load_config("../config.yaml")
-    configure_format(_cfg.logging.json_format)
-    setup_logging(_cfg.logging.level)
-    configure_console(_cfg.logging.console.model_dump())
+    _pre_cfg = load_config("../config.yaml")
+    configure_format(_pre_cfg.logging.json_format)
+    # 不在模块级 setup_logging，避免与 uvicorn handler 冲突
+    # defer logging setup to lifespan, after uvicorn has initialized its own
 except Exception:
-    setup_logging()
-    configure_console(None)
+    _pre_cfg = None
 
 # FastAPI 应用实例 / FastAPI app instance
 app = FastAPI(title="AIGameWorld API", version="0.1.0")
@@ -48,12 +47,19 @@ app = FastAPI(title="AIGameWorld API", version="0.1.0")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期：初始化 DB、mock 数据、编排器 / App lifespan: init DB, mock data, orchestrator."""
+    """应用生命周期：初始化日志、DB、mock 数据、编排器."""
     from .config import load_config
 
-    cfg = load_config("../config.yaml")
+    cfg = _pre_cfg or load_config("../config.yaml")
+
+    # ── 日志：在 uvicorn 启动后完全接管，避免 handler 冲突 / Take over logging after uvicorn startup ──
+    setup_logging(cfg.logging.level, json_fmt=cfg.logging.json_format)
+
+    logger.info(
+        "[lifespan] logging configured level=%s json=%s", cfg.logging.level, cfg.logging.json_format
+    )
+    # ── DB ──
     db_path = cfg.db_name
-    # 创建并连接 SQLite / Create and connect SQLite
     db = SQLiteClient(db_path)
     app.state.db = db
     await db.connect()

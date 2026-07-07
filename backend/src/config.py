@@ -56,6 +56,9 @@ class LLMConfig(BaseModel):
     explore: LLMModelConfig  # 探索路径与发现 / Explore path and discovery
     combat: LLMModelConfig  # 战斗旁白 / Combat narration
     reflection: LLMModelConfig  # 反思洞察（强模型）/ Reflection insight
+    interpret_tilemap: LLMModelConfig  # tilemap 语义解读 / Tilemap semantic interpretation
+    spawn_actors: LLMModelConfig  # 动态生成 Actor / Dynamic actor spawning
+    spawn_objects: LLMModelConfig  # 动态生成场景物体 / Dynamic scene object spawning
 
     @property
     def reflection_engine(self) -> LLMModelConfig:
