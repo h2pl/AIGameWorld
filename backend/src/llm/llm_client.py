@@ -34,6 +34,16 @@ def _log_ctx(purpose: str, attempt: int, max_attempts: int, **kwargs: Any) -> di
     return ctx
 
 
+def _model_name(model: BaseChatModel) -> str:
+    """提取模型可读名称，避免在日志中打印对象 repr（含内存地址、密钥）."""
+    for attr in ("model_name", "model"):
+        if hasattr(model, attr):
+            value = getattr(model, attr)
+            if value:
+                return str(value)
+    return type(model).__name__
+
+
 # ============================================================
 # RequestsChatModel —— 解决 Zen Proxy 502
 # ============================================================
@@ -305,7 +315,12 @@ class LLMClient:
         logger.info(
             f"[{purpose}] 开始调用",
             extra=_log_ctx(
-                purpose, -1, max_attempts, model_name=str(model), timeout=timeout, mode="text"
+                purpose,
+                -1,
+                max_attempts,
+                model_name=_model_name(model),
+                timeout=timeout,
+                mode="text",
             ),
         )
 
@@ -410,7 +425,7 @@ class LLMClient:
                 purpose,
                 -1,
                 max_attempts,
-                model_name=str(model),
+                model_name=_model_name(model),
                 timeout=timeout,
                 schema=schema.__name__,
                 mode="structured",

@@ -8,6 +8,8 @@ Best practices aligned with observability standards:
   - engine.log  → LLM calls and game engines (dm, talk, explore, interact, combat, decision)
   - error.log   → ERROR level from any source
   - perf.log    → performance / latency traces
+- Production-grade directory layout: logs/YYYY-MM-DD/<subsystem>.log,
+  with time-sliced archives like app.YYYY-MM-DD_HH.log.
 - JSON format for production; plain text format for development.
 - All third-party noise suppressed.
 """
@@ -16,12 +18,16 @@ import contextlib
 import functools
 import logging
 import logging.config
+import logging.handlers
 import sys
 import time as _time
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
 from pythonjsonlogger.json import JsonFormatter
+
+from src.config import RotationConfig
 
 _LOG_DIR = Path(__file__).parent.parent.parent / "logs"
 _LOG_DIR.mkdir(exist_ok=True)
@@ -116,15 +122,92 @@ class _ErrorFilter(logging.Filter):
         return record.levelno >= logging.ERROR
 
 
+class _StructuredTimedRotatingFileHandler(logging.handlers.TimedRotatingFileHandler):
+    """按日期分目录、按时间切片的文件日志处理器。
+
+    文件布局 / Layout:
+      logs/YYYY-MM-DD/<base>.log                (当前活动文件 / active file)
+      logs/YYYY-MM-DD/<base>.YYYY-MM-DD_HH.log  (轮转归档 / rotated archive)
+    """
+
+    def __init__(
+        self,
+        base_name: str,
+        log_dir: Path,
+        when: str = "H",
+        interval: int = 1,
+        utc: bool = True,
+        backup_count: int = 0,
+        **kwargs,
+    ):
+        self._base_name = base_name
+        self._log_dir = log_dir
+        self._utc = utc
+        self._tz = UTC if utc else None
+        self._backup_count = backup_count
+        path = self._active_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        super().__init__(
+            path, when=when, interval=interval, utc=utc, backupCount=backup_count, **kwargs
+        )
+
+    def _active_path(self) -> Path:
+        now = datetime.now(self._tz)
+        return self._log_dir / now.strftime("%Y-%m-%d") / f"{self._base_name}.log"
+
+    def _archive_path(self, t: float) -> Path:
+        when = datetime.fromtimestamp(t, tz=self._tz)
+        # self.suffix 由父类根据 when 生成，例如 H -> .%Y-%m-%d_%H
+        suffix = when.strftime(self.suffix.lstrip("."))
+        return self._log_dir / when.strftime("%Y-%m-%d") / f"{self._base_name}.{suffix}.log"
+
+    def rotation_filename(self, default_name: str) -> str:
+        # 忽略默认后缀，按结构化路径归档 / Ignore default suffix, use structured path
+        t = self.rolloverAt - self.interval
+        return str(self._archive_path(t))
+
+    def doRollover(self) -> None:
+        # 先按标准逻辑归档并重开当前路径 / Standard archive + reopen at current path
+        super().doRollover()
+
+        # 如果跨日期，把新开的空文件移到当前日期目录 / Move to current date dir if day changed
+        new_path = self._active_path()
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        if new_path != Path(self.baseFilename):
+            if self.stream:
+                self.stream.close()
+                self.stream = None
+            old_path = Path(self.baseFilename)
+            if old_path.exists():
+                if new_path.exists():
+                    with old_path.open("rb") as src, new_path.open("ab") as dst:
+                        dst.write(src.read())
+                    old_path.unlink()
+                else:
+                    old_path.rename(new_path)
+            self.baseFilename = str(new_path)
+            self.stream = self._open()
+
+
 # ═══════════════════════════════════════════════════════════════
 # Configuration
 # ═══════════════════════════════════════════════════════════════
 
 
-def _build_dict_config(level: str, json_fmt: bool) -> dict[str, Any]:
+def _build_dict_config(level: str, json_fmt: bool, rotation: RotationConfig) -> dict[str, Any]:
     """Build a complete dictConfig for the application."""
     log_level = getattr(logging, level.upper(), logging.INFO)
     formatter_name = "json" if json_fmt else "human"
+    handler_kwargs = {
+        "level": "DEBUG",
+        "formatter": formatter_name,
+        "log_dir": _LOG_DIR,
+        "when": rotation.when,
+        "interval": rotation.interval,
+        "utc": rotation.utc,
+        "backup_count": rotation.backup_count,
+        "encoding": "utf-8",
+    }
 
     return {
         "version": 1,
@@ -149,44 +232,29 @@ def _build_dict_config(level: str, json_fmt: bool) -> dict[str, Any]:
                 "stream": "ext://sys.stdout",
             },
             "app_file": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "level": "DEBUG",
-                "formatter": formatter_name,
-                "filename": str(_LOG_DIR / "app.log"),
-                "maxBytes": 50 * 1024 * 1024,
-                "backupCount": 5,
-                "encoding": "utf-8",
+                "()": "src.utils.logging._StructuredTimedRotatingFileHandler",
+                "base_name": "app",
                 "filters": ["business"],
+                **handler_kwargs,
             },
             "engine_file": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "level": "DEBUG",
-                "formatter": formatter_name,
-                "filename": str(_LOG_DIR / "engine.log"),
-                "maxBytes": 30 * 1024 * 1024,
-                "backupCount": 5,
-                "encoding": "utf-8",
+                "()": "src.utils.logging._StructuredTimedRotatingFileHandler",
+                "base_name": "engine",
                 "filters": ["engine"],
+                **handler_kwargs,
             },
             "error_file": {
-                "class": "logging.handlers.RotatingFileHandler",
+                "()": "src.utils.logging._StructuredTimedRotatingFileHandler",
+                "base_name": "error",
                 "level": "WARNING",
-                "formatter": formatter_name,
-                "filename": str(_LOG_DIR / "error.log"),
-                "maxBytes": 10 * 1024 * 1024,
-                "backupCount": 5,
-                "encoding": "utf-8",
                 "filters": ["error"],
+                **handler_kwargs,
             },
             "perf_file": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "level": "DEBUG",
-                "formatter": formatter_name,
-                "filename": str(_LOG_DIR / "perf.log"),
-                "maxBytes": 10 * 1024 * 1024,
-                "backupCount": 3,
-                "encoding": "utf-8",
+                "()": "src.utils.logging._StructuredTimedRotatingFileHandler",
+                "base_name": "perf",
                 "filters": ["performance"],
+                **handler_kwargs,
             },
         },
         "filters": {
@@ -227,7 +295,11 @@ def _build_dict_config(level: str, json_fmt: bool) -> dict[str, Any]:
     }
 
 
-def setup_logging(level: str = "INFO", json_fmt: bool = True) -> None:
+def setup_logging(
+    level: str = "INFO",
+    json_fmt: bool = True,
+    rotation: RotationConfig | None = None,
+) -> None:
     """Apply a complete logging configuration.
 
     This replaces any pre-existing handlers (e.g. uvicorn's defaults) so that
@@ -238,7 +310,10 @@ def setup_logging(level: str = "INFO", json_fmt: bool = True) -> None:
             if hasattr(stream, "reconfigure"):
                 cast(Any, stream).reconfigure(encoding="utf-8", errors="replace")
 
-    logging.config.dictConfig(_build_dict_config(level, json_fmt))
+    if rotation is None:
+        rotation = RotationConfig()
+
+    logging.config.dictConfig(_build_dict_config(level, json_fmt, rotation))
 
 
 # Kept for backwards compatibility; no longer has any effect on the console handler.
@@ -396,18 +471,26 @@ def _node_out(name: str, result: object) -> dict:
         if isinstance(brief, str):
             out["plot_brief"] = brief[:80]
     elif name in ("scene.build",):
-        out["scene_id"] = result.get("scene", {}).get("id", "")
+        scene = result.get("scene")
+        out["scene_id"] = getattr(scene, "id", "") if scene else ""
         out["pcs"] = len(result.get("pcs", {}))
         out["actors"] = len(result.get("actors", {}))
         out["objects"] = len(result.get("scene_objects", []))
     elif name in ("pc.decide",):
         decs = result.get("pc_decisions", [])
         out["decisions"] = len(decs)
-        out["actions"] = [d.get("type") for d in decs[:5]]
+        out["actions"] = [
+            getattr(d, "type", None) or (d.get("type") if isinstance(d, dict) else None)
+            for d in decs[:5]
+        ]
     elif name in ("pc.act",):
-        acts = result.get("pending_actions", [])
+        acts = result.get("actions", [])
         out["actions"] = len(acts)
-        out["types"] = [a.get("action_type") for a in acts[:5]]
+        out["types"] = [
+            getattr(a, "action_type", None)
+            or (a.get("action_type") if isinstance(a, dict) else None)
+            for a in acts[:5]
+        ]
     elif name in ("dm.narrate",):
         narrative = result.get("narrative", "")
         if isinstance(narrative, str):

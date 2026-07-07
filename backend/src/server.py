@@ -53,10 +53,17 @@ async def lifespan(app: FastAPI):
     cfg = _pre_cfg or load_config("../config.yaml")
 
     # ── 日志：在 uvicorn 启动后完全接管，避免 handler 冲突 / Take over logging after uvicorn startup ──
-    setup_logging(cfg.logging.level, json_fmt=cfg.logging.json_format)
+    setup_logging(
+        cfg.logging.level,
+        json_fmt=cfg.logging.json_format,
+        rotation=cfg.logging.rotation,
+    )
 
     logger.info(
-        "[lifespan] logging configured level=%s json=%s", cfg.logging.level, cfg.logging.json_format
+        "[lifespan] logging configured level=%s json=%s rotation=%s",
+        cfg.logging.level,
+        cfg.logging.json_format,
+        cfg.logging.rotation.when,
     )
     # ── DB ──
     db_path = cfg.db_name

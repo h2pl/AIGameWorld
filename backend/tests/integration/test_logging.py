@@ -4,10 +4,18 @@ import json
 import logging
 import sys
 from contextlib import suppress
+from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
 from src.utils.logging import get_logger, setup_logging
+
+
+def _active_log_path(tmp_path: Path, base_name: str) -> Path:
+    """返回当前日期目录下的活动日志文件路径."""
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    return tmp_path / today / f"{base_name}.log"
 
 
 class TestSetupLogging:
@@ -57,10 +65,10 @@ class TestSetupLogging:
             if hasattr(h, "close"):
                 h.close()
 
-        app_log = "\n".join(p.read_text(encoding="utf-8") for p in tmp_path.glob("app.log*"))
-        engine_log = "\n".join(p.read_text(encoding="utf-8") for p in tmp_path.glob("engine.log*"))
-        error_log = "\n".join(p.read_text(encoding="utf-8") for p in tmp_path.glob("error.log*"))
-        perf_log = "\n".join(p.read_text(encoding="utf-8") for p in tmp_path.glob("perf.log*"))
+        app_log = "\n".join(p.read_text(encoding="utf-8") for p in tmp_path.rglob("app.log*"))
+        engine_log = "\n".join(p.read_text(encoding="utf-8") for p in tmp_path.rglob("engine.log*"))
+        error_log = "\n".join(p.read_text(encoding="utf-8") for p in tmp_path.rglob("error.log*"))
+        perf_log = "\n".join(p.read_text(encoding="utf-8") for p in tmp_path.rglob("perf.log*"))
 
         # app.log: 业务日志，不含 engine/llm/perf
         assert "api log" in app_log
@@ -91,7 +99,7 @@ class TestSetupLogging:
             if hasattr(h, "close"):
                 h.close()
 
-        app_log = (tmp_path / "app.log").read_text(encoding="utf-8")
+        app_log = _active_log_path(tmp_path, "app").read_text(encoding="utf-8")
         record = json.loads(app_log.strip().splitlines()[0])
         assert record["name"] == "api"
         assert record["message"] == "hello"
@@ -106,6 +114,22 @@ class TestSetupLogging:
             if hasattr(h, "close"):
                 h.close()
 
-        app_log = (tmp_path / "app.log").read_text(encoding="utf-8")
+        app_log = _active_log_path(tmp_path, "app").read_text(encoding="utf-8")
         assert "api" in app_log
         assert "hello" in app_log
+
+    def test_log_files_are_date_partitioned(self, tmp_path):
+        """日志文件按日期分目录存放."""
+        setup_logging("INFO")
+        get_logger("api").info("date partitioned")
+        for h in logging.getLogger().handlers:
+            if hasattr(h, "flush"):
+                h.flush()
+            if hasattr(h, "close"):
+                h.close()
+
+        today_dir = tmp_path / datetime.now(UTC).strftime("%Y-%m-%d")
+        assert today_dir.exists()
+        app_log = today_dir / "app.log"
+        assert app_log.exists()
+        assert "date partitioned" in app_log.read_text(encoding="utf-8")

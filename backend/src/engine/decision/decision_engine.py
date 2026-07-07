@@ -1,15 +1,13 @@
 """PC Decision Engine——LLM 驱动的单个 PC 多行动决策 / LLM-driven multi-action PC decision."""
 
 from pathlib import Path
-from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, PlayerCharacter
+from ...domain import Actor, Decision, PlayerCharacter, Scene, SceneObject
 from ...schemas.llm_output import CharacterActionSchema, PCDecideSchema
-from ...schemas.response import PCDecideResponse
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm
 from ...utils.logging import get_logger
@@ -28,16 +26,16 @@ _ACTION_TARGET_TYPES = {
 
 async def decide(
     pc_id: str,
-    scene: dict[str, Any],
+    scene: Scene | None,
     plot_brief: str,
     hints: list[str],
     scene_id: str,
     tick: int,
     pcs: dict[str, PlayerCharacter] | None = None,
     actors: dict[str, Actor] | None = None,
-    scene_objects: list[dict[str, Any]] | None = None,
+    scene_objects: list[SceneObject] | None = None,
     config: RunnableConfig = None,
-) -> dict:
+) -> Decision:
     """为单个 PC 决策 / Decide for a PC, return exactly one action.
 
     PC/Actor 身份和坐标统一从 pcs / actors 读取（tick 内权威数据源）。
@@ -57,7 +55,7 @@ async def decide(
     # 同场景 Actor / Actors in scene
     nearby_actors = [_map_identity(actor_map[aid]) for aid in actor_map]
 
-    query = f"{plot_brief} {scene.get('description', '')}".strip()
+    query = f"{plot_brief} {scene.description if scene else ''}".strip()
     memories = await retrieve_memories(pc_id, query, config=config, top_k=5)
 
     ctx = {
@@ -88,24 +86,26 @@ async def decide(
         [SystemMessage(content=system), HumanMessage(content=prompt)],
     )
 
-    validated = _validate(result.action, scene, pc_map, actor_map)
-    return PCDecideResponse(
+    validated = _validate(result.action, scene, scene_objects, pc_map, actor_map)
+    return Decision(
         pc_id=pc_id,
         type=validated.action_type,
         target_id=validated.target_id,
         target_type=validated.target_type,
         thought=validated.thought,
         description=validated.thought,  # thought 即决策理由 / thought IS the rationale
-    ).model_dump()
+        explore_x=validated.explore_x,
+        explore_y=validated.explore_y,
+    )
 
 
-def _fallback_decision(pc_id: str) -> dict:
-    return PCDecideResponse(
+def _fallback_decision(pc_id: str) -> Decision:
+    return Decision(
         pc_id=pc_id,
         type="wait",
         thought="当前没有明确目标，先观察局势。",
         description="当前没有明确目标，先观察局势。",
-    ).model_dump()
+    )
 
 
 def _map_identity(char: PlayerCharacter | Actor | None) -> dict:
@@ -133,13 +133,15 @@ def _map_identity(char: PlayerCharacter | Actor | None) -> dict:
 
 def _validate(
     result: CharacterActionSchema,
-    scene: dict[str, Any] | None = None,
+    scene: Scene | None = None,
+    scene_objects: list[SceneObject] | None = None,
     pcs: dict[str, PlayerCharacter] | None = None,
     actors: dict[str, Actor] | None = None,
 ) -> CharacterActionSchema:
     """校验并修正 LLM 返回的动作 / Validate LLM action, fallback to wait for invalid combos."""
     if result.action_type not in _VALID_ACTIONS:
         result.action_type = "wait"
+
     if result.action_type in ("wait", "explore"):
         result.target_id = None
         result.target_type = None
@@ -149,7 +151,7 @@ def _validate(
             result.action_type = "wait"
             result.target_id = None
             result.target_type = None
-        elif not _target_in_scene(result.target_id, result.target_type, scene, pcs, actors):
+        elif not _target_in_scene(result.target_id, result.target_type, scene_objects, pcs, actors):
             logger.warning(
                 "[engine] target %s (%s) not in scene, downgrading to wait",
                 result.target_id,
@@ -158,6 +160,12 @@ def _validate(
             result.action_type = "wait"
             result.target_id = None
             result.target_type = None
+
+    # explore 时保留坐标，其他动作清空 / keep coords for explore, clear for others
+    if result.action_type != "explore":
+        result.explore_x = None
+        result.explore_y = None
+
     if not result.thought or not result.thought.strip():
         result.thought = "我做出了这个决定。"
     return result
@@ -166,14 +174,13 @@ def _validate(
 def _target_in_scene(
     target_id: str,
     target_type: str,
-    scene: dict[str, Any] | None = None,
+    scene_objects: list[SceneObject] | None = None,
     pcs: dict[str, PlayerCharacter] | None = None,
     actors: dict[str, Actor] | None = None,
 ) -> bool:
     """检查目标是否在当前场景 / Check if target exists in current scene."""
     if target_type == "scene_object":
-        objects = (scene or {}).get("scene_objects", [])
-        return any(o.get("id") == target_id for o in objects)
+        return any(o.id == target_id for o in (scene_objects or []))
     if target_type == "pc":
         return target_id in (pcs or {})
     if target_type == "actor":

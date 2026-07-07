@@ -11,7 +11,7 @@ def _graph_input(**overrides):
         "world_id": "world-1",
         "scene": {},
         "scene_objects": [],
-        "pending_actions": [],
+        "actions": [],
         "hints": [],
         "plot_brief": "",
         "scene_id": "scene-1",

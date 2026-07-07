@@ -6,6 +6,7 @@
 /** 事件面板 / Event Panel — 仅通过 window 事件消费，不订阅 store */
 import { Panel } from "./Panel";
 import type { EventData } from "../types";
+import { actionLabel } from "../utils/actionLabel";
 
 const EVENT_ICONS: Record<string, string> = {
   dm_create: "🎲",
@@ -155,11 +156,14 @@ function _formatPayload(ev: EventData): string {
       return trunc(String(p.text || p.narrative || ""));
     case "pc_decision": {
       const action = String(p.action_type || "wait");
-      const target = String(p.target_id || "");
+      const target = p.target_id ? String(p.target_id) : undefined;
+      // explore 目标坐标 / Explore target coordinates
+      const ex = p.explore_x !== undefined ? Number(p.explore_x) : undefined;
+      const ey = p.explore_y !== undefined ? Number(p.explore_y) : undefined;
+      const pos = ex !== undefined && ey !== undefined ? { x: ex, y: ey } : undefined;
       const reason = String(p.thought || "");
-      const actionLabel = _actionLabel(action);
-      const body = target ? `${actionLabel} → ${target}` : actionLabel;
-      return reason ? `【${pcName}】${body} · ${trunc(reason, 24)}` : `【${pcName}】${body}`;
+      const label = actionLabel(action, target, pos);
+      return reason ? `【${pcName}】${label} · ${trunc(reason, 24)}` : `【${pcName}】${label}`;
     }
     case "scene_setup":
       return `进入「${String(p.scene_id || "")}」`;
@@ -217,15 +221,4 @@ function _formatPayload(ev: EventData): string {
 
 function trunc(s: string, n = 30): string {
   return s.length > n ? s.slice(0, n) + "…" : s;
-}
-
-function _actionLabel(actionType: string): string {
-  const map: Record<string, string> = {
-    talk: "交谈",
-    interact: "交互",
-    combat: "战斗",
-    explore: "探索",
-    wait: "等待",
-  };
-  return map[actionType] || actionType;
 }

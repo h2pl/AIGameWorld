@@ -121,13 +121,12 @@
   font-weight: 500;
 }
 
-/* ===== DM 创造情境面板 — 左上角，显示 plot_brief 渐入 / DM Creation Panel — top-left ===== */
+/* ===== DM 创造情境面板 — 左上角，固定尺寸，CSS fade-in 渐入 / DM Creation Panel — top-left fixed ===== */
 .dm-creation-panel {
   left: 10px;
   top: 90px;
   width: 320px;
-  /* 高度由内容自适应，不固定 / Height adapts to content */
-  max-height: none;
+  max-height: 220px;
 }
 
 .dm-creation-body {
@@ -135,7 +134,19 @@
   line-height: 1.6;
   font-size: 13px;
   white-space: pre-wrap;
-  overflow-y: visible;
+  overflow-y: auto;
+  max-height: 170px;
+}
+
+.dm-creation-line {
+  opacity: 0;
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+.dm-placeholder {
+  color: #555;
+  font-style: italic;
+  font-size: 12px;
 }
 
 .dm-creation-hints {
@@ -148,6 +159,8 @@
   font-size: 11px;
   color: #aaa;
   margin-bottom: 4px;
+  opacity: 0;
+  animation: fadeIn 0.4s ease-out 0.1s forwards;
 }
 
 .dm-hints-list {
@@ -160,43 +173,52 @@
 
 .dm-hint-item {
   margin: 2px 0;
+  opacity: 0;
+  animation: fadeIn 0.4s ease-out forwards;
 }
 
-/* ===== 叙事面板 — 左下角，展示 DM 生成的叙事文本 / Narrative Panel — bottom-left, shows DM narrative ===== */
+/* ===== 叙事面板 — 左下角，固定尺寸，CSS fade-in 渐入 / Narrative Panel — bottom-left fixed ===== */
 .narrative-panel {
   left: 10px;
   bottom: 50px;
-  width: 380px;
-  max-height: 30%;
+  width: 320px;
+  max-height: 220px;
 }
 
 .narrative-body {
-  max-height: 180px;
+  max-height: 170px;
+  overflow-y: auto;
 }
 
 .narrative-line {
   padding: 3px 0;
   line-height: 1.5;
   color: #c8d6e5;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   opacity: 0;
-  animation: narrativeFadeIn 0.8s ease-out forwards;
-}
-.narrative-line:last-child {
-  color: #fff;
-  font-weight: 500;
-  border-bottom: none;
+  animation: fadeIn 0.6s ease-out forwards;
 }
 
-@keyframes narrativeFadeIn {
+.narrative-placeholder {
+  color: #555;
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* ===== 通用渐入动画 / Shared fade-in animation ===== */
+@keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.fade-in {
+  opacity: 0;
+  animation: fadeIn 0.5s ease-out forwards;
 }
 
 /* ===== 事件面板 — 右上角，增量追加 tick 事件日志 / Event Panel — top-right, append tick event logs ===== */

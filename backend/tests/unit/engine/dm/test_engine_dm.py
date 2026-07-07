@@ -63,7 +63,7 @@ class TestDMNarrate:
 
     @pytest.mark.asyncio
     async def test_normalizes_pydantic_action_result(self):
-        """pending_actions.result 中的 Pydantic 模型会被转成 dict，避免模板渲染失败 / Pydantic results are normalized."""
+        """actions.result 中的 Pydantic 模型会被转成 dict，避免模板渲染失败 / Pydantic results are normalized."""
 
         class FakeResult(BaseModel):
             turns: list = []
@@ -75,7 +75,7 @@ class TestDMNarrate:
             tick=1,
             plot_brief="Story",
             hints=[],
-            pending_actions=[
+            actions=[
                 {
                     "pc_id": "pc-1",
                     "action_type": "talk",

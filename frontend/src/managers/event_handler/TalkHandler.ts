@@ -7,6 +7,7 @@ import type { MovementManager } from "../MovementManager";
 import type { EventData } from "../../types";
 import { speedMs } from "../../config/playback";
 import { playState } from "../../utils/playState";
+import { contentDuration } from "../../utils/contentDuration";
 
 export class TalkHandler {
   private dialogueQueue: Array<{ speaker_id: string; text: string }> = [];
@@ -101,8 +102,7 @@ export class TalkHandler {
       }, speedMs(200));
     } else {
       log.warn("[TalkHandler] dialogue speaker not found:", turn.speaker_id);
-      // 找不到说话者时短暂停留后继续 / Brief pause if speaker missing
-      this.dialogueTimer = window.setTimeout(advance, speedMs(600));
+      this.dialogueTimer = window.setTimeout(advance, speedMs(contentDuration("")));
     }
   }
 }

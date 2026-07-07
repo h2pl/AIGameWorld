@@ -12,7 +12,7 @@ from collections import deque
 from typing import Any
 from uuid import uuid4
 
-from ..schemas.memory_schema import Memory
+from ..domain.memory import Memory
 from ..storage.chroma_client import ChromaClient
 from ..utils.logging import get_logger
 

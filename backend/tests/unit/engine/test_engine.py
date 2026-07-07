@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 # ── Engine imports / 引擎导入 ──
+from src.domain import Memory
 from src.domain.actor import Actor
 from src.domain.player_character import PlayerCharacter
 from src.engine.combat.combat_engine import process_combat_action
@@ -74,7 +75,7 @@ class TestTalkEngine:
                 "repos": {"char": None},
             }
         }
-        pc_memory_map: dict[str, list[dict]] = {}
+        pc_memory_map: dict[str, list[Memory]] = {}
         event = await process_talk_action(
             decision={
                 "type": "talk",
@@ -97,7 +98,7 @@ class TestTalkEngine:
         assert event.participants == ["pc1", "npc1"]
         # Actor 不记记忆，只有 PC 写入 pc_memory_map / Actors don't store memories
         assert len(pc_memory_map.get("pc1", [])) == 1
-        assert pc_memory_map["pc1"][0]["memory_type"] == "talk"
+        assert pc_memory_map["pc1"][0].memory_type == "talk"
 
 
 class TestInteractAction:
@@ -292,7 +293,7 @@ class TestCombatAction:
         llm.call_structured = AsyncMock(
             return_value=CombatNarrationSchema(narration="他击中了敌人。")
         )
-        pc_memory_map: dict[str, list[dict]] = {}
+        pc_memory_map: dict[str, list[Memory]] = {}
         pcs = {
             "pc1": PlayerCharacter(
                 id="pc1",
@@ -328,8 +329,8 @@ class TestCombatAction:
         )
         assert len(pc_memory_map.get("pc1", [])) == 1
         mem = pc_memory_map["pc1"][0]
-        assert mem["memory_type"] == "combat"
-        assert mem["tick"] == 3
+        assert mem.memory_type == "combat"
+        assert mem.tick == 3
 
 
 class TestQuestEngine:

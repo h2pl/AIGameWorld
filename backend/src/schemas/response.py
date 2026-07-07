@@ -49,6 +49,8 @@ class PCDecideResponse(EngineResponse):
     target_type: str | None = None
     thought: str = ""  # 完整思考过程 / full reasoning process
     description: str = ""  # 最终决策理由 / final decision rationale
+    explore_x: int | None = None  # explore 目标坐标 / explore target x
+    explore_y: int | None = None  # explore 目标坐标 / explore target y
 
 
 # ============================================================

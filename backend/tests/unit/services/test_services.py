@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from src.domain import Action, Decision, DMRecord, Scene, SceneObject, SceneObjectType
 from src.domain.player_character import PlayerCharacter
 from src.schemas.llm_output import (
     ActorGenerationSchema,
@@ -31,9 +32,9 @@ def _overall_state(**overrides):
     return {
         "tick": 0,
         "world_id": "world-1",
-        "scene": {},
+        "scene": Scene(id="scene-1"),
         "scene_objects": [],
-        "pending_actions": [],
+        "actions": [],
         "hints": [],
         "plot_brief": "",
         "scene_id": "scene-1",
@@ -55,10 +56,10 @@ def _pc_repo_config(pcs: list, object_ids: list[str] | None = None) -> dict:
     scene_repo.get_scene = AsyncMock(return_value=None)
     scene_repo.get_object_ids = AsyncMock(return_value=object_ids)
     scene_objects = {
-        oid: SimpleNamespace(
+        oid: SceneObject(
             id=oid,
             name=oid,
-            object_type=SimpleNamespace(value="prop"),
+            object_type=SceneObjectType.DECORATION,
             interactable=True,
             position_x=1,
             position_y=1,
@@ -82,10 +83,12 @@ class TestCharacterService:
     @pytest.mark.asyncio
     async def test_decide_delegates_each_pc_to_decision_engine(self):
         """decide 逐个把场景内的 PC 交给 decision_engine / decide delegates each PC in the scene to decision_engine."""
-        scene = {"id": "scene-1"}
-        scene_objects = [{"id": "obj-1"}]
+        scene = Scene(id="scene-1")
+        scene_objects = [
+            SceneObject(id="obj-1", name="Obj", object_type=SceneObjectType.DECORATION)
+        ]
         pcs = {"pc-1": PlayerCharacter(id="pc-1", name="Alex", role="fighter")}
-        decision = {"pc_id": "pc-1", "type": "talk", "description": "先交涉"}
+        decision = Decision(pc_id="pc-1", type="talk", description="先交涉")
         with patch.object(
             pc_service.decision_engine,
             "decide",
@@ -114,7 +117,7 @@ class TestCharacterService:
     @pytest.mark.asyncio
     async def test_act_dispatches_talk_and_interact(self):
         """行动阶段逐条动作分发到 talk/interact/combat engine / Act dispatches each action to all engines."""
-        decision = {"pc_id": "pc-1", "type": "talk"}
+        decision = Decision(pc_id="pc-1", type="talk")
         state = _overall_state(
             tick=2,
             pc_decisions=[decision],
@@ -138,7 +141,7 @@ class TestCharacterService:
         ):
             result = await pc_service.act(state)
         mock_talk.assert_awaited_once_with(
-            decision=decision,
+            decision=decision.model_dump(),
             plot_brief="",
             hints=[],
             scene_id="scene-1",
@@ -149,8 +152,8 @@ class TestCharacterService:
             config=None,
         )
         mock_interact.assert_awaited_once_with(
-            decision=decision,
-            scene={},
+            decision=decision.model_dump(),
+            scene=Scene(id="scene-1").model_dump(),
             scene_objects=[],
             pcs={},
             actors={},
@@ -161,8 +164,8 @@ class TestCharacterService:
             config=None,
         )
         mock_combat.assert_awaited_once_with(
-            decision=decision,
-            scene={},
+            decision=decision.model_dump(),
+            scene=Scene(id="scene-1").model_dump(),
             pcs={},
             actors={},
             plot_brief="",
@@ -171,13 +174,13 @@ class TestCharacterService:
             pc_memory_map={},
             config=None,
         )
-        assert result == {"pending_actions": []}
+        assert result == {"actions": []}
 
     @pytest.mark.asyncio
     async def test_act_formats_action_result_uniformly(self):
         """把命中的 engine 结果格式化成 {order, action_type, target_id, target_type, result} /
         Format the matching engine's result into {order, action_type, target_id, target_type, result}."""
-        decision = {"pc_id": "pc-1", "type": "talk", "target_id": "pc-2", "target_type": "pc"}
+        decision = Decision(pc_id="pc-1", type="talk", target_id="pc-2", target_type="pc")
         talk_result = {"kind": "pc_talk", "participants": ["pc-1", "pc-2"], "turns": []}
         state = _overall_state(pc_decisions=[decision])
         with (
@@ -199,15 +202,15 @@ class TestCharacterService:
         ):
             result = await pc_service.act(state)
         assert result == {
-            "pending_actions": [
-                {
-                    "order": 0,
-                    "pc_id": "pc-1",
-                    "action_type": "talk",
-                    "target_id": "pc-2",
-                    "target_type": "pc",
-                    "result": talk_result,
-                }
+            "actions": [
+                Action(
+                    order=0,
+                    pc_id="pc-1",
+                    action_type="talk",
+                    target_id="pc-2",
+                    target_type="pc",
+                    result=talk_result,
+                )
             ]
         }
 
@@ -222,7 +225,7 @@ class TestSceneAndMessageService:
         result = await scene_service.build_scene_state(state)
         assert result["pcs"] == {}
         assert result["actors"] == {}
-        assert result["scene"]["id"] == "scene-x"
+        assert result["scene"].id == "scene-x"
 
     @pytest.mark.asyncio
     async def test_build_scene_state_builds_scene_state(self):
@@ -241,7 +244,7 @@ class TestSceneAndMessageService:
         state = _overall_state(tick=1, world_id="world-1", scene_id="scene-1")
         result = await scene_service.build_scene_state(state, config)
         assert "pc-1" in result["pcs"]
-        assert [o["id"] for o in result["scene_objects"]] == ["obj-1"]
+        assert [o.id for o in result["scene_objects"]] == ["obj-1"]
 
 
 class TestDMAndReflectionService:
@@ -261,7 +264,8 @@ class TestDMAndReflectionService:
         assert result["hints"] == ["去酒馆"]
         assert result["plot_brief"] == "今晚有冲突"
         assert result["scene_id"] == "tavern"
-        assert result["_dm_ext"] is None
+        assert isinstance(result["_dm_ext"], DMRecord)
+        assert result["_dm_ext"].ext == {}
 
     @pytest.mark.asyncio
     async def test_dm_narrate_returns_narrative(self):
@@ -334,14 +338,14 @@ class TestEventService:
         state = _overall_state(
             tick=3,
             scene_id="",
-            pending_actions=[
-                {
-                    "order": 0,
-                    "action_type": "talk",
-                    "target_id": "pc-2",
-                    "target_type": "pc",
-                    "result": {"kind": "pc_talk", "pc_id": "pc-1"},
-                }
+            actions=[
+                Action(
+                    order=0,
+                    action_type="talk",
+                    target_id="pc-2",
+                    target_type="pc",
+                    result={"kind": "pc_talk", "pc_id": "pc-1"},
+                )
             ],
         )
         result = event_service.flush_events(state, config)
@@ -354,7 +358,7 @@ class TestEventService:
         Mark the message ready even with no pending events (e.g. narrative-only ticks)."""
         event_repo = AsyncMock()
         config = {"configurable": {"repos": {"event": event_repo}}}
-        state = _overall_state(tick=4, scene_id="", pending_actions=[])
+        state = _overall_state(tick=4, scene_id="", scene=Scene(id=""), actions=[])
         result = event_service.flush_events(state, config)
         events = result.get("_pending_events", [])
         assert events == []
@@ -368,11 +372,13 @@ class TestEventService:
         state = _overall_state(
             tick=1,
             scene_id="",
-            scene={"id": "scene-1", "name": "Tavern"},
-            scene_objects=[{"id": "obj-1", "name": "Chest", "object_type": "container"}],
+            scene=Scene(id="scene-1", name="Tavern"),
+            scene_objects=[
+                SceneObject(id="obj-1", name="Chest", object_type=SceneObjectType.CONTAINER)
+            ],
             pcs={"pc-1": PlayerCharacter(id="pc-1", name="Alex")},
             actors={},
-            pending_actions=[],
+            actions=[],
         )
         result = event_service.flush_events(state, config)
         events = result.get("_pending_events", [])
@@ -389,7 +395,7 @@ class TestEventService:
             scene_id="scene-1",
             plot_brief="酒馆冲突一触即发。",
             hints=["注意角落里的陌生人"],
-            pending_actions=[],
+            actions=[],
         )
         result = event_service.flush_events(state, config)
         events = result.get("_pending_events", [])
@@ -405,16 +411,16 @@ class TestEventService:
             scene_id="",
             pcs={"pc-1": PlayerCharacter(id="pc-1", name="Alex")},
             pc_decisions=[
-                {
-                    "pc_id": "pc-1",
-                    "type": "talk",
-                    "target_id": "npc-1",
-                    "target_type": "actor",
-                    "thought": "我想找 NPC 打听消息。",
-                    "description": "先交谈收集情报。",
-                }
+                Decision(
+                    pc_id="pc-1",
+                    type="talk",
+                    target_id="npc-1",
+                    target_type="actor",
+                    thought="我想找 NPC 打听消息。",
+                    description="先交谈收集情报。",
+                )
             ],
-            pending_actions=[],
+            actions=[],
         )
         result = event_service.flush_events(state, config)
         events = result.get("_pending_events", [])
@@ -432,14 +438,15 @@ class TestEventService:
         state = _overall_state(
             tick=1,
             scene_id="",
-            pending_actions=[
-                {
-                    "order": 0,
-                    "action_type": "character_combat",
-                    "target_id": "npc-1",
-                    "target_type": "actor",
-                    "result": {"kind": "character_combat", "pc_id": "pc-1"},
-                }
+            scene=Scene(id=""),
+            actions=[
+                Action(
+                    order=0,
+                    action_type="character_combat",
+                    target_id="npc-1",
+                    target_type="actor",
+                    result={"kind": "character_combat", "pc_id": "pc-1"},
+                )
             ],
         )
         result = event_service.flush_events(state, config)
@@ -455,7 +462,8 @@ class TestEventService:
         state = _overall_state(
             tick=2,
             scene_id="",
-            pending_actions=[],
+            scene=Scene(id=""),
+            actions=[],
             narrative="夜幕降临，酒馆里灯火通明。",
         )
         result = event_service.flush_events(state, config)
@@ -469,7 +477,7 @@ class TestEventService:
         state = _overall_state(
             tick=2,
             scene_id="",
-            pending_actions=[],
+            actions=[],
             narrative="夜幕降临，酒馆里灯火通明。",
         )
         result = event_service.emit_narrative_event(state)
@@ -485,7 +493,7 @@ class TestEventService:
         state = _overall_state(
             tick=2,
             scene_id="",
-            pending_actions=[],
+            actions=[],
             narrative="",
         )
         result = event_service.emit_narrative_event(state)
@@ -503,7 +511,7 @@ class TestSpawnService:
         actor_repo.load_all = AsyncMock(return_value=[SimpleNamespace(id="a1", scene_id="scene-1")])
         actor_repo.save = AsyncMock()
         config = {"configurable": {"repos": {"actor": actor_repo}}}
-        state = _overall_state(world_id="w-1", scene_id="scene-1", scene={"id": "scene-1"})
+        state = _overall_state(world_id="w-1", scene_id="scene-1", scene=Scene(id="scene-1"))
         result = await scene_service.generate_actors(state, config)
         assert result["_generated_actors"] == []
         actor_repo.save.assert_not_called()
@@ -540,7 +548,7 @@ class TestSpawnService:
         state = _overall_state(
             world_id="w-1",
             scene_id="scene-1",
-            scene={"id": "scene-1", "name": "Tavern", "map_width": 40, "map_height": 40},
+            scene=Scene(id="scene-1", name="Tavern", map_width=40, map_height=40),
             plot_brief="酒馆里暗流涌动。",
         )
         result = await scene_service.generate_actors(state, config)
@@ -557,7 +565,7 @@ class TestSpawnService:
         scene_repo.get_object_ids = AsyncMock(return_value=["obj-1"])
         scene_repo.save_object = AsyncMock()
         config = {"configurable": {"repos": {"scene": scene_repo}}}
-        state = _overall_state(world_id="w-1", scene_id="scene-1", scene={"id": "scene-1"})
+        state = _overall_state(world_id="w-1", scene_id="scene-1", scene=Scene(id="scene-1"))
         result = await scene_service.generate_scene_objects(state, config)
         assert result["_generated_scene_objects"] == []
         scene_repo.save_object.assert_not_called()
@@ -594,7 +602,7 @@ class TestSpawnService:
         state = _overall_state(
             world_id="w-1",
             scene_id="scene-1",
-            scene={"id": "scene-1", "name": "Tavern", "map_width": 40, "map_height": 40},
+            scene=Scene(id="scene-1", name="Tavern", map_width=40, map_height=40),
             plot_brief="酒馆里暗流涌动。",
             actors={},
         )
@@ -617,10 +625,10 @@ class TestTilemapService:
         config = {"configurable": {"repos": {"scene": scene_repo}}}
         state = _overall_state(
             scene_id="scene-1",
-            scene={"id": "scene-1", "tilemap_summary": "已有摘要"},
+            scene=Scene(id="scene-1", tilemap_summary="已有摘要"),
         )
         result = await scene_service.interpret_tilemap(state, config)
-        assert result["scene"]["tilemap_summary"] == "已有摘要"
+        assert result["scene"].tilemap_summary == "已有摘要"
         scene_repo.save_tilemap_summary.assert_not_called()
 
     @pytest.mark.asyncio
@@ -631,10 +639,10 @@ class TestTilemapService:
         config = {"configurable": {"repos": {"scene": scene_repo}}}
         state = _overall_state(
             scene_id="scene-1",
-            scene={"id": "scene-1", "map_key": "not-exist"},
+            scene=Scene(id="scene-1", map_key="not-exist"),
         )
         result = await scene_service.interpret_tilemap(state, config)
-        assert result["scene"].get("tilemap_summary", "") == ""
+        assert result["scene"].tilemap_summary == ""
         scene_repo.save_tilemap_summary.assert_not_called()
 
     @pytest.mark.asyncio
@@ -672,10 +680,10 @@ class TestTilemapService:
             }
             state = _overall_state(
                 scene_id="scene-1",
-                scene={"id": "scene-1", "map_key": "scene-1"},
+                scene=Scene(id="scene-1", map_key="scene-1"),
             )
             result = await scene_service.interpret_tilemap(state, config, assets_dir=assets_dir)
-            assert result["scene"]["tilemap_summary"] == "一片荒凉的沙漠，中央有口水井。"
+            assert result["scene"].tilemap_summary == "一片荒凉的沙漠，中央有口水井。"
             scene_repo.save_tilemap_summary.assert_awaited_once_with(
                 "scene-1", "一片荒凉的沙漠，中央有口水井。"
             )

@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from src.domain import Memory
 from src.domain.actor import Actor
 from src.domain.player_character import PlayerCharacter
 from src.engine.combat.combat_engine import process_combat_action
@@ -137,7 +138,7 @@ class TestCombatAction:
         llm.call_structured = AsyncMock(
             return_value=CombatNarrationSchema(narration="他击中了敌人。")
         )
-        pc_memory_map: dict[str, list[dict]] = {}
+        pc_memory_map: dict[str, list[Memory]] = {}
         pcs = {"pc1": _pc(position_x=4, position_y=5)}
         actors = {"goblin": _actor(position_x=5, position_y=5)}
         await process_combat_action(
@@ -156,5 +157,5 @@ class TestCombatAction:
         )
         assert len(pc_memory_map.get("pc1", [])) == 1
         mem = pc_memory_map["pc1"][0]
-        assert mem["memory_type"] == "combat"
-        assert mem["tick"] == 3
+        assert mem.memory_type == "combat"
+        assert mem.tick == 3

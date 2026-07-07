@@ -4,7 +4,7 @@ import { afterEach, describe, it, vi } from "vitest";
 import { NarrativeHandler } from "../../../src/managers/event_handler/NarrativeHandler";
 
 const REVEAL_TIMEOUT_MS = 8000;
-const READ_DWELL_MS = 600;
+const READ_DWELL_MIN_MS = 1000;
 
 describe("NarrativeHandler", () => {
   afterEach(() => {
@@ -19,14 +19,12 @@ describe("NarrativeHandler", () => {
       tick: 1,
       payload: { text: "Hello world" },
     });
-    // 模拟 NarrativePanel 逐字完成 / Simulate panel typewriter completion
     window.dispatchEvent(
       new CustomEvent("narrative-complete", { detail: { text: "Hello world" } })
     );
-    // 让 reveal Promise 解析并调度停留 timer / Let reveal promise resolve and schedule dwell timer
     await Promise.resolve();
-    // 推进阅读停留时间 / Advance reading dwell
-    vi.advanceTimersByTime(READ_DWELL_MS + 10);
+    // "Hello world" → contentDuration = 1000 + 11*20 = 1220ms
+    vi.advanceTimersByTime(2000);
     await promise;
   });
 
@@ -48,12 +46,9 @@ describe("NarrativeHandler", () => {
       tick: 1,
       payload: { text: "Hello world" },
     });
-    // 推进 reveal 超时 / Advance reveal timeout
     vi.advanceTimersByTime(REVEAL_TIMEOUT_MS);
-    // 让 reveal Promise 解析并调度停留 timer / Let reveal promise resolve and schedule dwell timer
     await Promise.resolve();
-    // 推进阅读停留 / Advance reading dwell
-    vi.advanceTimersByTime(READ_DWELL_MS + 10);
+    vi.advanceTimersByTime(2000);
     await promise;
   });
 });

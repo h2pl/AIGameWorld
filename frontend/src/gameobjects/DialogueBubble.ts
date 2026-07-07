@@ -9,6 +9,7 @@
 
 import Phaser from "phaser";
 import { speedMs } from "../config/playback";
+import { contentDuration } from "../utils/contentDuration";
 
 const PADDING_X = 12;
 const PADDING_Y = 8;
@@ -30,8 +31,6 @@ const NAR_TEXT = "#c8d6e5";
 const THOUGHT_BG = 0xfff9c4;
 const THOUGHT_BORDER = 0xfbc02d;
 const THOUGHT_TEXT = "#5d4037";
-// 探索/交互浮字固定停留时长（含翻页） / Fixed duration for explore/interact narration bubbles
-const NAR_FIXED_MS = 2000;
 
 export type BubbleStyle = "dialogue" | "narration" | "thought";
 
@@ -142,10 +141,9 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     const text = this.pages[this.pageIndex];
     let showMs: number;
     if (this.style === "narration") {
-      // 旁白风格使用固定时长，确保探索/交互文本停留一致 / Narration uses fixed duration
-      showMs = NAR_FIXED_MS;
+      showMs = Math.max(speedMs(contentDuration(text)), speedMs(1000));
     } else {
-      const minMs = speedMs(800);
+      const minMs = speedMs(1000);
       const perChar = speedMs(40);
       const maxMs = speedMs(4000);
       showMs = Math.min(maxMs, Math.max(minMs, minMs + text.length * perChar));

@@ -2,7 +2,7 @@
 
 import json
 
-from ..domain import SceneObject, SceneObjectType
+from ..domain import Scene, SceneObject, SceneObjectType
 from ..storage.sqlite_client import SQLiteClient
 
 
@@ -12,77 +12,43 @@ class SceneRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
-    async def list_scenes(self, world_id: str) -> list[dict]:
+    async def list_scenes(self, world_id: str) -> list[Scene]:
         """按 world_id 加载场景摘要列表."""
         rows = await self._db.fetch_all(
             "SELECT id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json FROM scenes WHERE world_id = ?",
             (world_id,),
         )
-        return [
-            {
-                "id": r["id"],
-                "name": r["name"],
-                "type": r["type"],
-                "description": r["description"],
-                "map_key": r.get("map_key", ""),
-                "spawn_x": r.get("spawn_x", 0),
-                "spawn_y": r.get("spawn_y", 0),
-                "map_width": r.get("map_width", 40),
-                "map_height": r.get("map_height", 40),
-                "tilemap_summary": r.get("tilemap_summary", ""),
-                "ext_json": r.get("ext_json", "{}"),
-            }
-            for r in rows
-        ]
+        return [_row_to_scene(r, world_id) for r in rows]
 
-    async def get_scene(self, scene_id: str) -> dict | None:
+    async def get_scene(self, scene_id: str) -> Scene | None:
         """按 scene_id 加载单个场景."""
         row = await self._db.fetch_one(
-            "SELECT id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json FROM scenes WHERE id = ?",
+            "SELECT id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json, world_id FROM scenes WHERE id = ?",
             (scene_id,),
         )
         if not row:
             return None
-        return {
-            "id": row["id"],
-            "name": row["name"],
-            "type": row["type"],
-            "description": row["description"],
-            "map_key": row.get("map_key", ""),
-            "spawn_x": row.get("spawn_x", 0),
-            "spawn_y": row.get("spawn_y", 0),
-            "map_width": row.get("map_width", 40),
-            "map_height": row.get("map_height", 40),
-            "tilemap_summary": row.get("tilemap_summary", ""),
-            "ext_json": row.get("ext_json", "{}"),
-        }
+        return _row_to_scene(row)
 
-    async def get_object_ids(self, scene_id: str) -> list[str]:
-        """按 scene_id 获取关联的场景对象 id 列表."""
-        rows = await self._db.fetch_all(
-            "SELECT id FROM scene_objects WHERE scene_id = ?", (scene_id,)
-        )
-        return [r["id"] for r in rows]
-
-    async def save_scene(self, scene: dict, world_id: str) -> None:
+    async def save_scene(self, scene: Scene, world_id: str) -> None:
         """写入单条场景."""
         await self._db.execute(
             "INSERT OR REPLACE INTO scenes "
             "(id, name, type, description, map_key, spawn_x, spawn_y, map_width, map_height, tilemap_summary, ext_json, world_id, updated_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
             (
-                scene.get("id", ""),
-                scene.get("name", ""),
-                scene.get("type", ""),
-                scene.get("description", ""),
-                scene.get("map_key", ""),
-                scene.get("spawn_x", 0),
-                scene.get("spawn_y", 0),
-                scene.get("map_width", 40),
-                scene.get("map_height", 40),
-                scene.get("tilemap_summary", ""),
-                scene.get("ext_json", "{}"),
-                world_id,
+                scene.id,
+                scene.name,
+                scene.type,
+                scene.description,
+                scene.map_key,
+                scene.spawn_x,
+                scene.spawn_y,
+                scene.map_width,
+                scene.map_height,
+                scene.tilemap_summary,
+                scene.ext_json,
+                world_id or scene.world_id,
             ),
         )
         await self._db.commit()
@@ -157,3 +123,28 @@ class SceneRepo:
                 world_id=r.get("world_id", ""),
             )
         return result
+
+
+def _row_to_scene(row, world_id: str = "") -> Scene:
+    """数据库行转 Scene 领域模型."""
+    ext_json = row.get("ext_json", "{}") or "{}"
+    try:
+        ext = json.loads(ext_json)
+    except json.JSONDecodeError:
+        ext = {}
+    return Scene(
+        id=row["id"],
+        name=row.get("name", ""),
+        type=row.get("type", ""),
+        description=row.get("description", ""),
+        map_key=row.get("map_key", ""),
+        spawn_x=row.get("spawn_x", 0),
+        spawn_y=row.get("spawn_y", 0),
+        map_width=row.get("map_width", 40),
+        map_height=row.get("map_height", 40),
+        tilemap_summary=row.get("tilemap_summary", ""),
+        landmarks=ext.get("landmarks", []),
+        exits=ext.get("exits", []),
+        ext_json=ext_json,
+        world_id=world_id or row.get("world_id", ""),
+    )

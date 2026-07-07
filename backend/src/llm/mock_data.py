@@ -24,6 +24,8 @@ _PC_DECISIONS: list[dict] = [
         "target_id": None,
         "target_type": None,
         "thought": "也许应该在酒馆周围四处看看，说不定能发现什么线索。",
+        "explore_x": 22,
+        "explore_y": 15,
     },
     {
         "action_type": "talk",
@@ -42,6 +44,8 @@ _PC_DECISIONS: list[dict] = [
         "target_id": None,
         "target_type": None,
         "thought": "这个酒馆的布局让人在意，到处巡视一下看看有没有暗门或隐藏的线索。",
+        "explore_x": 15,
+        "explore_y": 20,
     },
     {
         "action_type": "talk",

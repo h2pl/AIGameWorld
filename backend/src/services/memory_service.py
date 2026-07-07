@@ -6,6 +6,7 @@
 
 from langchain_core.runnables.config import RunnableConfig
 
+from ..domain import Memory
 from ..repository.memory_repo import score_memory
 from ..utils.helpers import get_repo
 
@@ -18,7 +19,7 @@ async def retrieve_memories(
     memory_types: list[str] | None = None,
     periods: list[str] | None = None,
     include_reflections: bool = True,
-    pc_memory_map: dict[str, list[dict]] | None = None,
+    pc_memory_map: dict[str, list[Memory]] | None = None,
     current_tick: int = 0,
 ) -> list[str]:
     """按角色 + 查询语义检索相关记忆文本 / Retrieve relevant memory texts for a character.
@@ -49,11 +50,11 @@ async def retrieve_memories(
             current_mems = pc_memory_map.get(pc_id, [])
             scored = sorted(
                 current_mems,
-                key=lambda m: score_memory(m.get("importance", 2), m.get("tick", 0), current_tick),
+                key=lambda m: score_memory(m.importance, m.tick, current_tick),
                 reverse=True,
             )
             for m in scored[:top_k]:
-                content = m.get("content")
+                content = m.content
                 if content and content not in seen:
                     contents.append(content)
                     seen.add(content)

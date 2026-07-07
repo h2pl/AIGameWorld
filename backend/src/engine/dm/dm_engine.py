@@ -43,7 +43,7 @@ async def dm_create(
         for obj in all_objects:
             scene_objects_by_scene.setdefault(obj.get("scene_id", ""), []).append(obj)
         scenes = [
-            _enrich_scene(s, scene_objects_by_scene.get(s.get("id", ""), [])) for s in raw_scenes
+            _enrich_scene(s.model_dump(), scene_objects_by_scene.get(s.id, [])) for s in raw_scenes
         ]
 
     # 检索 DM 记忆（复用 dm_records）/ Retrieve DM memories from dm_records
@@ -104,9 +104,9 @@ async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DM
     except Exception:
         logger.warning("[engine] dm_narrate memory retrieval failed, continuing without memories")
 
-    # pending_actions.result 可能是 Pydantic 模型，模板用 dict.get，需要统一转 dict
+    # actions.result 可能是 Pydantic 模型，模板用 dict.get，需要统一转 dict
     # / Normalize action results so Jinja can safely use .get()
-    pending_actions = _normalize_pending_actions(req.pending_actions)
+    actions = _normalize_actions(req.actions)
 
     system_prompt = await _render_dm_system(config, req.world_id)
     prompt = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
@@ -118,7 +118,7 @@ async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DM
         pcs=list(req.pcs.values()),
         actors=list(req.actors.values()),
         events=req.events,
-        pending_actions=pending_actions,
+        actions=actions,
         memories=memories,
     )
 
@@ -145,7 +145,7 @@ async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DM
     return DMNarrateResponse(narrative_out=narrative)
 
 
-def _normalize_pending_actions(actions: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+def _normalize_actions(actions: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     """把 action.result 中的 Pydantic/对象统一转成 dict，供模板安全使用 / Normalize action results to dicts."""
     if not actions:
         return []

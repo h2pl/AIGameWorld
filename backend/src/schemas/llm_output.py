@@ -33,6 +33,14 @@ class CharacterActionSchema(BaseModel):
     thought: str = Field(
         description="思考过程（2-4句中文）：观察到什么、如何权衡、为什么选这个行动"
     )
+    explore_x: int | None = Field(
+        default=None,
+        description="explore 时探索目标 x 坐标，talk/interact/combat/wait 时必须是 null",
+    )
+    explore_y: int | None = Field(
+        default=None,
+        description="explore 时探索目标 y 坐标，talk/interact/combat/wait 时必须是 null",
+    )
 
 
 class PCDecideSchema(BaseModel):

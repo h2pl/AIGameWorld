@@ -1,19 +1,26 @@
-/** 叙事面板 — 仅显示 DM 叙事、探索/交互记录，历史改为居中弹窗列表 */
+/** 叙事面板 — 固定大小，CSS fade-in 渐入显示 / Fixed size, fade-in on content */
 import { Panel } from "./Panel";
-import { speedMs } from "../config/playback";
 
-const CHAR_MS = 40; // 逐字速度 / Per-char speed
-
-/** tick 清空 + 逐字展开 + 居中弹窗历史 / clear on tick + typewriter + centered history overlay */
+/** fixed-size + fade-in + centered history overlay / 固定尺寸，渐入，居中弹窗历史 */
 export class NarrativePanel extends Panel {
-  private contentEl!: HTMLElement; // 正文区
-  private history: string[] = []; // 历史缓存
+  /** 内容容器 / Content container */
+  private contentEl!: HTMLElement;
+  /** 叙事历史 / Narrative history */
+  private history: string[] = [];
+  /** 当前显示文本 / Currently displayed text */
+  private currentText = "";
+  /** fade-in 动画定时器 / Fade-in animation timer */
+  private fadeTimer: ReturnType<typeof setTimeout> | null = null;
+  /** tick 开始回调 / Tick start callback */
   private _onTickStart: () => void;
+  /** tick 事件回调 / Tick event callback */
   private _onTickEvent: (e: Event) => void;
+  /** 键盘事件回调 / Keyboard event callback */
   private _onKeydown: (e: KeyboardEvent) => void;
 
   constructor() {
     super("narrative-panel");
+    // 绑定事件处理器 / Bind event handlers
     this._onTickStart = () => this._clear();
     this._onTickEvent = (e: Event) => this._handle((e as CustomEvent).detail);
     this._onKeydown = (e) => {
@@ -21,9 +28,11 @@ export class NarrativePanel extends Panel {
     };
   }
 
+  /** 构建面板 DOM / Build panel DOM */
   protected buildDOM(): HTMLElement {
     const el = document.createElement("div");
     el.className = "panel narrative-panel";
+    // 面板主体 HTML / Panel body HTML
     el.innerHTML = `
       <div class="panel-header">
         <span class="panel-icon">📖</span><span class="panel-title">叙事 / Narrative</span>
@@ -39,76 +48,70 @@ export class NarrativePanel extends Panel {
           <div class="history-body"></div>
         </div>
       </div>`;
+    // 缓存内容容器 / Cache content container
     this.contentEl = el.querySelector(".narrative-body")!;
+    // 历史按钮点击 / History button click
     el.querySelector("#narr-history-btn")!.addEventListener("click", () => this._showHistory());
     const overlay = el.querySelector("#narr-history-overlay") as HTMLElement;
     overlay.querySelector(".history-close")!.addEventListener("click", () => this._hideHistory());
+    // 点击遮罩关闭历史 / Close history when clicking overlay
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) this._hideHistory();
     });
     return el;
   }
 
+  /** 绑定 store 相关事件 / Bind store-related events */
   protected bindStore(): void {
     window.addEventListener("tick-start", this._onTickStart);
     window.addEventListener("tick-event", this._onTickEvent);
   }
 
+  /** 绑定 DOM 事件 / Bind DOM events */
   protected bindEvents(): void {
     document.addEventListener("keydown", this._onKeydown);
   }
 
+  /** 清空面板内容 / Clear panel content */
   private _clear(): void {
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = null;
+    if (this.fadeTimer) {
+      clearTimeout(this.fadeTimer);
+      this.fadeTimer = null;
     }
-    this.target = "";
-    this.displayed = "";
-    this.contentEl.innerHTML = "";
+    this.currentText = "";
+    this.contentEl.innerHTML = `<span class="narrative-placeholder">等待叙事…</span>`;
   }
 
-  private timer: ReturnType<typeof setTimeout> | null = null;
-  private displayed = "";
-  private target = "";
-
+  /** 处理叙事事件 / Handle narrative event */
   private _handle(detail: { type: string; payload: Record<string, unknown> }): void {
-    // 叙事面板只展示 DM 叙事，不处理探索/交互等其他事件
     if (detail?.type !== "dm_narrative") return;
-    const payload = detail.payload || {};
-    const text = (payload.text as string) || (payload.narrative as string) || "";
-    if (!text) return;
-    if (this.target === text) return;
+    const text = (detail.payload?.text as string) || (detail.payload?.narrative as string) || "";
+    if (!text || text === this.currentText) return;
 
-    this.target = text;
-    this.displayed = "";
-    this._reveal();
+    this.currentText = text;
+
+    if (this.fadeTimer) clearTimeout(this.fadeTimer);
+
+    // 清空旧内容 / Clear old content
+    this.contentEl.innerHTML = "";
+
+    // 延迟一帧插入，让 CSS animation 重新触发 / Delay one frame for animation restart
+    this.fadeTimer = setTimeout(() => {
+      this.contentEl.innerHTML = `<div class="narrative-line fade-in">${this._escape(text)}</div>`;
+      this.history.push(text);
+      this.fadeTimer = null;
+      this.contentEl.scrollTop = this.contentEl.scrollHeight;
+      // 通知 NarrativeHandler 展示完成 / Signal complete for handler
+      window.dispatchEvent(new CustomEvent("narrative-complete", { detail: { text } }));
+    }, 50);
   }
 
-  private _reveal(): void {
-    if (!this.contentEl) return;
-    const idx = this.displayed.length;
-    if (idx >= this.target.length) {
-      this.timer = null;
-      this.history.push(this.target);
-      window.dispatchEvent(
-        new CustomEvent("narrative-complete", { detail: { text: this.target } })
-      );
-      return;
-    }
-    this.displayed = this.target.slice(0, idx + 1);
-    this.contentEl.innerHTML = `<div class="narrative-line fade-in">${this._escape(this.displayed)}</div>`;
-    this.contentEl.scrollTop = this.contentEl.scrollHeight;
-    const baseDelay = idx < 20 ? CHAR_MS : Math.max(15, CHAR_MS - (idx - 20) * 1.5);
-    const delay = speedMs(baseDelay);
-    this.timer = setTimeout(() => this._reveal(), delay);
-  }
-
-  /** 打开叙事历史弹窗 / Open narrative history overlay */
+  /** 显示历史弹层 / Show history overlay */
   private _showHistory(): void {
     const overlay = this.el.querySelector("#narr-history-overlay") as HTMLElement;
     if (!overlay) return;
     const listEl = overlay.querySelector(".history-body") as HTMLElement;
+    // 渲染历史列表 / Render history list
     listEl.innerHTML = this.history.length
       ? this.history
           .map(
@@ -120,18 +123,20 @@ export class NarrativePanel extends Panel {
     overlay.style.display = "flex";
   }
 
-  /** 关闭叙事历史弹窗 / Close narrative history overlay */
+  /** 隐藏历史弹层 / Hide history overlay */
   private _hideHistory(): void {
     const overlay = this.el.querySelector("#narr-history-overlay") as HTMLElement;
     if (overlay) overlay.style.display = "none";
   }
 
+  /** HTML 转义 / HTML escape */
   private _escape(s: string): string {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
+  /** 销毁面板，清理事件和定时器 / Destroy panel and clean up */
   destroy(): void {
-    if (this.timer) clearTimeout(this.timer);
+    if (this.fadeTimer) clearTimeout(this.fadeTimer);
     document.removeEventListener("keydown", this._onKeydown);
     window.removeEventListener("tick-start", this._onTickStart);
     window.removeEventListener("tick-event", this._onTickEvent);

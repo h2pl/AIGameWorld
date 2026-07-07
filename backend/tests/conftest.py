@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from src.domain import Scene
 from src.graph.state import OverallState
 
 _TEST_DIR = Path(__file__).parent / "data"
@@ -52,8 +53,8 @@ def base_state() -> OverallState:
     return {
         "tick": 0,
         "world_id": "",
-        "scene": {},
-        "pending_actions": [],
+        "scene": Scene(id=""),
+        "actions": [],
         "hints": [],
         "plot_brief": "",
         "scene_id": "",
@@ -150,16 +151,16 @@ def mock_repos(mock_llm):
 
     scene_repo = AsyncMock()
     scene_repo.get_scene = AsyncMock(
-        return_value={
-            "id": "tavern",
-            "name": "Tavern",
-            "type": "indoor",
-            "description": "一个热闹的酒馆。",
-            "spawn_x": 10,
-            "spawn_y": 10,
-            "map_width": 40,
-            "map_height": 40,
-        }
+        return_value=Scene(
+            id="tavern",
+            name="Tavern",
+            type="indoor",
+            description="一个热闹的酒馆。",
+            spawn_x=10,
+            spawn_y=10,
+            map_width=40,
+            map_height=40,
+        )
     )
     scene_repo.get_object_ids = AsyncMock(return_value=[])
     scene_repo.load_all = AsyncMock(return_value={})

@@ -7,12 +7,13 @@ PC 移动到目标相邻格，由 LLM 直接生成战斗过程、结果与旁白
 import json
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, PlayerCharacter
+from ...domain import Actor, Memory, PlayerCharacter
 from ...schemas.engine_result import CombatActionResult
 from ...schemas.llm_output import CombatNarrationSchema
 from ...services.memory_service import retrieve_memories
@@ -33,7 +34,7 @@ async def process_combat_action(
     plot_brief: str = "",
     hints: list[str] | None = None,
     tick: int = 0,
-    pc_memory_map: dict[str, list[dict]] | None = None,
+    pc_memory_map: dict[str, list[Memory]] | None = None,
     config: RunnableConfig = None,
 ) -> CombatActionResult | None:
     """处理单个 combat 决策：走位 → LLM 生成战斗 → 状态更新 → 记忆."""
@@ -207,21 +208,22 @@ def _store_combat_memory(
     target_type: str,
     narration: str,
     tick: int,
-    pc_memory_map: dict[str, list[dict]] | None,
+    pc_memory_map: dict[str, list[Memory]] | None,
 ) -> None:
     """把战斗记录写入 pc_memory_map / Stage combat memory into state."""
     if pc_memory_map is None or not narration:
         return
     target_label = target_id if target_type != "actor" else f"敌人 {target_id}"
     pc_memory_map.setdefault(pc_id, []).append(
-        {
-            "pc_id": pc_id,
-            "content": f"与 {target_label} 战斗：{narration}",
-            "tick": tick,
-            "importance": 6,
-            "memory_type": "combat",
-            "entity_type": "pc",
-        }
+        Memory(
+            id=f"mem_{pc_id}_{tick}_{uuid4().hex[:6]}",
+            pc_id=pc_id,
+            content=f"与 {target_label} 战斗：{narration}",
+            tick=tick,
+            importance=6,
+            memory_type="combat",
+            entity_type="pc",
+        )
     )
 
 

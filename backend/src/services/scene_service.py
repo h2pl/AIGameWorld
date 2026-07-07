@@ -18,7 +18,7 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ..domain import Actor, PlayerCharacter, SceneObject, SceneObjectType
+from ..domain import Actor, PlayerCharacter, Scene, SceneObject, SceneObjectType
 from ..graph.state import OverallState
 from ..schemas.llm_output import (
     ActorGenerationSchema,
@@ -58,8 +58,22 @@ async def build_scene_info(state: OverallState, config=None) -> dict:
     scene_id = state.get("scene_id", "")
     scene_repo = get_repo(config, "scene")
     scene = await scene_repo.get_scene(scene_id) if scene_repo else None
-    scene_ctx = _build_scene_ctx(scene, scene_id)
-    return {"scene": scene_ctx}
+    if scene is None:
+        scene = Scene(
+            id=scene_id,
+            name="",
+            type="",
+            description="",
+            map_key="",
+            spawn_x=0,
+            spawn_y=0,
+            map_width=40,
+            map_height=40,
+            tilemap_summary="",
+            landmarks=[],
+            exits=[],
+        )
+    return {"scene": scene}
 
 
 @trace_node("scene.interpret_tilemap")
@@ -70,11 +84,13 @@ async def interpret_tilemap(
 ) -> dict:
     """动态生成 tilemap 语义摘要：scene 无摘要时，读取 tilemap 文件并调用 LLM 生成。"""
     scene_id = state.get("scene_id", "")
-    scene = state.get("scene", {}) or {}
-    existing_summary = scene.get("tilemap_summary", "")
-    if existing_summary:
+    scene = state.get("scene")
+    if scene is None:
+        return {"scene": scene}
+
+    if scene.tilemap_summary:
         logger.info("[scene] %s tilemap_summary exists, skip interpretation", scene_id)
-        return {"scene": {**scene, "tilemap_summary": existing_summary}}
+        return {"scene": scene}
 
     scene_repo = get_repo(config, "scene")
     if scene_repo is None:
@@ -111,7 +127,7 @@ async def interpret_tilemap(
     if summary:
         await scene_repo.save_tilemap_summary(scene_id, summary)
         logger.info("[scene] interpreted tilemap for %s", scene_id)
-        return {"scene": {**scene, "tilemap_summary": summary}}
+        scene.tilemap_summary = summary
     return {"scene": scene}
 
 
@@ -140,7 +156,9 @@ async def generate_actors(state: OverallState, config: RunnableConfig = None) ->
         logger.warning("[scene] LLM unavailable, cannot generate actors for %s", scene_id)
         return {"_generated_actors": []}
 
-    scene = state.get("scene", {})
+    scene = state.get("scene")
+    if scene is None:
+        return {"_generated_actors": []}
     ctx = _build_spawn_ctx(scene, state)
     system = _PROMPTS.get_template("spawn/_actor_spawn_system.jinja").render(**ctx)
     prompt = _PROMPTS.get_template("spawn/actor_spawn.jinja").render(**ctx)
@@ -246,7 +264,9 @@ async def generate_scene_objects(state: OverallState, config: RunnableConfig = N
         logger.warning("[scene] LLM unavailable, cannot generate scene objects for %s", scene_id)
         return {"_generated_scene_objects": []}
 
-    scene = state.get("scene", {})
+    scene = state.get("scene")
+    if scene is None:
+        return {"_generated_scene_objects": []}
     ctx = _build_spawn_ctx(scene, state)
     system = _PROMPTS.get_template("spawn/_object_spawn_system.jinja").render(**ctx)
     prompt = _PROMPTS.get_template("spawn/object_spawn.jinja").render(**ctx)
@@ -306,12 +326,12 @@ async def build_scene_objects(state: OverallState, config=None) -> dict:
 
     object_ids = await scene_repo.get_object_ids(scene_id)
     scene_objects = await _fetch_scene_objects(object_ids, scene_repo)
-    return {"scene_objects": _build_scene_object_ctx(scene_objects)}
+    return {"scene_objects": scene_objects}
 
 
 async def _assign_pc_positions(
     pcs: list[PlayerCharacter],
-    scene: dict | None,
+    scene: Scene | None,
     pc_repo,
     actors: dict[str, Actor] | None = None,
     spawn_radius: int = 2,
@@ -321,7 +341,7 @@ async def _assign_pc_positions(
     以 spawn 为中心螺旋搜索空位，避免与已定位 PC/Actor 重叠。
     坐标(0,0) 或 scene_id 不匹配当前场景的 PC 视为未设置，分配到新场景出生点。
     """
-    scene_id = scene.get("id", "") if scene else ""
+    scene_id = scene.id if scene else ""
     unset_pcs = [
         pc
         for pc in pcs
@@ -330,8 +350,8 @@ async def _assign_pc_positions(
     if not unset_pcs:
         return {}
 
-    spawn_x = scene.get("spawn_x", 0) if scene else 0
-    spawn_y = scene.get("spawn_y", 0) if scene else 0
+    spawn_x = scene.spawn_x if scene else 0
+    spawn_y = scene.spawn_y if scene else 0
 
     from ..utils.helpers import build_occupied_set, find_vacant_adjacent
 
@@ -374,40 +394,7 @@ async def _fetch_scene_objects(object_ids: list[str], scene_repo) -> list:
     return [all_objects[oid] for oid in object_ids if oid in all_objects]
 
 
-def _build_scene_ctx(scene: dict | None, scene_id: str) -> dict[str, Any]:
-    if not scene:
-        return {
-            "id": scene_id,
-            "name": "",
-            "type": "",
-            "description": "",
-            "spawn_x": 0,
-            "spawn_y": 0,
-            "map_width": 40,
-            "map_height": 40,
-            "tilemap_summary": "",
-            "landmarks": [],
-            "exits": [],
-        }
-    ext_json = scene.get("ext_json", "{}")
-    return {
-        "id": scene.get("id", scene_id),
-        "name": scene.get("name", ""),
-        "type": scene.get("type", ""),
-        "description": scene.get("description", ""),
-        "map_key": scene.get("map_key", ""),
-        "spawn_x": scene.get("spawn_x", 0),
-        "spawn_y": scene.get("spawn_y", 0),
-        "map_width": scene.get("map_width", 40),
-        "map_height": scene.get("map_height", 40),
-        "tilemap_summary": scene.get("tilemap_summary", ""),
-        "landmarks": scene.get("landmarks", []),
-        "exits": scene.get("exits", []),
-        "ext_json": ext_json,
-    }
-
-
-def _build_spawn_ctx(scene: dict[str, Any], state: OverallState) -> dict[str, Any]:
+def _build_spawn_ctx(scene: Scene, state: OverallState) -> dict[str, Any]:
     """构建生成 prompt 上下文 / Build spawn prompt context."""
     actors = state.get("actors", {})
     scene_objects = state.get("scene_objects", [])
@@ -415,10 +402,10 @@ def _build_spawn_ctx(scene: dict[str, Any], state: OverallState) -> dict[str, An
         "scene": scene,
         "plot_brief": state.get("plot_brief", ""),
         "hints": state.get("hints", []),
-        "map_width": scene.get("map_width", 40),
-        "map_height": scene.get("map_height", 40),
-        "spawn_x": scene.get("spawn_x", 0),
-        "spawn_y": scene.get("spawn_y", 0),
+        "map_width": scene.map_width,
+        "map_height": scene.map_height,
+        "spawn_x": scene.spawn_x,
+        "spawn_y": scene.spawn_y,
         "existing_actors": list(actors.values()),
         "existing_objects": scene_objects,
     }
@@ -446,13 +433,13 @@ def _default_assets_dir() -> Path:
     return backend_root.parent / "frontend" / "public" / "assets"
 
 
-def _load_tilemap(scene: dict[str, Any], assets_dir: Path | None = None) -> dict | None:
+def _load_tilemap(scene: Scene, assets_dir: Path | None = None) -> dict | None:
     """根据 scene.map_key / ext_json.tilemap_url 读取 tilemap JSON 文件。"""
     assets_dir = assets_dir or _default_assets_dir()
     if not assets_dir.exists():
         return None
 
-    ext_json = scene.get("ext_json", "{}")
+    ext_json = scene.ext_json
     try:
         ext = json.loads(ext_json) if ext_json else {}
     except json.JSONDecodeError:
@@ -464,7 +451,7 @@ def _load_tilemap(scene: dict[str, Any], assets_dir: Path | None = None) -> dict
         filename = tilemap_url.lstrip("/").split("/")[-1]  # /assets/foo.json → foo.json
         path = assets_dir / filename
     else:
-        map_key = scene.get("map_key", "")
+        map_key = scene.map_key
         if not map_key:
             return None
         path = assets_dir / f"{map_key}.json"

@@ -1,11 +1,11 @@
 """Graph Subgraphs 测试——对齐当前子图结构。"""
 
-from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from src.domain import Decision, Scene, SceneObject, SceneObjectType
 from src.domain.player_character import PlayerCharacter
 from src.graph.subgraphs.pc_subgraph import pc_subgraph
 from src.graph.subgraphs.reflection_subgraph import reflection_subgraph
@@ -24,9 +24,9 @@ class TestCharacterSubgraph:
     @pytest.mark.asyncio
     async def test_pc_subgraph_runs_decide_act_chain(self):
         """角色子图执行 decide → act 两阶段链路（场景信息已由 scene_service 提前构建好，不区分 PC）/ Subgraph runs decide → act (scene info precomputed by scene_service, not per-PC)."""
-        scene = {"id": "tavern"}
-        scene_objects = []
-        pcs = {"pc-1": SimpleNamespace(id="pc-1", name="pc-1", role="", position_x=0, position_y=0)}
+        scene = Scene(id="tavern")
+        scene_objects: list[SceneObject] = []
+        pcs = {"pc-1": PlayerCharacter(id="pc-1", name="pc-1", role="", position_x=0, position_y=0)}
         state = {
             "tick": 1,
             "world_id": "world-1",
@@ -40,7 +40,7 @@ class TestCharacterSubgraph:
             "actors": {},
         }
 
-        decision = {"pc_id": "pc-1", "type": "talk", "description": "先问话"}
+        decision = Decision(pc_id="pc-1", type="talk", description="先问话")
         with (
             patch(
                 "src.services.pc_service.decision_engine.decide",
@@ -90,7 +90,7 @@ class TestSceneSubgraph:
     @pytest.mark.asyncio
     async def test_scene_subgraph_builds_scene_state(self):
         """场景子图依次执行 6 个节点并产出 scene/scene_objects/pcs/actors / Subgraph runs 6 nodes and produces scene state."""
-        pc = SimpleNamespace(
+        pc = PlayerCharacter(
             id="pc-1",
             scene_id="scene-1",
             name="Alex",
@@ -104,24 +104,23 @@ class TestSceneSubgraph:
         pc_repo.load_all = AsyncMock(return_value=[pc])
         pc_repo.load_one = AsyncMock(return_value=None)
 
-        scene = {
-            "id": "scene-1",
-            "name": "Tavern",
-            "type": "indoor",
-            "description": "一个热闹的酒馆。",
-            "map_key": "tavern",
-            "spawn_x": 10,
-            "spawn_y": 10,
-            "map_width": 40,
-            "map_height": 40,
-            "landmarks": [],
-            "exits": [],
-            "ext_json": "{}",
-        }
-        obj = SimpleNamespace(
+        scene = Scene(
+            id="scene-1",
+            name="Tavern",
+            type="indoor",
+            description="一个热闹的酒馆。",
+            map_key="tavern",
+            spawn_x=10,
+            spawn_y=10,
+            map_width=40,
+            map_height=40,
+            landmarks=[],
+            exits=[],
+        )
+        obj = SceneObject(
             id="obj-1",
             name="Chest",
-            object_type=SimpleNamespace(value="container"),
+            object_type=SceneObjectType.CONTAINER,
             interactable=True,
             position_x=1,
             position_y=1,
@@ -149,11 +148,11 @@ class TestSceneSubgraph:
             "world_id": "world-1",
             "scene_id": "scene-1",
             "pc_decisions": [],
-            "pending_actions": [],
+            "actions": [],
         }
         result = await scene_subgraph.ainvoke(state, config)
-        assert result["scene"]["id"] == "scene-1"
-        assert [o["id"] for o in result["scene_objects"]] == ["obj-1"]
+        assert result["scene"].id == "scene-1"
+        assert [o.id for o in result["scene_objects"]] == ["obj-1"]
         assert "pc-1" in result["pcs"]
         assert result["actors"] == {}
 
@@ -172,16 +171,16 @@ class TestSceneSubgraph:
         pc_repo.load_all = AsyncMock(return_value=[pc])
         pc_repo.load_one = AsyncMock(return_value=None)
 
-        scene = {
-            "id": "scene-1",
-            "name": "Tavern",
-            "type": "indoor",
-            "description": "一个热闹的酒馆。",
-            "spawn_x": 10,
-            "spawn_y": 10,
-            "map_width": 40,
-            "map_height": 40,
-        }
+        scene = Scene(
+            id="scene-1",
+            name="Tavern",
+            type="indoor",
+            description="一个热闹的酒馆。",
+            spawn_x=10,
+            spawn_y=10,
+            map_width=40,
+            map_height=40,
+        )
         saved_objects: dict[str, Any] = {}
 
         def _store_object(o):
@@ -243,12 +242,12 @@ class TestSceneSubgraph:
             "world_id": "world-1",
             "scene_id": "scene-1",
             "pc_decisions": [],
-            "pending_actions": [],
+            "actions": [],
         }
         result = await scene_subgraph.ainvoke(state, config)
-        assert result["scene"]["id"] == "scene-1"
+        assert result["scene"].id == "scene-1"
         assert "actor_bartender" in result["actors"]
-        assert any(o["id"] == "obj_barrel" for o in result["scene_objects"])
+        assert any(o.id == "obj_barrel" for o in result["scene_objects"])
         assert "pc-1" in result["pcs"]
         actor_repo.save.assert_awaited_once()
         scene_repo.save_object.assert_awaited_once()

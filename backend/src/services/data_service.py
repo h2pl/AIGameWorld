@@ -7,10 +7,9 @@ event_service.flush_events 负责构造事件，data_service.persist_tick 负责
 4. 写入变更的 Actor 状态（死亡/hp 等）
 """
 
-from typing import Any
-
 from langchain_core.runnables.config import RunnableConfig
 
+from ..domain import Memory
 from ..domain.dm_record import DMRecord
 from ..graph.state import OverallState
 from ..utils.helpers import get_repo
@@ -28,18 +27,10 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
 
     # 1. 写 dm_records / Write DM record
     dm_ext = state.get("_dm_ext")
-    if dm_ext and world_id:
+    if isinstance(dm_ext, DMRecord) and world_id:
         record_repo = get_repo(config, "dm_record")
         if record_repo:
-            await record_repo.save_plot_brief(
-                DMRecord(
-                    world_id=world_id,
-                    tick=tick,
-                    plot_brief=state.get("plot_brief", ""),
-                    hints=state.get("hints", []),
-                    ext=dm_ext,
-                )
-            )
+            await record_repo.save_plot_brief(dm_ext)
             logger.info("[data] wrote dm_record tick=%s", tick)
 
     # 2. 写事件到 tick_events / Write events to tick_events
@@ -69,7 +60,7 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
             logger.info("[data] persisted actors count=%d tick=%s", len(actors), tick)
 
     # 5. 统一落盘本 tick 产生的新记忆 / Persist new memories created this tick
-    pc_memory_map: dict[str, list[dict[str, Any]]] = state.get("pc_memory_map", {})
+    pc_memory_map: dict[str, list[Memory]] = state.get("pc_memory_map", {})
     if pc_memory_map:
         memory_repo = get_repo(config, "memory")
         if memory_repo:
@@ -77,14 +68,14 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
             for pc_id, mems in pc_memory_map.items():
                 for m in mems:
                     await memory_repo.store(
-                        pc_id=m.get("pc_id", pc_id),
-                        content=m.get("content", ""),
-                        tick=m.get("tick", tick),
-                        importance=m.get("importance", 2),
-                        memory_type=m.get("memory_type", "observation"),
-                        period=m.get("period", ""),
-                        entity_type=m.get("entity_type", "pc"),
-                        world_id=m.get("world_id", world_id),
+                        pc_id=m.pc_id or pc_id,
+                        content=m.content,
+                        tick=m.tick,
+                        importance=m.importance,
+                        memory_type=m.memory_type,
+                        period=m.period,
+                        entity_type=m.entity_type,
+                        world_id=m.world_id or world_id,
                     )
                     total += 1
             logger.info("[data] persisted memories count=%d tick=%s", total, tick)

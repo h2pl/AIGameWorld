@@ -136,11 +136,25 @@ class ConsoleLoggingConfig(BaseModel):
     viewer: bool = True
 
 
+class RotationConfig(BaseModel):
+    """日志文件轮转配置 / Log file rotation configuration.
+
+    按日期创建子目录，再在目录内按时间片切分文件。
+    Creates date-based subdirectories and splits files by time window inside.
+    """
+
+    when: str = "H"  # 时间单位：S/M/H/D/MIDNIGHT / Unit: S/M/H/D/MIDNIGHT
+    interval: int = 1  # 每 N 个 when 单位切换一次 / Rotate every N units
+    utc: bool = True  # true=UTC false=本地时间 / true=UTC false=local time
+    backup_count: int = 0  # 保留最近 N 个时间片；0=保留全部 / Keep last N slices; 0=keep all
+
+
 class LoggingConfig(BaseModel):
     """日志配置 / Logging configuration."""
 
     level: str = "INFO"  # DEBUG / INFO / WARNING / ERROR
     json_format: bool = True
+    rotation: RotationConfig = RotationConfig()
     console: ConsoleLoggingConfig = ConsoleLoggingConfig()
 
 

@@ -1,5 +1,6 @@
 """Graph State 测试 / Graph State tests."""
 
+from src.domain import Scene
 from src.graph.state import OverallState, PcSubState, ReflectionSubState
 
 # ══ OverallState 测试 / Main state tests ══
@@ -13,9 +14,9 @@ class TestOverallState:
         s: OverallState = {
             "tick": 0,
             "world_id": "",
-            "scene": {},
+            "scene": Scene(id=""),
             "scene_objects": [],
-            "pending_actions": [],
+            "actions": [],
             "hints": [],
             "plot_brief": "",
             "scene_id": "",
@@ -38,9 +39,9 @@ class TestPcSubState:
         s: PcSubState = {
             "tick": 1,
             "plot_brief": "test",
-            "scene": {},
+            "scene": Scene(id=""),
             "scene_objects": [],
-            "pending_actions": [],
+            "actions": [],
             "pc_decisions": [],
         }
         assert s["tick"] == 1

@@ -6,12 +6,13 @@
 
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, PlayerCharacter
+from ...domain import Actor, Memory, PlayerCharacter
 from ...domain.scene_object import SceneObject
 from ...schemas.engine_result import InteractActionResult
 from ...schemas.llm_output import InteractOutputSchema
@@ -34,7 +35,7 @@ async def process_interact_action(
     tick: int = 0,
     plot_brief: str = "",
     hints: list[str] | None = None,
-    pc_memory_map: dict[str, list[dict]] | None = None,
+    pc_memory_map: dict[str, list[Memory]] | None = None,
     config: RunnableConfig = None,
 ) -> InteractActionResult | None:
     """处理单个 interact 决策：移动→LLM 裁决→记忆 / Resolve interact: move → LLM judge → memory."""
@@ -201,7 +202,7 @@ def _store_interact_memory(
     success: bool,
     narration: str,
     tick: int,
-    pc_memory_map: dict[str, list[dict]] | None,
+    pc_memory_map: dict[str, list[Memory]] | None,
 ) -> None:
     """把交互结果写入 pc_memory_map / Stage interaction result into state."""
     if pc_memory_map is None:
@@ -209,12 +210,13 @@ def _store_interact_memory(
     obj_name = scene_obj.name if scene_obj else object_id
     content = f"与 {obj_name} 交互（{'成功' if success else '失败'}）：{narration}"
     pc_memory_map.setdefault(pc_id, []).append(
-        {
-            "pc_id": pc_id,
-            "content": content,
-            "tick": tick,
-            "importance": 4,
-            "memory_type": "interact",
-            "entity_type": "pc",
-        }
+        Memory(
+            id=f"mem_{pc_id}_{tick}_{uuid4().hex[:6]}",
+            pc_id=pc_id,
+            content=content,
+            tick=tick,
+            importance=4,
+            memory_type="interact",
+            entity_type="pc",
+        )
     )

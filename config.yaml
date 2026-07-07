@@ -104,6 +104,11 @@ auto_run:
 logging:
   level: "INFO"                     # DEBUG / INFO / WARNING / ERROR
   json_format: true                 # true=JSON输出 false=文本输出
+  rotation:
+    when: "H"                       # 按小时切分：S/M/H/D/MIDNIGHT
+    interval: 1                     # 每 N 个 when 单位切一次
+    utc: true                       # true=UTC，false=本地时间
+    backup_count: 0                 # 保留最近 N 个时间片；0=保留全部
   console:                          # 控制台输出开关（true=开启）
     # 主流程
     api: true                       #   FastAPI 请求

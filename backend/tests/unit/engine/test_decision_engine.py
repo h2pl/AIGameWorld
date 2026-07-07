@@ -111,6 +111,32 @@ class TestValidateActionTarget:
         assert result.target_id is None
         assert result.target_type is None
 
+    def test_explore_preserves_coordinates(self):
+        """explore 保留 explore_x/explore_y，talk 清空."""
+        r = _validate(
+            CharacterActionSchema(
+                action_type="explore", thought="去看看。", explore_x=25, explore_y=18
+            )
+        )
+        assert r.action_type == "explore"
+        assert r.explore_x == 25
+        assert r.explore_y == 18
+
+    def test_non_explore_clears_coordinates(self):
+        """非 explore 动作清空 explore_x/explore_y."""
+        r = _validate(
+            CharacterActionSchema(
+                action_type="talk",
+                target_id="npc_greta",
+                target_type="actor",
+                thought="打听。",
+                explore_x=10,
+                explore_y=10,
+            )
+        )
+        assert r.explore_x is None
+        assert r.explore_y is None
+
     def test_empty_thought_gets_default(self):
         """空 thought 使用默认文案 / Empty thought uses the default fallback text."""
         result = _validate(CharacterActionSchema(action_type="wait", thought=""))

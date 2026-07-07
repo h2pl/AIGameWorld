@@ -7,12 +7,13 @@
 
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, PlayerCharacter
+from ...domain import Actor, Memory, PlayerCharacter
 from ...schemas.engine_result import ExploreActionResult
 from ...schemas.llm_output import ExploreOutputSchema
 from ...services.memory_service import retrieve_memories
@@ -34,7 +35,7 @@ async def process_explore_action(
     plot_brief: str = "",
     hints: list[str] | None = None,
     tick: int = 0,
-    pc_memory_map: dict[str, list[dict]] | None = None,
+    pc_memory_map: dict[str, list[Memory]] | None = None,
     config: RunnableConfig = None,
 ) -> ExploreActionResult | None:
     """处理单个 explore 决策 → LLM 生成终点+探索记录，直接修改 PC 领域模型，防重叠."""
@@ -178,19 +179,20 @@ def _store_explore_memory(
     pc_id: str,
     explore_record: str,
     tick: int,
-    pc_memory_map: dict[str, list[dict]] | None,
+    pc_memory_map: dict[str, list[Memory]] | None,
 ) -> None:
     if pc_memory_map is None or not explore_record:
         return
     pc_memory_map.setdefault(pc_id, []).append(
-        {
-            "pc_id": pc_id,
-            "content": f"探索发现：{explore_record}",
-            "tick": tick,
-            "importance": 2,
-            "memory_type": "explore",
-            "entity_type": "pc",
-        }
+        Memory(
+            id=f"mem_{pc_id}_{tick}_{uuid4().hex[:6]}",
+            pc_id=pc_id,
+            content=f"探索发现：{explore_record}",
+            tick=tick,
+            importance=2,
+            memory_type="explore",
+            entity_type="pc",
+        )
     )
 
 

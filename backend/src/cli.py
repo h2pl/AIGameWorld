@@ -808,7 +808,11 @@ def main() -> None:
     try:
         config = load_config(str(Path(__file__).parent.parent.parent / "config.yaml"))
         configure_format(config.logging.json_format)
-        setup_logging(config.logging.level, json_fmt=config.logging.json_format)
+        setup_logging(
+            config.logging.level,
+            json_fmt=config.logging.json_format,
+            rotation=config.logging.rotation,
+        )
     except Exception:
         configure_format(True)
         setup_logging()

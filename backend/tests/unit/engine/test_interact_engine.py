@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from src.domain import Memory
 from src.domain.player_character import PlayerCharacter
 from src.domain.scene_object import SceneObject, SceneObjectType
 from src.engine.interact.interact_engine import process_interact_action
@@ -185,7 +186,7 @@ class TestInteractEngine:
                 "llm": llm,
             }
         }
-        pc_memory_map: dict[str, list[dict]] = {}
+        pc_memory_map: dict[str, list[Memory]] = {}
         await process_interact_action(
             decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
             scene={"map_width": 40, "map_height": 40},
@@ -206,6 +207,6 @@ class TestInteractEngine:
         )
         assert len(pc_memory_map.get("pc1", [])) == 1
         mem = pc_memory_map["pc1"][0]
-        assert mem["pc_id"] == "pc1"  # 记忆归属 PC / Memory belongs to PC
-        assert mem["tick"] == 3  # tick 号 / Tick number
-        assert mem["memory_type"] == "interact"
+        assert mem.pc_id == "pc1"  # 记忆归属 PC / Memory belongs to PC
+        assert mem.tick == 3  # tick 号 / Tick number
+        assert mem.memory_type == "interact"

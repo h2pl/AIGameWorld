@@ -5,12 +5,13 @@
 """
 
 from pathlib import Path
+from uuid import uuid4
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, PlayerCharacter
+from ...domain import Actor, Memory, PlayerCharacter, Scene
 from ...schemas.engine_result import TalkActionResult
 from ...schemas.llm_output import DialogueSchema
 from ...services.memory_service import retrieve_memories
@@ -31,7 +32,7 @@ async def process_talk_action(
     tick: int,
     pcs: dict[str, PlayerCharacter] | None = None,
     actors: dict[str, Actor] | None = None,
-    pc_memory_map: dict[str, list[dict]] | None = None,
+    pc_memory_map: dict[str, list[Memory]] | None = None,
     config: RunnableConfig = None,
 ) -> TalkActionResult | None:
     """处理单个 talk 决策 → 生成多轮对话，更新发起者坐标到目标旁边，写入 pc_memory_map"""
@@ -85,7 +86,7 @@ async def _generate_dialogue(
     hints: list[str],
     scene_id: str,
     tick: int,
-    pc_memory_map: dict[str, list[dict]] | None,
+    pc_memory_map: dict[str, list[Memory]] | None,
     config: RunnableConfig = None,
 ) -> list[dict]:
     """单次 LLM 调用生成双方多轮对话 / Generate a multi-turn dialogue in a single LLM call."""
@@ -100,8 +101,9 @@ async def _generate_dialogue(
     initiator = await pc_repo.load_one(char_id) if pc_repo else None
     target = await _load_target(pc_repo, actor_repo, target_id, target_type)
     scene = await _fetch_scene(scene_id, config)
+    scene_dict = scene.model_dump() if isinstance(scene, Scene) else scene
 
-    query = f"{reason} {plot_brief} {scene.get('description', '')}".strip()
+    query = f"{reason} {plot_brief} {scene_dict.get('description', '')}".strip()
     memories = await retrieve_memories(
         char_id, query, config=config, top_k=5, pc_memory_map=pc_memory_map, current_tick=tick
     )
@@ -113,7 +115,7 @@ async def _generate_dialogue(
         "plot_brief": plot_brief,
         "hints": hints,
         "memories": memories,
-        "scene": scene,
+        "scene": scene_dict,
     }
     try:
         system = _PROMPTS.get_template("talk/_dialogue_system.jinja").render(**ctx)
@@ -130,7 +132,7 @@ async def _generate_dialogue(
     return [t.model_dump() for t in result.turns]
 
 
-async def _fetch_scene(scene_id: str, config: RunnableConfig = None) -> dict:
+async def _fetch_scene(scene_id: str, config: RunnableConfig = None) -> Scene | dict:
     """按 scene_id 查询场景信息 / Fetch scene info by id."""
     scene_repo = get_repo(config, "scene")
     empty = {"id": scene_id, "name": "", "type": "", "description": ""}
@@ -193,11 +195,11 @@ def _normalize_speaker_ids(turns: list[dict], char_id: str, target_id: str) -> l
 
 def _store_dialogue_memory(
     char_id: str,
-    target_id: str,
+    target_id: str | None,
     target_type: str,
     turns: list[dict],
     tick: int,
-    pc_memory_map: dict[str, list[dict]] | None,
+    pc_memory_map: dict[str, list[Memory]] | None,
 ) -> None:
     """把对话记录写入 pc_memory_map，供后续决策/反思检索 / Stage dialogue memory into state."""
     if pc_memory_map is None:
@@ -205,25 +207,27 @@ def _store_dialogue_memory(
     transcript = "；".join(f"{t['speaker_id']}：{t['text']}" for t in turns)
     if char_id:
         pc_memory_map.setdefault(char_id, []).append(
-            {
-                "pc_id": char_id,
-                "content": f"与 {target_id} 的对话：{transcript}",
-                "tick": tick,
-                "importance": 3,
-                "memory_type": "talk",
-                "entity_type": "pc",
-            }
+            Memory(
+                id=f"mem_{char_id}_{tick}_{uuid4().hex[:6]}",
+                pc_id=char_id,
+                content=f"与 {target_id} 的对话：{transcript}",
+                tick=tick,
+                importance=3,
+                memory_type="talk",
+                entity_type="pc",
+            )
         )
     if target_id:
         pc_memory_map.setdefault(target_id, []).append(
-            {
-                "pc_id": target_id,
-                "content": f"与 {char_id} 的对话：{transcript}",
-                "tick": tick,
-                "importance": 3,
-                "memory_type": "talk",
-                "entity_type": "pc" if target_type == "pc" else "actor",
-            }
+            Memory(
+                id=f"mem_{target_id}_{tick}_{uuid4().hex[:6]}",
+                pc_id=target_id,
+                content=f"与 {char_id} 的对话：{transcript}",
+                tick=tick,
+                importance=3,
+                memory_type="talk",
+                entity_type="pc" if target_type == "pc" else "actor",
+            )
         )
 
 

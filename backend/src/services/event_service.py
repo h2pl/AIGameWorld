@@ -1,9 +1,8 @@
 """Event Service: 从 state 构造 TickEvent，不负责持久化."""
 
-from typing import Any
-
 from langchain_core.runnables.config import RunnableConfig  # noqa: F401  # type annotation
 
+from ..domain import Action, Decision, PlayerCharacter
 from ..domain.event import TickEvent, TickEventType
 from ..graph.state import OverallState
 from ..utils.logging import get_logger
@@ -33,22 +32,25 @@ def _scene_event(state: OverallState) -> TickEvent | None:
 
     scene / scene_objects 来自 state（静态数据），PC/Actor 从领域模型 map 获取最新坐标。
     """
-    scene: dict[str, Any] = state.get("scene", {}) or {}
-    scene_id = scene.get("id", "")
+    scene = state.get("scene")
+    if scene is None:
+        return None
+    scene_id = scene.id
     if not scene_id:
         return None
     pcs = [pc.model_dump() for pc in state.get("pcs", {}).values()]
     actors = [actor.model_dump() for actor in state.get("actors", {}).values()]
+    scene_objects = state.get("scene_objects", [])
     return TickEvent(
         type=TickEventType.SCENE_SETUP,
         tick=state.get("tick", 0),
         world_id=state.get("world_id", ""),
         payload={
             "scene_id": scene_id,
-            "scene": scene,
+            "scene": scene.model_dump(),
             "pcs": pcs,
             "actors": actors,
-            "scene_objects": state.get("scene_objects", []),
+            "scene_objects": [obj.model_dump() for obj in scene_objects],
         },
     )
 
@@ -63,60 +65,70 @@ _EVENT_TYPE_MAP: dict[str, TickEventType] = {
 
 def _decision_events(state: OverallState) -> list[TickEvent]:
     """从 pc_decisions 构造 pc_decision 事件（思考+决策），在动作执行前展示."""
-    pc_decisions: list[dict[str, Any]] = state.get("pc_decisions", [])
+    pc_decisions: list[Decision] = state.get("pc_decisions", [])
     if not pc_decisions:
         return []
     tick = state.get("tick", 0)
+    pcs_map: dict[str, PlayerCharacter] = state.get("pcs", {})
     events: list[TickEvent] = []
     for decision in pc_decisions:
-        pc_id = decision.get("pc_id", "")
-        pc_name = getattr(state.get("pcs", {}).get(pc_id), "name", pc_id)
+        pc_id = decision.pc_id
+        pc_name = getattr(pcs_map.get(pc_id), "name", pc_id)
+        action_type = decision.type or "wait"
+        payload: dict = {
+            "pc_id": pc_id,
+            "pc_name": pc_name,
+            "action_type": action_type,
+            "target_id": decision.target_id or "",
+            "target_type": decision.target_type or "",
+            "thought": decision.thought,
+        }
+        # explore 时传递探索目标坐标 / pass explore target coordinates
+        if action_type == "explore":
+            if decision.explore_x is not None:
+                payload["explore_x"] = decision.explore_x
+            if decision.explore_y is not None:
+                payload["explore_y"] = decision.explore_y
         events.append(
             TickEvent(
                 type=TickEventType.PC_DECISION,
                 tick=tick,
                 world_id=state.get("world_id", ""),
-                payload={
-                    "pc_id": pc_id,
-                    "pc_name": pc_name,
-                    "action_type": decision.get("type", "wait"),
-                    "target_id": decision.get("target_id", ""),
-                    "target_type": decision.get("target_type", ""),
-                    "thought": decision.get("thought", ""),
-                },
+                payload=payload,
             )
         )
     return events
 
 
 def _action_events(state: OverallState) -> list[TickEvent]:
-    """从 pending_actions 构造 character_talk / character_explore 等事件."""
-    pending_actions: list[dict[str, Any]] = state.get("pending_actions", [])
-    if not pending_actions:
+    """从 actions 构造 character_talk / character_explore 等事件."""
+    actions: list[Action] = state.get("actions", [])
+    if not actions:
         return []
     tick = state.get("tick", 0)
-    sorted_actions = sorted(pending_actions, key=lambda a: a.get("order", 0))
+    sorted_actions = sorted(actions, key=lambda a: a.order)
     events: list[TickEvent] = []
+    pcs_map = state.get("pcs", {})
     for action in sorted_actions:
-        action_type = action.get("action_type", "")
+        action_type = action.action_type
         event_type = _EVENT_TYPE_MAP.get(action_type)
         if event_type is None:
             continue
-        raw_result = action.get("result", {}) or {}
+        raw_result = action.result or {}
         # 兼容 Pydantic 模型和 dict / Supports both model and dict
         if isinstance(raw_result, dict):
             result = raw_result
         else:
             result = raw_result.model_dump() if hasattr(raw_result, "model_dump") else {}
-        pc_id = action.get("pc_id", "")
-        pc_name = getattr(state.get("pcs", {}).get(pc_id), "name", pc_id)
+        pc_id = action.pc_id
+        pc_name = getattr(pcs_map.get(pc_id), "name", pc_id)
         payload = {
-            "order": action.get("order"),
+            "order": action.order,
             "pc_id": pc_id,
             "pc_name": pc_name,
             "action_type": action_type,
-            "target_id": action.get("target_id", ""),
-            "target_type": action.get("target_type", ""),
+            "target_id": action.target_id,
+            "target_type": action.target_type,
             "result": result,
         }
         if event_type == TickEventType.PC_EXPLORE:

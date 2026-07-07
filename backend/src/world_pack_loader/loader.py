@@ -13,6 +13,7 @@ from pathlib import Path
 from src.repository.actor_repo import ActorRepo
 from src.repository.pc_repo import PcRepo
 
+from ..domain.scene import Scene
 from ..domain.world import World
 from ..repository.item_repo import ItemRepo
 from ..repository.scene_repo import SceneRepo
@@ -106,11 +107,22 @@ class WorldLoader:
                 # 未配置 spawn 时用 grid 中心 / Fallback to grid center
                 spawn_x = (grid.get("width", 0) // 2) if grid else 0
                 spawn_y = (grid.get("height", 0) // 2) if grid else 0
-            s.setdefault("spawn_x", spawn_x)
-            s.setdefault("spawn_y", spawn_y)
-            s.setdefault("map_width", grid.get("width", 40))
-            s.setdefault("map_height", grid.get("height", 40))
-            await self._scene_repo.save_scene(s, world_id)
+            scene = Scene(
+                id=s.get("id", ""),
+                name=s.get("name", ""),
+                type=s.get("type", ""),
+                description=s.get("description", ""),
+                map_key=s.get("map_key", ""),
+                spawn_x=spawn_x,
+                spawn_y=spawn_y,
+                map_width=grid.get("width", 40),
+                map_height=grid.get("height", 40),
+                tilemap_summary=s.get("tilemap_summary", ""),
+                landmarks=s.get("landmarks", []),
+                exits=s.get("exits", []),
+                world_id=world_id,
+            )
+            await self._scene_repo.save_scene(scene, world_id)
         return len(scenes)
 
     # ── Items (ItemRepo) ──
