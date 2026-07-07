@@ -96,6 +96,10 @@ warn_unused_configs = true
 asyncio_mode = "auto"               # 自动异步模式 / Auto async mode
 testpaths = ["tests"]               # 测试目录 / Test directory
 addopts = "-v --tb=short --ignore=tests/e2e"  # 详细输出 + 短回溯 + 默认跳过 e2e / Verbose + short traceback + skip e2e by default
+markers = [
+    "e2e: end-to-end tests using real HTTP + DB",
+    "slow: tests requiring real LLM or long runtime",
+]
 
 # === 覆盖率配置 / Coverage Config ===
 [tool.coverage.run]

@@ -1,6 +1,6 @@
 // --- / ---
 // -- file start -- / file start
-/** 启动场景 / Boot Scene — 动态加载地图资产 */
+/** 启动场景 / Boot Scene — 动态加载地图资产（支持多 tileset） */
 import Phaser from "phaser";
 import { sceneList } from "../state/SceneList";
 import { createLogger } from "../utils/logger";
@@ -26,20 +26,29 @@ export class Boot extends Phaser.Scene {
       } catch {
         log.error(`bad ext_json for ${sc.id}:`, sc.ext_json);
       }
+
+      // ── 新格式：tilesets 数组 + tile_size / New format: tilesets array ──
+      const tilesets: Array<{ name: string; url: string }> = ext.tilesets || [];
       const tilemapUrl = ext.tilemap_url;
-      const tilesetUrl = ext.tileset_url;
-      const tilesetImageKey = ext.tileset_image_key;
-      const tilesetName = ext.tileset_name;
 
-      log.info(
-        `scene ${sc.id}: tilemap=${tilemapUrl} tileset=${tilesetUrl} key=${tilesetImageKey} name=${tilesetName}`
-      );
-
-      if (tilesetUrl && !loaded.has(tilesetUrl)) {
-        loaded.add(tilesetUrl);
-        this.load.image(tilesetImageKey || "tileset", tilesetUrl);
-        log.info(`loading image: %s ← %s`, tilesetImageKey, tilesetUrl);
+      // ── 兼容旧格式：单 tileset / Compat: old single-tileset format ──
+      if (tilesets.length === 0 && ext.tileset_url && ext.tileset_image_key && ext.tileset_name) {
+        tilesets.push({
+          name: ext.tileset_name,
+          url: ext.tileset_url,
+        });
       }
+
+      // 加载所有 tileset PNG
+      for (const ts of tilesets) {
+        if (!loaded.has(ts.url)) {
+          loaded.add(ts.url);
+          this.load.image(ts.name, ts.url);
+          log.info(`loading tileset: %s ← %s`, ts.name, ts.url);
+        }
+      }
+
+      // 加载 tilemap JSON
       if (tilemapUrl) {
         this.load.tilemapTiledJSON(sc.id, tilemapUrl);
         log.info(`loading tilemap: %s ← %s`, sc.id, tilemapUrl);

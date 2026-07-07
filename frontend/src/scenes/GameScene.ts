@@ -166,6 +166,8 @@ export class GameScene extends Phaser.Scene {
     this.bgm.play().catch(() => {});
 
     log.info(`build scene=${data.sceneId} pcs=${data.pcs.length} actors=${data.actors.length}`);
+    // 从 ext_json 读取 tile_size，覆盖默认值
+    this.ts = Number(data.extJson.tile_size) || TILEMAP.TILE_SIZE;
     try {
       this.mapManager.build(data.sceneId, data.extJson);
       this._buildTerrain(data.sceneObjects);

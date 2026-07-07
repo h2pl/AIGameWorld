@@ -52,7 +52,7 @@ async def seed_mock_data(db: Any, world_id: str = MOCK_WORLD_ID) -> None:
     幂等处理：先清空该 world 下所有业务数据，再重新插入，
     避免后端重启或 reset 后因主键冲突导致角色/场景未注入。
     """
-    # 幂等：先清理旧数据 / Idempotent: clear old data first
+    # 幂等：只清理角色/物品/NPC，场景由 gen_scene.py 手动灌 / Idempotent: only clear chars/items/actors, NOT scenes
     world_repo = WorldRepo(db)
     scene_repo = SceneRepo(db)
     pc_repo = PcRepo(db)
@@ -61,7 +61,6 @@ async def seed_mock_data(db: Any, world_id: str = MOCK_WORLD_ID) -> None:
 
     await pc_repo.delete_by_world(world_id)
     await actor_repo.delete_by_world(world_id)
-    await scene_repo.delete_by_world(world_id)
     await item_repo.delete_by_world(world_id)
     await world_repo.delete(world_id)
 
@@ -74,7 +73,8 @@ async def seed_mock_data(db: Any, world_id: str = MOCK_WORLD_ID) -> None:
     await DMRecordRepo(db).delete_summaries_by_world(world_id)
 
     await _seed_world(world_repo, world_id)
-    await _seed_scenes(scene_repo, world_id)
+    # 老地图直接入库，不 mock / Legacy maps, direct insert only
+    await _seed_legacy_scenes(db, world_id)
     await _seed_items(item_repo, world_id)
     await _seed_scene_objects(scene_repo, world_id)
     await _seed_pcs(pc_repo, world_id)
@@ -97,36 +97,59 @@ async def _seed_world(world_repo: WorldRepo, world_id: str) -> None:
     )
 
 
-async def _seed_scenes(scene_repo: SceneRepo, world_id: str) -> None:
-    """灌入场景 / Seed scenes."""
-    scenes = [
-        {
-            "id": "village_elderwood",
-            "name": "Elderwood Village",
-            "type": "village",
-            "description": "A quiet border village, smoke rising from the blacksmith's chimney.",
-            "map_key": "tuxemon-map",
-            "spawn_x": 20,
-            "spawn_y": 20,
-            "map_width": 40,
-            "map_height": 40,
-            "ext_json": '{"tilemap_url":"/assets/tuxemon-town.json","tileset_url":"/assets/rpg_tileset.png","tileset_name":"tuxemon-sample-32px-extruded","tileset_image_key":"tuxemon"}',
-        },
-        {
-            "id": "desert",
-            "name": "Scorching Desert",
-            "type": "outdoor",
-            "description": "An endless sea of sand under the blazing sun.",
-            "map_key": "desert-map",
-            "spawn_x": 10,
-            "spawn_y": 10,
-            "map_width": 40,
-            "map_height": 40,
-            "ext_json": '{"tilemap_url":"/assets/desert.json","tileset_url":"/assets/tmw_desert_spacing.png","tileset_name":"Desert","tileset_image_key":"desert-tiles"}',
-        },
+async def _seed_legacy_scenes(db: Any, world_id: str) -> None:
+    """老地图直接 INSERT OR IGNORE，不覆盖 gen_scene.py 手灌的场景."""
+    legacy = [
+        (
+            "village_elderwood",
+            "Elderwood Village",
+            "village",
+            "A quiet border village.",
+            20,
+            20,
+            40,
+            40,
+            world_id,
+            "{}",
+            _j(
+                {
+                    "tile_size": 32,
+                    "tilemap_url": "/assets/tuxemon-town.json",
+                    "tilesets": [
+                        {"name": "tuxemon-sample-32px-extruded", "url": "/assets/rpg_tileset.png"}
+                    ],
+                }
+            ),
+        ),
+        (
+            "desert",
+            "Scorching Desert",
+            "outdoor",
+            "An endless sea of sand.",
+            10,
+            10,
+            40,
+            40,
+            world_id,
+            "{}",
+            _j(
+                {
+                    "tile_size": 32,
+                    "tilemap_url": "/assets/desert.json",
+                    "tilesets": [{"name": "Desert", "url": "/assets/tmw_desert_spacing.png"}],
+                }
+            ),
+        ),
     ]
-    for s in scenes:
-        await scene_repo.save_scene(s, world_id)
+    for s in legacy:
+        await db.execute(
+            "INSERT OR IGNORE INTO scenes"
+            " (id, name, type, description, spawn_x, spawn_y,"
+            "  map_width, map_height, world_id, tilemap_summary, ext_json, updated_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
+            s,
+        )
+    await db.commit()
 
 
 async def _seed_items(item_repo: ItemRepo, world_id: str) -> None:
@@ -223,7 +246,7 @@ async def _seed_scene_objects(scene_repo: SceneRepo, world_id: str) -> None:
             id="chest_wooden",
             name="Wooden Chest",
             object_type=SceneObjectType.CONTAINER,
-            scene_id="village_elderwood",
+            scene_id="azure_town",
             position_x=16,
             position_y=16,
             world_id=world_id,
@@ -232,7 +255,7 @@ async def _seed_scene_objects(scene_repo: SceneRepo, world_id: str) -> None:
             id="door_cellar",
             name="Cellar Door",
             object_type=SceneObjectType.DOOR,
-            scene_id="village_elderwood",
+            scene_id="azure_town",
             position_x=24,
             position_y=20,
             world_id=world_id,
@@ -358,7 +381,7 @@ async def _seed_pcs(pc_repo: PcRepo, world_id: str) -> None:
                 role=pc["role"],
                 race=pc["race"],
                 status="active",
-                scene_id="village_elderwood",
+                scene_id="azure_town",
                 position_x=0,
                 position_y=0,
                 attributes_json=_j(pc["attributes"]),
@@ -384,7 +407,7 @@ async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
             "role": "blacksmith",
             "race": "dwarf",
             "disposition": "neutral",
-            "scene_id": "village_elderwood",
+            "scene_id": "azure_town",
             "x": 15,
             "y": 17,
             "attributes": {
@@ -405,7 +428,7 @@ async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
             "role": "guard",
             "race": "human",
             "disposition": "friendly",
-            "scene_id": "village_elderwood",
+            "scene_id": "azure_town",
             "x": 22,
             "y": 18,
             "attributes": {
@@ -426,7 +449,7 @@ async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
             "role": "merchant",
             "race": "human",
             "disposition": "neutral",
-            "scene_id": "village_elderwood",
+            "scene_id": "azure_town",
             "x": 26,
             "y": 20,
             "attributes": {
@@ -448,7 +471,7 @@ async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
             "role": "goblin",
             "race": "goblinoid",
             "disposition": "hostile",
-            "scene_id": "village_elderwood",
+            "scene_id": "azure_town",
             "x": 10,
             "y": 10,
             "attributes": {
@@ -469,7 +492,7 @@ async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
             "role": "skeleton",
             "race": "undead",
             "disposition": "hostile",
-            "scene_id": "village_elderwood",
+            "scene_id": "azure_town",
             "x": 30,
             "y": 10,
             "attributes": {
@@ -491,7 +514,7 @@ async def _seed_actors(actor_repo: ActorRepo, world_id: str) -> None:
             "role": "orc_boss",
             "race": "orc",
             "disposition": "hostile",
-            "scene_id": "village_elderwood",
+            "scene_id": "azure_town",
             "x": 35,
             "y": 35,
             "attributes": {
