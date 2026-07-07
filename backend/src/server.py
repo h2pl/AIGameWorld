@@ -10,6 +10,7 @@ Orchestrator 直接驱动 graph，无后台任务 / Orchestrator drives graph di
 - 日志配置
 """
 
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -34,7 +35,8 @@ logger = get_logger(__name__)
 try:
     from .config import load_config
 
-    _pre_cfg = load_config("../config.yaml")
+    _config_path = os.environ.get("AIGW_CONFIG", "../config.yaml")
+    _pre_cfg = load_config(_config_path)
     configure_format(_pre_cfg.logging.json_format)
     # 不在模块级 setup_logging，避免与 uvicorn handler 冲突
     # defer logging setup to lifespan, after uvicorn has initialized its own
@@ -50,7 +52,7 @@ async def lifespan(app: FastAPI):
     """应用生命周期：初始化日志、DB、mock 数据、编排器."""
     from .config import load_config
 
-    cfg = _pre_cfg or load_config("../config.yaml")
+    cfg = _pre_cfg or load_config(os.environ.get("AIGW_CONFIG", "../config.yaml"))
 
     # ── 日志：在 uvicorn 启动后完全接管，避免 handler 冲突 / Take over logging after uvicorn startup ──
     setup_logging(

@@ -23,6 +23,7 @@ import {
 } from "../managers/event_handler/SceneSetupHandler";
 import { GameHUD } from "../ui/GameHUD";
 import { createLogger } from "../utils/logger";
+import type { InitialWorldState, SceneData } from "../types";
 
 const log = createLogger("Scene");
 
@@ -70,8 +71,35 @@ export class GameScene extends Phaser.Scene {
     this.eventManager = this.game.registry.get("eventManager") as EventManager;
     this._initHandlers();
     this._registerHandlers();
-    this.game.events.on("scene-reset", () => this._destroyScene());
+    this.game.events.on("scene-reset", () => this._handleReset());
+    this._buildFromInitialState();
     this._recoverFromReload();
+    this._initTestSeam();
+  }
+
+  /** 初始化浏览器测试 seam / Init browser test seam for E2E */
+  private _initTestSeam(): void {
+    (window as any).__TEST__ = {
+      ready: true,
+      sceneKey: "Game",
+      sceneBuilt: false,
+      gameState: () => this._getTestState(),
+    };
+  }
+
+  /** 返回可序列化的游戏状态快照 / Return serializable game state snapshot */
+  private _getTestState(): Record<string, unknown> {
+    const state = worldStore.getState();
+    return {
+      scene: "Game",
+      sceneBuilt: this.sceneBuilt,
+      sceneId: this.sceneData?.sceneId ?? null,
+      sceneName: this.sceneData?.sceneName ?? null,
+      pcCount: this.pcManager?.sprites.size ?? 0,
+      actorCount: this.actorManager?.sprites.size ?? 0,
+      displayTick: state.display_tick,
+      worldId: state.world_id,
+    };
   }
 
   /** 场景销毁 / Scene shutdown */
@@ -143,6 +171,32 @@ export class GameScene extends Phaser.Scene {
     this.eventManager.register("dm_narrative", (ev) => this.narrativeHandler.handle(ev));
   }
 
+  /** 从 bootstrap 世界状态构建初始场景 / Build initial scene from bootstrap world state */
+  private _buildFromInitialState(): void {
+    const world = this.game.registry.get("initialWorldState") as InitialWorldState | undefined;
+    if (!world) return;
+    const scene = world.scenes?.[0] as SceneData | undefined;
+    if (!scene) return;
+    const pcs = world.pcs || [];
+    const actors = world.actors || [];
+    const sceneObjects = world.scene_objects || [];
+    const data: SceneSetupData = {
+      sceneId: scene.id,
+      sceneName: scene.name,
+      extJson: scene.ext_json ? JSON.parse(scene.ext_json) : {},
+      pcs,
+      actors,
+      sceneObjects,
+    };
+    this.ensureScene(data).catch((e) => log.error("buildFromInitialState failed", e));
+  }
+
+  /** 重置后销毁并重建场景 / Destroy and rebuild scene after reset */
+  private _handleReset(): void {
+    this._destroyScene();
+    this._buildFromInitialState();
+  }
+
   /** 热重载恢复 / Recover from hot-reload */
   private _recoverFromReload(): void {
     const displayTick = this.game.registry.get("displayTick") as number;
@@ -175,6 +229,8 @@ export class GameScene extends Phaser.Scene {
       this.hud.create(data.sceneName);
       this._setupInput();
       this.cameras.main.fadeIn(400, 0, 0, 0);
+      const test = (window as any).__TEST__;
+      if (test) test.sceneBuilt = true;
     } catch (e) {
       log.error(`build ERROR:`, e);
     }
@@ -245,6 +301,8 @@ export class GameScene extends Phaser.Scene {
   /** 销毁当前场景所有对象 / Destroy all scene objects */
   private _destroyScene(): void {
     this.sceneBuilt = false;
+    const test = (window as any).__TEST__;
+    if (test) test.sceneBuilt = false;
     this.bgm?.stop();
     this.pcManager?.destroy();
     this.pcManager = undefined as any;

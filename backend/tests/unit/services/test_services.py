@@ -12,7 +12,6 @@ from src.services import (
     event_service,
     pc_service,
     reflection_service,
-    scene_service,
     summarizer_service,
 )
 
@@ -208,34 +207,6 @@ class TestCharacterService:
 class TestSceneAndMessageService:
     """场景服务测试 / Scene service tests."""
 
-    @pytest.mark.asyncio
-    async def test_build_scene_state_returns_empty_without_repo(self):
-        """没有 repo 时仍返回场景上下文，PC/Actor map 为空 / Returns scene context with empty state maps when repos are missing."""
-        state = _overall_state(tick=1, world_id="world-x", scene_id="scene-x")
-        result = await scene_service.build_scene_state(state)
-        assert result["pcs"] == {}
-        assert result["actors"] == {}
-        assert result["scene"].id == "scene-x"
-
-    @pytest.mark.asyncio
-    async def test_build_scene_state_builds_scene_state(self):
-        """场景服务构建当前场景的完整信息 / Scene service builds the current scene's full info."""
-        pc = PlayerCharacter(
-            id="pc-1",
-            scene_id="scene-1",
-            name="Alex",
-            role="fighter",
-            race="human",
-            status="active",
-            position_x=0,
-            position_y=0,
-        )
-        config = _pc_repo_config([pc], object_ids=["obj-1"])
-        state = _overall_state(tick=1, world_id="world-1", scene_id="scene-1")
-        result = await scene_service.build_scene_state(state, config)
-        assert "pc-1" in result["pcs"]
-        assert [o.id for o in result["scene_objects"]] == ["obj-1"]
-
 
 class TestDMAndReflectionService:
     """DM 与反思服务测试 / DM and reflection service tests."""
@@ -355,8 +326,8 @@ class TestEventService:
 
     @pytest.mark.asyncio
     async def test_flush_events_builds_scene_setup_from_scene(self):
-        """从 scene_service 写入的 scene 构造 scene_setup 事件 /
-        Build a scene_setup event from the scene state scene_service wrote."""
+        """从 tick_init_service 写入的 scene 构造 scene_setup 事件 /
+        Build a scene_setup event from the scene state tick_init_service wrote."""
         event_repo = AsyncMock()
         config = {"configurable": {"repos": {"event": event_repo}}}
         state = _overall_state(

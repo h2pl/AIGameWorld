@@ -17,9 +17,9 @@ describe("DEPTH", () => {
 });
 
 describe("TILEMAP", () => {
-  it("should define tile size as 32", () => {
-    // tile 尺寸固定为 32 / Tile size is fixed at 32
-    expect(TILEMAP.TILE_SIZE).toBe(32);
+  it("should define tile size as 16", () => {
+    // tile 默认尺寸为 16，可被 ext_json.tile_size 覆盖 / Default tile size is 16, overridable
+    expect(TILEMAP.TILE_SIZE).toBe(16);
   });
 
   it("should define walk speed in ms", () => {

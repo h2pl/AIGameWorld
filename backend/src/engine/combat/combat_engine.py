@@ -17,7 +17,7 @@ from ...domain import Actor, Memory, PlayerCharacter
 from ...schemas.engine_result import CombatActionResult
 from ...schemas.llm_output import CombatNarrationSchema
 from ...services.memory_service import retrieve_memories
-from ...utils.helpers import build_occupied_set, find_vacant_adjacent, get_llm
+from ...utils.helpers import dict_without, get_llm, validate_position
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -116,6 +116,8 @@ def _move_to_target(
     target: PlayerCharacter | Actor,
     pcs: dict[str, PlayerCharacter] | None,
     actors: dict[str, Actor] | None,
+    scene: Any | None = None,
+    scene_objects: list[Any] | None = None,
 ) -> list[dict]:
     """将 PC 移动到目标相邻格，返回 waypoints / Move PC adjacent to target."""
     tx, ty = target.position_x, target.position_y
@@ -123,8 +125,14 @@ def _move_to_target(
         return []
 
     old_x, old_y = pc.position_x, pc.position_y
-    occupied = build_occupied_set(pcs, actors, exclude_id=pc.id)
-    new_x, new_y = find_vacant_adjacent(tx, ty, occupied)
+    new_x, new_y = validate_position(
+        tx,
+        ty,
+        dict_without(pcs, pc.id),
+        actors,
+        scene,
+        scene_objects,
+    )
 
     pc.position_x = new_x
     pc.position_y = new_y

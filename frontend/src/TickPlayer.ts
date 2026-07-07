@@ -87,8 +87,9 @@ export class TickPlayer {
           }
           this._lastTick = tick;
           this._emitWaiting(false);
-          await this._playTick(tick, evs, onTick);
+          await this._playTick(tick, evs);
           await API.syncDisplayTick(this._baseUrl, this._worldId, tick);
+          onTick(tick, evs);
           delivered++;
         }
       } catch {
@@ -177,7 +178,11 @@ export class TickPlayer {
           if (evs.length) {
             this._lastTick = tick;
             this._emitWaiting(false);
-            await this._playTick(tick, evs, onTick);
+            await this._playTick(tick, evs);
+            // 播放过程中被暂停则不再同步/回调，避免覆盖“已暂停”状态
+            if (this._state !== "running") return;
+            await API.syncDisplayTick(this._baseUrl, this._worldId, tick);
+            onTick(tick, evs);
           }
         }
       } catch (e) {
@@ -204,17 +209,13 @@ export class TickPlayer {
     );
   }
 
-  private async _playTick(
-    tick: number,
-    evs: any[],
-    onTick: (tick: number, events: any[]) => void
-  ): Promise<void> {
+  private async _playTick(tick: number, evs: any[]): Promise<void> {
     const ed: EventData[] = evs.map((ev: any) => ({
       type: ev.type,
       tick: ev.tick,
       payload: ev.payload,
     }));
-    await this._eventManager.processTick(tick, ed, (t, e) => onTick(t, e as any));
+    await this._eventManager.processTick(tick, ed);
   }
 }
 

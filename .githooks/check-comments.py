@@ -28,6 +28,8 @@ SKIP_GLOBS = [
     "*.jinja",           # 提示词模板以自然语言为主 / Prompt templates are mostly natural language
     "*.test.ts",         # 前端测试文件 / Frontend test files
     "test_*.py",         # 后端测试文件 / Backend test files
+    "*.tsx",             # Tiled tileset 定义（第三方自动生成）/ Tiled tileset defs (auto-generated)
+    "*.tmx",             # Tiled 地图文件（第三方自动生成）/ Tiled map files (auto-generated)
 ]
 # 白名单确切文件名（不含路径）/ Whitelist exact filenames
 SKIP_FILES = {
@@ -37,6 +39,7 @@ SKIP_FILES = {
     ".prettierrc",
     "tuxemon-town.json",
     "mock_data.py",  # LLM mock 数据集，以自然语言样本为主 / LLM mock dataset, mostly natural language samples
+    "config.e2e.yaml",  # E2E 测试配置 / E2E test config
 }
 
 # 最低注释率 / Minimum comment ratio

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from .collision import load_blocked_tiles
 from .logging import get_logger
+from .overlap import build_occupied, dict_without, find_vacant  # noqa: F401
 
 if TYPE_CHECKING:
     from langchain_core.runnables.config import RunnableConfig
@@ -54,49 +56,35 @@ def is_mock(config: RunnableConfig | None) -> bool:
 
 
 # ═══════════════════════════════════════════════════════════════
-# 角色站位防重叠 / Character overlap avoidance
+# 坐标合法性校验 / Position validation
 # ═══════════════════════════════════════════════════════════════
 
 
-def _position_of(info: Any) -> tuple[int | None, int | None]:
-    """同时支持 dict 和领域模型 / Support both dict and domain models."""
-    if isinstance(info, dict):
-        return info.get("position_x", 0), info.get("position_y", 0)
-    return getattr(info, "position_x", 0), getattr(info, "position_y", 0)
-
-
-def build_occupied_set(
-    pcs: dict[str, Any] | None,
+def validate_position(
+    x: int,
+    y: int,
+    pcs: dict[str, Any] | None = None,
     actors: dict[str, Any] | None = None,
-    exclude_id: str = "",
-) -> set[tuple[int, int]]:
-    """收集所有角色占用的坐标（排除 exclude_id）/ Collect all occupied positions, excluding one id."""
-    occupied: set[tuple[int, int]] = set()
-    for src in (pcs, actors):
-        if not src:
-            continue
-        for cid, info in src.items():
-            if cid == exclude_id:
-                continue
-            x, y = _position_of(info)
-            if x is not None and y is not None:
-                occupied.add((x, y))
-    return occupied
-
-
-_ADJACENT_OFFSETS = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
-
-
-def find_vacant_adjacent(
-    tx: int,
-    ty: int,
-    occupied: set[tuple[int, int]],
-    map_width: int = 100,
-    map_height: int = 100,
+    scene: Any | None = None,
+    scene_objects: list[Any] | None = None,
 ) -> tuple[int, int]:
-    """在目标周围找一个未被占用的相邻格 / Find a vacant adjacent cell near target."""
-    for dx, dy in _ADJACENT_OFFSETS:
-        nx, ny = tx + dx, ty + dy
-        if 0 <= nx < map_width and 0 <= ny < map_height and (nx, ny) not in occupied:
+    """校验坐标合法性，不合法时返回最近合法坐标。
+
+    自动检查三类阻塞：
+    - 实体占用（PC / Actor 点坐标重叠）
+    - 场景物体（SceneObject 坐标占用）
+    - 地图碰撞（从 scene.ext_json 解析 collision_rects）
+    合法则返回原坐标，不合法则 8 方向搜索最近空位。
+    """
+    occupied = build_occupied(pcs, actors, scene_objects)
+    occupied |= load_blocked_tiles(scene)
+    if (x, y) not in occupied:
+        return x, y
+    for dx, dy in _ADJACENT:
+        nx, ny = x + dx, y + dy
+        if (nx, ny) not in occupied:
             return nx, ny
-    return tx, ty  # 全被占则原地不动 / All occupied, stay put
+    return x, y
+
+
+_ADJACENT = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]

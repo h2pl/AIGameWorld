@@ -57,6 +57,7 @@ async function main(): Promise<void> {
   game.registry.set("eventManager", eventManager);
   game.registry.set("tickPlayer", player);
   game.registry.set("displayTick", world.display_tick || 0);
+  game.registry.set("initialWorldState", world);
 
   // ── 4. DOM 面板 ──
   new DMCreationPanel().mount(app);

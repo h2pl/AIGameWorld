@@ -17,7 +17,7 @@ from ...domain.scene_object import SceneObject
 from ...schemas.engine_result import InteractActionResult
 from ...schemas.llm_output import InteractOutputSchema
 from ...services.memory_service import retrieve_memories
-from ...utils.helpers import build_occupied_set, find_vacant_adjacent, get_llm, get_repo
+from ...utils.helpers import dict_without, get_llm, get_repo, validate_position
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -162,8 +162,7 @@ def _move_to_object(
 
     old_x, old_y = pc.position_x, pc.position_y
 
-    occupied = build_occupied_set(pcs, actors, exclude_id=pc_id)
-    new_x, new_y = find_vacant_adjacent(tx, ty, occupied)
+    new_x, new_y = validate_position(tx, ty, dict_without(pcs, pc_id), actors, scene, scene_objects)
 
     pc.position_x = new_x
     pc.position_y = new_y

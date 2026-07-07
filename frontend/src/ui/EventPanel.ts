@@ -52,7 +52,7 @@ export class EventPanel extends Panel {
         </span>
         <button class="panel-history-btn" id="event-history-btn" title="历史事件">🕓</button>
       </div>
-      <div class="panel-body event-body"></div>
+      <div class="panel-body event-body" data-testid="event-list"></div>
     `;
     this.listEl = el.querySelector(".event-body")!;
     this.tickBadgeEl = el.querySelector("#event-tick-badge")!;

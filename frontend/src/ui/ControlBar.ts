@@ -63,17 +63,23 @@ export class ControlBar extends Panel {
 
     this.tInput = document.createElement("input");
     this.tInput.value = "3";
+    this.tInput.dataset.testid = "tick-count-input";
     this.tInput.style.cssText =
       "width:50px;text-align:center;border-radius:4px;border:1px solid #555;background:#222;color:#fff;";
     bar.appendChild(this.tInput);
 
     this.btnRunN = this._btn("跑N个Tick", "#8e44ad");
+    this.btnRunN.dataset.testid = "btn-run-n";
     bar.appendChild(this.btnRunN);
     bar.appendChild(this._sep());
     this.btnStart = this._btn("▶ 开始", "#2ecc71");
+    this.btnStart.dataset.testid = "btn-start-loop";
     this.btnPause = this._btn("⏸ 暂停", "#f39c12");
+    this.btnPause.dataset.testid = "btn-pause";
     this.btnResume = this._btn("⏯ 恢复", "#3498db");
+    this.btnResume.dataset.testid = "btn-resume";
     this.btnReset = this._btn("⏹ 重置", "#e74c3c");
+    this.btnReset.dataset.testid = "btn-reset";
     bar.appendChild(this.btnStart);
     bar.appendChild(this.btnPause);
     bar.appendChild(this.btnResume);
@@ -97,6 +103,7 @@ export class ControlBar extends Panel {
     }
 
     this.statusEl = document.createElement("span");
+    this.statusEl.dataset.testid = "control-status";
     this.statusEl.style.cssText =
       "padding:6px 14px;border-radius:4px;background:rgba(0,0,0,0.7);color:#ffd700;font-size:13px;font-weight:bold;min-width:180px;text-align:center;border:1px solid rgba(255,215,0,0.3);";
     bar.appendChild(this.statusEl);

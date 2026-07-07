@@ -5,6 +5,7 @@
 """
 
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from jinja2 import Environment, FileSystemLoader
@@ -237,6 +238,8 @@ def _update_talker_position(
     target_type: str,
     pcs: dict[str, PlayerCharacter] | None,
     actors: dict[str, Actor] | None = None,
+    scene: Any | None = None,
+    scene_objects: list[Any] | None = None,
 ) -> list[dict]:
     """谈话者移到目标旁边空位，返回 waypoints / Move talker to vacant adjacent cell"""
     if not pcs or pc_id not in pcs:
@@ -250,10 +253,9 @@ def _update_talker_position(
         return []
     old_x, old_y = pc.position_x, pc.position_y
 
-    from ...utils.helpers import build_occupied_set, find_vacant_adjacent
+    from ...utils.helpers import dict_without, validate_position
 
-    occupied = build_occupied_set(pcs, actors, exclude_id=pc_id)
-    new_x, new_y = find_vacant_adjacent(tx, ty, occupied)
+    new_x, new_y = validate_position(tx, ty, dict_without(pcs, pc_id), actors, scene, scene_objects)
 
     pc.position_x = new_x
     pc.position_y = new_y

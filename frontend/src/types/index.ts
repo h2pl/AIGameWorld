@@ -151,4 +151,7 @@ export interface InitialWorldState {
   db_name: string;
   runtime: RuntimeConfig;
   scenes: SceneData[];
+  pcs?: CharacterData[];
+  actors?: CharacterData[];
+  scene_objects?: SceneObjectData[];
 }

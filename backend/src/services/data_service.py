@@ -1,10 +1,10 @@
-"""Data Service: 负责 tick 末尾所有数据持久化 / Persists all data at tick end.
+"""Data Service: 统一负责 tick 开始/结束时的 DB 读写 / Centralized DB read/write at tick boundaries.
 
-event_service.flush_events 负责构造事件，data_service.persist_tick 负责写入 DB：
-1. 写入 dm_records
-2. 写入 tick_events
-3. 写入变更的 PC 状态
-4. 写入变更的 Actor 状态（死亡/hp 等）
+tick 开始时读取 graph 需要的状态：
+  load_scene → load_actors → load_pcs → load_scene_objects
+
+tick 末尾持久化全部数据：
+  persist_tick 写 dm_records / tick_events / PC / Actor / memories
 """
 
 from langchain_core.runnables.config import RunnableConfig
@@ -16,6 +16,59 @@ from ..utils.helpers import get_repo
 from ..utils.logging import get_logger, trace_node
 
 logger = get_logger(__name__)
+
+
+# ── tick 开始时从 DB 读取状态 ────────────────────────────────────────────────
+
+
+@trace_node("data.load_scene")
+async def load_scene(state: OverallState, config=None) -> dict:
+    """从 DB 读取当前场景 Scene 领域模型 / Load scene from DB."""
+    scene_id = state.get("scene_id", "")
+    scene_repo = get_repo(config, "scene")
+    scene = await scene_repo.get_scene(scene_id) if scene_repo else None
+    return {"scene": scene}
+
+
+@trace_node("data.load_actors")
+async def load_actors(state: OverallState, config=None) -> dict:
+    """从 DB 读取当前场景 Actor 的领域模型 map / Load actors from DB, filtered by scene_id."""
+    scene_id = state.get("scene_id", "")
+    world_id = state.get("world_id", "")
+    actor_repo = get_repo(config, "actor")
+    actors = await actor_repo.load_all(world_id) if world_id and actor_repo else []
+    scene_actors = [actor for actor in actors if getattr(actor, "scene_id", "") == scene_id]
+    return {"actors": {actor.id: actor for actor in scene_actors}}
+
+
+@trace_node("data.load_pcs")
+async def load_pcs(state: OverallState, config=None) -> dict:
+    """从 DB 读取全部 PC 的领域模型 map / Load all PCs from DB."""
+    world_id = state.get("world_id", "")
+    pc_repo = get_repo(config, "char")
+    if not pc_repo:
+        return {"pcs": {}}
+    pcs = await pc_repo.load_all(world_id) if world_id else []
+    return {"pcs": {pc.id: pc for pc in pcs}}
+
+
+@trace_node("data.load_scene_objects")
+async def load_scene_objects(state: OverallState, config=None) -> dict:
+    """从 DB 读取场景物体列表 / Load scene objects from DB."""
+    scene_id = state.get("scene_id", "")
+    scene_repo = get_repo(config, "scene")
+    if not scene_repo or not scene_id:
+        return {"scene_objects": []}
+
+    object_ids = await scene_repo.get_object_ids(scene_id)
+    if not object_ids:
+        return {"scene_objects": []}
+    all_objects = await scene_repo.load_all()
+    scene_objects = [all_objects[oid] for oid in object_ids if oid in all_objects]
+    return {"scene_objects": scene_objects}
+
+
+# ── tick 末尾持久化 ─────────────────────────────────────────────────────────
 
 
 @trace_node("data.persist")

@@ -17,7 +17,7 @@ from ...domain import Actor, Memory, PlayerCharacter
 from ...schemas.engine_result import ExploreActionResult
 from ...schemas.llm_output import ExploreOutputSchema
 from ...services.memory_service import retrieve_memories
-from ...utils.helpers import build_occupied_set, find_vacant_adjacent, get_llm
+from ...utils.helpers import dict_without, get_llm, validate_position
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -74,19 +74,20 @@ async def process_explore_action(
     end_y = result.end_y
     explore_record = result.explore_record
 
-    # 防止角色重叠：检查目的地方格是否被占用，找最近空位
-    occupied = build_occupied_set(pcs, actors, exclude_id=pc_id)
-    if (end_x, end_y) in occupied:
-        adj_x, adj_y = find_vacant_adjacent(end_x, end_y, occupied)
+    # 防止角色重叠 + 地图碰撞
+    old_x, old_y = end_x, end_y
+    end_x, end_y = validate_position(
+        end_x, end_y, dict_without(pcs, pc_id), actors, scene, scene_objects
+    )
+    if (old_x, old_y) != (end_x, end_y):
         logger.info(
-            "[engine] %s explore: dest (%d,%d) occupied, adjusted to (%d,%d)",
+            "[engine] %s explore: dest (%d,%d) blocked, adjusted to (%d,%d)",
             pc_id,
+            old_x,
+            old_y,
             end_x,
             end_y,
-            adj_x,
-            adj_y,
         )
-        end_x, end_y = adj_x, adj_y
 
     pc.position_x = end_x
     pc.position_y = end_y

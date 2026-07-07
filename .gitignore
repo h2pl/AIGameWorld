@@ -22,6 +22,8 @@ dist/
 *.db-shm
 *.db-wal
 *.log
+backend/data/chroma/
+frontend/test-results/
 
 # Environment
 .env
