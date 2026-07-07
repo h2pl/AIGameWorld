@@ -195,8 +195,6 @@ def _enrich_scene(scene: dict, objects: list[dict]) -> dict:
         "map_width": scene.get("map_width", 40),
         "map_height": scene.get("map_height", 40),
         "tilemap_summary": scene.get("tilemap_summary", ""),
-        "landmarks": ext.get("landmarks", []),
-        "exits": ext.get("exits", []),
         "environment": ext.get("environment", {}),
         "objects": objects,
     }

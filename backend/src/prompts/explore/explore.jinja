@@ -26,14 +26,6 @@ DM 提示：
 {% endif %}
 地图尺寸：{{ map_width }} x {{ map_height }}
 
-{# 地标列表 / Landmarks #}
-{% if landmarks %}
-地标：
-{% for lm in landmarks %}
-- {{ lm.name }} ({{ lm.position.x }}, {{ lm.position.y }}): {{ lm.description | default("") }}
-{% endfor %}
-{% endif %}
-
 {% if scene_objects %}
 场景物体：
 {% for obj in scene_objects %}

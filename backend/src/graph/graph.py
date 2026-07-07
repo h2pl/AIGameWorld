@@ -18,7 +18,7 @@ START
  event_service.flush_events        [node]      构造事件（dm/scene/actions）
  |
  v
- dm_service.dm_narrate             [node]      DM 叙事 → state.narrative
+ dm_service.dm_narrate             [node]      DM 叙事 → dm_record.dm_narrative
  |
  v
  event_service.emit_narrative_event [node]     叙事 → DM_NARRATIVE 事件

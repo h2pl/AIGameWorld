@@ -17,5 +17,5 @@ class Scene(DomainModel):
     map_width: int = Field(default=40, ge=1)
     map_height: int = Field(default=40, ge=1)
     tilemap_summary: str = ""
-    landmarks: list[dict] = Field(default_factory=list)
-    exits: list[dict] = Field(default_factory=list)
+
+

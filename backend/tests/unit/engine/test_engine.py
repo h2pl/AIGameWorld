@@ -2,6 +2,8 @@
 
 from unittest.mock import AsyncMock
 
+from src.domain.scene import Scene
+from src.domain.scene_object import SceneObject, SceneObjectType
 import pytest
 
 # ── Engine imports / 引擎导入 ──
@@ -149,16 +151,9 @@ class TestInteractAction:
         config = _scene_char_config(scene_obj=chest, llm=llm)
         event = await process_interact_action(
             decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
-            scene={"map_width": 40, "map_height": 40},
+            scene=Scene(id="test", map_width=40, map_height=40),
             scene_objects=[
-                {
-                    "id": "chest1",
-                    "name": "宝箱",
-                    "object_type": "container",
-                    "position_x": 5,
-                    "position_y": 5,
-                    "interact_data": {"locked": False},
-                },
+                SceneObject(id="chest1", name="宝箱", object_type=SceneObjectType.CONTAINER, position_x=5, position_y=5, interact_data={"locked": False}),
             ],
             pcs={"pc1": pc},
             config=config,

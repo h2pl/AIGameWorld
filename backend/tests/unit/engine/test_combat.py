@@ -1,3 +1,4 @@
+from src.domain.scene import Scene
 """Combat Engine 单元测试——纯 LLM 驱动战斗 / Combat engine tests for LLM-driven combat."""
 
 from unittest.mock import AsyncMock
@@ -84,7 +85,7 @@ class TestCombatAction:
                 "target_id": "goblin",
                 "target_type": "actor",
             },
-            scene={"id": "forest", "name": "森林", "type": "wilderness"},
+            scene=Scene(id="forest", name="森林", type="wilderness"),
             pcs=pcs,
             actors=actors,
             tick=1,
@@ -119,7 +120,7 @@ class TestCombatAction:
                 "target_id": "goblin",
                 "target_type": "actor",
             },
-            scene={"id": "forest", "name": "森林", "type": "wilderness"},
+            scene=Scene(id="forest", name="森林", type="wilderness"),
             pcs=pcs,
             actors=actors,
             tick=2,
@@ -148,7 +149,7 @@ class TestCombatAction:
                 "target_id": "goblin",
                 "target_type": "actor",
             },
-            scene={"id": "forest", "name": "森林", "type": "wilderness"},
+            scene=Scene(id="forest", name="森林", type="wilderness"),
             pcs=pcs,
             actors=actors,
             tick=3,

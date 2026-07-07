@@ -12,6 +12,7 @@ from ..domain import (
     Scene,
     SceneObject,
     TickEvent,
+    World,
 )
 
 
@@ -19,39 +20,37 @@ class OverallState(TypedDict, total=False):
     """根状态——贯穿整个 tick 图 / Root state — flows through entire tick graph.
 
     初始时只传入 tick 和 world_id，其余字段由各节点逐步填充。
-    pc_decisions / actions 不使用累加器，避免节点重试/子图异常时重复累积。
 
-    字段命名统一如下，避免误会：
-    - scene: Scene 领域模型（单场景信息，仅初始化写入，tick 内不更新）
-    - scene_objects: SceneObject 领域模型列表（仅初始化写入）
-    - pcs: PlayerCharacter 领域模型 map — tick 内 PC 权威数据源
-    - actors: Actor 领域模型 map — tick 内 Actor 权威数据源
-    - pc_decisions: Decision 领域模型列表
-    - actions: Action 领域模型列表
-    - pc_memory_map: Memory 领域模型列表 map — 本 tick 新记忆
-    - _pending_events: TickEvent 领域模型列表 — tick 内产生的事件
-    - _dm_ext: DMRecord 领域模型 — DM 产出完整记录
-    所有节点按需直接读取/修改领域模型；data_service 在 tick 末尾直接 save() 落盘。
+    字段说明 / Field reference：
+    - tick / world_id         — tick 序号 + world 标识（入口传入）
+    - world                   — World 领域模型（load_data 从 DB 加载）
+    - dm_record               — DM 产出完整记录（dm_create 写入）
+    - scene_id / scene        — 当前场景（dm_create 选定 id，load_data 加载领域模型）
+    - scene_objects            — 当前场景物体列表（load_data 加载）
+    - pcs / actors             — 运行时实体 map，tick 内权威数据源（load_data 加载）
+    - pc_decisions / actions   — PC 决策 + 行动（pc_subgraph 产出）
+    - memories                 — 本 tick 新记忆（引擎写入，persist_tick 落盘）
+    - tick_events              — tick 事件列表（event_service 构造，persist_tick 落盘）
     """
 
     tick: int
     world_id: str
-    hints: list[str]
-    plot_brief: str
-    scene_id: str
-    scene: Scene  # 单场景信息 / single scene context
+    world: World  # 世界观领域模型 / world domain model
+
+    dm_record: DMRecord | None  # DM 产出完整记录 / DM output record
+
+    scene_id: str  # 当前场景 id / current scene id
+    scene: Scene  # 场景领域模型 / scene domain model
     scene_objects: list[SceneObject]  # 场景物体列表 / scene object list
-    pc_decisions: list[Decision]
-    actions: list[Action]
-    narrative: str
-    # PC 运行时状态 — tick 内权威数据源，领域模型
-    pcs: dict[str, PlayerCharacter]
-    # Actor 运行时状态 — tick 内权威数据源，领域模型
-    actors: dict[str, Actor]
-    # 本 tick 各角色产生的新记忆 — 引擎写入，data_service 统一落盘
-    pc_memory_map: dict[str, list[Memory]]
-    _pending_events: list[TickEvent]
-    _dm_ext: DMRecord | None  # DM 产出完整记录
+
+    pc_decisions: list[Decision]  # PC 决策列表 / PC decision list
+    actions: list[Action]  # 行动列表 / action list
+
+    pcs: dict[str, PlayerCharacter]  # PC 运行时状态 / PC runtime state
+    actors: dict[str, Actor]  # Actor 运行时状态 / Actor runtime state
+    memories: dict[str, list[Memory]]  # 本 tick 新记忆 / new memories this tick
+
+    tick_events: list[TickEvent]  # tick 事件列表 / tick event list
 
 
 class PcSubState(TypedDict):

@@ -55,11 +55,10 @@ def base_state() -> OverallState:
         "world_id": "",
         "scene": Scene(id=""),
         "actions": [],
-        "hints": [],
-        "plot_brief": "",
+        "dm_record": None,
         "scene_id": "",
         "pc_decisions": [],
-        "narrative": "",
+        
     }
 
 

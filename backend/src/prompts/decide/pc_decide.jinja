@@ -23,15 +23,7 @@ DM 提示：
 {% if scene.tilemap_summary %}
 地图语义摘要：{{ scene.tilemap_summary }}
 {% endif %}
-{% if scene.landmarks %}
-场景地标：{{ scene.landmarks | join("、") }}
-{% endif %}
-{% if scene.exits %}
-出口：
-{% for exit in scene.exits %}
-- {{ exit }}
-{% endfor %}
-{% endif %}
+
 
 {# 场景物体具体信息 / Concrete scene object info #}
 {% if scene_objects %}

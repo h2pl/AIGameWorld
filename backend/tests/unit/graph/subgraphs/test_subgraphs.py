@@ -24,8 +24,8 @@ class TestCharacterSubgraph:
         state = {
             "tick": 1,
             "world_id": "world-1",
-            "plot_brief": "酒馆起争执",
-            "hints": [],
+            
+            "dm_record": None,
             "scene_id": "tavern",
             "pc_decisions": [],
             "scene": scene,
@@ -106,8 +106,6 @@ class TestLoadDataSubgraph:
             spawn_y=10,
             map_width=40,
             map_height=40,
-            landmarks=[],
-            exits=[],
         )
         obj = SceneObject(
             id="obj-1",
@@ -174,8 +172,6 @@ class TestTickInitSubgraph:
             spawn_y=10,
             map_width=40,
             map_height=40,
-            landmarks=[],
-            exits=[],
         )
         state = {
             "tick": 1,

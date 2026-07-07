@@ -116,7 +116,7 @@ async def _generate_interact(
         raise RuntimeError("[interact] LLM client not configured")
     obj = _find_scene_object(object_id, scene, scene_objects)
 
-    query = f"{plot_brief} {obj.get('name', '')} {scene.get('description', '')}".strip()
+    query = f"{plot_brief} {obj.name if obj else ''} {scene.description}".strip()
     memories = await retrieve_memories(
         pc_id, query, config=config, top_k=5, pc_memory_map=pc_memory_map, current_tick=tick
     )
@@ -144,8 +144,8 @@ async def _generate_interact(
 def _move_to_object(
     pc_id: str,
     object_id: str,
-    scene: dict[str, Any] | None,
-    scene_objects: list[dict[str, Any]] | None,
+    scene: Scene,
+    scene_objects: list[SceneObject],
     pcs: dict[str, PlayerCharacter] | None,
     actors: dict[str, Actor] | None = None,
 ) -> list[dict]:
@@ -155,8 +155,8 @@ def _move_to_object(
     pc = pcs[pc_id]
 
     obj = _find_scene_object(object_id, scene, scene_objects)
-    tx = obj.get("position_x", 0) if obj else 0
-    ty = obj.get("position_y", 0) if obj else 0
+    tx = obj.position_x if obj else 0
+    ty = obj.position_y if obj else 0
     if tx == 0 and ty == 0:
         return []
 
@@ -173,15 +173,14 @@ def _move_to_object(
 
 def _find_scene_object(
     object_id: str,
-    scene: dict[str, Any] | None,
-    scene_objects: list[dict[str, Any]] | None = None,
-) -> dict:
-    """在 scene 或 scene_objects 中查找场景物体 / Find scene object."""
-    objects = scene_objects or (scene or {}).get("scene_objects", [])
-    for obj in objects:
-        if obj.get("id") == object_id:
+    scene: Scene,
+    scene_objects: list[SceneObject],
+) -> SceneObject | None:
+    """在 scene_objects 中按 id 查找场景物体."""
+    for obj in scene_objects:
+        if obj.id == object_id:
             return obj
-    return {}
+    return None
 
 
 def _pc_identity(pc: PlayerCharacter) -> dict:

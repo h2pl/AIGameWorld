@@ -1,7 +1,7 @@
 """Data Service: 统一负责 tick 开始/结束时的 DB 读写 / Centralized DB read/write at tick boundaries.
 
 tick 开始时读取 graph 需要的状态：
-  load_scene → load_actors → load_pcs → load_scene_objects
+  load_world → load_scene → load_actors → load_pcs → load_scene_objects
 
 tick 末尾持久化全部数据：
   persist_tick 写 dm_records / tick_events / PC / Actor / memories
@@ -19,6 +19,15 @@ logger = get_logger(__name__)
 
 
 # ── tick 开始时从 DB 读取状态 ────────────────────────────────────────────────
+
+
+@trace_node("data.load_world")
+async def load_world(state: OverallState, config=None) -> dict:
+    """从 DB 读取 World 领域模型 / Load world from DB."""
+    world_id = state.get("world_id", "")
+    world_repo = get_repo(config, "world")
+    world = await world_repo.get(world_id) if world_repo else None
+    return {"world": world} if world else {}
 
 
 @trace_node("data.load_scene")
@@ -79,7 +88,7 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
     world_id = state.get("world_id", "")
 
     # 1. 写 dm_records / Write DM record
-    dm_ext = state.get("_dm_ext")
+    dm_ext = state.get("dm_record")
     if isinstance(dm_ext, DMRecord) and world_id:
         record_repo = get_repo(config, "dm_record")
         if record_repo:
@@ -87,7 +96,7 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
             logger.info("[data] wrote dm_record tick=%s", tick)
 
     # 2. 写事件到 tick_events / Write events to tick_events
-    events: list = state.get("_pending_events", [])
+    events: list = state.get("tick_events", [])
     if events:
         event_repo = get_repo(config, "event")
         if event_repo:
@@ -113,12 +122,12 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
             logger.info("[data] persisted actors count=%d tick=%s", len(actors), tick)
 
     # 5. 统一落盘本 tick 产生的新记忆 / Persist new memories created this tick
-    pc_memory_map: dict[str, list[Memory]] = state.get("pc_memory_map", {})
-    if pc_memory_map:
+    pc_memories: dict[str, list[Memory]] = state.get("memories", {})
+    if pc_memories:
         memory_repo = get_repo(config, "memory")
         if memory_repo:
             total = 0
-            for pc_id, mems in pc_memory_map.items():
+            for pc_id, mems in pc_memories.items():
                 for m in mems:
                     await memory_repo.store(
                         pc_id=m.pc_id or pc_id,

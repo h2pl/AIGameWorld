@@ -102,9 +102,9 @@ async def _generate_dialogue(
     initiator = await pc_repo.load_one(char_id) if pc_repo else None
     target = await _load_target(pc_repo, actor_repo, target_id, target_type)
     scene = await _fetch_scene(scene_id, config)
-    scene_dict = scene.model_dump() if isinstance(scene, Scene) else scene
+    scene_dict = scene.model_dump()
 
-    query = f"{reason} {plot_brief} {scene_dict.get('description', '')}".strip()
+    query = f"{reason} {plot_brief} {scene.description if scene else ''}".strip()
     memories = await retrieve_memories(
         char_id, query, config=config, top_k=5, pc_memory_map=pc_memory_map, current_tick=tick
     )
@@ -133,14 +133,13 @@ async def _generate_dialogue(
     return [t.model_dump() for t in result.turns]
 
 
-async def _fetch_scene(scene_id: str, config: RunnableConfig = None) -> Scene | dict:
+async def _fetch_scene(scene_id: str, config: RunnableConfig = None) -> Scene:
     """按 scene_id 查询场景信息 / Fetch scene info by id."""
     scene_repo = get_repo(config, "scene")
-    empty = {"id": scene_id, "name": "", "type": "", "description": ""}
     if not scene_repo or not scene_id:
-        return empty
+        return Scene(id=scene_id)
     scene = await scene_repo.get_scene(scene_id)
-    return scene or empty
+    return scene or Scene(id=scene_id)
 
 
 async def _load_target(pc_repo, actor_repo, target_id: str, target_type: str):
@@ -238,8 +237,8 @@ def _update_talker_position(
     target_type: str,
     pcs: dict[str, PlayerCharacter] | None,
     actors: dict[str, Actor] | None = None,
-    scene: Any | None = None,
-    scene_objects: list[Any] | None = None,
+    scene: Scene | None = None,
+    scene_objects: list[SceneObject] | None = None,
 ) -> list[dict]:
     """谈话者移到目标旁边空位，返回 waypoints / Move talker to vacant adjacent cell"""
     if not pcs or pc_id not in pcs:

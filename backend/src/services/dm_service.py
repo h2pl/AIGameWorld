@@ -17,19 +17,18 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
     """Phase 1: DM 创造情境 / DM creates the situation."""
     tick = state.get("tick", 0)
     world_id = state.get("world_id", "")
+    prev_dm = state.get("dm_record")
     result = await dm_engine.dm_create(
         DMCreateRequest(
             tick=tick,
-            plot_brief=state.get("plot_brief", ""),
+            plot_brief=prev_dm.plot_brief if prev_dm else "",
             world_id=world_id,
         ),
         config=config,
     )
     return {
-        "hints": result.hints,
-        "plot_brief": result.plot_brief,
         "scene_id": result.scene_id,
-        "_dm_ext": DMRecord(
+        "dm_record": DMRecord(
             world_id=world_id,
             tick=tick,
             plot_brief=result.plot_brief,
@@ -42,19 +41,20 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
 
 @trace_node("dm.narrate")
 async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict:
-    """Phase 6: DM 叙事——产出 narrative 写入 state."""
+    """Phase 6: DM 叙事——产出 narrative 写入 dm_record."""
     pcs = state.get("pcs", {})
     actors = state.get("actors", {})
     scene = state.get("scene")
     scene_objects = state.get("scene_objects", [])
     actions = state.get("actions", [])
+    dm = state.get("dm_record")
     result = await dm_engine.dm_narrate(
         DMNarrateRequest(
             tick=state.get("tick", 0),
             world_id=state.get("world_id", ""),
-            plot_brief=state.get("plot_brief", ""),
-            hints=state.get("hints", []),
-            events=_summarize_events(state.get("_pending_events", [])),
+            plot_brief=dm.plot_brief if dm else "",
+            hints=dm.hints if dm else [],
+            events=_summarize_events(state.get("tick_events", [])),
             scene=_scene_to_dict(scene),
             scene_objects=_objects_to_dicts(scene_objects),
             pcs={pc_id: pc.model_dump() for pc_id, pc in pcs.items()},
@@ -63,7 +63,10 @@ async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict
         ),
         config=config,
     )
-    return {"narrative": result.narrative_out}
+    if dm:
+        dm.dm_narrative = result.narrative_out
+        return {"dm_record": dm}
+    return {}
 
 
 def _scene_to_dict(scene: Scene | None) -> dict:

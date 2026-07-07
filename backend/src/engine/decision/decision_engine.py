@@ -70,8 +70,6 @@ async def decide(
             "type": "",
             "description": "",
             "tilemap_summary": "",
-            "landmarks": [],
-            "exits": [],
         },
         "scene_objects": scene_objects or [],
         "nearby_pcs": nearby_pcs,

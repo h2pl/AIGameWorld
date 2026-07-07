@@ -24,11 +24,10 @@ def _overall_state(**overrides):
         "scene": Scene(id="scene-1"),
         "scene_objects": [],
         "actions": [],
-        "hints": [],
-        "plot_brief": "",
+        "dm_record": None,
         "scene_id": "scene-1",
         "pc_decisions": [],
-        "narrative": "",
+        
         "pcs": {},
         "actors": {},
         **overrides,
@@ -96,7 +95,7 @@ class TestCharacterService:
         mock_decide.assert_awaited_once()
         assert mock_decide.call_args.kwargs["pc_id"] == "pc-1"
         assert mock_decide.call_args.kwargs["scene"] == scene
-        assert mock_decide.call_args.kwargs["plot_brief"] == "战斗开始"
+        assert mock_decide.call_args.kwargs["plot_brief"] == ""
         assert mock_decide.call_args.kwargs["scene_id"] == "scene-1"
         assert mock_decide.call_args.kwargs["tick"] == 3
         assert mock_decide.call_args.kwargs["pcs"] == pcs
@@ -142,7 +141,7 @@ class TestCharacterService:
         )
         mock_interact.assert_awaited_once_with(
             decision=decision.model_dump(),
-            scene=Scene(id="scene-1").model_dump(),
+            scene=Scene(id="scene-1"),
             scene_objects=[],
             pcs={},
             actors={},
@@ -154,7 +153,7 @@ class TestCharacterService:
         )
         mock_combat.assert_awaited_once_with(
             decision=decision.model_dump(),
-            scene=Scene(id="scene-1").model_dump(),
+            scene=Scene(id="scene-1"),
             pcs={},
             actors={},
             plot_brief="",
@@ -222,11 +221,12 @@ class TestDMAndReflectionService:
         )
         with patch.object(dm_service.dm_engine, "dm_create", AsyncMock(return_value=engine_result)):
             result = await dm_service.dm_create(_overall_state(tick=4, world_id="w-1"))
-        assert result["hints"] == ["去酒馆"]
-        assert result["plot_brief"] == "今晚有冲突"
         assert result["scene_id"] == "tavern"
-        assert isinstance(result["_dm_ext"], DMRecord)
-        assert result["_dm_ext"].ext == {}
+        dm_rec = result["dm_record"]
+        assert isinstance(dm_rec, DMRecord)
+        assert dm_rec.hints == ["去酒馆"]
+        assert dm_rec.plot_brief == "今晚有冲突"
+        assert dm_rec.ext == {}
 
     @pytest.mark.asyncio
     async def test_dm_narrate_returns_narrative(self):
@@ -235,8 +235,10 @@ class TestDMAndReflectionService:
         with patch.object(
             dm_service.dm_engine, "dm_narrate", AsyncMock(return_value=engine_result)
         ):
-            result = await dm_service.dm_narrate(_overall_state(tick=10))
-        assert result["narrative"] == "战斗爆发。"
+            result = await dm_service.dm_narrate(
+                _overall_state(tick=10, dm_record=DMRecord(tick=10, world_id="w-1"))
+            )
+        assert result["dm_record"].dm_narrative == "战斗爆发。"
 
     @pytest.mark.asyncio
     async def test_reflect_returns_empty_when_repos_missing(self):
@@ -310,7 +312,7 @@ class TestEventService:
             ],
         )
         result = event_service.flush_events(state, config)
-        events = result.get("_pending_events", [])
+        events = result.get("tick_events", [])
         assert len(events) > 0
 
     @pytest.mark.asyncio
@@ -321,7 +323,7 @@ class TestEventService:
         config = {"configurable": {"repos": {"event": event_repo}}}
         state = _overall_state(tick=4, scene_id="", scene=Scene(id=""), actions=[])
         result = event_service.flush_events(state, config)
-        events = result.get("_pending_events", [])
+        events = result.get("tick_events", [])
         assert events == []
 
     @pytest.mark.asyncio
@@ -342,7 +344,7 @@ class TestEventService:
             actions=[],
         )
         result = event_service.flush_events(state, config)
-        events = result.get("_pending_events", [])
+        events = result.get("tick_events", [])
         assert len(events) > 0
 
     @pytest.mark.asyncio
@@ -359,7 +361,7 @@ class TestEventService:
             actions=[],
         )
         result = event_service.flush_events(state, config)
-        events = result.get("_pending_events", [])
+        events = result.get("tick_events", [])
         assert len(events) > 0
 
     @pytest.mark.asyncio
@@ -384,7 +386,7 @@ class TestEventService:
             actions=[],
         )
         result = event_service.flush_events(state, config)
-        events = result.get("_pending_events", [])
+        events = result.get("tick_events", [])
         decision_events = [e for e in events if e.type.value == "pc_decision"]
         assert len(decision_events) == 1
         assert decision_events[0].payload["pc_id"] == "pc-1"
@@ -411,7 +413,7 @@ class TestEventService:
             ],
         )
         result = event_service.flush_events(state, config)
-        events = result.get("_pending_events", [])
+        events = result.get("tick_events", [])
         assert events == []
 
     @pytest.mark.asyncio
@@ -428,7 +430,7 @@ class TestEventService:
             narrative="夜幕降临，酒馆里灯火通明。",
         )
         result = event_service.flush_events(state, config)
-        events = result.get("_pending_events", [])
+        events = result.get("tick_events", [])
         assert events == []
 
     @pytest.mark.asyncio
@@ -439,10 +441,10 @@ class TestEventService:
             tick=2,
             scene_id="",
             actions=[],
-            narrative="夜幕降临，酒馆里灯火通明。",
+            dm_record=DMRecord(tick=2, world_id="w-1", dm_narrative="夜幕降临，酒馆里灯火通明。"),
         )
         result = event_service.emit_narrative_event(state)
-        events = result.get("_pending_events", [])
+        events = result.get("tick_events", [])
         assert len(events) == 1
         assert events[0].type.value == "dm_narrative"
         assert events[0].payload["text"] == "夜幕降临，酒馆里灯火通明。"
@@ -458,5 +460,5 @@ class TestEventService:
             narrative="",
         )
         result = event_service.emit_narrative_event(state)
-        events = result.get("_pending_events", [])
+        events = result.get("tick_events", [])
         assert events == []

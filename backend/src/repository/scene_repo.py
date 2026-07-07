@@ -149,8 +149,6 @@ def _row_to_scene(row, world_id: str = "") -> Scene:
         map_width=row.get("map_width", 40),
         map_height=row.get("map_height", 40),
         tilemap_summary=row.get("tilemap_summary", ""),
-        landmarks=ext.get("landmarks", []),
-        exits=ext.get("exits", []),
         ext_json=ext_json,
         world_id=world_id or row.get("world_id", ""),
     )

@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock
 
+from src.domain.scene import Scene
 import pytest
 
 from src.domain import Memory
@@ -69,16 +70,9 @@ class TestInteractEngine:
         pc = _pc(position_x=0, position_y=0)
         event = await process_interact_action(
             decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
-            scene={"map_width": 40, "map_height": 40},
+            scene=Scene(id="test", map_width=40, map_height=40),
             scene_objects=[
-                {
-                    "id": "chest1",
-                    "name": "宝箱",
-                    "object_type": "container",
-                    "position_x": 10,
-                    "position_y": 10,
-                    "interact_data": {"locked": False},
-                },
+                SceneObject(id="chest1", name="宝箱", object_type=SceneObjectType.CONTAINER, position_x=10, position_y=10, interact_data={"locked": False}),
             ],
             pcs={"pc1": pc},
             config=_config(scene_obj=chest, llm=llm),
@@ -109,16 +103,9 @@ class TestInteractEngine:
         )
         event = await process_interact_action(
             decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
-            scene={"map_width": 40, "map_height": 40},
+            scene=Scene(id="test", map_width=40, map_height=40),
             scene_objects=[
-                {
-                    "id": "chest1",
-                    "name": "宝箱",
-                    "object_type": "container",
-                    "position_x": 5,
-                    "position_y": 5,
-                    "interact_data": {"locked": False},
-                },
+                SceneObject(id="chest1", name="宝箱", object_type=SceneObjectType.CONTAINER, position_x=5, position_y=5, interact_data={"locked": False}),
             ],
             pcs={"pc1": _pc(position_x=0, position_y=0)},
             config=_config(scene_obj=chest, llm=llm),
@@ -146,16 +133,9 @@ class TestInteractEngine:
         )
         event = await process_interact_action(
             decision={"type": "interact", "pc_id": "pc1", "target_id": "trap1"},
-            scene={"map_width": 40, "map_height": 40},
+            scene=Scene(id="test", map_width=40, map_height=40),
             scene_objects=[
-                {
-                    "id": "trap1",
-                    "name": "毒刺陷阱",
-                    "object_type": "trap",
-                    "position_x": 5,
-                    "position_y": 5,
-                    "interact_data": {"dc": 15},
-                },
+                SceneObject(id="trap1", name="毒刺陷阱", object_type=SceneObjectType.TRAP, position_x=5, position_y=5, interact_data={"dc": 15}),
             ],
             pcs={"pc1": _pc(position_x=0, position_y=0)},
             config=_config(scene_obj=trap, llm=llm),
@@ -189,16 +169,9 @@ class TestInteractEngine:
         pc_memory_map: dict[str, list[Memory]] = {}
         await process_interact_action(
             decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
-            scene={"map_width": 40, "map_height": 40},
+            scene=Scene(id="test", map_width=40, map_height=40),
             scene_objects=[
-                {
-                    "id": "chest1",
-                    "name": "宝箱",
-                    "object_type": "container",
-                    "position_x": 5,
-                    "position_y": 5,
-                    "interact_data": {"locked": False},
-                },
+                SceneObject(id="chest1", name="宝箱", object_type=SceneObjectType.CONTAINER, position_x=5, position_y=5, interact_data={"locked": False}),
             ],
             pcs={"pc1": _pc(position_x=0, position_y=0)},
             tick=3,

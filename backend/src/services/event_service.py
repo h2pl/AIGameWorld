@@ -15,14 +15,15 @@ def _dm_create_event(state: OverallState) -> TickEvent | None:
     scene_id = state.get("scene_id", "")
     if not scene_id:
         return None
+    dm = state.get("dm_record")
     return TickEvent(
         type=TickEventType.DM_CREATE,
         tick=state.get("tick", 0),
         world_id=state.get("world_id", ""),
         payload={
             "scene_id": scene_id,
-            "plot_brief": state.get("plot_brief", ""),
-            "hints": state.get("hints", []),
+            "plot_brief": dm.plot_brief if dm else "",
+            "hints": dm.hints if dm else [],
         },
     )
 
@@ -192,7 +193,7 @@ def _group_decision_action_pairs(
 
 
 def flush_events(state: OverallState, config: RunnableConfig = None) -> dict:
-    """从 state 各阶段产出统一构造 TickEvent 列表，存入 _pending_events 供 data_service 落盘.
+    """从 state 各阶段产出统一构造 TickEvent 列表，存入 tick_events 供 data_service 落盘.
 
     顺序：dm_create → scene_setup → 每个 PC 的 决策→行动 → ...，保证前端逐 PC 串行展示.
     """
@@ -204,13 +205,14 @@ def flush_events(state: OverallState, config: RunnableConfig = None) -> dict:
     events = [*dm_evts, *pc_evts]
     tick = state.get("tick", 0)
     logger.info("[service] flushed events tick=%s count=%d", tick, len(events))
-    return {"_pending_events": events}
+    return {"tick_events": events}
 
 
 def emit_narrative_event(state: OverallState, config: RunnableConfig = None) -> dict:
-    """将 state.narrative 转为 DM_NARRATIVE 事件追加到 _pending_events."""
-    narrative = state.get("narrative", "")
-    events = list(state.get("_pending_events", []))
+    """将 dm_record.dm_narrative 转为 DM_NARRATIVE 事件追加到 tick_events."""
+    dm = state.get("dm_record")
+    narrative = dm.dm_narrative if dm else ""
+    events = list(state.get("tick_events", []))
     if narrative:
         events.append(
             TickEvent(
@@ -220,4 +222,4 @@ def emit_narrative_event(state: OverallState, config: RunnableConfig = None) -> 
                 payload={"text": narrative},
             )
         )
-    return {"_pending_events": events}
+    return {"tick_events": events}

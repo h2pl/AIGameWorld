@@ -17,11 +17,11 @@ class TestOverallState:
             "scene": Scene(id=""),
             "scene_objects": [],
             "actions": [],
-            "hints": [],
-            "plot_brief": "",
+            "dm_record": None,
+            
             "scene_id": "",
             "pc_decisions": [],
-            "narrative": "",
+            
             "pcs": {},
             "actors": {},
         }

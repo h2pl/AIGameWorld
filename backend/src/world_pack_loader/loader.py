@@ -117,8 +117,6 @@ class WorldLoader:
                 map_width=grid.get("width", 40),
                 map_height=grid.get("height", 40),
                 tilemap_summary=s.get("tilemap_summary", ""),
-                landmarks=s.get("landmarks", []),
-                exits=s.get("exits", []),
                 world_id=world_id,
             )
             await self._scene_repo.save_scene(scene, world_id)

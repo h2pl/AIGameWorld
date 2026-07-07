@@ -28,8 +28,8 @@ _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
 
 async def process_explore_action(
     decision: dict,
-    scene: dict[str, Any] | None = None,
-    scene_objects: list[dict[str, Any]] | None = None,
+    scene: Scene | None = None,
+    scene_objects: list[SceneObject] | None = None,
     pcs: dict[str, PlayerCharacter] | None = None,
     actors: dict[str, Actor] | None = None,
     plot_brief: str = "",
@@ -133,7 +133,7 @@ async def _generate_explore_data(
 
     pc = _pc_identity(pc_id, pcs)
 
-    query = f"{plot_brief} {scene.get('description', '')}".strip()
+    query = f"{plot_brief} {scene.description if scene else ''}".strip()
     memories = await retrieve_memories(
         pc_id, query, config=config, top_k=5, pc_memory_map=pc_memory_map, current_tick=tick
     )
@@ -143,11 +143,10 @@ async def _generate_explore_data(
         "plot_brief": plot_brief,
         "hints": hints,
         "memories": memories,
-        "scene": scene,
+        "scene": scene.model_dump() if scene else {},
         "map_width": map_width,
         "map_height": map_height,
-        "landmarks": scene.get("landmarks", []),
-        "scene_objects": scene_objects or scene.get("scene_objects", []),
+        "scene_objects": scene_objects or [],
         "start_x": start_x,
         "start_y": start_y,
     }
@@ -172,8 +171,9 @@ async def _generate_explore_data(
 
 
 def _get_map_bounds(scene: dict[str, Any] | None) -> tuple[int, int]:
-    scene = scene or {}
-    return int(scene.get("map_width", 40)), int(scene.get("map_height", 40))
+    if scene is None:
+        return 40, 40
+    return scene.map_width, scene.map_height
 
 
 def _store_explore_memory(

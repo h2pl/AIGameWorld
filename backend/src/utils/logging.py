@@ -502,7 +502,7 @@ def _node_out(name: str, result: object) -> dict:
             for a in acts[:5]
         ]
     elif name in ("dm.narrate",):
-        narrative = result.get("narrative", "")
-        if isinstance(narrative, str):
-            out["narrative_len"] = len(narrative)
+        dm = result.get("dm_record")
+        if dm and getattr(dm, "dm_narrative", None):
+            out["narrative_len"] = len(dm.dm_narrative)
     return out

@@ -34,18 +34,7 @@
   {% if s.environment %}
   环境：{% if s.environment.weather %}天气 {{ s.environment.weather }}{% endif %}{% if s.environment.time_of_day %} / 时间 {{ s.environment.time_of_day }}{% endif %}
   {% endif %}
-  {% if s.landmarks %}
-  地标：
-  {% for lm in s.landmarks %}
-    · {{ lm.name }} @({{ lm.position.x }}, {{ lm.position.y }})
-  {% endfor %}
-  {% endif %}
-  {% if s.exits %}
-  出口：
-  {% for ex in s.exits %}
-    · {{ ex.description }} → {{ ex.target_scene }} @({{ ex.position.x }}, {{ ex.position.y }})
-  {% endfor %}
-  {% endif %}
+
   {% if s.objects %}
   场景物体：
   {% for obj in s.objects %}

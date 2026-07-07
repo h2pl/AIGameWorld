@@ -21,15 +21,13 @@ def _pc_context():
             "race": "human",
             "status": "active",
         },
-        "plot_brief": "雾气在十字路口聚拢。",
+        
         "hints": ["注意十字路口的动静"],
         "scene": {
             "id": "crossroad",
             "name": "十字路口",
             "type": "outdoor",
             "description": "雾气弥漫的十字路口。",
-            "landmarks": ["石碑"],
-            "exits": ["北：小镇", "南：森林"],
         },
         "scene_objects": [
             {"id": "obj_stele", "name": "石碑", "object_type": "landmark", "interactable": True}
@@ -103,11 +101,7 @@ class TestPCDecidePrompt:
 
     def test_scene_objects_injected(self):
         rendered = _PROMPTS.get_template("decide/pc_decide.jinja").render(**_pc_context())
-        assert "石碑" in rendered
-
-    def test_scene_exits_injected(self):
-        rendered = _PROMPTS.get_template("decide/pc_decide.jinja").render(**_pc_context())
-        assert "北：小镇" in rendered
+        assert "石碑" in rendered  # lineId is still in scene_objects list
 
     def test_nearby_pcs_and_actors_are_distinguished(self):
         rendered = _PROMPTS.get_template("decide/pc_decide.jinja").render(**_pc_context())

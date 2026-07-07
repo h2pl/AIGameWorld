@@ -12,11 +12,11 @@ def _graph_input(**overrides):
         "scene": {},
         "scene_objects": [],
         "actions": [],
-        "hints": [],
-        "plot_brief": "",
+        "dm_record": None,
+        
         "scene_id": "scene-1",
         "pc_decisions": [],
-        "narrative": "",
+        
         **overrides,
     }
 

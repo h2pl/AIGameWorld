@@ -20,18 +20,6 @@
 {% endif %}
 地图尺寸：{{ scene.map_width | default(40) }} × {{ scene.map_height | default(40) }}
 出生点：({{ scene.spawn_x | default(0) }}, {{ scene.spawn_y | default(0) }})
-{% if scene.landmarks %}
-地标：
-{% for lm in scene.landmarks %}
-- {{ lm.name }} ({{ lm.position.x }}, {{ lm.position.y }})
-{% endfor %}
-{% endif %}
-{% if scene.exits %}
-出口：
-{% for ex in scene.exits %}
-- {{ ex.description }} → {{ ex.target_scene }} ({{ ex.position.x }}, {{ ex.position.y }})
-{% endfor %}
-{% endif %}
 {% endif %}
 
 {# 场景物体 / Scene objects #}

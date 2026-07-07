@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from .collision import load_blocked_tiles
 from .logging import get_logger
 from .overlap import build_occupied, dict_without, find_vacant  # noqa: F401
 
 if TYPE_CHECKING:
+    from ..domain import Actor, PlayerCharacter, Scene, SceneObject
     from langchain_core.runnables.config import RunnableConfig
 
 logger = get_logger(__name__)
@@ -60,13 +61,57 @@ def is_mock(config: RunnableConfig | None) -> bool:
 # ═══════════════════════════════════════════════════════════════
 
 
+def assign_spawn_positions(
+    pcs: list[PlayerCharacter],
+    scene: Scene,
+    actors: dict[str, Actor] | None = None,
+    spawn_radius: int = 2,
+) -> list[PlayerCharacter]:
+    """为未设置坐标的 PC 分配出生点坐标，直接修改领域模型并返回。
+
+    以 scene 的 spawn 为中心螺旋搜索，避开 actors 占位和地图碰撞。
+    """
+    if not pcs or scene is None:
+        return pcs
+
+    spawn_x = scene.spawn_x
+    spawn_y = scene.spawn_y
+
+    occupied = build_occupied(None, actors)
+    occupied |= load_blocked_tiles(scene)
+
+    offsets = [
+        (dx, dy)
+        for r in range(spawn_radius + 1)
+        for dy in range(-r, r + 1)
+        for dx in range(-r, r + 1)
+        if max(abs(dx), abs(dy)) == r
+    ]
+
+    for pc in pcs:
+        x, y = spawn_x, spawn_y
+        for dx, dy in offsets:
+            cx, cy = spawn_x + dx, spawn_y + dy
+            if (cx, cy) not in occupied:
+                x, y = cx, cy
+                break
+        else:
+            x, y = find_vacant(spawn_x, spawn_y, occupied)
+
+        pc.position_x = x
+        pc.position_y = y
+        occupied.add((x, y))
+
+    return pcs
+
+
 def validate_position(
     x: int,
     y: int,
-    pcs: dict[str, Any] | None = None,
-    actors: dict[str, Any] | None = None,
-    scene: Any | None = None,
-    scene_objects: list[Any] | None = None,
+    pcs: dict[str, PlayerCharacter] | None = None,
+    actors: dict[str, Actor] | None = None,
+    scene: Scene | None = None,
+    scene_objects: list[SceneObject] | None = None,
 ) -> tuple[int, int]:
     """校验坐标合法性，不合法时返回最近合法坐标。
 

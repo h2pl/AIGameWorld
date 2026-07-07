@@ -116,8 +116,8 @@ def _move_to_target(
     target: PlayerCharacter | Actor,
     pcs: dict[str, PlayerCharacter] | None,
     actors: dict[str, Actor] | None,
-    scene: Any | None = None,
-    scene_objects: list[Any] | None = None,
+    scene: Scene | None = None,
+    scene_objects: list[SceneObject] | None = None,
 ) -> list[dict]:
     """将 PC 移动到目标相邻格，返回 waypoints / Move PC adjacent to target."""
     tx, ty = target.position_x, target.position_y
@@ -156,7 +156,7 @@ async def _generate_narration(
     if llm is None:
         raise RuntimeError("[combat] LLM client not configured")
 
-    query = f"{plot_brief} {target.name} {scene.get('description', '')}".strip()
+    query = f"{plot_brief} {target.name} {scene.description if scene else ''}".strip()
     memories = await retrieve_memories(
         pc.id, query, config=config, top_k=5, pc_memory_map=pc_memory_map, current_tick=tick
     )

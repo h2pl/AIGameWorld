@@ -12,18 +12,6 @@ from ..graph.state import OverallState
 from ..utils.logging import trace_node
 
 
-def _as_scene_dict(scene: Scene | None) -> dict:
-    """把 Scene 领域模型转成 engine 可读的 dict（engine 内部仍按 dict 处理）."""
-    if scene is None:
-        return {}
-    return scene.model_dump()
-
-
-def _as_object_dicts(scene_objects: list[SceneObject]) -> list[dict]:
-    """把 SceneObject 列表转成 dict 列表."""
-    return [obj.model_dump() for obj in scene_objects]
-
-
 @trace_node("pc.decide")
 async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
     """为场景内每个 PC 决策。PC 列表从 pcs map 获取（实时），不从 scene 读."""
@@ -31,10 +19,11 @@ async def decide(state: OverallState, config: RunnableConfig = None) -> dict:
     if not pcs:
         return {"pc_decisions": []}
 
+    dm = state.get("dm_record")
     scene = state.get("scene")
     scene_objects = state.get("scene_objects", [])
-    plot_brief = state.get("plot_brief", "")
-    hints = state.get("hints", [])
+    plot_brief = dm.plot_brief if dm else ""
+    hints = dm.hints if dm else []
     scene_id = state.get("scene_id", "")
     actors = state.get("actors", {})
     tick = state.get("tick", 0)
@@ -65,16 +54,15 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
         return {}
 
     tick = state.get("tick", 0)
-    plot_brief = state.get("plot_brief", "")
-    hints = state.get("hints", [])
+    dm = state.get("dm_record")
+    plot_brief = dm.plot_brief if dm else ""
+    hints = dm.hints if dm else []
     scene_id = state.get("scene_id", "")
     scene = state.get("scene")
     scene_objects = state.get("scene_objects", [])
-    scene_dict = _as_scene_dict(scene)
-    object_dicts = _as_object_dicts(scene_objects)
     pcs = state.get("pcs", {})
     actors = state.get("actors", {})
-    pc_memory_map = state.get("pc_memory_map", {})
+    pc_memory_map = state.get("memories", {})
     actions: list[Action] = []
 
     for order, decision in enumerate(decisions):
@@ -96,8 +84,8 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
         )
         interact_result = await interact_engine.process_interact_action(
             decision=decision_dict,
-            scene=scene_dict,
-            scene_objects=object_dicts,
+            scene=scene,
+            scene_objects=scene_objects,
             pcs=pcs,
             actors=actors,
             tick=tick,
@@ -108,7 +96,7 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
         )
         combat_result = await combat_engine.process_combat_action(
             decision=decision_dict,
-            scene=scene_dict,
+            scene=scene,
             pcs=pcs,
             actors=actors,
             plot_brief=plot_brief,
@@ -119,8 +107,8 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
         )
         explore_result = await explore_engine.process_explore_action(
             decision=decision_dict,
-            scene=scene_dict,
-            scene_objects=object_dicts,
+            scene=scene,
+            scene_objects=scene_objects,
             pcs=pcs,
             actors=actors,
             plot_brief=plot_brief,
@@ -150,5 +138,5 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
     if pcs:
         result["pcs"] = pcs
     if pc_memory_map:
-        result["pc_memory_map"] = pc_memory_map
+        result["memories"] = pc_memory_map
     return result

@@ -166,7 +166,8 @@ async def _do_run(
     for _ in range(n):
         result = await orch.run_tick(world_id)
         tick = result["tick"]
-        narrative = result.get("narrative", "")
+        dm = result.get("dm_record")
+        narrative = dm.dm_narrative if dm else ""
         tick_events = result.get("tick_events", [])
         decisions = result.get("pc_decisions", [])
 

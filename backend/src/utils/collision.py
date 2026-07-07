@@ -8,13 +8,12 @@ import json
 from ..domain.scene import Scene
 
 
-def load_blocked_tiles(scene: Scene | dict | None) -> set[tuple[int, int]]:
+def load_blocked_tiles(scene: Scene | None) -> set[tuple[int, int]]:
     """从场景 ext_json 解析 collision_rects 并展开为阻塞瓦片坐标集合."""
     if scene is None:
         return set()
     try:
-        raw = scene.get("ext_json", "{}") if isinstance(scene, dict) else scene.ext_json
-        ext = json.loads(raw) if isinstance(raw, str) else raw
+        ext = json.loads(scene.ext_json) if isinstance(scene.ext_json, str) else scene.ext_json
     except (json.JSONDecodeError, TypeError, AttributeError):
         return set()
 

@@ -1,3 +1,4 @@
+from src.domain.scene import Scene
 """Explore Engine 单元测试 / Unit tests for explore engine."""
 
 from unittest.mock import AsyncMock
@@ -57,7 +58,7 @@ class TestExploreEngine:
         pc = _pc(position_x=5, position_y=5)
         event = await process_explore_action(
             decision={"type": "explore", "pc_id": "pc1"},
-            scene={"map_width": 40, "map_height": 40},
+            scene=Scene(id="test", map_width=40, map_height=40),
             pcs={"pc1": pc},
             config=config,
         )
@@ -85,7 +86,7 @@ class TestExploreEngine:
         config = _mock_config(llm=llm)
         event = await process_explore_action(
             decision={"type": "explore", "pc_id": "pc1"},
-            scene={"map_width": 40, "map_height": 40},
+            scene=Scene(id="test", map_width=40, map_height=40),
             pcs={"pc1": _pc(position_x=5, position_y=5)},
             config=config,
         )

@@ -2,21 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..domain import Actor, PlayerCharacter, SceneObject
 
 ADJACENT_OFFSETS = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
 
 
-def _position_of(info: Any) -> tuple[int | None, int | None]:
-    if isinstance(info, dict):
-        return info.get("position_x", 0), info.get("position_y", 0)
-    return getattr(info, "position_x", 0), getattr(info, "position_y", 0)
-
-
 def build_occupied(
-    pcs: dict[str, Any] | None = None,
-    actors: dict[str, Any] | None = None,
-    scene_objects: list[Any] | None = None,
+    pcs: dict[str, PlayerCharacter] | None = None,
+    actors: dict[str, Actor] | None = None,
+    scene_objects: list[SceneObject] | None = None,
 ) -> set[tuple[int, int]]:
     """收集所有实体占用的坐标."""
     occupied: set[tuple[int, int]] = set()
@@ -24,18 +21,14 @@ def build_occupied(
         if not src:
             continue
         for info in src.values():
-            x, y = _position_of(info)
-            if x is not None and y is not None:
-                occupied.add((x, y))
+            occupied.add((info.position_x, info.position_y))
     if scene_objects:
         for obj in scene_objects:
-            x, y = _position_of(obj)
-            if x is not None and y is not None:
-                occupied.add((x, y))
+            occupied.add((obj.position_x, obj.position_y))
     return occupied
 
 
-def dict_without(d: dict[str, Any] | None, key: str) -> dict[str, Any]:
+def dict_without(d: dict | None, key: str) -> dict:
     """返回去除指定 key 的副本."""
     if not d:
         return {}
