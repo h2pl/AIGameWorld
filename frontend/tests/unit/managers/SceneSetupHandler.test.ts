@@ -23,16 +23,21 @@ describe("SceneSetupHandler", () => {
 
   it("should pass SceneSetupData object", () => {
     const fn = vi.fn();
-    new SceneSetupHandler(fn).handle(makeEv({
-      scene_id: "desert",
-      scene: { map_key: "desert-map", name: "Desert", ext_json: "" },
-      pcs: [{ id: "c", position_x: 5, position_y: 5 }],
-      actors: [{ id: "a", position_x: 8, position_y: 8 }],
-    }));
-    expect(fn).toHaveBeenCalledWith(expect.objectContaining({
-      sceneId: "desert", mapKey: "desert-map", sceneName: "Desert",
-      pcs: [{ id: "c", position_x: 5, position_y: 5 }],
-      actors: [{ id: "a", position_x: 8, position_y: 8 }],
-    }));
+    new SceneSetupHandler(fn).handle(
+      makeEv({
+        scene_id: "desert",
+        scene: { name: "Desert", ext_json: "" },
+        pcs: [{ id: "c", position_x: 5, position_y: 5 }],
+        actors: [{ id: "a", position_x: 8, position_y: 8 }],
+      })
+    );
+    expect(fn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sceneId: "desert",
+        sceneName: "Desert",
+        pcs: [{ id: "c", position_x: 5, position_y: 5 }],
+        actors: [{ id: "a", position_x: 8, position_y: 8 }],
+      })
+    );
   });
 });

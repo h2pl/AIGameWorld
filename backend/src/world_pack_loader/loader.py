@@ -112,7 +112,6 @@ class WorldLoader:
                 name=s.get("name", ""),
                 type=s.get("type", ""),
                 description=s.get("description", ""),
-                map_key=s.get("map_key", ""),
                 spawn_x=spawn_x,
                 spawn_y=spawn_y,
                 map_width=grid.get("width", 40),

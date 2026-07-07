@@ -64,7 +64,6 @@ async def build_scene_info(state: OverallState, config=None) -> dict:
             name="",
             type="",
             description="",
-            map_key="",
             spawn_x=0,
             spawn_y=0,
             map_width=40,
@@ -434,7 +433,7 @@ def _default_assets_dir() -> Path:
 
 
 def _load_tilemap(scene: Scene, assets_dir: Path | None = None) -> dict | None:
-    """根据 scene.map_key / ext_json.tilemap_url 读取 tilemap JSON 文件。"""
+    """根据 scene.id / ext_json.tilemap_url 读取 tilemap JSON 文件。"""
     assets_dir = assets_dir or _default_assets_dir()
     if not assets_dir.exists():
         return None
@@ -445,16 +444,13 @@ def _load_tilemap(scene: Scene, assets_dir: Path | None = None) -> dict | None:
     except json.JSONDecodeError:
         ext = {}
 
-    # 优先使用 ext_json.tilemap_url，否则回退到 map_key.json / Prefer tilemap_url, fallback to map_key.json
+    # 优先使用 ext_json.tilemap_url，否则回退到 scene_id.json / Prefer tilemap_url, fallback to scene_id.json
     tilemap_url = ext.get("tilemap_url", "")
     if tilemap_url:
         filename = tilemap_url.lstrip("/").split("/")[-1]  # /assets/foo.json → foo.json
         path = assets_dir / filename
     else:
-        map_key = scene.map_key
-        if not map_key:
-            return None
-        path = assets_dir / f"{map_key}.json"
+        path = assets_dir / f"{scene.id}.json"
 
     if not path.exists():
         return None

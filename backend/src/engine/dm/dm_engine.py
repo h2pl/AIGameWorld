@@ -190,7 +190,6 @@ def _enrich_scene(scene: dict, objects: list[dict]) -> dict:
         "name": scene.get("name", ""),
         "type": scene.get("type", ""),
         "description": scene.get("description", ""),
-        "map_key": scene.get("map_key", ""),
         "spawn_x": scene.get("spawn_x", 0),
         "spawn_y": scene.get("spawn_y", 0),
         "map_width": scene.get("map_width", 40),

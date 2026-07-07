@@ -94,7 +94,6 @@ CREATE TABLE IF NOT EXISTS scenes (
     name            TEXT NOT NULL,
     type            TEXT NOT NULL,
     description     TEXT,
-    map_key         TEXT NOT NULL DEFAULT '',
     spawn_x         INTEGER NOT NULL DEFAULT 0,
     spawn_y         INTEGER NOT NULL DEFAULT 0,
     map_width       INTEGER NOT NULL DEFAULT 40,

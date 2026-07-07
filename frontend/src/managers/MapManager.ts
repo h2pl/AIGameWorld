@@ -13,12 +13,12 @@ export class MapManager {
   constructor(private scene: Phaser.Scene) {}
 
   /** 加载并构建 tilemap / Load and build tilemap with layers */
-  build(mapKey: string, extJson: Record<string, string>): void {
+  build(sceneId: string, extJson: Record<string, string>): void {
     const { tileset_name, tileset_image_key } = extJson;
-    log.info(`build mapKey=${mapKey} tileset=${tileset_name}/${tileset_image_key}`);
-    this.tilemap = this.scene.make.tilemap({ key: mapKey });
+    log.info(`build sceneId=${sceneId} tileset=${tileset_name}/${tileset_image_key}`);
+    this.tilemap = this.scene.make.tilemap({ key: sceneId });
     if (!this.tilemap) {
-      log.error(`tilemap null for key=${mapKey}`);
+      log.error(`tilemap null for key=${sceneId}`);
       return;
     }
     log.info(`tilemap loaded`);

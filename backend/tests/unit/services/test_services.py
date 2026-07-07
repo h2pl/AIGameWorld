@@ -639,7 +639,7 @@ class TestTilemapService:
         config = {"configurable": {"repos": {"scene": scene_repo}}}
         state = _overall_state(
             scene_id="scene-1",
-            scene=Scene(id="scene-1", map_key="not-exist"),
+            scene=Scene(id="scene-1"),
         )
         result = await scene_service.interpret_tilemap(state, config)
         assert result["scene"].tilemap_summary == ""
@@ -680,7 +680,7 @@ class TestTilemapService:
             }
             state = _overall_state(
                 scene_id="scene-1",
-                scene=Scene(id="scene-1", map_key="scene-1"),
+                scene=Scene(id="scene-1"),
             )
             result = await scene_service.interpret_tilemap(state, config, assets_dir=assets_dir)
             assert result["scene"].tilemap_summary == "一片荒凉的沙漠，中央有口水井。"

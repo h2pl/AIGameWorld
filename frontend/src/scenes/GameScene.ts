@@ -167,7 +167,7 @@ export class GameScene extends Phaser.Scene {
 
     log.info(`build scene=${data.sceneId} pcs=${data.pcs.length} actors=${data.actors.length}`);
     try {
-      this.mapManager.build(data.mapKey, data.extJson);
+      this.mapManager.build(data.sceneId, data.extJson);
       this._buildTerrain(data.sceneObjects);
       this._buildCharacters(data.pcs, data.actors);
       this.hud.create(data.sceneName);

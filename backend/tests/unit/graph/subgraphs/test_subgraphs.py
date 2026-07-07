@@ -109,7 +109,6 @@ class TestSceneSubgraph:
             name="Tavern",
             type="indoor",
             description="一个热闹的酒馆。",
-            map_key="tavern",
             spawn_x=10,
             spawn_y=10,
             map_width=40,
