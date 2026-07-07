@@ -18,9 +18,8 @@ vi.mock("../../../src/state/SceneList", () => ({
       name: "Desert",
       ext_json: JSON.stringify({
         tilemap_url: "/assets/desert.json",
-        tileset_url: "/assets/desert.png",
-        tileset_image_key: "desert-img",
-        tileset_name: "desert-ts",
+        tile_size: 16,
+        tilesets: [{ name: "desert-ts", url: "/assets/desert.png" }],
       }),
     },
     {
@@ -28,9 +27,8 @@ vi.mock("../../../src/state/SceneList", () => ({
       name: "Forest",
       ext_json: JSON.stringify({
         tilemap_url: "/assets/forest.json",
-        tileset_url: "/assets/desert.png", // 复用 tileset / reuse tileset
-        tileset_image_key: "desert-img",
-        tileset_name: "desert-ts",
+        tile_size: 16,
+        tilesets: [{ name: "desert-ts", url: "/assets/desert.png" }],
       }),
     },
   ],
@@ -66,9 +64,9 @@ describe("Boot", () => {
     expect(loaders.tilemapTiledJSON).toHaveLength(2);
     expect(loaders.tilemapTiledJSON[0]).toEqual({ key: "desert", url: "/assets/desert.json" });
     expect(loaders.tilemapTiledJSON[1]).toEqual({ key: "forest", url: "/assets/forest.json" });
-    // tileset 只加载一次 / tileset loaded once
+    // tileset 只加载一次，key 使用 tileset_name / tileset loaded once with tileset_name as key
     expect(loaders.image).toHaveLength(1);
-    expect(loaders.image[0]).toEqual({ key: "desert-img", url: "/assets/desert.png" });
+    expect(loaders.image[0]).toEqual({ key: "desert-ts", url: "/assets/desert.png" });
   });
 
   it("starts Game scene on create", () => {

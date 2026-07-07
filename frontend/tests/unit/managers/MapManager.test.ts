@@ -33,23 +33,23 @@ describe("MapManager", () => {
   it("builds tilemap with scene id", () => {
     const { scene, mockTilemap } = makeScene();
     const manager = new MapManager(scene as any);
-    manager.build("desert", { tileset_name: "desert", tileset_image_key: "desert-img" });
+    manager.build("desert", { tilesets: [{ name: "desert", url: "desert.png" }] });
     expect(scene.make.tilemap).toHaveBeenCalledWith({ key: "desert" });
-    expect(mockTilemap.addTilesetImage).toHaveBeenCalledWith("desert", "desert-img");
+    expect(mockTilemap.addTilesetImage).toHaveBeenCalledWith("desert", "desert");
     expect(manager.tilemap).toBe(mockTilemap);
   });
 
   it("logs error when tilemap is missing", () => {
     const { scene } = makeScene(false);
     const manager = new MapManager(scene as any);
-    manager.build("missing", { tileset_name: "ts", tileset_image_key: "tk" });
+    manager.build("missing", { tilesets: [{ name: "ts", url: "tk.png" }] });
     expect(manager.tilemap).toBeNull();
   });
 
   it("logs error when tileset is missing", () => {
     const { scene, mockTilemap } = makeScene(true, false);
     const manager = new MapManager(scene as any);
-    manager.build("desert", { tileset_name: "missing", tileset_image_key: "missing-img" });
+    manager.build("desert", { tilesets: [{ name: "missing", url: "x.png" }] });
     expect(mockTilemap.addTilesetImage).toHaveBeenCalled();
     expect(manager.tilemap).toBe(mockTilemap);
   });
@@ -57,7 +57,7 @@ describe("MapManager", () => {
   it("destroy releases tilemap", () => {
     const { scene, mockTilemap } = makeScene();
     const manager = new MapManager(scene as any);
-    manager.build("desert", { tileset_name: "desert", tileset_image_key: "desert-img" });
+    manager.build("desert", { tilesets: [{ name: "desert", url: "desert.png" }] });
     manager.destroy();
     expect(mockTilemap.destroy).toHaveBeenCalled();
     expect(manager.tilemap).toBeNull();
