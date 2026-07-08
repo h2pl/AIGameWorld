@@ -644,6 +644,12 @@ DATASET_COMBAT: MockDataset = {
         {"summary": "林间营地遇到兽人斥候，经过激烈战斗后突围。"},
         {"summary": "一头食人魔袭击了冒险者，战斗中击败了它和它的地精仆从。"},
     ],
+    "explore": [
+        {
+            "end_x": 20, "end_y": 15,
+            "explore_record": "树林边缘的灌木丛里散落着几支断裂的箭矢和一块被丢弃的兽皮盾牌。",
+        },
+    ],
     "pc_decision": [
         {
             "action": {
@@ -673,7 +679,7 @@ DATASET_COMBAT: MockDataset = {
             "action": {
                 "action_type": "explore",
                 "target_id": None, "target_type": None,
-                "thought": "战斗结束后需要巡视周围，确认没有更多敌人埋伏。",
+                "thought": "战斗结束后巡视林中营地，看看有没有战利品或敌人的侦察情报。",
                 "explore_x": 20, "explore_y": 15,
             }
         },
@@ -754,15 +760,51 @@ DATASET_AZURE_TOWN: MockDataset = {
             ],
         },
     ],
+    "explore": [
+        {
+            "end_x": 18, "end_y": 8,
+            "explore_record": "顺着马车辙印走到镇口，发现路牌被人刻意用铁钉改变了指向——箭头正对着北边哨塔的方向。",
+        },
+        {
+            "end_x": 12, "end_y": 13,
+            "explore_record": "喷泉池底沉着一枚铜质徽章，边缘刻着「蔚蓝守望」四个字，但表面已经被刮花了。",
+        },
+        {
+            "end_x": 30, "end_y": 4,
+            "explore_record": "镇外小山坡上有一片新翻的土堆，扒开土层露出一个铁匣，里面装着几卷空白羊皮纸。",
+        },
+    ],
+    "interact": [
+        {
+            "success": True,
+            "narration": "他轻轻拉开地窖门，一股混合着泥土和陈年木材的气味扑面而来。木架子上整齐地摆着几只陶罐，其中一只底部压着一张泛黄的纸条。",
+        },
+        {
+            "success": False,
+            "narration": "他试图撬开通往哨塔方向的铁栅栏门，但锁芯已被锈蚀得无法转动——需要特制的钥匙或魔法。",
+        },
+    ],
+    "combat": [
+        {
+            "narration": "他从花丛后闪出，一剑劈开偷袭者的短矛，随即反击将其击退。",
+            "target_defeated": True, "result": "袭击者倒地",
+        },
+    ],
     "pc_decision": [
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None,
-                "target_type": None,
-                "thought": "镇口的路牌被人动了手脚，这不是偶然。我应该顺着马车辙印往外走走，可能找到线索。",
-                "explore_x": 18,
-                "explore_y": 8,
+                "target_id": None, "target_type": None,
+                "thought": "镇口的路牌被人动了手脚，这不是偶然。顺着马车辙印出去看看，车辙指向了北边坡地。",
+                "explore_x": 18, "explore_y": 8,
+            }
+        },
+        {
+            "action": {
+                "action_type": "explore",
+                "target_id": None, "target_type": None,
+                "thought": "喷泉池水干了，池底似乎有金属反光。去看看池底有什么东西。",
+                "explore_x": 12, "explore_y": 13,
             }
         },
         {
@@ -770,9 +812,7 @@ DATASET_AZURE_TOWN: MockDataset = {
                 "action_type": "talk",
                 "target_id": "merchant",
                 "target_type": "actor",
-                "thought": "花店的老妇人看起来知道些什么，她一直在偷偷观察我们。直接去问问她关于黑玫瑰和哨塔的事。",
-                "explore_x": None,
-                "explore_y": None,
+                "thought": "花店的老妇人看起来知道些什么，她一直在偷偷观察我们。去问问她关于黑玫瑰和哨塔的事。",
             }
         },
         {
@@ -781,8 +821,6 @@ DATASET_AZURE_TOWN: MockDataset = {
                 "target_id": "door_cellar",
                 "target_type": "scene_object",
                 "thought": "花店后面的地窖门半掩着，里面有微弱的光透出来。也许那里藏着不为人知的秘密。",
-                "explore_x": None,
-                "explore_y": None,
             }
         },
     ],
@@ -832,15 +870,54 @@ DATASET_TABA_TOWN: MockDataset = {
             "narrative": "夜幕降临时，塔巴镇完全变了个样。炉火全部熄灭，没有任何一盏灯亮着。月光照在干涸的喷泉上，在池底映出一个模糊的符号——像是有人用粉笔匆忙画下的。远处，东边森林里传来一声悠长的嚎叫，紧接着是更多的嚎叫回应。"
         },
     ],
+    "explore": [
+        {
+            "end_x": 35, "end_y": 20,
+            "explore_record": "东边森林边缘倒着几棵被连根拔起的大树，树干上有粗壮利爪留下的深沟。",
+        },
+        {
+            "end_x": 15, "end_y": 45,
+            "explore_record": "镇子南边的老磨坊水车仍在转动，但整座建筑已经倾斜——地基下似乎被什么东西掏空了。",
+        },
+        {
+            "end_x": 50, "end_y": 30,
+            "explore_record": "后山里发现一个被藤蔓覆盖的矿坑入口，坑道深处传来微弱的敲击声。",
+        },
+    ],
+    "talk": [
+        {
+            "turns": [
+                {"speaker_id": "fighter", "text": "老人家，镇上的人都去哪了？"},
+                {
+                    "speaker_id": "guard",
+                    "text": "都躲在家里呢。地底下有东西在挖洞，昨晚连教堂的地基都被掏空了一块。",
+                },
+                {"speaker_id": "fighter", "text": "什么东西？"},
+                {"speaker_id": "guard", "text": "不知道。但它每次经过，地面就会震动——就像心跳一样有规律。"},
+            ],
+        },
+    ],
+    "combat": [
+        {
+            "narration": "地面突然隆起，一只覆盖着甲壳的巨大蠕虫从土中冲出。他侧身闪过黏液喷吐，环首刀狠狠劈进虫体的关节处。",
+            "target_defeated": True, "result": "掘地蠕虫缩回地下",
+        },
+    ],
     "pc_decision": [
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None,
-                "target_type": None,
-                "thought": "喷泉池底那个粉笔符号有点像某种召唤法阵的雏形。我得去东边森林看看那些嚎叫声的来源。",
-                "explore_x": 35,
-                "explore_y": 20,
+                "target_id": None, "target_type": None,
+                "thought": "东边森林里传来的嚎叫声越来越近，那些被连根拔起的大树一定和这些声音有关。",
+                "explore_x": 35, "explore_y": 20,
+            }
+        },
+        {
+            "action": {
+                "action_type": "explore",
+                "target_id": None, "target_type": None,
+                "thought": "南边老磨坊附近的地面有异常的塌陷，可能地下有通道。去看看塌陷有多深。",
+                "explore_x": 15, "explore_y": 45,
             }
         },
         {
@@ -849,8 +926,6 @@ DATASET_TABA_TOWN: MockDataset = {
                 "target_id": "guard",
                 "target_type": "actor",
                 "thought": "那个朝我们招手的老人在门廊下守着，也许他知道镇子地下到底是什么东西在活动。",
-                "explore_x": None,
-                "explore_y": None,
             }
         },
     ],
@@ -924,19 +999,16 @@ DATASET_TUNNEL: MockDataset = {
     ],
     "explore": [
         {
-            "end_x": 8,
-            "end_y": 5,
-            "explore_record": "隧道墙壁上渗出一层薄薄的水膜，指尖划过能感觉到微弱的脉搏。",
+            "end_x": 10, "end_y": 5,
+            "explore_record": "隧道墙壁上渗出一层薄薄的水膜，指尖划过能感觉到微弱的脉搏——像是洞穴本身在呼吸。",
         },
         {
-            "end_x": 30,
-            "end_y": 12,
+            "end_x": 25, "end_y": 10,
             "explore_record": "一堆碎石后面露出半截铁镐——这不是矿工的镐，上面刻着矮人王国的纹章。",
         },
         {
-            "end_x": 15,
-            "end_y": 15,
-            "explore_record": "地面有一个被黏液填满的小坑，黏液里泡着一把还发着光的匕首。",
+            "end_x": 15, "end_y": 15,
+            "explore_record": "地面有一个被黏液填满的小坑，黏液里泡着一把还发着光的匕首，刀身符文轻轻震动。",
         },
     ],
 }
@@ -1009,18 +1081,19 @@ DATASET_CATHEDRAL: MockDataset = {
     ],
     "explore": [
         {
-            "end_x": 12,
-            "end_y": 10,
+            "end_x": 28, "end_y": 15,
+            "explore_record": "珊瑚覆盖的凹室里嵌着一枚古老的贝壳护符——上面刻着和海战中浮雕相同的祭司纹章。",
+        },
+        {
+            "end_x": 12, "end_y": 10,
             "explore_record": "浅水区的水底铺着一层细沙，沙子下面隐约可见马赛克拼贴的图案碎片。",
         },
         {
-            "end_x": 35,
-            "end_y": 25,
+            "end_x": 35, "end_y": 25,
             "explore_record": "一根断裂的石柱斜靠在墙上，柱身的浮雕描绘着一场古老的海战。",
         },
         {
-            "end_x": 20,
-            "end_y": 30,
+            "end_x": 20, "end_y": 30,
             "explore_record": "水面倒影中浮现出一张不属于任何冒险者的脸——它嘴唇翕动，似乎在念一段祷文。",
         },
     ],
