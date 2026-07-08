@@ -19,7 +19,6 @@ class TestOverallState:
             "actions": [],
             "dm_record": None,
             
-            "scene_id": "",
             "pc_decisions": [],
             
             "pcs": {},

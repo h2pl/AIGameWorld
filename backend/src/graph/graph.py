@@ -9,13 +9,13 @@ START
  load_data_subgraph                [subgraph]  从 DB 加载 state
  |
  v
- tick_init_subgraph                [subgraph]  坐标分配等初始化逻辑
+ tick_init_subgraph                [subgraph]  坐标分配 + dm_create/scene_setup 事件
  |
  v
  pc_subgraph                       [subgraph]  角色决策+行动
  |
  v
- event_service.flush_events        [node]      构造事件（dm/scene/actions）
+ event_service.flush_events        [node]      PC 决策/行动事件构造
  |
  v
  dm_service.dm_narrate             [node]      DM 叙事 → dm_record.dm_narrative

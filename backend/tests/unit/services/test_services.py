@@ -13,6 +13,7 @@ from src.services import (
     pc_service,
     reflection_service,
     summarizer_service,
+    tick_init_service,
 )
 
 
@@ -25,7 +26,6 @@ def _overall_state(**overrides):
         "scene_objects": [],
         "actions": [],
         "dm_record": None,
-        "scene_id": "scene-1",
         "pc_decisions": [],
         
         "pcs": {},
@@ -221,7 +221,6 @@ class TestDMAndReflectionService:
         )
         with patch.object(dm_service.dm_engine, "dm_create", AsyncMock(return_value=engine_result)):
             result = await dm_service.dm_create(_overall_state(tick=4, world_id="w-1"))
-        assert result["scene_id"] == "tavern"
         dm_rec = result["dm_record"]
         assert isinstance(dm_rec, DMRecord)
         assert dm_rec.hints == ["去酒馆"]
@@ -327,14 +326,10 @@ class TestEventService:
         assert events == []
 
     @pytest.mark.asyncio
-    async def test_flush_events_builds_scene_setup_from_scene(self):
-        """从 tick_init_service 写入的 scene 构造 scene_setup 事件 /
-        Build a scene_setup event from the scene state tick_init_service wrote."""
-        event_repo = AsyncMock()
-        config = {"configurable": {"repos": {"event": event_repo}}}
+    async def test_build_scene_setup_event(self):
+        """tick_init 构建 scene_setup 事件 / tick_init builds scene_setup event."""
         state = _overall_state(
             tick=1,
-            scene_id="",
             scene=Scene(id="scene-1", name="Tavern"),
             scene_objects=[
                 SceneObject(id="obj-1", name="Chest", object_type=SceneObjectType.CONTAINER)
@@ -343,26 +338,24 @@ class TestEventService:
             actors={},
             actions=[],
         )
-        result = event_service.flush_events(state, config)
+        result = await tick_init_service.build_scene_setup_event(state)
         events = result.get("tick_events", [])
-        assert len(events) > 0
+        assert len(events) == 1
+        assert events[0].type.value == "scene_setup"
 
     @pytest.mark.asyncio
-    async def test_flush_events_builds_dm_create_from_state(self):
-        """从 dm_service.dm_create 写入的 plot_brief/hints/scene_id 构造 dm_create 事件 /
-        Build a dm_create event from the plot_brief/hints/scene_id dm_service.dm_create wrote."""
-        event_repo = AsyncMock()
-        config = {"configurable": {"repos": {"event": event_repo}}}
+    async def test_build_dm_create_event(self):
+        """tick_init 构建 dm_create 事件 / tick_init builds dm_create event."""
         state = _overall_state(
             tick=0,
             scene_id="scene-1",
-            plot_brief="酒馆冲突一触即发。",
-            hints=["注意角落里的陌生人"],
+            dm_record=DMRecord(tick=0, world_id="w-1", scene_id="scene-1", plot_brief="酒馆冲突一触即发。", hints=["注意角落里的陌生人"]),
             actions=[],
         )
-        result = event_service.flush_events(state, config)
+        result = await tick_init_service.build_dm_create_event(state)
         events = result.get("tick_events", [])
-        assert len(events) > 0
+        assert len(events) == 1
+        assert events[0].type.value == "dm_create"
 
     @pytest.mark.asyncio
     async def test_flush_events_builds_pc_decision_events(self):

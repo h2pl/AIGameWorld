@@ -32,8 +32,9 @@ async def load_world(state: OverallState, config=None) -> dict:
 
 @trace_node("data.load_scene")
 async def load_scene(state: OverallState, config=None) -> dict:
-    """从 DB 读取当前场景 Scene 领域模型 / Load scene from DB."""
-    scene_id = state.get("scene_id", "")
+    """从 DB 读取当前场景 Scene 领域模型 / Load scene from DB（使用 dm_record.scene_id，此时 scene 还未加载）."""
+    dm = state.get("dm_record")
+    scene_id = dm.scene_id if dm else ""
     scene_repo = get_repo(config, "scene")
     scene = await scene_repo.get_scene(scene_id) if scene_repo else None
     return {"scene": scene}
@@ -42,11 +43,13 @@ async def load_scene(state: OverallState, config=None) -> dict:
 @trace_node("data.load_actors")
 async def load_actors(state: OverallState, config=None) -> dict:
     """从 DB 读取当前场景 Actor 的领域模型 map / Load actors from DB, filtered by scene_id."""
-    scene_id = state.get("scene_id", "")
+    scene = state.get("scene")
+    if scene is None:
+        return {"actors": {}}
     world_id = state.get("world_id", "")
     actor_repo = get_repo(config, "actor")
     actors = await actor_repo.load_all(world_id) if world_id and actor_repo else []
-    scene_actors = [actor for actor in actors if getattr(actor, "scene_id", "") == scene_id]
+    scene_actors = [actor for actor in actors if getattr(actor, "scene_id", "") == scene.id]
     return {"actors": {actor.id: actor for actor in scene_actors}}
 
 
@@ -64,12 +67,14 @@ async def load_pcs(state: OverallState, config=None) -> dict:
 @trace_node("data.load_scene_objects")
 async def load_scene_objects(state: OverallState, config=None) -> dict:
     """从 DB 读取场景物体列表 / Load scene objects from DB."""
-    scene_id = state.get("scene_id", "")
+    scene = state.get("scene")
+    if scene is None:
+        return {"scene_objects": []}
     scene_repo = get_repo(config, "scene")
-    if not scene_repo or not scene_id:
+    if not scene_repo:
         return {"scene_objects": []}
 
-    object_ids = await scene_repo.get_object_ids(scene_id)
+    object_ids = await scene_repo.get_object_ids(scene.id)
     if not object_ids:
         return {"scene_objects": []}
     all_objects = await scene_repo.load_all()

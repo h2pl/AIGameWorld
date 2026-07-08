@@ -27,7 +27,6 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
         config=config,
     )
     return {
-        "scene_id": result.scene_id,
         "dm_record": DMRecord(
             world_id=world_id,
             tick=tick,

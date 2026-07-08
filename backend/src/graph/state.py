@@ -22,10 +22,10 @@ class OverallState(TypedDict, total=False):
     初始时只传入 tick 和 world_id，其余字段由各节点逐步填充。
 
     字段说明 / Field reference：
-    - tick / world_id         — tick 序号 + world 标识（入口传入）
-    - world                   — World 领域模型（load_data 从 DB 加载）
-    - dm_record               — DM 产出完整记录（dm_create 写入）
-    - scene_id / scene        — 当前场景（dm_create 选定 id，load_data 加载领域模型）
+    - tick / world_id          — tick 序号 + world 标识（入口传入）
+    - world                    — World 领域模型（load_data 从 DB 加载）
+    - dm_record                — DM 产出完整记录（dm_create 写入）
+    - scene                    — 当前场景（dm_create 选定 id，load_data 加载领域模型）
     - scene_objects            — 当前场景物体列表（load_data 加载）
     - pcs / actors             — 运行时实体 map，tick 内权威数据源（load_data 加载）
     - pc_decisions / actions   — PC 决策 + 行动（pc_subgraph 产出）
@@ -34,12 +34,10 @@ class OverallState(TypedDict, total=False):
     """
 
     tick: int
-    world_id: str
     world: World  # 世界观领域模型 / world domain model
 
     dm_record: DMRecord | None  # DM 产出完整记录 / DM output record
 
-    scene_id: str  # 当前场景 id / current scene id
     scene: Scene  # 场景领域模型 / scene domain model
     scene_objects: list[SceneObject]  # 场景物体列表 / scene object list
 

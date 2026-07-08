@@ -475,9 +475,10 @@ def _node_out(name: str, result: object) -> dict:
     if name in ("msg.create",):
         out["tick_message_id"] = result.get("tick_message_id", "")
     elif name in ("dm.create",):
-        out["scene_id"] = result.get("scene_id", "")
-        out["hints"] = len(result.get("hints", []))
-        brief = result.get("plot_brief", "")
+        dm = result.get("dm_record")
+        out["scene_id"] = dm.scene_id if dm else ""
+        out["hints"] = len(dm.hints if dm else [])
+        brief = dm.plot_brief if dm else ""
         if isinstance(brief, str):
             out["plot_brief"] = brief[:80]
     elif name in ("scene.build",):

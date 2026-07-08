@@ -4,7 +4,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.domain import Decision, Scene, SceneObject, SceneObjectType
+from src.domain import Decision, DMRecord, Scene
+from src.services import data_service
 from src.domain.player_character import PlayerCharacter
 from src.graph.subgraphs.load_data_subgraph import load_data_subgraph
 from src.graph.subgraphs.pc_subgraph import pc_subgraph
@@ -26,7 +27,6 @@ class TestCharacterSubgraph:
             "world_id": "world-1",
             
             "dm_record": None,
-            "scene_id": "tavern",
             "pc_decisions": [],
             "scene": scene,
             "scene_objects": scene_objects,
@@ -82,69 +82,16 @@ class TestLoadDataSubgraph:
     """数据加载子图测试 / Load data subgraph tests."""
 
     @pytest.mark.asyncio
-    async def test_load_data_subgraph_loads_state(self):
-        """数据加载子图依次执行 4 个节点并产出 scene/scene_objects/pcs/actors / Load data subgraph produces full state."""
-        pc = PlayerCharacter(
-            id="pc-1",
-            scene_id="scene-1",
-            name="Alex",
-            role="fighter",
-            race="human",
-            status="active",
-            position_x=0,
-            position_y=0,
-        )
-        pc_repo = AsyncMock()
-        pc_repo.load_all = AsyncMock(return_value=[pc])
-
-        scene = Scene(
-            id="scene-1",
-            name="Tavern",
-            type="indoor",
-            description="一个热闹的酒馆。",
-            spawn_x=10,
-            spawn_y=10,
-            map_width=40,
-            map_height=40,
-        )
-        obj = SceneObject(
-            id="obj-1",
-            name="Chest",
-            object_type=SceneObjectType.CONTAINER,
-            interactable=True,
-            position_x=1,
-            position_y=1,
-            interact_data={},
-        )
+    async def test_load_scene_from_dm_record(self):
+        """load_scene 从 dm_record.scene_id 读取场景 / load_scene reads scene via dm_record."""
+        scene = Scene(id="scene-1", name="Tavern", type="indoor", description="test",
+                       spawn_x=10, spawn_y=10, map_width=40, map_height=40)
         scene_repo = AsyncMock()
         scene_repo.get_scene = AsyncMock(return_value=scene)
-        scene_repo.get_object_ids = AsyncMock(return_value=["obj-1"])
-        scene_repo.load_all = AsyncMock(return_value={"obj-1": obj})
-
-        actor_repo = AsyncMock()
-        actor_repo.load_all = AsyncMock(return_value=[])
-
-        config = {
-            "configurable": {
-                "repos": {
-                    "char": pc_repo,
-                    "scene": scene_repo,
-                    "actor": actor_repo,
-                }
-            }
-        }
-        state = {
-            "tick": 1,
-            "world_id": "world-1",
-            "scene_id": "scene-1",
-            "pc_decisions": [],
-            "actions": [],
-        }
-        result = await load_data_subgraph.ainvoke(state, config)
+        config = {"configurable": {"repos": {"scene": scene_repo}}}
+        state = {"tick": 1, "dm_record": DMRecord(tick=1, world_id="w-1", scene_id="scene-1")}
+        result = await data_service.load_scene(state, config)
         assert result["scene"].id == "scene-1"
-        assert [o.id for o in result["scene_objects"]] == ["obj-1"]
-        assert "pc-1" in result["pcs"]
-        assert result["actors"] == {}
 
 
 class TestTickInitSubgraph:
@@ -176,7 +123,6 @@ class TestTickInitSubgraph:
         state = {
             "tick": 1,
             "world_id": "world-1",
-            "scene_id": "scene-1",
             "scene": scene,
             "actors": {},
             "pcs": {"pc-1": pc},

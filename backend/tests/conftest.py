@@ -56,7 +56,6 @@ def base_state() -> OverallState:
         "scene": Scene(id=""),
         "actions": [],
         "dm_record": None,
-        "scene_id": "",
         "pc_decisions": [],
         
     }

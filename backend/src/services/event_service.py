@@ -10,60 +10,6 @@ from ..utils.logging import get_logger
 logger = get_logger(__name__)
 
 
-def _dm_create_event(state: OverallState) -> TickEvent | None:
-    """从 state 构造 dm_create 事件."""
-    scene_id = state.get("scene_id", "")
-    if not scene_id:
-        return None
-    dm = state.get("dm_record")
-    return TickEvent(
-        type=TickEventType.DM_CREATE,
-        tick=state.get("tick", 0),
-        world_id=state.get("world_id", ""),
-        payload={
-            "scene_id": scene_id,
-            "plot_brief": dm.plot_brief if dm else "",
-            "hints": dm.hints if dm else [],
-        },
-    )
-
-
-def _scene_event(state: OverallState) -> TickEvent | None:
-    """构造 scene_setup 事件。
-
-    PC 坐标不在此事件中更新——act() 阶段已通过 walk 引擎更新领域模型坐标，
-    action 事件的 waypoints 前端会走动画更新 sprite 位置。
-    此处跳过有本 tick action 的 PC，仅传递静态场景信息 + Actor 坐标。
-    """
-    scene = state.get("scene")
-    if scene is None:
-        return None
-    scene_id = scene.id
-    if not scene_id:
-        return None
-    actions: list[Action] = state.get("actions", [])
-    acted_pc_ids = {a.pc_id for a in actions}
-    pcs = [
-        pc.model_dump()
-        for pc in state.get("pcs", {}).values()
-        if pc.id not in acted_pc_ids
-    ]
-    actors = [actor.model_dump() for actor in state.get("actors", {}).values()]
-    scene_objects = state.get("scene_objects", [])
-    return TickEvent(
-        type=TickEventType.SCENE_SETUP,
-        tick=state.get("tick", 0),
-        world_id=state.get("world_id", ""),
-        payload={
-            "scene_id": scene_id,
-            "scene": scene.model_dump(),
-            "pcs": pcs,
-            "actors": actors,
-            "scene_objects": [obj.model_dump() for obj in scene_objects],
-        },
-    )
-
-
 _EVENT_TYPE_MAP: dict[str, TickEventType] = {
     "talk": TickEventType.PC_TALK,
     "interact": TickEventType.PC_INTERACT,
@@ -166,11 +112,6 @@ def _action_events(state: OverallState) -> list[TickEvent]:
     return events
 
 
-def _pick(*evs: TickEvent | None) -> list[TickEvent]:
-    """过滤 None，返回有效事件列表."""
-    return [e for e in evs if e is not None]
-
-
 def _group_decision_action_pairs(
     decisions: list[TickEvent],
     actions: list[TickEvent],
@@ -201,16 +142,17 @@ def _group_decision_action_pairs(
 
 
 def flush_events(state: OverallState, config: RunnableConfig = None) -> dict:
-    """从 state 各阶段产出统一构造 TickEvent 列表，存入 tick_events 供 data_service 落盘.
+    """构造 PC 事件并追加到已有 tick_events.
 
-    顺序：dm_create → scene_setup → 每个 PC 的 决策→行动 → ...，保证前端逐 PC 串行展示.
+    dm_create 和 scene_setup 事件由 tick_init 阶段提前构建，此处仅追加：
+    每个 PC 的 决策→行动.
     """
-    dm_evts = _pick(_dm_create_event(state), _scene_event(state))
     decisions = _decision_events(state)
     actions = _action_events(state)
     pc_evts = _group_decision_action_pairs(decisions, actions)
 
-    events = [*dm_evts, *pc_evts]
+    prev_events = list(state.get("tick_events", []))
+    events = [*prev_events, *pc_evts]
     tick = state.get("tick", 0)
     logger.info("[service] flushed events tick=%s count=%d", tick, len(events))
     return {"tick_events": events}
