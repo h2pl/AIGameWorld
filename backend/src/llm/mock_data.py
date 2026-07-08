@@ -142,15 +142,15 @@ DATASET_TAVERN: MockDataset = {
     "interact": [
         {
             "success": True,
-            "narration": "他轻轻撬开木箱的锁扣，箱盖发出一声沉闷的吱呀。里面整齐地码放着几卷羊皮纸，墨迹虽已泛黄，但字迹依然清晰。",
+            "narration": "他仔细检查目标，在夹层中找到一卷泛黄的羊皮纸——上面用褪色的墨水标着一条通往北方森林的隐秘小径。",
         },
         {
             "success": False,
-            "narration": "他用力推动地窖门，但门板纹丝不动——铁栓从内侧锁死了，除非找到钥匙或另寻他路。",
+            "narration": "他试图强行打开，但锁扣纹丝不动——铁栓从内侧卡死了，除非找到对应的钥匙或另寻他路。",
         },
         {
             "success": True,
-            "narration": "他用匕首挑开箱盖的铜锁，里面露出一枚刻着龙纹的徽章和一小袋金币。",
+            "narration": "机关应声弹开，里面露出一枚刻着龙纹的徽章和一小袋金币——看起来是某位冒险者留下的应急储备。",
         },
     ],
     "combat": [
@@ -401,15 +401,15 @@ DATASET_DESERT: MockDataset = {
     "interact": [
         {
             "success": True,
-            "narration": "他拂去石柱表面的沙尘，指尖沿着古老的刻文滑动。突然，一块石板轻轻下陷，露出一个隐藏的凹槽。",
+            "narration": "他拨开木箱表面的浮尘，铜锁早已锈蚀。轻轻一推，箱盖应声翻开——里面躺着一卷用麻绳扎紧的羊皮纸和半枚刻着蛇纹的铜币。",
         },
         {
             "success": False,
-            "narration": "他试图推开沉重的石门，但门轴早已锈死。沙漠的风从缝隙中呼啸而过，发出低沉的呜咽。",
+            "narration": "他试图撬开木箱侧面的暗格，但机关已经卡死了——也许是沙粒堵塞了滑轨。需要先清理缝隙里的积沙。",
         },
         {
             "success": True,
-            "narration": "他拧开古老的水壶盖，里面盛着的液体散发出一股草药清香——这是沙漠旅人用来抵御中暑的秘方。",
+            "narration": "他在箱底摸到一层夹层。撕开衬布，里面藏着一张画着星象图的牛皮纸——标注的位置刚好指向金字塔的方向。",
         },
     ],
     "combat": [
@@ -595,14 +595,14 @@ DATASET_COMBAT: MockDataset = {
             "result": "地精倒地不起",
         },
         {
-            "narration": "兽人军阀咆哮着挥下战斧，他举盾格挡，金属撞击声震耳欲聋，随即还以一记重击。",
-            "target_defeated": False,
-            "result": "兽人军阀受创但仍站立",
+            "narration": "骷髅从黑暗中冲出，骨爪带着腐朽的劲风扫向他的咽喉。他闪身避开，反手一记重击将骨架劈成两段。",
+            "target_defeated": True,
+            "result": "骷髅散架倒地",
         },
         {
-            "narration": "食人魔的树干带着风声砸下，他灵活地滚到怪物脚边，匕首深深刺入粗糙的脚踝。",
+            "narration": "兽人首领咆哮着挥下双手战斧，他举盾格挡，金属撞击声震耳欲聋，随即还以一记重击劈进对方的肩甲。",
             "target_defeated": False,
-            "result": "食人魔受创但仍在咆哮",
+            "result": "兽人首领受创但仍在咆哮",
         },
     ],
     "actor_decision": [
@@ -781,11 +781,11 @@ DATASET_AZURE_TOWN: MockDataset = {
     "interact": [
         {
             "success": True,
-            "narration": "他轻轻拉开地窖门，一股混合着泥土和陈年木材的气味扑面而来。木架子上整齐地摆着几只陶罐，其中一只底部压着一张泛黄的纸条。",
+            "narration": "暗门缓缓打开，一股混合着泥土和陈年木材的气味扑面而来。角落里整齐地堆着几只陶罐，其中一只底部压着一张泛黄的纸条。",
         },
         {
             "success": False,
-            "narration": "他试图撬开通往哨塔方向的铁栅栏门，但锁芯已被锈蚀得无法转动——需要特制的钥匙或魔法。",
+            "narration": "他试图撬开铁栅门，但锁芯已被锈蚀得无法转动——需要特制的钥匙或者强效腐蚀性药水才能打开。",
         },
     ],
     "combat": [
@@ -920,7 +920,7 @@ DATASET_TABA_TOWN: MockDataset = {
     ],
     "interact": [
         {"success": True, "narration": "他撬开喷泉池底的暗格，池水从裂缝中涌出——不是普通的水，而是带着微弱荧光的蓝色液体。"},
-        {"success": False, "narration": "钟楼的大门被从内部反锁了，锁孔周围有新凿的痕迹——有人刚换了锁。"},
+        {"success": False, "narration": "暗格盖板被厚重的石板从下方顶住了。推开需要更大的力量——或者找到控制石板升降的旁路机关。"},
     ],
     "actor_decision": [
         {"action_type": "combat", "target_id": "rogue", "target_type": "pc", "thought": "那个敏捷的家伙跑到磨坊下面去了——不能让他发现矿井的入口。"},
@@ -1048,8 +1048,8 @@ DATASET_TUNNEL: MockDataset = {
     ],
     "combat": [
         {
-            "narration": "洞穴蜘蛛从天花板上无声地垂下，八条腿同时袭向他的肩膀。他侧身避开毒牙，双手握住长矛从下方刺穿了蛛腹。",
-            "target_defeated": True, "result": "洞穴蜘蛛抽搐着缩成一团",
+            "narration": "被蛛丝包裹的骷髅猛地挣断最后一根丝线，空洞的眼眶锁定了他。他抢在骷髅挥下骨剑之前，用剑柄狠狠砸碎了它的脊椎——骨头碎片和蛛丝一同散落在地上。",
+            "target_defeated": True, "result": "蛛丝骷髅散架倒地",
         },
     ],
     "actor_decision": [
