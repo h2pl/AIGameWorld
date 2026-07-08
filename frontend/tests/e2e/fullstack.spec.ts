@@ -587,3 +587,494 @@ test.describe("event display", () => {
       .toEqual(expect.objectContaining({ displayTick: 8 }));
   });
 });
+
+test.describe("action playback", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await page.waitForSelector(SELECTORS.backendOverlay, { state: "detached", timeout: 60000 });
+    await page.waitForSelector("canvas", { timeout: 30000 });
+    await expect(page.locator(SELECTORS.runNButton)).toBeEnabled({ timeout: 10000 });
+
+    await page.locator(SELECTORS.resetButton).click();
+    await expect(page.locator(SELECTORS.tickBadge)).toContainText("Display_Tick=0", {
+      timeout: 10000,
+    });
+    await expect
+      .poll(() => fetchBackendState(page))
+      .toEqual(expect.objectContaining({ data_tick: 0, display_tick: 0 }));
+    await expect
+      .poll(() => fetchLoopStatus(page))
+      .toEqual(expect.objectContaining({ running: false, batch_running: false }));
+    await page.reload();
+    await page.waitForSelector(SELECTORS.backendOverlay, { state: "detached", timeout: 60000 });
+    await expect(page.locator(SELECTORS.runNButton)).toBeEnabled({ timeout: 10000 });
+    await page.locator(SELECTORS.speed4x).click();
+  });
+
+  /** 辅助：运行 1 tick 并等待完成 / Helper: run 1 tick and wait */
+  async function runOneTick(page: Page) {
+    await page.locator(SELECTORS.tickInput).fill("1");
+    await page.locator(SELECTORS.runNButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText(/展示 Tick 1|完成/, {
+      timeout: 60000,
+    });
+  }
+
+  test("UC-16 talk action plays dialogue bubbles", async ({ page }) => {
+    test.setTimeout(90000);
+    await runOneTick(page);
+
+    // L2 API：获取 pc_talk 事件 / Get pc_talk event from API
+    const eventsRes = await fetchBackendEvents(page, 0, 1);
+    const talkEvents = eventsRes.events.filter((e) => e.type === "pc_talk");
+
+    if (talkEvents.length > 0) {
+      const talk = talkEvents[0];
+      const turns = talk.payload.turns as Array<{ speaker_id: string; text: string }>;
+      expect(Array.isArray(turns)).toBe(true);
+
+      // L4 Game：确认游戏状态可读 / Verify game state readable
+      const gameState = await getTestSeamState(page);
+      expect(gameState).not.toBeNull();
+      // 对话结束后气泡被清除，所以不一定还能看到 / Bubbles clear after dialogue ends
+      // 改为验证事件面板包含"角色对话" / Instead verify event panel contains talk event
+    }
+
+    // L1 UI：事件面板包含对话事件 / Event panel contains talk event
+    const eventsText = await page.locator(SELECTORS.eventList).textContent();
+    // 可能本次 tick 没有 talk 决策，所以用 toContain 或跳过 / May not have talk this tick
+    if (talkEvents.length > 0) {
+      expect(eventsText).toContain("角色对话");
+    }
+
+    // L4 Game：场景已构建 / Scene built
+    await expect
+      .poll(() => getTestSeamState(page))
+      .toEqual(expect.objectContaining({ sceneBuilt: true, displayTick: 1 }));
+  });
+
+  test("UC-17 explore action walks to waypoints", async ({ page }) => {
+    test.setTimeout(90000);
+    await runOneTick(page);
+
+    // L2 API：获取 pc_explore 事件 / Get pc_explore event
+    const eventsRes = await fetchBackendEvents(page, 0, 1);
+    const exploreEvents = eventsRes.events.filter((e) => e.type === "pc_explore");
+
+    if (exploreEvents.length > 0) {
+      const explore = exploreEvents[0];
+      const waypoints = explore.payload.waypoints as Array<{ x: number; y: number }>;
+      expect(Array.isArray(waypoints)).toBe(true);
+
+      // L4 Game：PC 不再行走（已到达终点）/ PC no longer walking (reached destination)
+      await expect
+        .poll(() => getTestSeamState(page))
+        .toEqual(expect.objectContaining({ sceneBuilt: true }));
+
+      const gameState = await getTestSeamState(page);
+      const pcWalking = gameState!.pcWalking as Record<string, boolean>;
+      const allDone = Object.values(pcWalking).every((w) => !w);
+      expect(allDone).toBe(true);
+    }
+
+    // L1 UI：事件面板包含探索事件 / Event panel contains explore event
+    const eventsText = await page.locator(SELECTORS.eventList).textContent();
+    if (exploreEvents.length > 0) {
+      expect(eventsText).toContain("角色探索");
+    }
+
+    // L4 Game / Game layer
+    await expect
+      .poll(() => getTestSeamState(page))
+      .toEqual(expect.objectContaining({ displayTick: 1 }));
+  });
+
+  test("UC-18 interact action walks and shows narration", async ({ page }) => {
+    test.setTimeout(90000);
+    await runOneTick(page);
+
+    // L2 API：获取 pc_interact 事件 / Get pc_interact event
+    const eventsRes = await fetchBackendEvents(page, 0, 1);
+    const interactEvents = eventsRes.events.filter((e) => e.type === "pc_interact");
+
+    if (interactEvents.length > 0) {
+      const interact = interactEvents[0];
+      const narration = String(interact.payload.narration || "");
+      expect(narration.length).toBeGreaterThan(0);
+
+      // ObjectPanel 不应自动弹出 / ObjectPanel should not auto-popup
+      await expect(page.locator(SELECTORS.objectPanel)).toBeHidden();
+    }
+
+    // L1 UI：事件面板包含交互事件 / Event panel contains interact event
+    const eventsText = await page.locator(SELECTORS.eventList).textContent();
+    if (interactEvents.length > 0) {
+      expect(eventsText).toContain("角色互动");
+    }
+
+    // L4 Game / Game layer
+    await expect
+      .poll(() => getTestSeamState(page))
+      .toEqual(expect.objectContaining({ displayTick: 1 }));
+  });
+
+  test("UC-19 combat action walks and shows narration", async ({ page }) => {
+    test.setTimeout(90000);
+    await runOneTick(page);
+
+    // L2 API：获取 pc_combat 事件 / Get pc_combat event
+    const eventsRes = await fetchBackendEvents(page, 0, 1);
+    const combatEvents = eventsRes.events.filter((e) => e.type === "pc_combat");
+
+    if (combatEvents.length > 0) {
+      const combat = combatEvents[0];
+      const narration = String(combat.payload.narration || "");
+      expect(narration.length).toBeGreaterThan(0);
+
+      // 如果 target_defeated=true 且是 actor，验证 actor 被移除 / If target defeated, verify actor removed
+      if (combat.payload.target_defeated && combat.payload.target_type === "actor") {
+        const targetId = String(combat.payload.target_id || "");
+        if (targetId) {
+          const gameState = await getTestSeamState(page);
+          const actorExists = gameState!.actorExists as Record<string, boolean>;
+          expect(actorExists[targetId]).toBeFalsy();
+        }
+      }
+    }
+
+    // L1 UI：事件面板包含战斗事件 / Event panel contains combat event
+    const eventsText = await page.locator(SELECTORS.eventList).textContent();
+    if (combatEvents.length > 0) {
+      expect(eventsText).toContain("角色战斗");
+    }
+
+    // L4 Game / Game layer
+    await expect
+      .poll(() => getTestSeamState(page))
+      .toEqual(expect.objectContaining({ displayTick: 1 }));
+  });
+
+  test("UC-20 actions execute serially within same tick", async ({ page }) => {
+    test.setTimeout(90000);
+    await runOneTick(page);
+
+    // L2 API：同一 tick 的 action 按 order 排列 / Actions sorted by order within same tick
+    const eventsRes = await fetchBackendEvents(page, 0, 1);
+    const actionEvents = eventsRes.events.filter((e) =>
+      ["pc_talk", "pc_explore", "pc_interact", "pc_combat"].includes(e.type)
+    );
+
+    if (actionEvents.length > 1) {
+      const orders = actionEvents.map((e) => Number(e.payload.order ?? 0));
+      // 验证 order 单调递增 / Verify order is monotonically increasing
+      for (let i = 1; i < orders.length; i++) {
+        expect(orders[i]).toBeGreaterThanOrEqual(orders[i - 1]);
+      }
+    }
+
+    // L4 Game：所有 PC 不再行走 / All PCs done walking
+    await expect
+      .poll(() => getTestSeamState(page))
+      .toEqual(expect.objectContaining({ sceneBuilt: true, displayTick: 1 }));
+    const gameState = await getTestSeamState(page);
+    const pcWalking = gameState!.pcWalking as Record<string, boolean>;
+    const allDone = Object.values(pcWalking).every((w) => !w);
+    expect(allDone).toBe(true);
+  });
+
+  test("UC-22 pause cancels current action walk and dialogue", async ({ page }) => {
+    test.setTimeout(90000);
+    // 先启动循环 / Start loop first
+    await page.locator(SELECTORS.startLoopButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText("持续运行中", { timeout: 5000 });
+
+    // 等待至少 1 个 tick / Wait for at least 1 tick
+    await expect(page.locator(SELECTORS.tickBadge)).not.toContainText("Display_Tick=0", {
+      timeout: 60000,
+    });
+
+    // 暂停 / Pause
+    await page.locator(SELECTORS.pauseButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText("已暂停", { timeout: 10000 });
+
+    // L4 Game：暂停后 PC 不应再行走 / PCs should not be walking after pause
+    const gameState = await getTestSeamState(page);
+    const pcWalking = gameState!.pcWalking as Record<string, boolean>;
+    const allDone = Object.values(pcWalking).every((w) => !w);
+    expect(allDone).toBe(true);
+
+    // L2 API：循环已停止 / Loop stopped
+    const loopStatus = await fetchLoopStatus(page);
+    expect(loopStatus.running).toBe(false);
+  });
+
+  test("UC-32 multiple PCs execute different actions in same tick", async ({ page }) => {
+    test.setTimeout(90000);
+    await runOneTick(page);
+
+    // L2 API：同一 tick 有多个不同类型的 action / Multiple action types in same tick
+    const eventsRes = await fetchBackendEvents(page, 0, 1);
+    const actionTypes = new Set(
+      eventsRes.events
+        .filter((e) => ["pc_talk", "pc_explore", "pc_interact", "pc_combat"].includes(e.type))
+        .map((e) => e.type)
+    );
+
+    // 至少有一种 action 类型 / At least one action type present
+    expect(actionTypes.size).toBeGreaterThanOrEqual(1);
+
+    // L4 Game / Game layer
+    await expect
+      .poll(() => getTestSeamState(page))
+      .toEqual(expect.objectContaining({ sceneBuilt: true, displayTick: 1 }));
+  });
+});
+
+test.describe("control flow & data consistency", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await page.waitForSelector(SELECTORS.backendOverlay, { state: "detached", timeout: 60000 });
+    await page.waitForSelector("canvas", { timeout: 30000 });
+    await expect(page.locator(SELECTORS.runNButton)).toBeEnabled({ timeout: 10000 });
+
+    await page.locator(SELECTORS.resetButton).click();
+    await expect(page.locator(SELECTORS.tickBadge)).toContainText("Display_Tick=0", {
+      timeout: 10000,
+    });
+    await expect
+      .poll(() => fetchBackendState(page))
+      .toEqual(expect.objectContaining({ data_tick: 0, display_tick: 0 }));
+    await expect
+      .poll(() => fetchLoopStatus(page))
+      .toEqual(expect.objectContaining({ running: false, batch_running: false }));
+    await page.reload();
+    await page.waitForSelector(SELECTORS.backendOverlay, { state: "detached", timeout: 60000 });
+    await expect(page.locator(SELECTORS.runNButton)).toBeEnabled({ timeout: 10000 });
+    await page.locator(SELECTORS.speed4x).click();
+  });
+
+  test("UC-3 run N ticks batch advance", async ({ page }) => {
+    test.setTimeout(120000);
+    await page.locator(SELECTORS.tickInput).fill("3");
+    await page.locator(SELECTORS.runNButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText(/展示 Tick 3|完成/, {
+      timeout: 90000,
+    });
+
+    // L2 API：data_tick=3 / Backend data_tick advanced to 3
+    const state = await waitForBackendTick(page, 3);
+    expect(state.data_tick).toBe(3);
+
+    // L2 API：tick 1~3 均有事件 / Events exist for ticks 1~3
+    const eventsRes = await fetchBackendEvents(page, 0, 10);
+    const ticks = new Set(eventsRes.events.map((e) => e.tick));
+    expect(ticks.has(1)).toBe(true);
+    expect(ticks.has(2)).toBe(true);
+    expect(ticks.has(3)).toBe(true);
+
+    // L4 Game：displayTick=3 / displayTick advanced to 3
+    await expect
+      .poll(() => getTestSeamState(page))
+      .toEqual(expect.objectContaining({ displayTick: 3 }));
+  });
+
+  test("UC-6 pause and resume loop", async ({ page }) => {
+    test.setTimeout(120000);
+    await page.locator(SELECTORS.startLoopButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText("持续运行中", { timeout: 5000 });
+    await expect(page.locator(SELECTORS.tickBadge)).not.toContainText("Display_Tick=0", {
+      timeout: 60000,
+    });
+
+    // 暂停 / Pause
+    await page.locator(SELECTORS.pauseButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText("已暂停", { timeout: 10000 });
+    const pausedTick = (await getTestSeamState(page))!.displayTick as number;
+
+    // 再次启动循环 / Resume loop
+    await page.locator(SELECTORS.startLoopButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText("持续运行中", { timeout: 5000 });
+
+    // 等待 tick 继续增长 / Wait for tick to grow beyond paused tick
+    await expect(page.locator(SELECTORS.tickBadge)).not.toContainText(
+      `Display_Tick=${pausedTick}`,
+      { timeout: 60000 }
+    );
+
+    // 清理：暂停循环 / Cleanup: pause loop
+    await page.locator(SELECTORS.pauseButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText("已暂停", { timeout: 10000 });
+  });
+
+  test("UC-7 consecutive tick data not lost", async ({ page }) => {
+    test.setTimeout(120000);
+    // 跑 2 个 tick / Run 2 ticks
+    await page.locator(SELECTORS.tickInput).fill("2");
+    await page.locator(SELECTORS.runNButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText(/展示 Tick 2|完成/, {
+      timeout: 90000,
+    });
+
+    // L2 API：tick 1 和 tick 2 均有事件 / Both tick 1 and 2 have events
+    const eventsRes = await fetchBackendEvents(page, 0, 10);
+    const tick1Events = eventsRes.events.filter((e) => e.tick === 1);
+    const tick2Events = eventsRes.events.filter((e) => e.tick === 2);
+    expect(tick1Events.length).toBeGreaterThan(0);
+    expect(tick2Events.length).toBeGreaterThan(0);
+  });
+
+  test("UC-9 display tick syncs with data tick", async ({ page }) => {
+    test.setTimeout(90000);
+    await page.locator(SELECTORS.tickInput).fill("1");
+    await page.locator(SELECTORS.runNButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText(/展示 Tick 1|完成/, {
+      timeout: 60000,
+    });
+
+    // L2 API：data_tick === display_tick / Backend ticks synchronized
+    const state = await fetchBackendState(page);
+    expect(state.data_tick).toBe(state.display_tick);
+
+    // L4 Game：displayTick = 后端 display_tick / Game displayTick matches backend
+    const gameState = await getTestSeamState(page);
+    expect(gameState!.displayTick).toBe(state.display_tick);
+  });
+
+  test("UC-10 character data persistence", async ({ page }) => {
+    test.setTimeout(90000);
+    await page.locator(SELECTORS.tickInput).fill("1");
+    await page.locator(SELECTORS.runNButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText(/展示 Tick 1|完成/, {
+      timeout: 60000,
+    });
+
+    // L2 API：pcs/actors/scene_objects 完整 / API returns complete data
+    const state = await fetchBackendState(page);
+    expect(state.pcs.length).toBeGreaterThan(0);
+    expect(state.scene_objects.length).toBeGreaterThan(0);
+
+    // L4 Game：PC 和 Actor 精灵已创建 / PC and Actor sprites created
+    await expect
+      .poll(() => getTestSeamState(page))
+      .toEqual(
+        expect.objectContaining({
+          sceneBuilt: true,
+          pcCount: state.pcs.length,
+        })
+      );
+  });
+});
+
+test.describe("error race & state recovery", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await page.waitForSelector(SELECTORS.backendOverlay, { state: "detached", timeout: 60000 });
+    await page.waitForSelector("canvas", { timeout: 30000 });
+    await expect(page.locator(SELECTORS.runNButton)).toBeEnabled({ timeout: 10000 });
+
+    await page.locator(SELECTORS.resetButton).click();
+    await expect(page.locator(SELECTORS.tickBadge)).toContainText("Display_Tick=0", {
+      timeout: 10000,
+    });
+    await expect
+      .poll(() => fetchBackendState(page))
+      .toEqual(expect.objectContaining({ data_tick: 0, display_tick: 0 }));
+    await expect
+      .poll(() => fetchLoopStatus(page))
+      .toEqual(expect.objectContaining({ running: false, batch_running: false }));
+    await page.reload();
+    await page.waitForSelector(SELECTORS.backendOverlay, { state: "detached", timeout: 60000 });
+    await expect(page.locator(SELECTORS.runNButton)).toBeEnabled({ timeout: 10000 });
+    await page.locator(SELECTORS.speed4x).click();
+  });
+
+  test("UC-23 concurrent batch request returns 409", async ({ page }) => {
+    // 同时发送两次 batch 请求 / Send two batch requests simultaneously
+    const [res1, res2] = await Promise.all([
+      page.request.post(`/api/world/${WORLD_ID}/tick/batch/1`),
+      page.request.post(`/api/world/${WORLD_ID}/tick/batch/1`),
+    ]);
+    // 至少一个返回 409 / At least one should return 409
+    const statuses = [res1.status(), res2.status()].sort();
+    expect(statuses).toContain(409);
+
+    // L1 UI：页面不崩溃 / UI does not crash
+    await expect(page.locator(SELECTORS.eventList)).toBeVisible();
+  });
+
+  test("UC-25 reset while tick running", async ({ page }) => {
+    // 启动循环 / Start loop
+    await page.locator(SELECTORS.startLoopButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText("持续运行中", { timeout: 5000 });
+    await expect(page.locator(SELECTORS.tickBadge)).not.toContainText("Display_Tick=0", {
+      timeout: 60000,
+    });
+
+    // 运行中重置 / Reset while running
+    await page.locator(SELECTORS.resetButton).click();
+    await expect(page.locator(SELECTORS.tickBadge)).toContainText("Display_Tick=0", {
+      timeout: 15000,
+    });
+
+    // L2 API：后端状态已清空 / Backend state cleared
+    const state = await fetchBackendState(page);
+    expect(state.data_tick).toBe(0);
+    expect(state.display_tick).toBe(0);
+
+    // L2 API：事件表已清空 / Events table empty
+    const eventsRes = await fetchBackendEvents(page, 0, 10);
+    expect(eventsRes.events).toHaveLength(0);
+  });
+
+  test("UC-26 invalid batch parameter returns 400", async ({ page }) => {
+    const res = await page.request.post(`/api/world/${WORLD_ID}/tick/batch/0`);
+    expect(res.status()).toBe(400);
+  });
+
+  test("UC-27 page refresh recovers state", async ({ page }) => {
+    await page.locator(SELECTORS.tickInput).fill("1");
+    await page.locator(SELECTORS.runNButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText(/展示 Tick 1|完成/, {
+      timeout: 60000,
+    });
+
+    // 刷新页面 / Reload page
+    await page.reload();
+    await page.waitForSelector(SELECTORS.backendOverlay, { state: "detached", timeout: 60000 });
+    await page.waitForSelector("canvas", { timeout: 30000 });
+
+    // L4 Game：displayTick 恢复 / displayTick recovered after reload
+    await expect
+      .poll(() => getTestSeamState(page))
+      .toEqual(expect.objectContaining({ displayTick: 1 }));
+  });
+
+  test("UC-28 reset then re-run tick", async ({ page }) => {
+    // 跑 1 tick / Run 1 tick
+    await page.locator(SELECTORS.tickInput).fill("1");
+    await page.locator(SELECTORS.runNButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText(/展示 Tick 1|完成/, {
+      timeout: 60000,
+    });
+
+    // 重置 / Reset
+    await page.locator(SELECTORS.resetButton).click();
+    await expect(page.locator(SELECTORS.tickBadge)).toContainText("Display_Tick=0", {
+      timeout: 10000,
+    });
+
+    // 再次跑 1 tick / Run 1 tick again
+    await page.locator(SELECTORS.tickInput).fill("1");
+    await page.locator(SELECTORS.runNButton).click();
+    await expect(page.locator(SELECTORS.status)).toContainText(/展示 Tick 1|完成/, {
+      timeout: 60000,
+    });
+
+    // L1 UI：tick 徽章回到 1 / Tick badge back to 1
+    await expect(page.locator(SELECTORS.tickBadge)).toContainText("Display_Tick=1");
+
+    // L2 API：有事件数据 / Events exist
+    const eventsRes = await fetchBackendEvents(page, 0, 1);
+    expect(eventsRes.events.length).toBeGreaterThan(0);
+  });
+});

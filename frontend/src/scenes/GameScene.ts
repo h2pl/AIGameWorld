@@ -96,9 +96,21 @@ export class GameScene extends Phaser.Scene {
     const state = worldStore.getState();
     const pcThinkCounts: Record<string, number> = {};
     let activeThoughtBubbles = 0;
+    const pcPositions: Record<string, { tx: number; ty: number }> = {};
+    const pcWalking: Record<string, boolean> = {};
+    const pcBubbleStyle: Record<string, string | null> = {};
     this.pcManager?.sprites.forEach((sp, id) => {
       pcThinkCounts[id] = sp.getThinkCount();
       if (sp.hasActiveThoughtBubble()) activeThoughtBubbles++;
+      pcPositions[id] = sp.getGridPos(this.ts);
+      pcWalking[id] = sp.isWalking();
+      pcBubbleStyle[id] = sp.getActiveBubbleStyle();
+    });
+    const actorPositions: Record<string, { tx: number; ty: number }> = {};
+    const actorExists: Record<string, boolean> = {};
+    this.actorManager?.sprites.forEach((sp, id) => {
+      actorPositions[id] = sp.getGridPos(this.ts);
+      actorExists[id] = true;
     });
     return {
       scene: "Game",
@@ -112,6 +124,11 @@ export class GameScene extends Phaser.Scene {
       pcThinkCounts,
       activeThoughtBubbles,
       terrainObjectCount: this.terrainObjects.length,
+      pcPositions,
+      pcWalking,
+      pcBubbleStyle,
+      actorPositions,
+      actorExists,
     };
   }
 

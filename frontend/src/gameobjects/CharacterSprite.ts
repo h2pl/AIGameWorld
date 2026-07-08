@@ -191,6 +191,11 @@ export class CharacterSprite {
     return !!this.bubble && this.bubble.getStyle() === "thought";
   }
 
+  /** 获取当前活跃气泡的样式 / Get active bubble style (null if no bubble) */
+  getActiveBubbleStyle(): string | null {
+    return this.bubble?.getStyle() ?? null;
+  }
+
   /** 清除当前泡泡 / Clear current bubble */
   clearBubble(): void {
     if (this.bubble) {
