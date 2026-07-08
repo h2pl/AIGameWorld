@@ -23,7 +23,7 @@ import {
 } from "../managers/event_handler/SceneSetupHandler";
 import { GameHUD } from "../ui/GameHUD";
 import { createLogger } from "../utils/logger";
-import type { InitialWorldState, SceneData } from "../types";
+import type { EventData } from "../types";
 
 const log = createLogger("Scene");
 
@@ -39,6 +39,8 @@ export class GameScene extends Phaser.Scene {
   private terrainSprites: Phaser.GameObjects.Sprite[] = [];
   private sceneBuilt = false;
   private sceneData: SceneSetupData | null = null;
+  private _onPlayPaused!: () => void;
+  private _onPlayResumed!: () => void;
 
   private exploreHandler!: ExploreHandler;
   private talkHandler!: TalkHandler;
@@ -59,20 +61,17 @@ export class GameScene extends Phaser.Scene {
     this.hud = new GameHUD(this);
     this.cameras.main.setBackgroundColor("#000000");
 
-    // 预生成角色纹理 / Pre-generate character textures
-    for (const fb of [
-      { id: "fighter_fb", race: "human", role: "fighter", is_pc: true },
-      { id: "actor_fb", race: "human", role: "villager", is_pc: false },
-    ]) {
-      makeCharTexture(this, fb, this.ts);
-    }
-
     this.hud.showWaiting("等待 DM 创造情境...");
     this.eventManager = this.game.registry.get("eventManager") as EventManager;
     this._initHandlers();
     this._registerHandlers();
     this.game.events.on("scene-reset", () => this._handleReset());
-    this._buildFromInitialState();
+    // 播放暂停/恢复时同步 tween 状态 / Sync tween state on pause/resume
+    this._onPlayPaused = () => this.tweens.pauseAll();
+    this._onPlayResumed = () => this.tweens.resumeAll();
+    window.addEventListener("play-paused", this._onPlayPaused);
+    window.addEventListener("play-resumed", this._onPlayResumed);
+    // tick=0 时不应构建场景，等待 scene_setup 事件驱动 / Don't build scene at tick=0, wait for scene_setup event
     this._recoverFromReload();
     this._initTestSeam();
   }
@@ -108,6 +107,8 @@ export class GameScene extends Phaser.Scene {
     this.pcManager?.destroy();
     this.actorManager?.destroy();
     this.game.events.off("scene-reset");
+    window.removeEventListener("play-paused", this._onPlayPaused);
+    window.removeEventListener("play-resumed", this._onPlayResumed);
   }
 
   /** 确保场景已构建 + 等待渲染就绪 / Ensure scene built + wait for render ready */
@@ -169,32 +170,21 @@ export class GameScene extends Phaser.Scene {
     this.eventManager.register("pc_interact", (ev) => this.interactHandler.handle(ev));
     this.eventManager.register("pc_combat", (ev) => this.combatHandler.handle(ev));
     this.eventManager.register("dm_narrative", (ev) => this.narrativeHandler.handle(ev));
+    this.eventManager.register("dm_create", (ev) => this._handleDmCreate(ev));
   }
 
-  /** 从 bootstrap 世界状态构建初始场景 / Build initial scene from bootstrap world state */
-  private _buildFromInitialState(): void {
-    const world = this.game.registry.get("initialWorldState") as InitialWorldState | undefined;
-    if (!world) return;
-    const scene = world.scenes?.[0] as SceneData | undefined;
-    if (!scene) return;
-    const pcs = world.pcs || [];
-    const actors = world.actors || [];
-    const sceneObjects = world.scene_objects || [];
-    const data: SceneSetupData = {
-      sceneId: scene.id,
-      sceneName: scene.name,
-      extJson: scene.ext_json ? JSON.parse(scene.ext_json) : {},
-      pcs,
-      actors,
-      sceneObjects,
-    };
-    this.ensureScene(data).catch((e) => log.error("buildFromInitialState failed", e));
-  }
-
-  /** 重置后销毁并重建场景 / Destroy and rebuild scene after reset */
+  /** 重置后销毁场景，回到黑屏等待 / Destroy scene, back to black screen */
   private _handleReset(): void {
     this._destroyScene();
-    this._buildFromInitialState();
+    this.hud = new GameHUD(this);
+    this.hud.showWaiting("等待 DM 创造情境...");
+    this.cameras.main.setBackgroundColor("#000000");
+  }
+
+  /** dm_create 事件：等待面板 fade-in 动画完成 / Wait for panel fade-in to settle */
+  private async _handleDmCreate(_ev: EventData): Promise<void> {
+    // DMCreationPanel 用 50ms setTimeout + CSS fade-in，等待 1s 确保显示完毕
+    await new Promise((r) => setTimeout(r, 1000));
   }
 
   /** 热重载恢复 / Recover from hot-reload */
@@ -222,6 +212,15 @@ export class GameScene extends Phaser.Scene {
     log.info(`build scene=${data.sceneId} pcs=${data.pcs.length} actors=${data.actors.length}`);
     // 从 ext_json 读取 tile_size，覆盖默认值
     this.ts = Number(data.extJson.tile_size) || TILEMAP.TILE_SIZE;
+
+    // 按真实 tile_size 预生成角色回退纹理 / Pre-generate fallback textures at correct tile_size
+    for (const fb of [
+      { id: "fighter_fb", race: "human", role: "fighter", is_pc: true },
+      { id: "actor_fb", race: "human", role: "villager", is_pc: false },
+    ]) {
+      makeCharTexture(this, fb, this.ts);
+    }
+
     try {
       this.mapManager.build(data.sceneId, data.extJson);
       this._buildTerrain(data.sceneObjects);

@@ -31,7 +31,9 @@ def _dm_create_event(state: OverallState) -> TickEvent | None:
 def _scene_event(state: OverallState) -> TickEvent | None:
     """构造 scene_setup 事件。
 
-    scene / scene_objects 来自 state（静态数据），PC/Actor 从领域模型 map 获取最新坐标。
+    PC 坐标不在此事件中更新——act() 阶段已通过 walk 引擎更新领域模型坐标，
+    action 事件的 waypoints 前端会走动画更新 sprite 位置。
+    此处跳过有本 tick action 的 PC，仅传递静态场景信息 + Actor 坐标。
     """
     scene = state.get("scene")
     if scene is None:
@@ -39,7 +41,13 @@ def _scene_event(state: OverallState) -> TickEvent | None:
     scene_id = scene.id
     if not scene_id:
         return None
-    pcs = [pc.model_dump() for pc in state.get("pcs", {}).values()]
+    actions: list[Action] = state.get("actions", [])
+    acted_pc_ids = {a.pc_id for a in actions}
+    pcs = [
+        pc.model_dump()
+        for pc in state.get("pcs", {}).values()
+        if pc.id not in acted_pc_ids
+    ]
     actors = [actor.model_dump() for actor in state.get("actors", {}).values()]
     scene_objects = state.get("scene_objects", [])
     return TickEvent(

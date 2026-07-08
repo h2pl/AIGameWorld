@@ -23,7 +23,11 @@ export class EventManager {
     return playState.playing;
   }
   set running(v: boolean) {
+    const was = playState.playing;
     playState.playing = v;
+    if (was !== v) {
+      window.dispatchEvent(new CustomEvent(v ? "play-resumed" : "play-paused"));
+    }
   }
 
   constructor(opts?: { defaultHandler?: EventHandlerFn }) {

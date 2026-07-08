@@ -130,16 +130,9 @@ export class DMCreationPanel extends Panel {
       this.hintsEl.style.display = "none";
       return;
     }
-    this.hintsEl.innerHTML = `
-      <div class="dm-hints-title">环境提示 / Hints</div>
-      <ul class="dm-hints-list">
-        ${hints
-          .map(
-            (h, i) =>
-              `<li class="dm-hint-item fade-in" style="animation-delay:${i * 0.15}s">${this._escape(h)}</li>`
-          )
-          .join("")}
-      </ul>`;
+    this.hintsEl.innerHTML =
+      `<div class="dm-hints-title">环境提示 / Hints</div>` +
+      `<ul class="dm-hints-list">${hints.map((h, i) => `<li class="dm-hint-item fade-in" style="animation-delay:${i * 0.15}s">${this._escape(h)}</li>`).join("")}</ul>`;
     this.hintsEl.style.display = "block";
   }
 

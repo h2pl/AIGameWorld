@@ -36,12 +36,15 @@ export class InteractHandler {
 
     if (waypoints?.length) {
       const end = waypoints[waypoints.length - 1];
+      log.info(`walk start: ${pcId} → (${end.x},${end.y}) waypoints=${waypoints.length}`);
       await this._walkTo(sprite, mm, end.x, end.y);
+      log.info(`walk done: ${pcId}`);
     }
 
-    // 交互结果不再自动弹出头顶浮字，改为仅记录日志；物体详情由用户点击场景物体后通过 ObjectPanel 查看
+    // 交互结果用旁白浮字显示，等待消失后才算完成
     if (narration) {
       log.info(`interact narration: ${pcId} — ${narration}`);
+      await new Promise<void>((resolve) => sprite.showExploreRecord(narration, resolve));
     }
   }
 

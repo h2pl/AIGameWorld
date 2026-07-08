@@ -133,7 +133,6 @@
   color: #ffd700;
   line-height: 1.6;
   font-size: 13px;
-  white-space: pre-wrap;
   overflow-y: auto;
   max-height: 170px;
 }

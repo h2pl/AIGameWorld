@@ -55,30 +55,32 @@ export function makeCharTexture(
   if (!cv) return;
   const c = cv.context;
   c.imageSmoothingEnabled = false;
+  // 按 tile_size 等比缩放（原始设计为 32px）/ Scale proportionally (original design was 32px)
+  const s = size / 32;
   const cx = size / 2;
   c.fillStyle = body;
-  c.fillRect(cx - 6, 11, 12, 10);
+  c.fillRect(cx - 6 * s, 11 * s, 12 * s, 10 * s);
   c.fillStyle = skin;
   c.beginPath();
-  c.arc(cx, 9, 6, 0, Math.PI * 2);
+  c.arc(cx, 9 * s, 6 * s, 0, Math.PI * 2);
   c.fill();
   c.fillStyle = hair;
   c.beginPath();
-  c.arc(cx, 7, 6, Math.PI, Math.PI * 2);
+  c.arc(cx, 7 * s, 6 * s, Math.PI, Math.PI * 2);
   c.fill();
   c.fillStyle = "#fff";
-  c.fillRect(cx - 2, 8, 1, 2);
-  c.fillRect(cx + 1, 8, 1, 2);
+  c.fillRect(cx - 2 * s, 8 * s, 1 * s, 2 * s);
+  c.fillRect(cx + 1 * s, 8 * s, 1 * s, 2 * s);
   c.fillStyle = "#000";
-  c.fillRect(cx - 2, 9, 1, 1);
-  c.fillRect(cx + 1, 9, 1, 1);
+  c.fillRect(cx - 2 * s, 9 * s, 1 * s, 1 * s);
+  c.fillRect(cx + 1 * s, 9 * s, 1 * s, 1 * s);
   c.fillStyle = "#2c3e50";
-  c.fillRect(cx - 4, 20, 4, 6);
-  c.fillRect(cx + 1, 20, 4, 6);
+  c.fillRect(cx - 4 * s, 20 * s, 4 * s, 6 * s);
+  c.fillRect(cx + 1 * s, 20 * s, 4 * s, 6 * s);
   if (ch.is_pc) {
     c.fillStyle = "#ffd700";
-    c.fillRect(cx - 7, 12, 3, 3);
-    c.fillRect(cx + 4, 12, 3, 3);
+    c.fillRect(cx - 7 * s, 12 * s, 3 * s, 3 * s);
+    c.fillRect(cx + 4 * s, 12 * s, 3 * s, 3 * s);
   }
   cv.refresh();
 }

@@ -108,8 +108,10 @@ export class CharacterSprite {
 
   /** 走下一步 / Walk next step */
   private walkNext(): void {
-    // 暂停或队列空 / Paused or queue empty
-    if (!playState.playing) return;
+    if (!playState.playing) {
+      this._completeWalk();
+      return;
+    }
     if (this.walkQueue.length === 0) {
       this.walkOnComplete?.();
       this.walkOnComplete = null;
@@ -125,7 +127,10 @@ export class CharacterSprite {
       ease: "Linear",
       onUpdate: () => this.updateFollowers(),
       onComplete: () => {
-        if (!playState.playing) return; // 完成时也检查 / Also check on completion
+        if (!playState.playing) {
+          this._completeWalk();
+          return;
+        }
         this.walkNext();
       },
     });
@@ -134,8 +139,15 @@ export class CharacterSprite {
   /** 中断当前行走 / Cancel current walk and clear pending queue */
   cancelWalk(): void {
     this.walkQueue = [];
-    this.walkOnComplete = null;
     this.scene.tweens.killTweensOf(this.sprite);
+    this._completeWalk();
+  }
+
+  /** 清理队列并触发完成回调 / Clear queue and fire completion callback */
+  private _completeWalk(): void {
+    this.walkQueue = [];
+    this.walkOnComplete?.();
+    this.walkOnComplete = null;
   }
 
   /** 是否正在行走 / Whether the sprite has pending steps or an active tween */
