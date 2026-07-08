@@ -11,6 +11,11 @@
 {% endfor %}
 {% endif %}
 
+{# 上一轮叙事 / Previous tick narrative for continuity #}
+{% if prev_narrative %}
+上一轮叙事：{{ prev_narrative }}
+{% endif %}
+
 {# 当前场景 / Current scene #}
 {% if scene %}
 场景：{{ scene.name or scene.id }}（{{ scene.type }}）
@@ -89,6 +94,7 @@
 要求：
 - 必须是第三人称 DND DM 口吻，使用简体中文。
 - 5-8 句，必须串联"场景上下文（plot_brief + hints + 场景描述）→ 本 tick 所有行动（谁做了什么、与谁互动、结果如何）→ 氛围收束"，讲一个完整的小故事。
+- 如果有上一轮叙事，必须自然衔接，保持故事线连贯。
 - 不允许脱离本 tick 行动写无关的氛围描写；如果本 tick 没有角色行动，只写一句场景过渡。
 - 自然融入环境提示和感官细节（视觉/听觉/嗅觉/触觉至少一种），但细节必须服务于对行动的叙述。
 - 不要罗列坐标或数据，把它们转化为场景描写。

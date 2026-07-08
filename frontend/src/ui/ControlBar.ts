@@ -192,10 +192,14 @@ export class ControlBar extends Panel {
     }
   }
 
-  // 重置 / Reset
+  // 重置 / Reset (支持运行中重置：先暂停再重置 / Supports reset while running: auto-pause first)
   private async _handleReset(): Promise<void> {
-    if (this.runState === "running" || !this.callbacks) return;
+    if (!this.callbacks) return;
     try {
+      // 运行中先暂停 / Auto-pause if running
+      if (this.runState === "running") {
+        await this.callbacks.onPause();
+      }
       await this.callbacks.onReset();
       this.statusEl.textContent = "已重置";
     } catch {
@@ -220,8 +224,8 @@ export class ControlBar extends Panel {
     this.btnPause.style.display = idle || running ? "inline-block" : "none";
     this.btnPause.style.opacity = running ? "1" : "0.4";
     this.btnResume.style.display = paused ? "inline-block" : "none";
-    this.btnReset.disabled = running;
-    this.btnReset.style.opacity = running ? "0.4" : "1";
+    this.btnReset.disabled = false; // 允许运行中重置 / Allow reset while running
+    this.btnReset.style.opacity = "1";
   }
 
   private _btn(text: string, bg: string): HTMLButtonElement {

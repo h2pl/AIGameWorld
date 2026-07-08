@@ -31,10 +31,17 @@ export async function fetchEvents(
   return (await resp.json()) as EventsResponse;
 }
 
-/** POST /api/world/{id}/tick/batch/{n} */
+/** POST /api/world/{id}/tick/batch/{n} — 409 自动重试 / Auto-retry on 409 (batch still running) */
 export async function triggerBatch(baseUrl: string, worldId: string, n: number): Promise<void> {
-  const resp = await fetch(`${baseUrl}/api/world/${worldId}/tick/batch/${n}`, { method: "POST" });
-  if (!resp.ok) throw new Error(`batch/${n} ${resp.status}`);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const resp = await fetch(`${baseUrl}/api/world/${worldId}/tick/batch/${n}`, { method: "POST" });
+    if (resp.ok) return;
+    if (resp.status === 409 && attempt < 4) {
+      await new Promise((r) => setTimeout(r, 1000));
+      continue;
+    }
+    throw new Error(`batch/${n} ${resp.status}`);
+  }
 }
 
 /** GET /api/world/{id}/loop/status */

@@ -44,7 +44,7 @@ export class InteractHandler {
     // 交互结果用旁白浮字显示，等待消失后才算完成
     if (narration) {
       log.info(`interact narration: ${pcId} — ${narration}`);
-      await new Promise<void>((resolve) => sprite.showExploreRecord(narration, resolve));
+      await new Promise<void>((resolve) => sprite.showExploreRecord(`🔧 ${narration}`, resolve));
     }
   }
 

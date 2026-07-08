@@ -76,7 +76,7 @@ class Orchestrator:
         return config
 
     async def reset(self, world_id: str) -> None:
-        """重置 world：清零 tick + 清理事件/DM记录/摘要 + 重置角色坐标."""
+        """重置 world：清零 tick + 清理事件/DM记录/摘要 + 重置角色坐标 + 清空 checkpoint."""
         # 1. 清零 tick / Reset ticks to 0
         world_repo = self._repos.get("world")
         if not world_repo:
@@ -99,5 +99,9 @@ class Orchestrator:
         pc_repo = self._repos.get("char")
         if pc_repo:
             await pc_repo.reset_positions(world_id)
+
+        # 5. 清空 LangGraph checkpoint（避免旧 state 残留）/ Clear LangGraph checkpoints
+        self._checkpointer = checkpoints.create_dev_checkpointer()
+        self._app = self._graph.compile(checkpointer=self._checkpointer)
 
         logger.info("[orchestrator] reset complete for %s", world_id)

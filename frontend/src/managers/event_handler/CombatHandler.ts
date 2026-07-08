@@ -46,8 +46,8 @@ export class CombatHandler {
 
     if (narration) {
       log.info(`combat narration: ${pcId} → ${targetId || "?"} — ${narration}`);
-      // 复用探索浮字样式展示战斗旁白 / Reuse explore float text for combat narration
-      await new Promise<void>((resolve) => sprite.showExploreRecord(narration, resolve));
+      // 战斗旁白加 ⚔️ 图标 / Combat narration with ⚔️ icon
+      await new Promise<void>((resolve) => sprite.showExploreRecord(`⚔️ ${narration}`, resolve));
     }
 
     // 如果目标被击败且是 actor，从场景中移除 / Remove defeated actor from scene

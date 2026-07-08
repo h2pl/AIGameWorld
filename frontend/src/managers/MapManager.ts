@@ -10,7 +10,7 @@ export class MapManager {
   constructor(private scene: Phaser.Scene) {}
 
   /** 加载并构建 tilemap / Load and build tilemap with layers */
-  build(sceneId: string, extJson: Record<string, any>): void {
+  build(sceneId: string, extJson: Record<string, any>): { mapW: number; mapH: number } {
     const tilesets: Array<{ name: string; url: string }> = extJson.tilesets || [];
     if (tilesets.length === 0 && extJson.tileset_name && extJson.tileset_image_key) {
       tilesets.push({ name: extJson.tileset_name, url: extJson.tileset_image_key });
@@ -22,7 +22,7 @@ export class MapManager {
     this.tilemap = this.scene.make.tilemap({ key: sceneId });
     if (!this.tilemap) {
       log.error(`tilemap null for key=${sceneId}`);
-      return;
+      return { mapW: 0, mapH: 0 };
     }
 
     // 添加所有 tileset / Add all tilesets
@@ -40,7 +40,7 @@ export class MapManager {
         );
       }
     }
-    if (allTilesets.length === 0) return;
+    if (allTilesets.length === 0) return { mapW: 0, mapH: 0 };
 
     // 从 tilemap 官方 API 获取图层名 / Get layer names via official API
     const layerNames: string[] = this.tilemap.getTileLayerNames();
@@ -77,6 +77,7 @@ export class MapManager {
     const mapH = this.tilemap.heightInPixels;
     this.scene.cameras.main.setBounds(0, 0, mapW, mapH);
     log.info(`build OK map=${mapW}x${mapH}px`);
+    return { mapW, mapH };
   }
 
   destroy(): void {

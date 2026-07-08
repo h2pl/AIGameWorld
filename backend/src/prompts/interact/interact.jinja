@@ -19,7 +19,7 @@ DM 提示：
 {% endif %}
 
 当前场景：{{ scene.name | default("未知场景") }}（{{ scene.type | default("") }}）
-{{ scene.description | default("") }}
+{{ scene.description or "无" }}
 {% if scene.tilemap_summary %}
 地图语义摘要：{{ scene.tilemap_summary }}
 {% endif %}

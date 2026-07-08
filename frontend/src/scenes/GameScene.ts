@@ -42,6 +42,7 @@ export class GameScene extends Phaser.Scene {
   private sceneData: SceneSetupData | null = null;
   private _onPlayPaused!: () => void;
   private _onPlayResumed!: () => void;
+  private _cameraZoom = 1.0;
 
   private exploreHandler!: ExploreHandler;
   private talkHandler!: TalkHandler;
@@ -124,6 +125,7 @@ export class GameScene extends Phaser.Scene {
       pcThinkCounts,
       activeThoughtBubbles,
       terrainObjectCount: this.terrainObjects.length,
+      cameraZoom: this._cameraZoom,
       pcPositions,
       pcWalking,
       pcBubbleStyle,
@@ -253,7 +255,21 @@ export class GameScene extends Phaser.Scene {
     }
 
     try {
-      this.mapManager.build(data.sceneId, data.extJson);
+      const { mapW, mapH } = this.mapManager.build(data.sceneId, data.extJson);
+      // 动态缩放：小地图拉近距离，所有地图视觉大小一致 / Dynamic zoom: small maps get closer camera
+      const canvas = CONFIG.CANVAS;
+      const rawZoom = Math.min(canvas.width / mapW, canvas.height / mapH);
+      this._cameraZoom = Math.max(1.0, Math.min(rawZoom, 2.5));
+      this.cameras.main.setZoom(this._cameraZoom);
+      log.info(
+        `camera zoom=%.2f (map=%dx%d canvas=%dx%d)`,
+        this._cameraZoom,
+        mapW,
+        mapH,
+        canvas.width,
+        canvas.height
+      );
+
       this._buildTerrain(data.sceneObjects);
       this._buildCharacters(data.pcs, data.actors);
       this.hud.create(data.sceneName);
@@ -301,8 +317,11 @@ export class GameScene extends Phaser.Scene {
     this.pcManager.createAll(pcs);
     if (actors.length) this.actorManager.createAll(actors);
     log.info(`buildChars: pcs=${pcs.length} actors=${actors.length}`);
-    // 相机滚动仅基于 PC / Camera scroll based on PCs only
-    const { sx, sy } = this.pcManager.calcCameraScroll(CONFIG.CANVAS.width, CONFIG.CANVAS.height);
+    // 相机滚动仅基于 PC / Camera scroll based on PCs only (visible area = canvas / zoom)
+    const { sx, sy } = this.pcManager.calcCameraScroll(
+      CONFIG.CANVAS.width / this._cameraZoom,
+      CONFIG.CANVAS.height / this._cameraZoom
+    );
     this.cameras.main.scrollX = sx;
     this.cameras.main.scrollY = sy;
   }
@@ -352,6 +371,8 @@ export class GameScene extends Phaser.Scene {
     this.hud.destroy();
     this.talkHandler?.clear();
     this.cameras.main.setBounds(0, 0, CONFIG.CANVAS.width, CONFIG.CANVAS.height);
+    this.cameras.main.setZoom(1.0);
+    this._cameraZoom = 1.0;
     this.cameras.main.scrollX = 0;
     this.cameras.main.scrollY = 0;
     this.cameras.main.fadeIn(0);

@@ -16,6 +16,8 @@ export const SELECTORS = {
   startLoopButton: '[data-testid="btn-start-loop"]',
   /** 暂停按钮 / Pause button */
   pauseButton: '[data-testid="btn-pause"]',
+  /** 恢复按钮 / Resume button */
+  resumeButton: '[data-testid="btn-resume"]',
   /** 重置按钮 / Reset button */
   resetButton: '[data-testid="btn-reset"]',
   /** 控制栏状态文本 / Control bar status text */

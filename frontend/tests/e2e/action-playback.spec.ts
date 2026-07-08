@@ -245,5 +245,21 @@ test.describe("action playback", () => {
     const gameState = await getTestSeamState(page);
     expect(gameState).not.toBeNull();
     expect(gameState!.sceneBuilt).toBe(true);
+
+    // L1 UI：事件面板包含内容（即使 action 失败也有降级文本）/ Event panel has content (even with degraded action)
+    const eventsText = await page.locator(SELECTORS.eventList).textContent();
+    // 至少应包含核心事件类型 / Should contain core event types at minimum
+    const hasCoreContent =
+      eventsText!.includes("DM 创建情境") ||
+      eventsText!.includes("DM 叙事") ||
+      eventsText!.includes("角色决策");
+    expect(hasCoreContent).toBe(true);
+
+    // L2 API：即使部分 action 失败，核心事件仍存在 / Core events still exist even if some actions fail
+    const eventsRes = await fetchBackendEvents(page, 0, 1);
+    const hasDmCreate = eventsRes.events.some((e) => e.type === "dm_create");
+    const hasDmNarrative = eventsRes.events.some((e) => e.type === "dm_narrative");
+    expect(hasDmCreate).toBe(true);
+    expect(hasDmNarrative).toBe(true);
   });
 });

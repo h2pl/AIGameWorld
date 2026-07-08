@@ -20,6 +20,10 @@
 上一步剧情：{{ plot_brief_prev }}
 {% endif %}
 
+{% if prev_narrative %}
+上轮叙事：{{ prev_narrative }}
+{% endif %}
+
 {# 场景列表 / Available scenes #}
 {% if scenes %}
 可用场景列表（请从以下 id 中精确选择当前场景）：

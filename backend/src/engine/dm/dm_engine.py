@@ -37,6 +37,7 @@ async def dm_create(
     tick: int,
     world_id: str = "",
     plot_brief: str = "",
+    prev_narrative: str = "",
     config: RunnableConfig = None,
 ) -> DMRecord:
     """Phase 1: DM 创造情境 / DM creates situation."""
@@ -69,6 +70,7 @@ async def dm_create(
         scenes=scenes,
         recent_summary="",
         plot_brief_prev=plot_brief,
+        prev_narrative=prev_narrative,
         memories=memories,
         pacing={},
     )
@@ -101,6 +103,7 @@ async def dm_narrate(
     pcs: dict[str, PlayerCharacter],
     actors: dict[str, Actor],
     actions: list[Action],
+    prev_narrative: str = "",
     config: RunnableConfig = None,
 ) -> str:
     """Phase 6: DM 叙事 / DM narrates."""
@@ -127,6 +130,7 @@ async def dm_narrate(
         actors=list(actors.values()),
         events=_event_summaries(events),
         actions=actions,
+        prev_narrative=prev_narrative,
         memories=dm_memories,
     )
 
@@ -150,13 +154,75 @@ async def dm_narrate(
 
 
 def _event_summaries(events: list[TickEvent] | None) -> list[str]:
-    """把 TickEvent 列表转成 prompt 可读的摘要 / Summarize events for prompt."""
+    """把 TickEvent 列表转成 prompt 可读的摘要 / Summarize events for prompt.
+
+    提供结构化的中文摘要，避免原始 JSON 进入 prompt。
+    """
+    # 事件类型中文标签映射 / Chinese labels for event types
+    _TYPE_LABELS: dict[str, str] = {
+        "dm_create": "DM 创造情境",
+        "dm_narrative": "DM 叙事",
+        "pc_decision": "角色决策",
+        "pc_talk": "角色对话",
+        "pc_explore": "角色探索",
+        "pc_interact": "角色互动",
+        "pc_combat": "角色战斗",
+        "scene_setup": "场景设置",
+        "character_move": "角色移动",
+    }
     summaries: list[str] = []
     for ev in events or []:
         ev_type = ev.type.value if hasattr(ev.type, "value") else str(ev.type)
-        payload = ev.payload
-        description = str(payload)[:200] if payload else ""
-        summaries.append(f"{ev_type}：{description}")
+        label = _TYPE_LABELS.get(ev_type, ev_type)
+        p = ev.payload or {}
+        # 提取角色名称 / Extract character name
+        pc_name = str(p.get("pc_name") or p.get("pc_id") or "")
+
+        # 决策事件：提取行动类型、目标和理由 / Decision: action type, target, reason
+        if ev_type == "pc_decision":
+            action = str(p.get("action_type") or "wait")
+            target = p.get("target_id")
+            reason = str(p.get("thought") or "")[:60]
+            target_str = f"与 {target}" if target else ""
+            summaries.append(f"{pc_name} 决定{target_str}{action} — {reason}")
+
+        # 对话事件：提取对话回合预览 / Talk: dialogue turns preview
+        elif ev_type == "pc_talk":
+            turns = (
+                p.get("result", {}).get("turns", []) if isinstance(p.get("result"), dict) else []
+            )
+            target = p.get("target_id", "他人")
+            preview = " / ".join(t.get("text", "")[:20] for t in turns[:4]) if turns else ""
+            summaries.append(f"{pc_name} 与 {target} 对话：{preview}")
+
+        # 探索事件 / Explore event
+        elif ev_type == "pc_explore":
+            record = str(p.get("explore_record") or "四处探索")[:60]
+            summaries.append(f"{pc_name} 探索：{record}")
+
+        # 交互事件 / Interact event
+        elif ev_type == "pc_interact":
+            target = p.get("target_id", "物体")
+            narration = str(p.get("narration") or "")[:60]
+            summaries.append(f"{pc_name} 与 {target} 交互：{narration}")
+
+        # 战斗事件：含击败标记 / Combat event with defeated flag
+        elif ev_type == "pc_combat":
+            target = p.get("target_id", "敌人")
+            narration = str(p.get("narration") or "")[:60]
+            defeated = "，击败目标" if p.get("target_defeated") else ""
+            summaries.append(f"{pc_name} 与 {target} 战斗：{narration}{defeated}")
+
+        # DM 创建情境 / DM creation event
+        elif ev_type == "dm_create":
+            brief = str(p.get("plot_brief") or "")[:80]
+            summaries.append(f"情境设定：{brief}")
+
+        # 其他事件：截断原始 payload / Other: truncated raw payload
+        else:
+            description = str(p)[:120] if p else ""
+            summaries.append(f"{label}：{description}")
+
     return summaries
 
 

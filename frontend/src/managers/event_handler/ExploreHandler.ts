@@ -37,14 +37,18 @@ export class ExploreHandler {
       const mm = this.getMovementManager();
       if (mm) {
         const dest = waypoints[waypoints.length - 1];
-        await new Promise<void>((r) => mm.walkTo(sprite, dest.x, dest.y, { onComplete: () => r() }));
+        await new Promise<void>((r) =>
+          mm.walkTo(sprite, dest.x, dest.y, { onComplete: () => r() })
+        );
       }
     }
 
     // 浮字
     if (exploreRecord) {
       log.info(`explore: ${pcId} — ${exploreRecord}`);
-      await new Promise<void>((resolve) => sprite.showExploreRecord(exploreRecord, resolve));
+      await new Promise<void>((resolve) =>
+        sprite.showExploreRecord(`🔍 ${exploreRecord}`, resolve)
+      );
     }
   }
 }

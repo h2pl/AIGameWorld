@@ -20,6 +20,7 @@ const EVENT_ICONS: Record<string, string> = {
   pc_talk: "🗣️",
   character_explore: "🔍",
   pc_interact: "🔧",
+  pc_combat: "⚔️",
   combat_event: "⚔️",
   game_event: "🎮",
   state_change: "🔄",
@@ -134,18 +135,25 @@ function _readableType(t: string): string {
     dm_create: "DM 创建情境",
     dm_narrative: "DM 叙事",
     scene_setup: "场景设置",
-    pc_decision: "角色决策",
-    pc_explore: "角色探索",
-    pc_talk: "角色对话",
-    pc_interact: "角色互动",
+    scene_objects: "场景物体",
     character_move: "角色移动",
+    pc_decision: "角色决策",
+    pc_talk: "角色对话",
+    character_talk: "角色对话",
+    pc_explore: "角色探索",
+    character_explore: "角色探索",
+    pc_interact: "角色互动",
+    pc_combat: "角色战斗",
     combat_event: "战斗事件",
+    game_event: "游戏事件",
     state_change: "状态变更",
   };
   return map[t] || t;
 }
 
-/** 格式化事件 payload 为可读文本 / Format event payload for display */
+/** 格式化事件 payload 为可读文本 / Format event payload for display
+ *
+ * 统一格式：谁做了什么事，中文描述，保持可读性 / Consistent: who did what, Chinese, readable */
 function _formatPayload(ev: EventData): string {
   const p = ev.payload || {};
   const pcName = String(p.pc_name || p.pc_id || "");
@@ -157,63 +165,48 @@ function _formatPayload(ev: EventData): string {
     case "pc_decision": {
       const action = String(p.action_type || "wait");
       const target = p.target_id ? String(p.target_id) : undefined;
-      // explore 目标坐标 / Explore target coordinates
       const ex = p.explore_x !== undefined ? Number(p.explore_x) : undefined;
       const ey = p.explore_y !== undefined ? Number(p.explore_y) : undefined;
       const pos = ex !== undefined && ey !== undefined ? { x: ex, y: ey } : undefined;
       const reason = String(p.thought || "");
       const label = actionLabel(action, target, pos);
-      return reason ? `【${pcName}】${label} · ${trunc(reason, 24)}` : `【${pcName}】${label}`;
+      return reason ? `【${pcName}】${label} — ${trunc(reason, 30)}` : `【${pcName}】${label}`;
     }
     case "scene_setup":
-      return `进入「${String(p.scene_id || "")}」`;
-    case "pc_explore": {
+      return `进入「${String(p.scene_name || p.scene_id || "")}」`;
+    case "pc_explore":
+    case "character_explore": {
       const record = p.explore_record as string | undefined;
-      const wps = p.waypoints as Array<{ x: number; y: number }> | undefined;
-      const path = wps?.length
-        ? `(${wps[0].x},${wps[0].y}) → (${wps[wps.length - 1].x},${wps[wps.length - 1].y})`
-        : "";
-      const body = record ? `${path}  「${trunc(record, 24)}」` : path;
-      return `【${pcName}】${body || "探索"}`;
+      return record ? `【${pcName}】探索: ${trunc(record, 40)}` : `【${pcName}】四处探索`;
     }
-    case "pc_talk": {
-      const r = p.result as Record<string, unknown> | undefined;
-      const turns = (r?.turns ?? []) as Array<{ speaker_id: string; text: string }>;
-      if (turns.length) {
-        const body = turns.map((t) => `${t.speaker_id}: "${trunc(t.text, 16)}"`).join(" → ");
-        return `【${pcName}】${body}`;
-      }
-      return `【${pcName}】交谈`;
-    }
-    case "pc_interact": {
-      const narration = (p.narration as string) || "";
-      return narration ? `【${pcName}】${trunc(narration)}` : `【${pcName}】与物体交互`;
-    }
-    case "character_move": {
-      const wps = p.waypoints as Array<{ x: number; y: number }> | undefined;
-      const path = wps?.length
-        ? `(${wps[0].x},${wps[0].y}) → (${wps[wps.length - 1].x},${wps[wps.length - 1].y})`
-        : "";
-      return `【${pcName}】${path ? path : "移动"}`;
-    }
+    case "pc_talk":
     case "character_talk": {
       const r = p.result as Record<string, unknown> | undefined;
       const turns = (r?.turns ?? []) as Array<{ speaker_id: string; text: string }>;
+      const target = p.target_id ? String(p.target_id) : undefined;
       if (turns.length) {
-        const body = turns.map((t) => `${t.speaker_id}: "${trunc(t.text, 16)}"`).join(" → ");
-        return `【${pcName}】${body}`;
+        const preview = turns.map((t) => trunc(t.text, 12)).join(" / ");
+        return `【${pcName}】与${target || "他人"}对话: ${trunc(preview, 50)}`;
       }
-      return `【${pcName}】交谈`;
+      return `【${pcName}】与${target || "他人"}交谈`;
     }
-    case "character_explore": {
-      const record = p.explore_record as string | undefined;
-      const wps = p.waypoints as Array<{ x: number; y: number }> | undefined;
-      const path = wps?.length
-        ? `(${wps[0].x},${wps[0].y}) → (${wps[wps.length - 1].x},${wps[wps.length - 1].y})`
-        : "";
-      const body = record ? `${path}  「${trunc(record, 24)}」` : path;
-      return `【${pcName}】${body || "探索"}`;
+    case "pc_interact": {
+      const target = p.target_id ? String(p.target_id) : undefined;
+      const narration = (p.narration as string) || "";
+      return narration
+        ? `【${pcName}】与${target || "物体"}交互: ${trunc(narration, 40)}`
+        : `【${pcName}】与${target || "物体"}交互`;
     }
+    case "pc_combat": {
+      const target = p.target_id ? String(p.target_id) : undefined;
+      const narration = (p.narration as string) || "";
+      const defeated = p.target_defeated ? "，击败目标" : "";
+      return narration
+        ? `【${pcName}】与${target || "敌人"}战斗: ${trunc(narration, 40)}${defeated}`
+        : `【${pcName}】与${target || "敌人"}战斗${defeated}`;
+    }
+    case "character_move":
+      return `【${pcName}】移动`;
     default:
       return `[${_readableType(ev.type)}]`;
   }

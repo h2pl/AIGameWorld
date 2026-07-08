@@ -52,8 +52,8 @@ test.describe("control flow & data consistency", () => {
     await expect(page.locator(SELECTORS.status)).toContainText("已暂停", { timeout: 10000 });
     const pausedTick = (await getTestSeamState(page))!.displayTick as number;
 
-    // 再次启动循环 / Resume loop
-    await page.locator(SELECTORS.startLoopButton).click();
+    // 恢复循环 / Resume loop (resume button shown after pause)
+    await page.locator(SELECTORS.resumeButton).click();
     await expect(page.locator(SELECTORS.status)).toContainText("持续运行中", { timeout: 5000 });
 
     // 等待 tick 继续增长 / Wait for tick to grow beyond paused tick

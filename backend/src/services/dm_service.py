@@ -16,6 +16,7 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
     dm_record = await dm_engine.dm_create(
         tick=tick,
         plot_brief=prev_dm.plot_brief if prev_dm else "",
+        prev_narrative=prev_dm.dm_narrative if prev_dm else "",
         world_id=world_id,
         config=config,
     )
@@ -37,6 +38,7 @@ async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict
         world_id=state.get("world_id", ""),
         plot_brief=dm.plot_brief if dm else "",
         hints=dm.hints if dm else [],
+        prev_narrative=dm.dm_narrative if dm else "",
         events=tick_events,
         scene=scene,
         scene_objects=scene_objects,

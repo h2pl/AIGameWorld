@@ -61,6 +61,8 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     let fullText = speakerName?.trim() ? `${speakerName.trim()}: ${text}` : text;
     if (style === "thought") {
       fullText = `💡 ${fullText}`;
+    } else if (style === "dialogue") {
+      fullText = `🗣️ ${fullText}`;
     }
     this.pages = this._splitPages(scene, fullText);
 
@@ -81,18 +83,25 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     this.setAlpha(0);
     scene.tweens.add({ targets: this, alpha: 1, duration: speedMs(150) });
 
-    this._showPage(0);
+    this._showSegment(0);
 
     this.setInteractive({ useHandCursor: true });
-    this.on("pointerdown", () => this._advance());
+    this.on("pointerdown", () => this._skipOrAdvance());
   }
 
-  /** 显示第 i 页 / Show page i */
-  private _showPage(i: number): void {
+  /** 显示第 i 段（渐入）/ Show segment i with fade-in */
+  private _showSegment(i: number): void {
     this.pageIndex = i;
     this.textObj.setText(this.pages[i]);
     this._layout();
-    this._scheduleAutoAdvance();
+    // 渐入文字内容 / Fade in text content
+    this.textObj.setAlpha(0);
+    this.scene.tweens.add({
+      targets: this.textObj,
+      alpha: 1,
+      duration: speedMs(300),
+      onComplete: () => this._scheduleAutoAdvance(),
+    });
   }
 
   /** 绘制背景并调整交互区域 / Draw background and hit area */
@@ -123,16 +132,38 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     this.setSize(w, h + ARROW_HEIGHT);
   }
 
-  /** 翻到下一页；最后一页则关闭 / Advance to next page or close */
+  /** 渐出后翻到下一段；最后一段则关闭 / Fade out then advance to next segment or close */
   private _advance(): void {
     if (this.timer) {
       window.clearTimeout(this.timer);
       this.timer = undefined;
     }
-    if (this.pageIndex < this.pages.length - 1) {
-      this._showPage(this.pageIndex + 1);
+    this.scene.tweens.killTweensOf(this.textObj);
+    // 渐出当前文字 / Fade out current text
+    this.scene.tweens.add({
+      targets: this.textObj,
+      alpha: 0,
+      duration: speedMs(200),
+      onComplete: () => {
+        if (this.pageIndex < this.pages.length - 1) {
+          this._showSegment(this.pageIndex + 1);
+        } else {
+          this.hide();
+        }
+      },
+    });
+  }
+
+  /** 点击跳过：如有定时器立即前进，否则正常渐出 / Click to skip current auto-advance or fade-out */
+  private _skipOrAdvance(): void {
+    if (this.timer) {
+      // 还有定时器 = 正在等待自动翻页，立即前进 / Timer pending = skip wait, advance now
+      window.clearTimeout(this.timer);
+      this.timer = undefined;
+      this._advance();
     } else {
-      this.hide();
+      // 正在渐入/渐出动画中，直接前进 / Mid-animation, force advance
+      this._advance();
     }
   }
 

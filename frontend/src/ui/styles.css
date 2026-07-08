@@ -355,6 +355,7 @@
   opacity: 0.85;
 }
 
+/* 历史事件行 / History event line item */
 .history-line {
   display: flex;
   align-items: center;
@@ -365,11 +366,25 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
+/* 事件图标 / Event icon */
 .history-icon {
   font-size: 13px;
+  flex-shrink: 0;
 }
-.history-text {
+
+/* 事件类型标签（金色加粗）/ Event type label (gold bold) */
+.history-type {
+  color: #ffd700;
+  font-weight: 500;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* 事件内容文本 / Event content text */
+.history-content {
+  color: #c8d6e5;
   flex: 1;
+  word-break: break-all;
 }
 
 .history-loading,
