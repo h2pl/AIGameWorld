@@ -60,7 +60,7 @@ async def process_combat_action(
     narration_result = await _generate_narration(
         pc=pc,
         target=target,
-        scene=scene or {},
+        scene=scene,
         plot_brief=plot_brief,
         hints=hints or [],
         tick=tick,
@@ -144,7 +144,7 @@ def _move_to_target(
 async def _generate_narration(
     pc: PlayerCharacter,
     target: PlayerCharacter | Actor,
-    scene: dict[str, Any],
+    scene: Scene | None,
     plot_brief: str,
     hints: list[str],
     tick: int,

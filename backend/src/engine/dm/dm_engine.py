@@ -12,6 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
+from ...domain import Action, Actor, DMRecord, PlayerCharacter, Scene, SceneObject
 from ...schemas.llm_output import DMNarrativeSchema, DMOutput
 from ...services.memory_service import retrieve_dm_records
 from ...utils.helpers import get_llm, get_repo
@@ -28,7 +29,7 @@ async def dm_create(
     world_id: str = "",
     plot_brief: str = "",
     config: RunnableConfig = None,
-) -> dict:
+) -> DMRecord:
     """Phase 1: DM 创造情境 / DM creates situation."""
     llm = get_llm(config)
     if llm is None:
@@ -73,12 +74,14 @@ async def dm_create(
     if len(result.hints) > 4:
         result.hints = result.hints[:4]
 
-    return {
-        "hints": result.hints,
-        "plot_brief": result.plot_brief,
-        "scene_id": result.scene_id,
-        "ext": result.model_dump(),
-    }
+    return DMRecord(
+        world_id=world_id,
+        tick=tick,
+        plot_brief=result.plot_brief,
+        hints=result.hints,
+        scene_id=result.scene_id,
+        ext=result.model_dump(),
+    )
 
 
 async def dm_narrate(
@@ -87,46 +90,44 @@ async def dm_narrate(
     plot_brief: str,
     hints: list[str],
     events: list,
-    scene: dict,
-    scene_objects: list[dict],
-    pcs: dict,
-    actors: dict,
-    actions: list[dict],
+    scene: Scene,
+    scene_objects: list[SceneObject],
+    pcs: dict[str, PlayerCharacter],
+    actors: dict[str, Actor],
+    actions: list[Action],
     config: RunnableConfig = None,
 ) -> str:
-    """Phase 6: DM 叙事 / DM narrates.
-
-    注意：本函数不再提供 fallback 叙事。LLM 返回空视为后端/模型异常，
-    必须抛出并记录完整上下文，方便排查根因。
-    """
+    """Phase 6: DM 叙事 / DM narrates."""
     llm = get_llm(config)
     if llm is None:
         raise RuntimeError("[dm_narrate] LLM client not configured")
 
-    # 检索 DM 记忆（复用 dm_records）/ Retrieve DM memories from dm_records
+    # 检索 DM 记忆（复用 dm_records）
     dm_memories: list[str] = []
     try:
-        mems = await retrieve_dm_records(
-            world_id or "", config=config, top_k=3, before_tick=tick
-        )
+        mems = await retrieve_dm_records(world_id or "", config=config, top_k=3, before_tick=tick)
         dm_memories = list(mems) if mems else []
     except Exception:
         logger.warning("[engine] dm_narrate memory retrieval failed, continuing without memories")
 
-    # actions.result 可能是 Pydantic 模型，模板用 dict.get，需要统一转 dict
-    normalized_actions = _normalize_actions(actions)
+    # 转为 Jinja 可用的 dict
+    scene_dict = scene.model_dump()
+    objs_dict = [obj.model_dump() for obj in scene_objects]
+    pcs_dict = {pc_id: pc.model_dump() for pc_id, pc in pcs.items()}
+    actors_dict = {actor_id: actor.model_dump() for actor_id, actor in actors.items()}
+    actions_dict = _normalize_actions([action.model_dump() for action in actions])
 
     system_prompt = await _render_dm_system(config, world_id)
     prompt = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
         tick=tick,
         plot_brief=plot_brief,
         hints=hints,
-        scene=scene,
-        scene_objects=scene_objects,
-        pcs=list(pcs.values()),
-        actors=list(actors.values()),
+        scene=scene_dict,
+        scene_objects=objs_dict,
+        pcs=list(pcs_dict.values()),
+        actors=list(actors_dict.values()),
         events=events,
-        actions=normalized_actions,
+        actions=actions_dict,
         memories=dm_memories,
     )
 

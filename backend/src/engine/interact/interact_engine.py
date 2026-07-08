@@ -55,10 +55,12 @@ async def process_interact_action(
     waypoints = _move_to_object(char_id, object_id, scene, scene_objects, pcs, actors)
 
     # LLM 生成交互结果 / Generate interaction result via LLM
+    if scene is None:
+        return None
     interact_result = await _generate_interact(
         pc_id=char_id,
         object_id=object_id,
-        scene=scene or {},
+        scene=scene,
         scene_objects=scene_objects or [],
         pc=pc,
         plot_brief=plot_brief,
@@ -101,8 +103,8 @@ async def _load_scene_object(scene_repo, object_id: str) -> SceneObject | None:
 async def _generate_interact(
     pc_id: str,
     object_id: str,
-    scene: dict[str, Any],
-    scene_objects: list[dict[str, Any]],
+    scene: Scene,
+    scene_objects: list[SceneObject],
     pc: PlayerCharacter,
     plot_brief: str,
     hints: list[str],

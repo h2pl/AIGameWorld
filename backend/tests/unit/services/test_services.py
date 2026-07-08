@@ -213,12 +213,7 @@ class TestDMAndReflectionService:
     @pytest.mark.asyncio
     async def test_dm_create_maps_engine_response(self):
         """DM create 映射 engine 响应 / DM create maps engine response."""
-        engine_result = SimpleNamespace(
-            hints=["去酒馆"],
-            plot_brief="今晚有冲突",
-            scene_id="tavern",
-            ext=None,
-        )
+        engine_result = DMRecord(tick=4, world_id="w-1", hints=["去酒馆"], plot_brief="今晚有冲突", scene_id="tavern")
         with patch.object(dm_service.dm_engine, "dm_create", AsyncMock(return_value=engine_result)):
             result = await dm_service.dm_create(_overall_state(tick=4, world_id="w-1"))
         dm_rec = result["dm_record"]
