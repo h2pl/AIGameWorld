@@ -1,134 +1,8 @@
-"""Mock 数据集——多示例随机抽取 / Multiple examples per event type, selected randomly.
-
-每种事件有 3~5 个示例，每次调用 get_mock() 随机返回一个。
-pc_decision 使用轮转池，保证覆盖 talk/explore/interact 全部动作类型。
-"""
+"""Mock 数据集——多示例随机抽取，每个数据集自包含完整的决策+行动数据。"""
 
 import random
 
 MockDataset = dict[str, list[dict]]
-
-
-# ═══════════════════════════════════════════════════════════════
-# PC 决策轮转池 / PC decision rotation pool
-# ═══════════════════════════════════════════════════════════════
-_PC_DECISIONS: list[dict] = [
-    {
-        "action_type": "talk",
-        "target_id": "merchant",
-        "target_type": "actor",
-        "thought": "Greta 的眼神暗示她有话要说，先打听一下最近镇上有什么异常。",
-    },
-    {
-        "action_type": "explore",
-        "target_id": None,
-        "target_type": None,
-        "thought": "也许应该在酒馆周围四处看看，说不定能发现什么线索。",
-        "explore_x": 22,
-        "explore_y": 15,
-    },
-    {
-        "action_type": "talk",
-        "target_id": "blacksmith",
-        "target_type": "actor",
-        "thought": "铁匠看起来是个有故事的人，去和他聊聊也许能打听到什么。",
-    },
-    {
-        "action_type": "interact",
-        "target_id": "chest_1",
-        "target_type": "scene_object",
-        "thought": "角落里那个箱子看起来有点可疑，让我检查一下里面有什么。",
-    },
-    {
-        "action_type": "explore",
-        "target_id": None,
-        "target_type": None,
-        "thought": "这个酒馆的布局让人在意，到处巡视一下看看有没有暗门或隐藏的线索。",
-        "explore_x": 15,
-        "explore_y": 20,
-    },
-    {
-        "action_type": "talk",
-        "target_id": "guard",
-        "target_type": "actor",
-        "thought": "门口的守卫似乎欲言又止，去和他打探一下消息。",
-    },
-    {
-        "action_type": "explore",
-        "target_id": None,
-        "target_type": None,
-        "thought": "外面的街道上似乎有什么动静，出去查看一下。",
-    },
-    {
-        "action_type": "interact",
-        "target_id": "door_cellar",
-        "target_type": "scene_object",
-        "thought": "那个通往地窖的门虚掩着，说不定下面有什么好东西。",
-    },
-    {
-        "action_type": "talk",
-        "target_id": "merchant",
-        "target_type": "actor",
-        "thought": "想问问老板娘关于北边森林的更多细节。",
-    },
-    {
-        "action_type": "explore",
-        "target_id": None,
-        "target_type": None,
-        "thought": "沙漠中的遗迹似乎有秘密通道，必须仔细搜索。",
-    },
-    {
-        "action_type": "talk",
-        "target_id": "guard",
-        "target_type": "actor",
-        "thought": "守卫看起来知道沙漠里的危险，向他打听一下注意事项。",
-    },
-    {
-        "action_type": "interact",
-        "target_id": "chest_wooden",
-        "target_type": "scene_object",
-        "thought": "角落里有个古旧的木箱，上面雕刻着奇怪的符文。",
-    },
-    {
-        "action_type": "combat",
-        "target_id": "goblin",
-        "target_type": "actor",
-        "thought": "那只地精虎视眈眈，必须先下手为强。",
-    },
-    {
-        "action_type": "combat",
-        "target_id": "skeleton",
-        "target_type": "actor",
-        "thought": "不死生物不能放任它在村子里游荡。",
-    },
-    {
-        "action_type": "combat",
-        "target_id": "orc_boss",
-        "target_type": "actor",
-        "thought": "首领才是威胁的根源，集中火力解决它。",
-    },
-]
-
-
-def _normalize_action(action: dict) -> dict:
-    """补全 PC decision 的 thought 字段，避免 schema 校验失败."""
-    normalized = dict(action)
-    if "thought" not in normalized:
-        normalized["thought"] = "我做出了这个决定。"
-    return normalized
-
-
-class _PcDecisionRotator:
-    def __init__(self) -> None:
-        self._idx = 0
-
-    def next(self) -> dict:
-        action = _PC_DECISIONS[self._idx % len(_PC_DECISIONS)]
-        self._idx += 1
-        return {"action": _normalize_action(action)}
-
-
-_pc_rotator = _PcDecisionRotator()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -335,9 +209,72 @@ DATASET_TAVERN: MockDataset = {
         {"summary": "冒险者与铁匠交谈，得知曾有伤员带着奇怪爪痕回来，此事不简单。"},
         {"summary": "多方打听后，冒险者拼凑出真相：北方废弃神殿有超自然力量，镇上已有数人失踪。"},
     ],
-    # ═══════════════════════════════════════════════════════════════
-    # tilemap 语义解读 / Dynamic scene entity generation
-    # ═══════════════════════════════════════════════════════════════
+    "pc_decision": [
+        {
+            "action": {
+                "action_type": "talk",
+                "target_id": "merchant",
+                "target_type": "actor",
+                "thought": "Greta 的眼神暗示她有话要说，先打听一下最近镇上有什么异常。",
+            }
+        },
+        {
+            "action": {
+                "action_type": "explore",
+                "target_id": None, "target_type": None,
+                "thought": "酒馆角落的木板微微翘起，下面似乎藏着什么。去检查一下。",
+                "explore_x": 10, "explore_y": 12,
+            }
+        },
+        {
+            "action": {
+                "action_type": "talk",
+                "target_id": "blacksmith",
+                "target_type": "actor",
+                "thought": "铁匠看起来是个有故事的人，去和他聊聊也许能打听到什么。",
+            }
+        },
+        {
+            "action": {
+                "action_type": "interact",
+                "target_id": "chest_1",
+                "target_type": "scene_object",
+                "thought": "角落里那个箱子看起来有点可疑，让我检查一下里面有什么。",
+            }
+        },
+        {
+            "action": {
+                "action_type": "explore",
+                "target_id": None, "target_type": None,
+                "thought": "酒馆后门有点异样，顺着一串湿脚印去小巷深处看看。",
+                "explore_x": 8, "explore_y": 15,
+            }
+        },
+        {
+            "action": {
+                "action_type": "explore",
+                "target_id": None, "target_type": None,
+                "thought": "窗台上有积满灰尘的陶罐，也许里面有什么线索。",
+                "explore_x": 12, "explore_y": 8,
+            }
+        },
+        {
+            "action": {
+                "action_type": "talk",
+                "target_id": "guard",
+                "target_type": "actor",
+                "thought": "门口的守卫似乎欲言又止，去和他打探一下消息。",
+            }
+        },
+        {
+            "action": {
+                "action_type": "interact",
+                "target_id": "door_cellar",
+                "target_type": "scene_object",
+                "thought": "那个通往地窖的门虚掩着，说不定下面有什么好东西。",
+            }
+        },
+    ],
 }
 
 # ═══════════════════════════════════════════════════════════════
@@ -531,6 +468,56 @@ DATASET_DESERT: MockDataset = {
         {"summary": "沙漠中发现了巨大脚印和烧焦的骆驼骸骨，传说的沙龙可能真实存在。"},
         {"summary": "冒险者破译了石柱上的古文字，决定深入金字塔探索蛇神的秘密。"},
     ],
+    "pc_decision": [
+        {
+            "action": {
+                "action_type": "explore",
+                "target_id": None, "target_type": None,
+                "thought": "沙地上散落着碎裂的陶片，上面刻着象形文字。去看看石柱附近有没有更多线索。",
+                "explore_x": 12, "explore_y": 15,
+            }
+        },
+        {
+            "action": {
+                "action_type": "explore",
+                "target_id": None, "target_type": None,
+                "thought": "一只蜥蜴叼着生锈的箭头钻进岩石缝隙，附近说不定有古代战场遗迹。",
+                "explore_x": 25, "explore_y": 10,
+            }
+        },
+        {
+            "action": {
+                "action_type": "talk",
+                "target_id": "merchant",
+                "target_type": "actor",
+                "thought": "沙漠商人似乎知道古王国时期的历史，去打听一下石柱的秘密。",
+            }
+        },
+        {
+            "action": {
+                "action_type": "explore",
+                "target_id": None, "target_type": None,
+                "thought": "枯死的棕榈树旁有一口干涸的水井，井壁上似乎有发光的苔藓。过去看看。",
+                "explore_x": 8, "explore_y": 25,
+            }
+        },
+        {
+            "action": {
+                "action_type": "talk",
+                "target_id": "guard",
+                "target_type": "actor",
+                "thought": "守卫知道沙漠里的危险，向他打听一下前方的路况。",
+            }
+        },
+        {
+            "action": {
+                "action_type": "interact",
+                "target_id": "chest_wooden",
+                "target_type": "scene_object",
+                "thought": "石柱下方有一个古旧的木箱，上面雕刻着奇怪的符文。",
+            }
+        },
+    ],
 }
 
 # ═══════════════════════════════════════════════════════════════
@@ -656,6 +643,40 @@ DATASET_COMBAT: MockDataset = {
         {"summary": "冒险者在森林中遭遇地精伏击，成功击退对手。"},
         {"summary": "林间营地遇到兽人斥候，经过激烈战斗后突围。"},
         {"summary": "一头食人魔袭击了冒险者，战斗中击败了它和它的地精仆从。"},
+    ],
+    "pc_decision": [
+        {
+            "action": {
+                "action_type": "combat",
+                "target_id": "goblin",
+                "target_type": "actor",
+                "thought": "那只地精虎视眈眈，蹲在灌木丛后准备突袭。必须先下手为强，拔剑冲锋！",
+            }
+        },
+        {
+            "action": {
+                "action_type": "combat",
+                "target_id": "skeleton",
+                "target_type": "actor",
+                "thought": "不死生物不能放任它在村子里游荡，必须用圣光净化它。",
+            }
+        },
+        {
+            "action": {
+                "action_type": "combat",
+                "target_id": "orc_boss",
+                "target_type": "actor",
+                "thought": "兽人首领才是威胁的根源，集中火力解决它，其他喽啰自然会溃散。",
+            }
+        },
+        {
+            "action": {
+                "action_type": "explore",
+                "target_id": None, "target_type": None,
+                "thought": "战斗结束后需要巡视周围，确认没有更多敌人埋伏。",
+                "explore_x": 20, "explore_y": 15,
+            }
+        },
     ],
 }
 
@@ -1043,15 +1064,9 @@ def get_dataset(name: str = "") -> MockDataset:
 
 
 def get_mock(purpose: str, dataset_name: str = "") -> dict:
-    """获取某个 purpose 的 mock 数据——随机抽取一个示例。
-
-    pc_decision 使用轮转池，保证覆盖 talk/explore/interact。
-    dm_create / dm_narrate 限定数据集（每个数据集有不同的场景和叙事风味）。
-    其他 purpose（talk / actor_decision / reflection / summarize）跨数据集随机。
-    """
-    if purpose == "pc_decision":
-        return _pc_rotator.next()
-
-    # 所有 purpose 跨数据集随机池 / All purposes: cross-dataset random pool
-    pool = _POOL.get(purpose, [])
+    """获取某个 purpose 的 mock 数据——优先数据集内，回退到跨数据集 pool."""
+    ds = get_dataset(dataset_name)
+    pool = ds.get(purpose, [])
+    if not pool:
+        pool = _POOL.get(purpose, [])
     return random.choice(pool) if pool else {}
