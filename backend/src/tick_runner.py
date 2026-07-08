@@ -18,10 +18,13 @@ async def _throttle_tick(world_id: str, orch) -> None:
     world_repo = orch._repos.get("world")
     if world_repo is None:
         return
-    while True:
+    for _ in range(120):  # 最多等 120 秒，防止死循环 / Max 120s to avoid infinite loop
         data_tick = await world_repo.get_data_tick(world_id)
         display_tick = await world_repo.get_display_tick(world_id)
         if data_tick - display_tick < MAX_AHEAD_TICKS:
+            return
+        # 如果没有正在运行的 loop 或 batch，说明已被 reset/cancel，直接退出 / Exit if no active task
+        if not loop_manager.is_running(world_id) and not batch_runner.is_running(world_id):
             return
         logger.info(
             "[throttle] %s data_tick=%d display_tick=%d; waiting for display to catch up",
@@ -30,6 +33,7 @@ async def _throttle_tick(world_id: str, orch) -> None:
             display_tick,
         )
         await asyncio.sleep(1)
+    logger.warning("[throttle] %s timed out after 120s", world_id)
 
 
 class TickLoopManager:

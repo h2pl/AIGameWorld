@@ -108,11 +108,15 @@ export async function fetchBackendEvents(
   sinceTick: number,
   tickLimit = 10
 ): Promise<EventsResponse> {
-  const res = await page.request.get(
-    `/api/world/${WORLD_ID}/events?since_tick=${sinceTick}&tick_limit=${tickLimit}`
-  );
-  expect(res.ok()).toBe(true);
-  return (await res.json()) as EventsResponse;
+  // 重试 3 次避免后端短暂不可用 / Retry to handle transient backend unavailability
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await page.request.get(
+      `/api/world/${WORLD_ID}/events?since_tick=${sinceTick}&tick_limit=${tickLimit}`
+    );
+    if (res.ok()) return (await res.json()) as EventsResponse;
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`fetchBackendEvents failed after 3 attempts`);
 }
 
 /** 获取循环运行状态 / Fetch loop running status */
