@@ -2,11 +2,20 @@
 
 import json
 
+from pydantic import BaseModel
+
 from ..domain.event import TickEvent
 from ..storage.sqlite_client import SQLiteClient
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def _json_default(obj):
+    """序列化嵌套 Pydantic 模型 / Serialize nested Pydantic models."""
+    if isinstance(obj, BaseModel):
+        return obj.model_dump()
+    return str(obj)
 
 
 class TickEventRepo:
@@ -31,7 +40,12 @@ class TickEventRepo:
                 ev_world = ev.get("world_id", world_id)
             await self._db.execute(
                 "INSERT INTO tick_events (tick, type, payload, world_id, updated_at) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))",
-                (tick, ev_type, json.dumps(ev_payload, ensure_ascii=False, default=str), ev_world),
+                (
+                    tick,
+                    ev_type,
+                    json.dumps(ev_payload, ensure_ascii=False, default=_json_default),
+                    ev_world,
+                ),
             )
         await self._db.commit()
         logger.info("[repo] insert tick=%s count=%d", tick, len(tick_events))

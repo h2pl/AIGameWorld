@@ -1,11 +1,12 @@
-from src.domain.scene import Scene
 """Explore Engine 单元测试 / Unit tests for explore engine."""
 
 from unittest.mock import AsyncMock
 
 import pytest
 
+from src.domain import Decision
 from src.domain.player_character import PlayerCharacter
+from src.domain.scene import Scene
 from src.engine.explore.explore_engine import process_explore_action
 from src.schemas.llm_output import ExploreOutputSchema
 
@@ -37,8 +38,9 @@ class TestExploreEngine:
     async def test_non_explore_action_skipped(self):
         """非 explore 类型被跳过 / Non-explore action is skipped."""
         event = await process_explore_action(
-            decision={"type": "talk", "pc_id": "pc1"},
-            scene={},
+            decision=Decision(type="talk", pc_id="pc1"),
+            tick=1,
+            scene=Scene(id="test"),
             pcs={},
         )
         assert event is None
@@ -57,13 +59,14 @@ class TestExploreEngine:
         config = _mock_config(llm=llm)
         pc = _pc(position_x=5, position_y=5)
         event = await process_explore_action(
-            decision={"type": "explore", "pc_id": "pc1"},
+            decision=Decision(type="explore", pc_id="pc1"),
+            tick=1,
             scene=Scene(id="test", map_width=40, map_height=40),
             pcs={"pc1": pc},
             config=config,
         )
         assert event is not None
-        assert event.kind == "pc_explore"
+        assert event.action_type == "explore"
         assert event.pc_id == "pc1"
         assert event.explore_record == "发现一枚古币。"
         assert len(event.waypoints) == 2
@@ -85,7 +88,8 @@ class TestExploreEngine:
         )
         config = _mock_config(llm=llm)
         event = await process_explore_action(
-            decision={"type": "explore", "pc_id": "pc1"},
+            decision=Decision(type="explore", pc_id="pc1"),
+            tick=1,
             scene=Scene(id="test", map_width=40, map_height=40),
             pcs={"pc1": _pc(position_x=5, position_y=5)},
             config=config,

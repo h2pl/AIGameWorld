@@ -4,13 +4,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.domain import Decision, DMRecord, Scene
-from src.services import data_service
+from src.domain import Decision, DMRecord, Scene, SceneObject
 from src.domain.player_character import PlayerCharacter
-from src.graph.subgraphs.load_data_subgraph import load_data_subgraph
 from src.graph.subgraphs.pc_subgraph import pc_subgraph
 from src.graph.subgraphs.reflection_subgraph import reflection_subgraph
 from src.graph.subgraphs.tick_init_subgraph import tick_init_subgraph
+from src.services import data_service
 
 
 class TestCharacterSubgraph:
@@ -25,7 +24,6 @@ class TestCharacterSubgraph:
         state = {
             "tick": 1,
             "world_id": "world-1",
-            
             "dm_record": None,
             "pc_decisions": [],
             "scene": scene,
@@ -84,8 +82,16 @@ class TestLoadDataSubgraph:
     @pytest.mark.asyncio
     async def test_load_scene_from_dm_record(self):
         """load_scene 从 dm_record.scene_id 读取场景 / load_scene reads scene via dm_record."""
-        scene = Scene(id="scene-1", name="Tavern", type="indoor", description="test",
-                       spawn_x=10, spawn_y=10, map_width=40, map_height=40)
+        scene = Scene(
+            id="scene-1",
+            name="Tavern",
+            type="indoor",
+            description="test",
+            spawn_x=10,
+            spawn_y=10,
+            map_width=40,
+            map_height=40,
+        )
         scene_repo = AsyncMock()
         scene_repo.get_scene = AsyncMock(return_value=scene)
         config = {"configurable": {"repos": {"scene": scene_repo}}}

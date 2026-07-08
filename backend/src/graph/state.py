@@ -34,6 +34,7 @@ class OverallState(TypedDict, total=False):
     """
 
     tick: int
+    world_id: str  # world 标识 / world identifier
     world: World  # 世界观领域模型 / world domain model
 
     dm_record: DMRecord | None  # DM 产出完整记录 / DM output record
@@ -81,8 +82,8 @@ class ReflectionSubState(TypedDict):
 
     tick: int
     pc_id: str
-    memories: list[dict[str, Any]]
-    tick_events: list[dict[str, Any]]
+    memories: list[Memory]
+    tick_events: list[TickEvent]
     reflected_pcs: list[str]
     summary_compressed: bool
 

@@ -24,11 +24,11 @@ def _decision_events(state: OverallState) -> list[TickEvent]:
     if not pc_decisions:
         return []
     tick = state.get("tick", 0)
-    pcs_map: dict[str, PlayerCharacter] = state.get("pcs", {})
+    pcs: dict[str, PlayerCharacter] = state.get("pcs", {})
     events: list[TickEvent] = []
     for decision in pc_decisions:
         pc_id = decision.pc_id
-        pc_name = getattr(pcs_map.get(pc_id), "name", pc_id)
+        pc_name = getattr(pcs.get(pc_id), "name", pc_id)
         action_type = decision.type or "wait"
         payload: dict = {
             "pc_id": pc_id,
@@ -63,20 +63,14 @@ def _action_events(state: OverallState) -> list[TickEvent]:
     tick = state.get("tick", 0)
     sorted_actions = sorted(actions, key=lambda a: a.order)
     events: list[TickEvent] = []
-    pcs_map = state.get("pcs", {})
+    pcs: dict[str, PlayerCharacter] = state.get("pcs", {})
     for action in sorted_actions:
         action_type = action.action_type
         event_type = _EVENT_TYPE_MAP.get(action_type)
         if event_type is None:
             continue
-        raw_result = action.result or {}
-        # 兼容 Pydantic 模型和 dict / Supports both model and dict
-        if isinstance(raw_result, dict):
-            result = raw_result
-        else:
-            result = raw_result.model_dump() if hasattr(raw_result, "model_dump") else {}
         pc_id = action.pc_id
-        pc_name = getattr(pcs_map.get(pc_id), "name", pc_id)
+        pc_name = getattr(pcs.get(pc_id), "name", pc_id)
         payload = {
             "order": action.order,
             "pc_id": pc_id,
@@ -84,23 +78,26 @@ def _action_events(state: OverallState) -> list[TickEvent]:
             "action_type": action_type,
             "target_id": action.target_id,
             "target_type": action.target_type,
-            "result": result,
         }
-        if event_type == TickEventType.PC_EXPLORE:
-            payload["waypoints"] = result.get("waypoints", [])
-            payload["explore_record"] = result.get("explore_record", "")
         if event_type == TickEventType.PC_TALK:
-            payload["waypoints"] = result.get("waypoints", [])
+            payload["waypoints"] = action.waypoints
+            payload["turns"] = action.turns
+            payload["participants"] = action.participants
+        if event_type == TickEventType.PC_EXPLORE:
+            payload["waypoints"] = action.waypoints
+            payload["explore_record"] = action.explore_record
         if event_type == TickEventType.PC_INTERACT:
-            payload["waypoints"] = result.get("waypoints", [])
-            payload["narration"] = result.get("narration", "")
+            payload["waypoints"] = action.waypoints
+            payload["narration"] = action.narration
+            payload["success"] = action.success
+            payload["object_id"] = action.object_id
         if event_type == TickEventType.PC_COMBAT:
-            payload["waypoints"] = result.get("waypoints", [])
-            payload["narration"] = result.get("narration", "")
-            payload["combat_log"] = result.get("combat_log", [])
-            payload["winner"] = result.get("winner")
-            payload["target_defeated"] = result.get("target_defeated", False)
-            payload["result"] = result.get("result", "")
+            payload["waypoints"] = action.waypoints
+            payload["narration"] = action.narration
+            payload["combat_log"] = action.combat_log
+            payload["winner"] = action.winner
+            payload["target_defeated"] = action.target_defeated
+            payload["result"] = action.result
         events.append(
             TickEvent(
                 type=event_type,

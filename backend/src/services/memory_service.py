@@ -19,7 +19,7 @@ async def retrieve_memories(
     memory_types: list[str] | None = None,
     periods: list[str] | None = None,
     include_reflections: bool = True,
-    pc_memory_map: dict[str, list[Memory]] | None = None,
+    memories: dict[str, list[Memory]] | None = None,
     current_tick: int = 0,
 ) -> list[str]:
     """按角色 + 查询语义检索相关记忆文本 / Retrieve relevant memory texts for a character.
@@ -46,8 +46,8 @@ async def retrieve_memories(
         seen: set[str] = set()
 
         # 1) 本 tick 已产生但尚未落盘的新记忆（score 排序）
-        if pc_memory_map:
-            current_mems = pc_memory_map.get(pc_id, [])
+        if memories:
+            current_mems = memories.get(pc_id, [])
             scored = sorted(
                 current_mems,
                 key=lambda m: score_memory(m.importance, m.tick, current_tick),

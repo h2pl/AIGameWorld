@@ -1,6 +1,6 @@
 """Graph State 测试 / Graph State tests."""
 
-from src.domain import Scene
+from src.domain import Memory, Scene
 from src.graph.state import OverallState, PcSubState, ReflectionSubState
 
 # ══ OverallState 测试 / Main state tests ══
@@ -18,13 +18,11 @@ class TestOverallState:
             "scene_objects": [],
             "actions": [],
             "dm_record": None,
-            
             "pc_decisions": [],
-            
             "pcs": {},
             "actors": {},
         }
-        assert s["tick"] == 0
+        assert s.get("tick") == 0
 
 
 # ══ PcSubState 测试 ══
@@ -58,7 +56,7 @@ class TestReflectionSubState:
         s: ReflectionSubState = {
             "tick": 5,
             "pc_id": "pc1",
-            "memories": [{"text": "m1"}],
+            "memories": [Memory(id="m1", pc_id="pc1", content="m1", tick=1)],
             "tick_events": [],
             "reflected_pcs": [],
             "summary_compressed": False,

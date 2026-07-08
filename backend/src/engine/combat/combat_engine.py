@@ -6,14 +6,22 @@ PC 移动到目标相邻格，由 LLM 直接生成战斗过程、结果与旁白
 
 import json
 from pathlib import Path
-from typing import Any
 from uuid import uuid4
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, CombatActionResult, Decision, Memory, PlayerCharacter, Scene
+from ...domain import (
+    Action,
+    Actor,
+    Decision,
+    DMRecord,
+    Memory,
+    PlayerCharacter,
+    Scene,
+    SceneObject,
+)
 from ...schemas.llm_output import CombatNarrationSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import dict_without, get_llm, validate_position
@@ -27,15 +35,15 @@ _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
 
 async def process_combat_action(
     decision: Decision,
+    tick: int,
     scene: Scene | None = None,
+    scene_objects: list[SceneObject] | None = None,
     pcs: dict[str, PlayerCharacter] | None = None,
     actors: dict[str, Actor] | None = None,
-    plot_brief: str = "",
-    hints: list[str] | None = None,
-    tick: int = 0,
-    pc_memory_map: dict[str, list[Memory]] | None = None,
+    dm_record: DMRecord | None = None,
+    memories: dict[str, list[Memory]] | None = None,
     config: RunnableConfig = None,
-) -> CombatActionResult | None:
+) -> Action | None:
     """处理单个 combat 决策：走位 → LLM 生成战斗 → 状态更新 → 记忆."""
     if decision.type != "combat":
         return None
@@ -46,6 +54,9 @@ async def process_combat_action(
     if not pc_id or not target_id:
         return None
 
+    plot_brief = dm_record.plot_brief if dm_record else ""
+    hints = dm_record.hints if dm_record else []
+
     pc = (pcs or {}).get(pc_id)
     target = _target(target_id, target_type, pcs, actors)
     if pc is None or target is None:
@@ -53,7 +64,7 @@ async def process_combat_action(
         return None
 
     # 1. 走到目标旁边 / Move adjacent to target
-    waypoints = _move_to_target(pc, target, pcs, actors)
+    waypoints = _move_to_target(pc, target, pcs, actors, scene, scene_objects)
 
     # 2. LLM 生成战斗过程、结果与旁白 / LLM generates combat narration and result
     narration_result = await _generate_narration(
@@ -61,9 +72,9 @@ async def process_combat_action(
         target=target,
         scene=scene,
         plot_brief=plot_brief,
-        hints=hints or [],
+        hints=hints,
         tick=tick,
-        pc_memory_map=pc_memory_map,
+        memories=memories,
         config=config,
     )
 
@@ -76,7 +87,7 @@ async def process_combat_action(
     result_text = narration_result.result or ("目标被击败" if target_defeated else "双方仍在僵持")
 
     # 4. 写入记忆 / Stage memory
-    _store_combat_memory(pc_id, target_id, target_type, narration, tick, pc_memory_map)
+    _store_combat_memory(pc_id, target_id, target_type, narration, tick, memories)
 
     logger.info(
         "[combat] %s → %s : %s (defeated=%s)",
@@ -85,8 +96,9 @@ async def process_combat_action(
         narration[:30] if narration else "无旁白",
         target_defeated,
     )
-    return CombatActionResult(
+    return Action(
         pc_id=pc_id,
+        action_type="combat",
         target_id=target_id,
         target_type=target_type,
         waypoints=waypoints,
@@ -147,7 +159,7 @@ async def _generate_narration(
     plot_brief: str,
     hints: list[str],
     tick: int,
-    pc_memory_map: dict[str, list[dict]] | None,
+    memories: dict[str, list[Memory]] | None,
     config: RunnableConfig = None,
 ) -> CombatNarrationSchema:
     """调用 LLM 生成战斗旁白与结果 / Generate combat narration and result via LLM."""
@@ -156,8 +168,8 @@ async def _generate_narration(
         raise RuntimeError("[combat] LLM client not configured")
 
     query = f"{plot_brief} {target.name} {scene.description if scene else ''}".strip()
-    memories = await retrieve_memories(
-        pc.id, query, config=config, top_k=5, pc_memory_map=pc_memory_map, current_tick=tick
+    memory_texts = await retrieve_memories(
+        pc.id, query, config=config, top_k=5, memories=memories, current_tick=tick
     )
 
     ctx = {
@@ -166,7 +178,7 @@ async def _generate_narration(
         "scene": scene,
         "plot_brief": plot_brief,
         "hints": hints,
-        "memories": memories,
+        "memories": memory_texts,
     }
 
     system = _PROMPTS.get_template("combat/_combat_system.jinja").render(**ctx)
@@ -215,13 +227,13 @@ def _store_combat_memory(
     target_type: str,
     narration: str,
     tick: int,
-    pc_memory_map: dict[str, list[Memory]] | None,
+    memories: dict[str, list[Memory]] | None,
 ) -> None:
-    """把战斗记录写入 pc_memory_map / Stage combat memory into state."""
-    if pc_memory_map is None or not narration:
+    """把战斗记录写入 memories / Stage combat memory into state."""
+    if memories is None or not narration:
         return
     target_label = target_id if target_type != "actor" else f"敌人 {target_id}"
-    pc_memory_map.setdefault(pc_id, []).append(
+    memories.setdefault(pc_id, []).append(
         Memory(
             id=f"mem_{pc_id}_{tick}_{uuid4().hex[:6]}",
             pc_id=pc_id,

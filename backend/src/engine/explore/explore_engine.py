@@ -6,14 +6,22 @@
 """
 
 from pathlib import Path
-from typing import Any
 from uuid import uuid4
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, Decision, ExploreActionResult, Memory, PlayerCharacter, Scene, SceneObject
+from ...domain import (
+    Action,
+    Actor,
+    Decision,
+    DMRecord,
+    Memory,
+    PlayerCharacter,
+    Scene,
+    SceneObject,
+)
 from ...schemas.llm_output import ExploreOutputSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import dict_without, get_llm, validate_position
@@ -27,16 +35,15 @@ _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
 
 async def process_explore_action(
     decision: Decision,
+    tick: int,
     scene: Scene | None = None,
     scene_objects: list[SceneObject] | None = None,
     pcs: dict[str, PlayerCharacter] | None = None,
     actors: dict[str, Actor] | None = None,
-    plot_brief: str = "",
-    hints: list[str] | None = None,
-    tick: int = 0,
-    pc_memory_map: dict[str, list[Memory]] | None = None,
+    dm_record: DMRecord | None = None,
+    memories: dict[str, list[Memory]] | None = None,
     config: RunnableConfig = None,
-) -> ExploreActionResult | None:
+) -> Action | None:
     """处理单个 explore 决策 → LLM 生成终点+探索记录，直接修改 PC 领域模型，防重叠."""
     if decision.type != "explore":
         return None
@@ -46,23 +53,29 @@ async def process_explore_action(
     if pc is None:
         return None
 
-    map_width, map_height = _get_map_bounds(scene)  # 获取地图边界 / Get map bounds
-    start_x, start_y = pc.position_x, pc.position_y  # 记录起点 / Record start position
+    # 从 dm_record 读取剧情上下文 / Read plot context from dm_record
+    plot_brief = dm_record.plot_brief if dm_record else ""
+    hints = dm_record.hints if dm_record else []
+
+    # 获取地图边界 / Get map bounds
+    map_width, map_height = _get_map_bounds(scene)
+    # 记录起点 / Record start position
+    start_x, start_y = pc.position_x, pc.position_y
 
     # 调用 LLM 生成探索目的地与记录 / Generate destination and record via LLM
     result = await _generate_explore_data(
         pc_id=pc_id,
-        scene=scene or {},
+        scene=scene,
         scene_objects=scene_objects,
         plot_brief=plot_brief,
-        hints=hints or [],
+        hints=hints,
         start_x=start_x,
         start_y=start_y,
         map_width=map_width,
         map_height=map_height,
         pcs=pcs,
         tick=tick,
-        pc_memory_map=pc_memory_map,
+        memories=memories,
         config=config,
     )
 
@@ -73,11 +86,12 @@ async def process_explore_action(
     end_y = result.end_y
     explore_record = result.explore_record
 
-    # 防止角色重叠 + 地图碰撞
+    # 防止角色重叠 + 地图碰撞 / Avoid overlap and map collision
     old_x, old_y = end_x, end_y
     end_x, end_y = validate_position(
         end_x, end_y, dict_without(pcs, pc_id), actors, scene, scene_objects
     )
+    # 如果坐标被调整则记录日志 / Log if destination was adjusted
     if (old_x, old_y) != (end_x, end_y):
         logger.info(
             "[engine] %s explore: dest (%d,%d) blocked, adjusted to (%d,%d)",
@@ -88,10 +102,12 @@ async def process_explore_action(
             end_y,
         )
 
+    # 直接修改 PC 领域模型坐标 / Mutate PC domain model coordinates
     pc.position_x = end_x
     pc.position_y = end_y
 
-    _store_explore_memory(pc_id, explore_record, tick, pc_memory_map)
+    # 写入本 tick 记忆 / Stage memory for current tick
+    _store_explore_memory(pc_id, explore_record, tick, memories)
 
     logger.info(
         "[engine] %s explore: (%d,%d) → (%d,%d) | %s",
@@ -103,17 +119,20 @@ async def process_explore_action(
         explore_record[:30],
     )
 
-    return ExploreActionResult(
-        pc_id=pc_id,  # 探索者 id
-        waypoints=[{"x": start_x, "y": start_y}, {"x": end_x, "y": end_y}],  # 起点→终点
-        explore_record=explore_record,  # LLM 生成的探索记录
+    return Action(
+        pc_id=pc_id,
+        action_type="explore",
+        target_id="",
+        target_type="",
+        waypoints=[{"x": start_x, "y": start_y}, {"x": end_x, "y": end_y}],
+        explore_record=explore_record,
     )
 
 
 async def _generate_explore_data(
     pc_id: str,
-    scene: dict[str, Any],
-    scene_objects: list[dict[str, Any]] | None,
+    scene: Scene | None,
+    scene_objects: list[SceneObject] | None,
     plot_brief: str,
     hints: list[str],
     start_x: int,
@@ -122,7 +141,7 @@ async def _generate_explore_data(
     map_height: int,
     pcs: dict[str, PlayerCharacter] | None,
     tick: int,
-    pc_memory_map: dict[str, list[dict]] | None,
+    memories: dict[str, list[Memory]] | None,
     config: RunnableConfig = None,
 ) -> ExploreOutputSchema | None:
     """LLM 生成探索终点坐标 + 探索记录 / LLM generates destination + explore_record."""
@@ -133,16 +152,16 @@ async def _generate_explore_data(
     pc = _pc_identity(pc_id, pcs)
 
     query = f"{plot_brief} {scene.description if scene else ''}".strip()
-    memories = await retrieve_memories(
-        pc_id, query, config=config, top_k=5, pc_memory_map=pc_memory_map, current_tick=tick
+    memory_texts = await retrieve_memories(
+        pc_id, query, config=config, top_k=5, memories=memories, current_tick=tick
     )
 
     ctx = {
         "pc": pc,
         "plot_brief": plot_brief,
         "hints": hints,
-        "memories": memories,
-        "scene": scene.model_dump() if scene else {},
+        "memories": memory_texts,
+        "scene": scene or {},
         "map_width": map_width,
         "map_height": map_height,
         "scene_objects": scene_objects or [],
@@ -153,15 +172,18 @@ async def _generate_explore_data(
     system = _PROMPTS.get_template("explore/_explore_system.jinja").render(**ctx)
     prompt = _PROMPTS.get_template("explore/explore.jinja").render(**ctx)
 
+    # 调用 LLM 生成探索结果 / Call LLM to generate exploration result
     result = await llm.call_structured(
         "explore",
         ExploreOutputSchema,
         [SystemMessage(content=system), HumanMessage(content=prompt)],
     )
 
+    # 将坐标限制在地图范围内 / Clamp coordinates within map bounds
     result.end_x = max(0, min(map_width - 1, result.end_x))
     result.end_y = max(0, min(map_height - 1, result.end_y))
 
+    # 如果 LLM 返回原地则跳过 / Skip if LLM returns same position
     if result.end_x == start_x and result.end_y == start_y:
         logger.info("[engine] %s explore: LLM returned same position, skipping", pc_id)
         return None
@@ -169,7 +191,7 @@ async def _generate_explore_data(
     return result
 
 
-def _get_map_bounds(scene: dict[str, Any] | None) -> tuple[int, int]:
+def _get_map_bounds(scene: Scene | None) -> tuple[int, int]:
     if scene is None:
         return 40, 40
     return scene.map_width, scene.map_height
@@ -179,11 +201,11 @@ def _store_explore_memory(
     pc_id: str,
     explore_record: str,
     tick: int,
-    pc_memory_map: dict[str, list[Memory]] | None,
+    memories: dict[str, list[Memory]] | None,
 ) -> None:
-    if pc_memory_map is None or not explore_record:
+    if memories is None or not explore_record:
         return
-    pc_memory_map.setdefault(pc_id, []).append(
+    memories.setdefault(pc_id, []).append(
         Memory(
             id=f"mem_{pc_id}_{tick}_{uuid4().hex[:6]}",
             pc_id=pc_id,

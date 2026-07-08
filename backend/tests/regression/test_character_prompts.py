@@ -21,7 +21,6 @@ def _pc_context():
             "race": "human",
             "status": "active",
         },
-        
         "hints": ["注意十字路口的动静"],
         "scene": {
             "id": "crossroad",

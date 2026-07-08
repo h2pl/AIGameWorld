@@ -2,6 +2,7 @@
 
 from langgraph.checkpoint.memory import MemorySaver
 
+from src.domain import Scene
 from src.graph.graph import build_tick_graph
 
 
@@ -9,13 +10,11 @@ def _graph_input(**overrides):
     return {
         "tick": 5,
         "world_id": "world-1",
-        "scene": {},
+        "scene": Scene(id=""),
         "scene_objects": [],
         "actions": [],
         "dm_record": None,
-        
         "pc_decisions": [],
-        
         **overrides,
     }
 

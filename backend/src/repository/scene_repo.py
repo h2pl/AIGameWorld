@@ -1,5 +1,6 @@
 """场景仓储 / Scene Repository."""
 
+import contextlib
 import json
 
 from ..domain import Scene, SceneObject, SceneObjectType
@@ -135,10 +136,8 @@ class SceneRepo:
 def _row_to_scene(row, world_id: str = "") -> Scene:
     """数据库行转 Scene 领域模型."""
     ext_json = row.get("ext_json", "{}") or "{}"
-    try:
-        ext = json.loads(ext_json)
-    except json.JSONDecodeError:
-        ext = {}
+    with contextlib.suppress(json.JSONDecodeError):
+        json.loads(ext_json)
     return Scene(
         id=row["id"],
         name=row.get("name", ""),

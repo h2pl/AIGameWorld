@@ -1,11 +1,17 @@
 """Services 测试——对齐当前 graph/service/engine 结构。"""
 
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.domain import Action, Decision, DMRecord, Scene, SceneObject, SceneObjectType
+from src.domain import (
+    Action,
+    Decision,
+    DMRecord,
+    Scene,
+    SceneObject,
+    SceneObjectType,
+)
 from src.domain.player_character import PlayerCharacter
 from src.services import (
     dm_service,
@@ -27,9 +33,9 @@ def _overall_state(**overrides):
         "actions": [],
         "dm_record": None,
         "pc_decisions": [],
-        
         "pcs": {},
         "actors": {},
+        "memories": {},
         **overrides,
     }
 
@@ -85,8 +91,6 @@ class TestCharacterService:
             result = await pc_service.decide(
                 _overall_state(
                     tick=3,
-                    plot_brief="战斗开始",
-                    scene_id="scene-1",
                     scene=scene,
                     scene_objects=scene_objects,
                     pcs=pcs,
@@ -94,12 +98,12 @@ class TestCharacterService:
             )
         mock_decide.assert_awaited_once()
         assert mock_decide.call_args.kwargs["pc_id"] == "pc-1"
-        assert mock_decide.call_args.kwargs["scene"] == scene
-        assert mock_decide.call_args.kwargs["plot_brief"] == ""
-        assert mock_decide.call_args.kwargs["scene_id"] == "scene-1"
         assert mock_decide.call_args.kwargs["tick"] == 3
-        assert mock_decide.call_args.kwargs["pcs"] == pcs
+        assert mock_decide.call_args.kwargs["scene"] == scene
         assert mock_decide.call_args.kwargs["scene_objects"] == scene_objects
+        assert mock_decide.call_args.kwargs["pcs"] == pcs
+        assert mock_decide.call_args.kwargs["actors"] == {}
+        assert mock_decide.call_args.kwargs["dm_record"] is None
         assert result == {"pc_decisions": [decision]}
 
     @pytest.mark.asyncio
@@ -126,56 +130,67 @@ class TestCharacterService:
                 "process_combat_action",
                 AsyncMock(return_value=None),
             ) as mock_combat,
+            patch.object(
+                pc_service.explore_engine,
+                "process_explore_action",
+                AsyncMock(return_value=None),
+            ),
         ):
             result = await pc_service.act(state)
         mock_talk.assert_awaited_once_with(
             decision=decision,
-            plot_brief="",
-            hints=[],
-            scene_id="scene-1",
             tick=2,
-            pcs={},
-            actors={},
-            pc_memory_map={},
-            config=None,
-        )
-        mock_interact.assert_awaited_once_with(
-            decision=decision,
             scene=Scene(id="scene-1"),
             scene_objects=[],
             pcs={},
             actors={},
+            dm_record=None,
+            memories={},
+            config=None,
+        )
+        mock_interact.assert_awaited_once_with(
+            decision=decision,
             tick=2,
-            plot_brief="",
-            hints=[],
-            pc_memory_map={},
+            scene=Scene(id="scene-1"),
+            scene_objects=[],
+            pcs={},
+            actors={},
+            dm_record=None,
+            memories={},
             config=None,
         )
         mock_combat.assert_awaited_once_with(
             decision=decision,
+            tick=2,
             scene=Scene(id="scene-1"),
+            scene_objects=[],
             pcs={},
             actors={},
-            plot_brief="",
-            hints=[],
-            tick=2,
-            pc_memory_map={},
+            dm_record=None,
+            memories={},
             config=None,
         )
         assert result == {"actions": []}
 
     @pytest.mark.asyncio
     async def test_act_formats_action_result_uniformly(self):
-        """把命中的 engine 结果格式化成 {order, action_type, target_id, target_type, result} /
-        Format the matching engine's result into {order, action_type, target_id, target_type, result}."""
+        """把命中的 engine 结果格式化成 {order, action_type, target_id, target_type, ...} /
+        Format the matching engine's result into {order, action_type, target_id, target_type, ...}."""
         decision = Decision(pc_id="pc-1", type="talk", target_id="pc-2", target_type="pc")
-        talk_result = {"kind": "pc_talk", "participants": ["pc-1", "pc-2"], "turns": []}
+        talk_action = Action(
+            pc_id="pc-1",
+            action_type="talk",
+            target_id="pc-2",
+            target_type="pc",
+            participants=["pc-1", "pc-2"],
+            turns=[],
+        )
         state = _overall_state(pc_decisions=[decision])
         with (
             patch.object(
                 pc_service.talk_engine,
                 "process_talk_action",
-                AsyncMock(return_value=talk_result),
+                AsyncMock(return_value=talk_action),
             ),
             patch.object(
                 pc_service.interact_engine,
@@ -185,6 +200,11 @@ class TestCharacterService:
             patch.object(
                 pc_service.combat_engine,
                 "process_combat_action",
+                AsyncMock(return_value=None),
+            ),
+            patch.object(
+                pc_service.explore_engine,
+                "process_explore_action",
                 AsyncMock(return_value=None),
             ),
         ):
@@ -197,7 +217,8 @@ class TestCharacterService:
                     action_type="talk",
                     target_id="pc-2",
                     target_type="pc",
-                    result=talk_result,
+                    participants=["pc-1", "pc-2"],
+                    turns=[],
                 )
             ]
         }
@@ -213,7 +234,9 @@ class TestDMAndReflectionService:
     @pytest.mark.asyncio
     async def test_dm_create_maps_engine_response(self):
         """DM create 映射 engine 响应 / DM create maps engine response."""
-        engine_result = DMRecord(tick=4, world_id="w-1", hints=["去酒馆"], plot_brief="今晚有冲突", scene_id="tavern")
+        engine_result = DMRecord(
+            tick=4, world_id="w-1", hints=["去酒馆"], plot_brief="今晚有冲突", scene_id="tavern"
+        )
         with patch.object(dm_service.dm_engine, "dm_create", AsyncMock(return_value=engine_result)):
             result = await dm_service.dm_create(_overall_state(tick=4, world_id="w-1"))
         dm_rec = result["dm_record"]
@@ -225,9 +248,7 @@ class TestDMAndReflectionService:
     @pytest.mark.asyncio
     async def test_dm_narrate_returns_narrative(self):
         """DM narrate 返回叙事文本 / DM narrate returns narrative text."""
-        with patch.object(
-            dm_service.dm_engine, "dm_narrate", AsyncMock(return_value="战斗爆发。")
-        ):
+        with patch.object(dm_service.dm_engine, "dm_narrate", AsyncMock(return_value="战斗爆发。")):
             result = await dm_service.dm_narrate(
                 _overall_state(tick=10, dm_record=DMRecord(tick=10, world_id="w-1"))
             )
@@ -297,10 +318,12 @@ class TestEventService:
             actions=[
                 Action(
                     order=0,
+                    pc_id="pc-1",
                     action_type="talk",
                     target_id="pc-2",
                     target_type="pc",
-                    result={"kind": "pc_talk", "pc_id": "pc-1"},
+                    participants=["pc-1", "pc-2"],
+                    turns=[{"speaker_id": "pc-1", "text": "你好。"}],
                 )
             ],
         )
@@ -343,7 +366,13 @@ class TestEventService:
         state = _overall_state(
             tick=0,
             scene_id="scene-1",
-            dm_record=DMRecord(tick=0, world_id="w-1", scene_id="scene-1", plot_brief="酒馆冲突一触即发。", hints=["注意角落里的陌生人"]),
+            dm_record=DMRecord(
+                tick=0,
+                world_id="w-1",
+                scene_id="scene-1",
+                plot_brief="酒馆冲突一触即发。",
+                hints=["注意角落里的陌生人"],
+            ),
             actions=[],
         )
         result = await tick_init_service.build_dm_create_event(state)
@@ -392,10 +421,10 @@ class TestEventService:
             actions=[
                 Action(
                     order=0,
+                    pc_id="pc-1",
                     action_type="character_combat",
                     target_id="npc-1",
                     target_type="actor",
-                    result={"kind": "character_combat", "pc_id": "pc-1"},
                 )
             ],
         )

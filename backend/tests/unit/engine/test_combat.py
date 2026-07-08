@@ -1,13 +1,13 @@
-from src.domain.scene import Scene
 """Combat Engine 单元测试——纯 LLM 驱动战斗 / Combat engine tests for LLM-driven combat."""
 
 from unittest.mock import AsyncMock
 
 import pytest
 
-from src.domain import Memory
+from src.domain import Decision, Memory
 from src.domain.actor import Actor
 from src.domain.player_character import PlayerCharacter
+from src.domain.scene import Scene
 from src.engine.combat.combat_engine import process_combat_action
 from src.schemas.llm_output import CombatNarrationSchema
 
@@ -58,14 +58,16 @@ class TestCombatAction:
     @pytest.mark.asyncio
     async def test_non_combat_action_skipped(self):
         event = await process_combat_action(
-            decision={"type": "talk", "pc_id": "pc1", "target_id": "npc1"},
+            decision=Decision(type="talk", pc_id="pc1", target_id="npc1"),
+            tick=0,
         )
         assert event is None
 
     @pytest.mark.asyncio
     async def test_combat_without_target_skipped(self):
         event = await process_combat_action(
-            decision={"type": "combat", "pc_id": "pc1"},
+            decision=Decision(type="combat", pc_id="pc1"),
+            tick=0,
         )
         assert event is None
 
@@ -79,12 +81,12 @@ class TestCombatAction:
         pcs = {"pc1": _pc(position_x=0, position_y=0)}
         actors = {"goblin": _actor(position_x=5, position_y=5)}
         event = await process_combat_action(
-            decision={
-                "type": "combat",
-                "pc_id": "pc1",
-                "target_id": "goblin",
-                "target_type": "actor",
-            },
+            decision=Decision(
+                type="combat",
+                pc_id="pc1",
+                target_id="goblin",
+                target_type="actor",
+            ),
             scene=Scene(id="forest", name="森林", type="wilderness"),
             pcs=pcs,
             actors=actors,
@@ -92,7 +94,7 @@ class TestCombatAction:
             config={"configurable": {"llm": llm}},
         )
         assert event is not None
-        assert event.kind == "pc_combat"
+        assert event.action_type == "combat"
         assert event.target_id == "goblin"
         assert len(event.waypoints) == 2
         final = event.waypoints[-1]
@@ -114,12 +116,12 @@ class TestCombatAction:
         pcs = {"pc1": _pc(position_x=4, position_y=5)}
         actors = {"goblin": _actor(position_x=5, position_y=5)}
         event = await process_combat_action(
-            decision={
-                "type": "combat",
-                "pc_id": "pc1",
-                "target_id": "goblin",
-                "target_type": "actor",
-            },
+            decision=Decision(
+                type="combat",
+                pc_id="pc1",
+                target_id="goblin",
+                target_type="actor",
+            ),
             scene=Scene(id="forest", name="森林", type="wilderness"),
             pcs=pcs,
             actors=actors,
@@ -134,29 +136,29 @@ class TestCombatAction:
 
     @pytest.mark.asyncio
     async def test_combat_stores_memory(self):
-        """combat 结果写入 pc_memory_map / Combat result is staged into state memory map."""
+        """combat 结果写入 memories / Combat result is staged into state memory map."""
         llm = AsyncMock()
         llm.call_structured = AsyncMock(
             return_value=CombatNarrationSchema(narration="他击中了敌人。")
         )
-        pc_memory_map: dict[str, list[Memory]] = {}
+        memories: dict[str, list[Memory]] = {}
         pcs = {"pc1": _pc(position_x=4, position_y=5)}
         actors = {"goblin": _actor(position_x=5, position_y=5)}
         await process_combat_action(
-            decision={
-                "type": "combat",
-                "pc_id": "pc1",
-                "target_id": "goblin",
-                "target_type": "actor",
-            },
+            decision=Decision(
+                type="combat",
+                pc_id="pc1",
+                target_id="goblin",
+                target_type="actor",
+            ),
             scene=Scene(id="forest", name="森林", type="wilderness"),
             pcs=pcs,
             actors=actors,
             tick=3,
-            pc_memory_map=pc_memory_map,
+            memories=memories,
             config={"configurable": {"llm": llm}},
         )
-        assert len(pc_memory_map.get("pc1", [])) == 1
-        mem = pc_memory_map["pc1"][0]
+        assert len(memories.get("pc1", [])) == 1
+        mem = memories["pc1"][0]
         assert mem.memory_type == "combat"
         assert mem.tick == 3

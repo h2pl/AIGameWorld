@@ -2,11 +2,11 @@
 
 from unittest.mock import AsyncMock
 
-from src.domain.scene import Scene
 import pytest
 
-from src.domain import Memory
+from src.domain import Decision, Memory
 from src.domain.player_character import PlayerCharacter
+from src.domain.scene import Scene
 from src.domain.scene_object import SceneObject, SceneObjectType
 from src.engine.interact.interact_engine import process_interact_action
 from src.schemas.llm_output import InteractOutputSchema
@@ -43,13 +43,15 @@ class TestInteractEngine:
     @pytest.mark.asyncio
     async def test_non_interact_action_skipped(self):
         """非 interact 类型被跳过 / Non-interact action is skipped."""
-        event = await process_interact_action(decision={"type": "talk", "pc_id": "pc1"})
+        event = await process_interact_action(decision=Decision(type="talk", pc_id="pc1"), tick=0)
         assert event is None
 
     @pytest.mark.asyncio
     async def test_interact_without_target_skipped(self):
         """无目标物体时跳过 / Interact without target is skipped."""
-        event = await process_interact_action(decision={"type": "interact", "pc_id": "pc1"})
+        event = await process_interact_action(
+            decision=Decision(type="interact", pc_id="pc1"), tick=0
+        )
         assert event is None
 
     @pytest.mark.asyncio
@@ -69,15 +71,23 @@ class TestInteractEngine:
         )
         pc = _pc(position_x=0, position_y=0)
         event = await process_interact_action(
-            decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
+            decision=Decision(type="interact", pc_id="pc1", target_id="chest1"),
+            tick=1,
             scene=Scene(id="test", map_width=40, map_height=40),
             scene_objects=[
-                SceneObject(id="chest1", name="宝箱", object_type=SceneObjectType.CONTAINER, position_x=10, position_y=10, interact_data={"locked": False}),
+                SceneObject(
+                    id="chest1",
+                    name="宝箱",
+                    object_type=SceneObjectType.CONTAINER,
+                    position_x=10,
+                    position_y=10,
+                    interact_data={"locked": False},
+                ),
             ],
             pcs={"pc1": pc},
             config=_config(scene_obj=chest, llm=llm),
         )
-        assert event.kind == "pc_interact"
+        assert event.action_type == "interact"
         assert len(event.waypoints) == 2
         final = event.waypoints[-1]
         assert abs(final["x"] - 10) <= 1 and abs(final["y"] - 10) <= 1
@@ -102,10 +112,18 @@ class TestInteractEngine:
             )
         )
         event = await process_interact_action(
-            decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
+            decision=Decision(type="interact", pc_id="pc1", target_id="chest1"),
+            tick=2,
             scene=Scene(id="test", map_width=40, map_height=40),
             scene_objects=[
-                SceneObject(id="chest1", name="宝箱", object_type=SceneObjectType.CONTAINER, position_x=5, position_y=5, interact_data={"locked": False}),
+                SceneObject(
+                    id="chest1",
+                    name="宝箱",
+                    object_type=SceneObjectType.CONTAINER,
+                    position_x=5,
+                    position_y=5,
+                    interact_data={"locked": False},
+                ),
             ],
             pcs={"pc1": _pc(position_x=0, position_y=0)},
             config=_config(scene_obj=chest, llm=llm),
@@ -132,10 +150,18 @@ class TestInteractEngine:
             )
         )
         event = await process_interact_action(
-            decision={"type": "interact", "pc_id": "pc1", "target_id": "trap1"},
+            decision=Decision(type="interact", pc_id="pc1", target_id="trap1"),
+            tick=2,
             scene=Scene(id="test", map_width=40, map_height=40),
             scene_objects=[
-                SceneObject(id="trap1", name="毒刺陷阱", object_type=SceneObjectType.TRAP, position_x=5, position_y=5, interact_data={"dc": 15}),
+                SceneObject(
+                    id="trap1",
+                    name="毒刺陷阱",
+                    object_type=SceneObjectType.TRAP,
+                    position_x=5,
+                    position_y=5,
+                    interact_data={"dc": 15},
+                ),
             ],
             pcs={"pc1": _pc(position_x=0, position_y=0)},
             config=_config(scene_obj=trap, llm=llm),
@@ -145,7 +171,7 @@ class TestInteractEngine:
 
     @pytest.mark.asyncio
     async def test_interact_stores_memory(self):
-        """交互结果写入 pc_memory_map / Interaction result is staged into state memory map."""
+        """交互结果写入 memories / Interaction result is staged into state memory map."""
         chest = SceneObject(
             id="chest1",
             name="宝箱",
@@ -166,20 +192,27 @@ class TestInteractEngine:
                 "llm": llm,
             }
         }
-        pc_memory_map: dict[str, list[Memory]] = {}
+        memories: dict[str, list[Memory]] = {}
         await process_interact_action(
-            decision={"type": "interact", "pc_id": "pc1", "target_id": "chest1"},
+            decision=Decision(type="interact", pc_id="pc1", target_id="chest1"),
             scene=Scene(id="test", map_width=40, map_height=40),
             scene_objects=[
-                SceneObject(id="chest1", name="宝箱", object_type=SceneObjectType.CONTAINER, position_x=5, position_y=5, interact_data={"locked": False}),
+                SceneObject(
+                    id="chest1",
+                    name="宝箱",
+                    object_type=SceneObjectType.CONTAINER,
+                    position_x=5,
+                    position_y=5,
+                    interact_data={"locked": False},
+                ),
             ],
             pcs={"pc1": _pc(position_x=0, position_y=0)},
             tick=3,
-            pc_memory_map=pc_memory_map,
+            memories=memories,
             config=config,
         )
-        assert len(pc_memory_map.get("pc1", [])) == 1
-        mem = pc_memory_map["pc1"][0]
+        assert len(memories.get("pc1", [])) == 1
+        mem = memories["pc1"][0]
         assert mem.pc_id == "pc1"  # 记忆归属 PC / Memory belongs to PC
         assert mem.tick == 3  # tick 号 / Tick number
         assert mem.memory_type == "interact"

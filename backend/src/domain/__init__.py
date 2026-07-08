@@ -7,19 +7,15 @@ All models map 1:1 to DB tables, inherit DomainModel (with world_id + ext_json).
 from .action import Action
 from .actor import Actor
 from .base import DomainModel
-from .combat_result import CombatActionResult
 from .decision import Decision
 from .dm_record import DMRecord
 from .event import SEQUENCE, TICK_EVENT_SEQUENCE, Event, TickEvent, TickEventType
-from .explore_result import ExploreActionResult
-from .interact_result import InteractActionResult
 from .item import Item, ItemType
 from .memory import EntityType, Memory, MemoryPeriod, MemoryType, importance_of
 from .player_character import PlayerCharacter
 from .scene import Scene
 from .scene_object import SceneObject, SceneObjectType
 from .story_summary import StorySummary
-from .talk_result import TalkActionResult
 from .world import World
 
 # 统一导出所有领域模型，供 service / engine / graph 共享类型
@@ -27,14 +23,11 @@ from .world import World
 __all__ = [
     "Action",
     "Actor",
-    "CombatActionResult",
     "Decision",
     "DMRecord",
     "DomainModel",
     "EntityType",
     "Event",
-    "ExploreActionResult",
-    "InteractActionResult",
     "Item",
     "ItemType",
     "Memory",
@@ -46,7 +39,6 @@ __all__ = [
     "SceneObjectType",
     "SEQUENCE",
     "StorySummary",
-    "TalkActionResult",
     "TickEvent",
     "TickEventType",
     "TICK_EVENT_SEQUENCE",

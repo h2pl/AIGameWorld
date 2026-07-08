@@ -9,8 +9,9 @@ from .logging import get_logger
 from .overlap import build_occupied, dict_without, find_vacant  # noqa: F401
 
 if TYPE_CHECKING:
-    from ..domain import Actor, PlayerCharacter, Scene, SceneObject
     from langchain_core.runnables.config import RunnableConfig
+
+    from ..domain import Actor, PlayerCharacter, Scene, SceneObject
 
 logger = get_logger(__name__)
 

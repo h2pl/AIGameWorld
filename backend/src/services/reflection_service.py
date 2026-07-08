@@ -76,7 +76,7 @@ async def _reflect_one(
         pc_type=char_type,
         arc_stage=arc_stage,
         arc_description=arc_desc,
-        memories=[{"content": m.content, "importance": m.importance} for m in recent_mems],
+        memories=recent_mems,
         recent_reflections=past_texts,
         tick=tick,
         config=config,

@@ -17,5 +17,3 @@ class Scene(DomainModel):
     map_width: int = Field(default=40, ge=1)
     map_height: int = Field(default=40, ge=1)
     tilemap_summary: str = ""
-
-

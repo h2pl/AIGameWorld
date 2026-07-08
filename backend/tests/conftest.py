@@ -57,7 +57,6 @@ def base_state() -> OverallState:
         "actions": [],
         "dm_record": None,
         "pc_decisions": [],
-        
     }
 
 

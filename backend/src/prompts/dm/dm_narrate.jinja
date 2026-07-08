@@ -60,27 +60,26 @@
 {% for action in actions %}
 - 第 {{ action.order }} 步：{{ action.pc_id }} 执行 {{ action.action_type }}
   目标：{{ action.target_id }}（{{ action.target_type }}）
-  {% set result = action.result or {} %}
-  {% if action.action_type == "talk" and result.get("turns") %}
+  {% if action.action_type == "talk" and action.turns %}
   对话内容：
-    {% for turn in result.turns %}
+    {% for turn in action.turns %}
     · {{ turn.speaker_id }}：{{ turn.text }}
     {% endfor %}
   {% elif action.action_type == "explore" %}
-  探索记录：{{ result.get("explore_record") or "无" }}
-  {% if result.get("waypoints") %}
-  路径：({{ result.waypoints[0].x }}, {{ result.waypoints[0].y }}) → ({{ result.waypoints[-1].x }}, {{ result.waypoints[-1].y }})
+  探索记录：{{ action.explore_record or "无" }}
+  {% if action.waypoints %}
+  路径：({{ action.waypoints[0]["x"] }}, {{ action.waypoints[0]["y"] }}) → ({{ action.waypoints[-1]["x"] }}, {{ action.waypoints[-1]["y"] }})
   {% endif %}
   {% elif action.action_type == "interact" %}
-  交互结果：{{ "成功" if result.get("success") else "失败" }} — {{ result.get("narration") or "无" }}
+  交互结果：{{ "成功" if action.success else "失败" }} — {{ action.narration or "无" }}
   {% elif action.action_type == "combat" %}
-  战斗结果：{{ result.get("result") or "无" }}
+  战斗结果：{{ action.result or "无" }}
   {% endif %}
 {% endfor %}
 {% elif events %}
 本 tick 事件摘要：
 {% for ev in events %}
-- {{ ev.type }}：{{ ev.description }}
+- {{ ev }}
 {% endfor %}
 {% else %}
 本 tick 暂无角色行动。

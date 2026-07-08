@@ -5,14 +5,13 @@
 """
 
 from pathlib import Path
-from typing import Any
 from uuid import uuid4
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, Decision, InteractActionResult, Memory, PlayerCharacter, Scene
+from ...domain import Action, Actor, Decision, DMRecord, Memory, PlayerCharacter, Scene
 from ...domain.scene_object import SceneObject
 from ...schemas.llm_output import InteractOutputSchema
 from ...services.memory_service import retrieve_memories
@@ -27,16 +26,15 @@ _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
 
 async def process_interact_action(
     decision: Decision,
+    tick: int,
     scene: Scene | None = None,
     scene_objects: list[SceneObject] | None = None,
     pcs: dict[str, PlayerCharacter] | None = None,
     actors: dict[str, Actor] | None = None,
-    tick: int = 0,
-    plot_brief: str = "",
-    hints: list[str] | None = None,
-    pc_memory_map: dict[str, list[Memory]] | None = None,
+    dm_record: DMRecord | None = None,
+    memories: dict[str, list[Memory]] | None = None,
     config: RunnableConfig = None,
-) -> InteractActionResult | None:
+) -> Action | None:
     """处理单个 interact 决策：移动→LLM 裁决→记忆 / Resolve interact: move → LLM judge → memory."""
     if decision.type != "interact":
         return None
@@ -48,6 +46,10 @@ async def process_interact_action(
     pc = (pcs or {}).get(char_id)
     if pc is None:
         return None
+
+    plot_brief = dm_record.plot_brief if dm_record else ""
+    hints = dm_record.hints if dm_record else []
+
     scene_obj = await _load_scene_object(get_repo(config, "scene"), object_id)
 
     # 移动到物体旁边并记录路径 / Move PC adjacent to object and record waypoints
@@ -63,9 +65,9 @@ async def process_interact_action(
         scene_objects=scene_objects or [],
         pc=pc,
         plot_brief=plot_brief,
-        hints=hints or [],
+        hints=hints,
         tick=tick,
-        pc_memory_map=pc_memory_map,
+        memories=memories,
         config=config,
     )
 
@@ -73,7 +75,7 @@ async def process_interact_action(
     narration = interact_result.get("narration", "")
 
     # 存入记忆 / Stage memory
-    _store_interact_memory(char_id, object_id, scene_obj, success, narration, tick, pc_memory_map)
+    _store_interact_memory(char_id, object_id, scene_obj, success, narration, tick, memories)
 
     logger.info(
         "[interact] %s → %s : %s | %s",
@@ -82,8 +84,11 @@ async def process_interact_action(
         "success" if success else "fail",
         narration[:30],
     )
-    return InteractActionResult(
+    return Action(
         pc_id=char_id,
+        action_type="interact",
+        target_id=object_id,
+        target_type="scene_object",
         object_id=object_id,
         success=success,
         waypoints=waypoints,
@@ -108,7 +113,7 @@ async def _generate_interact(
     plot_brief: str,
     hints: list[str],
     tick: int,
-    pc_memory_map: dict[str, list[dict]] | None,
+    memories: dict[str, list[Memory]] | None,
     config: RunnableConfig = None,
 ) -> dict:
     """LLM 生成交互结果（success + narration）/ LLM generates interact result."""
@@ -118,8 +123,8 @@ async def _generate_interact(
     obj = _find_scene_object(object_id, scene, scene_objects)
 
     query = f"{plot_brief} {obj.name if obj else ''} {scene.description}".strip()
-    memories = await retrieve_memories(
-        pc_id, query, config=config, top_k=5, pc_memory_map=pc_memory_map, current_tick=tick
+    memory_texts = await retrieve_memories(
+        pc_id, query, config=config, top_k=5, memories=memories, current_tick=tick
     )
 
     ctx = {
@@ -128,7 +133,7 @@ async def _generate_interact(
         "scene": scene,
         "plot_brief": plot_brief,
         "hints": hints,
-        "memories": memories,
+        "memories": memory_texts,
     }
 
     system = _PROMPTS.get_template("interact/_interact_system.jinja").render(**ctx)
@@ -201,14 +206,14 @@ def _store_interact_memory(
     success: bool,
     narration: str,
     tick: int,
-    pc_memory_map: dict[str, list[Memory]] | None,
+    memories: dict[str, list[Memory]] | None,
 ) -> None:
-    """把交互结果写入 pc_memory_map / Stage interaction result into state."""
-    if pc_memory_map is None:
+    """把交互结果写入 memories / Stage interaction result into state."""
+    if memories is None:
         return
     obj_name = scene_obj.name if scene_obj else object_id
     content = f"与 {obj_name} 交互（{'成功' if success else '失败'}）：{narration}"
-    pc_memory_map.setdefault(pc_id, []).append(
+    memories.setdefault(pc_id, []).append(
         Memory(
             id=f"mem_{pc_id}_{tick}_{uuid4().hex[:6]}",
             pc_id=pc_id,

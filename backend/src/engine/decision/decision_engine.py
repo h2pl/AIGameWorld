@@ -6,7 +6,7 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, Decision, PlayerCharacter, Scene, SceneObject
+from ...domain import Actor, Decision, DMRecord, PlayerCharacter, Scene, SceneObject
 from ...schemas.llm_output import CharacterActionSchema, PCDecideSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm
@@ -26,14 +26,12 @@ _ACTION_TARGET_TYPES = {
 
 async def decide(
     pc_id: str,
-    scene: Scene | None,
-    plot_brief: str,
-    hints: list[str],
-    scene_id: str,
     tick: int,
+    scene: Scene | None = None,
+    scene_objects: list[SceneObject] | None = None,
     pcs: dict[str, PlayerCharacter] | None = None,
     actors: dict[str, Actor] | None = None,
-    scene_objects: list[SceneObject] | None = None,
+    dm_record: DMRecord | None = None,
     config: RunnableConfig = None,
 ) -> Decision:
     """为单个 PC 决策 / Decide for a PC, return exactly one action.
@@ -45,15 +43,18 @@ async def decide(
     llm = get_llm(config)
     if llm is None:
         raise RuntimeError("[decide] LLM client not configured")
-    pc_map = pcs or {}
-    actor_map = actors or {}
+    pcs = pcs or {}
+    actors = actors or {}
+
+    plot_brief = dm_record.plot_brief if dm_record else ""
+    hints = dm_record.hints if dm_record else []
 
     # 从领域模型 map 读当前 PC 身份 / Read current PC identity from domain model map
-    me = _map_identity(pc_map.get(pc_id))
+    me = _map_identity(pcs.get(pc_id))
     # 同场景其他 PC / Other PCs in scene
-    nearby_pcs = [_map_identity(pc_map[pid]) for pid in pc_map if pid != pc_id]
+    nearby_pcs = [_map_identity(pcs[pid]) for pid in pcs if pid != pc_id]
     # 同场景 Actor / Actors in scene
-    nearby_actors = [_map_identity(actor_map[aid]) for aid in actor_map]
+    nearby_actors = [_map_identity(actors[aid]) for aid in actors]
 
     query = f"{plot_brief} {scene.description if scene else ''}".strip()
     memories = await retrieve_memories(pc_id, query, config=config, top_k=5)
@@ -65,7 +66,7 @@ async def decide(
         "memories": memories,
         "scene": scene
         or {
-            "id": scene_id,
+            "id": scene.id if scene else (dm_record.scene_id if dm_record else ""),
             "name": "",
             "type": "",
             "description": "",
@@ -84,7 +85,7 @@ async def decide(
         [SystemMessage(content=system), HumanMessage(content=prompt)],
     )
 
-    validated = _validate(result.action, scene, scene_objects, pc_map, actor_map)
+    validated = _validate(result.action, scene, scene_objects, pcs, actors)
     return Decision(
         pc_id=pc_id,
         type=validated.action_type,

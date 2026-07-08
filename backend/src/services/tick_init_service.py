@@ -25,7 +25,8 @@ async def assign_pc_positions(state: OverallState, config=None) -> dict:
         return {"pcs": pcs}
 
     unset = [
-        pc for pc in pcs.values()
+        pc
+        for pc in pcs.values()
         if (pc.position_x == 0 and pc.position_y == 0) or pc.scene_id != scene_id
     ]
     if not unset:
@@ -71,8 +72,8 @@ async def build_scene_setup_event(state: OverallState, config=None) -> dict:
     if not scene_id:
         return {}
 
-    pcs = [pc.model_dump() for pc in state.get("pcs", {}).values()]
-    actors = [actor.model_dump() for actor in state.get("actors", {}).values()]
+    pcs = list(state.get("pcs", {}).values())
+    actors = list(state.get("actors", {}).values())
     scene_objects = state.get("scene_objects", [])
 
     event = TickEvent(
@@ -81,10 +82,10 @@ async def build_scene_setup_event(state: OverallState, config=None) -> dict:
         world_id=state.get("world_id", ""),
         payload={
             "scene_id": scene_id,
-            "scene": scene.model_dump(),
+            "scene": scene,
             "pcs": pcs,
             "actors": actors,
-            "scene_objects": [obj.model_dump() for obj in scene_objects],
+            "scene_objects": scene_objects,
         },
     )
     prev = list(state.get("tick_events", []))

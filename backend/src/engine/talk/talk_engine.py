@@ -5,14 +5,13 @@
 """
 
 from pathlib import Path
-from typing import Any
 from uuid import uuid4
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, Decision, Memory, PlayerCharacter, Scene, TalkActionResult
+from ...domain import Action, Actor, Decision, DMRecord, Memory, PlayerCharacter, Scene, SceneObject
 from ...schemas.llm_output import DialogueSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm, get_repo
@@ -26,16 +25,16 @@ _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
 
 async def process_talk_action(
     decision: Decision,
-    plot_brief: str,
-    hints: list[str],
-    scene_id: str,
     tick: int,
+    scene: Scene | None = None,
+    scene_objects: list[SceneObject] | None = None,
     pcs: dict[str, PlayerCharacter] | None = None,
     actors: dict[str, Actor] | None = None,
-    pc_memory_map: dict[str, list[Memory]] | None = None,
+    dm_record: DMRecord | None = None,
+    memories: dict[str, list[Memory]] | None = None,
     config: RunnableConfig = None,
-) -> TalkActionResult | None:
-    """处理单个 talk 决策 → 生成多轮对话，更新发起者坐标到目标旁边，写入 pc_memory_map"""
+) -> Action | None:
+    """处理单个 talk 决策 → 生成多轮对话，更新发起者坐标到目标旁边，写入 memories"""
     if decision.type != "talk":
         return None
 
@@ -43,6 +42,8 @@ async def process_talk_action(
     target_id = decision.target_id or ""
     target_type = decision.target_type or ""
     reason = decision.description
+    plot_brief = dm_record.plot_brief if dm_record else ""
+    hints = dm_record.hints if dm_record else []
 
     turns = await _generate_dialogue(
         char_id,
@@ -51,9 +52,9 @@ async def process_talk_action(
         reason,
         plot_brief,
         hints,
-        scene_id,
+        scene,
         tick,
-        pc_memory_map,
+        memories,
         config,
     )
     if not turns:
@@ -63,14 +64,20 @@ async def process_talk_action(
 
     # PC 记对话记忆，Actor 不记 / Only PC stores dialogue memory, actors don't
     if target_type != "actor":
-        _store_dialogue_memory(char_id, target_id, target_type, turns, tick, pc_memory_map)
+        _store_dialogue_memory(char_id, target_id, target_type, turns, tick, memories)
     else:
-        _store_dialogue_memory(char_id, None, target_type, turns, tick, pc_memory_map)
+        _store_dialogue_memory(char_id, None, target_type, turns, tick, memories)
 
-    waypoints = _update_talker_position(char_id, target_id, target_type, pcs, actors)
+    waypoints = _update_talker_position(
+        char_id, target_id, target_type, pcs, actors, scene, scene_objects
+    )
 
     logger.info("[engine] %s ↔ %s : %d turns", char_id, target_id, len(turns))
-    return TalkActionResult(
+    return Action(
+        pc_id=char_id,
+        action_type="talk",
+        target_id=target_id,
+        target_type=target_type,
         participants=[pid for pid in (char_id, target_id) if pid],
         turns=turns,
         waypoints=waypoints,
@@ -84,9 +91,9 @@ async def _generate_dialogue(
     reason: str,
     plot_brief: str,
     hints: list[str],
-    scene_id: str,
+    scene: Scene | None,
     tick: int,
-    pc_memory_map: dict[str, list[Memory]] | None,
+    memories: dict[str, list[Memory]] | None,
     config: RunnableConfig = None,
 ) -> list[dict]:
     """单次 LLM 调用生成双方多轮对话 / Generate a multi-turn dialogue in a single LLM call."""
@@ -100,12 +107,10 @@ async def _generate_dialogue(
     actor_repo = get_repo(config, "actor")
     initiator = await pc_repo.load_one(char_id) if pc_repo else None
     target = await _load_target(pc_repo, actor_repo, target_id, target_type)
-    scene = await _fetch_scene(scene_id, config)
-    scene_dict = scene.model_dump()
 
     query = f"{reason} {plot_brief} {scene.description if scene else ''}".strip()
-    memories = await retrieve_memories(
-        char_id, query, config=config, top_k=5, pc_memory_map=pc_memory_map, current_tick=tick
+    memory_texts = await retrieve_memories(
+        char_id, query, config=config, top_k=5, memories=memories, current_tick=tick
     )
 
     ctx = {
@@ -114,8 +119,8 @@ async def _generate_dialogue(
         "reason": reason,
         "plot_brief": plot_brief,
         "hints": hints,
-        "memories": memories,
-        "scene": scene_dict,
+        "memories": memory_texts,
+        "scene": scene,
     }
     try:
         system = _PROMPTS.get_template("talk/_dialogue_system.jinja").render(**ctx)
@@ -129,16 +134,7 @@ async def _generate_dialogue(
         DialogueSchema,
         [SystemMessage(content=system), HumanMessage(content=prompt)],
     )
-    return [t.model_dump() for t in result.turns]
-
-
-async def _fetch_scene(scene_id: str, config: RunnableConfig = None) -> Scene:
-    """按 scene_id 查询场景信息 / Fetch scene info by id."""
-    scene_repo = get_repo(config, "scene")
-    if not scene_repo or not scene_id:
-        return Scene(id=scene_id)
-    scene = await scene_repo.get_scene(scene_id)
-    return scene or Scene(id=scene_id)
+    return [{"speaker_id": t.speaker_id, "text": t.text} for t in result.turns]
 
 
 async def _load_target(pc_repo, actor_repo, target_id: str, target_type: str):
@@ -198,14 +194,14 @@ def _store_dialogue_memory(
     target_type: str,
     turns: list[dict],
     tick: int,
-    pc_memory_map: dict[str, list[Memory]] | None,
+    memories: dict[str, list[Memory]] | None,
 ) -> None:
-    """把对话记录写入 pc_memory_map，供后续决策/反思检索 / Stage dialogue memory into state."""
-    if pc_memory_map is None:
+    """把对话记录写入 memories，供后续决策/反思检索 / Stage dialogue memory into state."""
+    if memories is None:
         return
     transcript = "；".join(f"{t['speaker_id']}：{t['text']}" for t in turns)
     if char_id:
-        pc_memory_map.setdefault(char_id, []).append(
+        memories.setdefault(char_id, []).append(
             Memory(
                 id=f"mem_{char_id}_{tick}_{uuid4().hex[:6]}",
                 pc_id=char_id,
@@ -217,7 +213,7 @@ def _store_dialogue_memory(
             )
         )
     if target_id:
-        pc_memory_map.setdefault(target_id, []).append(
+        memories.setdefault(target_id, []).append(
             Memory(
                 id=f"mem_{target_id}_{tick}_{uuid4().hex[:6]}",
                 pc_id=target_id,

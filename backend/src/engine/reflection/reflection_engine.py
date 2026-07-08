@@ -9,6 +9,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.runnables.config import RunnableConfig
 
+from ...domain import Memory
 from ...schemas.llm_output import ReflectionOutputSchema
 from ...utils.helpers import get_llm
 from ...utils.logging import get_logger
@@ -27,7 +28,7 @@ async def reflect(
     pc_type: str,
     arc_stage: str,
     arc_description: str,
-    memories: list[dict],
+    memories: list[Memory],
     recent_reflections: list[str],
     tick: int = 0,
     config: RunnableConfig = None,
@@ -36,7 +37,15 @@ async def reflect(
     llm = get_llm(config)
     if llm is None:
         logger.warning("[reflection] LLM not configured, returning empty insight for %s", pc_id)
-        return [_format_insight(pc_id, pc_name, pc_type, tick, ReflectionOutputSchema().model_dump())]
+        return [
+            _format_insight(
+                pc_id,
+                pc_name,
+                pc_type,
+                tick,
+                {"arc_analysis": "", "personality_insight": "", "behavior_summary": ""},
+            )
+        ]
 
     template = _PC_TEMPLATE if pc_type == "pc" else _ACTOR_TEMPLATE
     prompt = template.render(
@@ -52,19 +61,25 @@ async def reflect(
         ReflectionOutputSchema,
         [{"role": "user", "content": prompt}],
     )
-    return [_format_insight(pc_id, pc_name, pc_type, tick, result.model_dump())]
+    return [_format_insight(pc_id, pc_name, pc_type, tick, result)]
 
 
-def _format_insight(pc_id: str, pc_name: str, pc_type: str, tick: int, result: dict) -> dict:
+def _format_insight(pc_id: str, pc_name: str, pc_type: str, tick: int, result) -> dict:
     """格式化反思输出 / Format reflection output."""
     if pc_type == "pc":
         text = " ".join(
-            filter(None, [result.get("arc_analysis"), result.get("personality_insight")])
+            filter(
+                None,
+                [
+                    getattr(result, "arc_analysis", None),
+                    getattr(result, "personality_insight", None),
+                ],
+            )
         )
         text = f"{pc_name}: {text or '（无有效反思）'}"
         importance = 10
     else:
-        text = f"{pc_name}: {result.get('behavior_summary', '（无有效总结）')}"
+        text = f"{pc_name}: {getattr(result, 'behavior_summary', '（无有效总结）')}"
         importance = 5
 
     return {

@@ -37,7 +37,7 @@ async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict
         world_id=state.get("world_id", ""),
         plot_brief=dm.plot_brief if dm else "",
         hints=dm.hints if dm else [],
-        events=_summarize_events(tick_events),
+        events=tick_events,
         scene=scene,
         scene_objects=scene_objects,
         pcs=pcs,
@@ -49,14 +49,3 @@ async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict
         dm.dm_narrative = narrative
         return {"dm_record": dm}
     return {}
-
-
-def _summarize_events(events: list) -> list[dict]:
-    """把 TickEvent 列表转成 prompt 可读的摘要."""
-    return [
-        {
-            "type": ev.type.value if hasattr(ev.type, "value") else str(ev.type),
-            "description": str(ev.payload)[:200],
-        }
-        for ev in events
-    ]
