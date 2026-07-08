@@ -12,9 +12,8 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, Decision, Memory, PlayerCharacter, Scene
+from ...domain import Actor, Decision, InteractActionResult, Memory, PlayerCharacter, Scene
 from ...domain.scene_object import SceneObject
-from ...schemas.engine_result import InteractActionResult
 from ...schemas.llm_output import InteractOutputSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import dict_without, get_llm, get_repo, validate_position

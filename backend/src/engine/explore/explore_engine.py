@@ -13,8 +13,7 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, Decision, Memory, PlayerCharacter, Scene, SceneObject
-from ...schemas.engine_result import ExploreActionResult
+from ...domain import Actor, Decision, ExploreActionResult, Memory, PlayerCharacter, Scene, SceneObject
 from ...schemas.llm_output import ExploreOutputSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import dict_without, get_llm, validate_position
