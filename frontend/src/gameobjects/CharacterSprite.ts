@@ -16,6 +16,7 @@ export class CharacterSprite {
   private ring: Phaser.GameObjects.Graphics | null = null; // PC 金环 / Gold ring
   private bubble: DialogueBubble | null = null; // 当前对话泡泡 / Current dialogue bubble
   private tileSize = 32;
+  private thinkCount = 0; // 决策泡泡触发次数 / Decision bubble trigger count for E2E
 
   constructor(scene: Phaser.Scene, data: CharacterData, wx: number, wy: number, tileSize: number) {
     this.scene = scene;
@@ -174,9 +175,20 @@ export class CharacterSprite {
   /** 显示思考泡泡（灯泡样式，角色不动） / Show thought bubble (lightbulb style) */
   think(text: string, onHide?: () => void): void {
     this.clearBubble();
+    this.thinkCount++;
     const x = this.sprite.x;
     const y = this.sprite.y - this.tileSize * 0.75;
     this.bubble = new DialogueBubble(this.scene, x, y, text, undefined, onHide, "thought");
+  }
+
+  /** 获取思考泡泡触发次数 / Get decision bubble trigger count */
+  getThinkCount(): number {
+    return this.thinkCount;
+  }
+
+  /** 当前是否正在显示思考泡泡 / Whether a thought bubble is currently active */
+  hasActiveThoughtBubble(): boolean {
+    return !!this.bubble && this.bubble.getStyle() === "thought";
   }
 
   /** 清除当前泡泡 / Clear current bubble */

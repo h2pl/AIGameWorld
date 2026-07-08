@@ -27,32 +27,24 @@ export class ExploreHandler {
     const exploreRecord = String(payload.explore_record || "");
     if (!pcId) return;
 
-    const sprite = this.getSprite(pcId); // 探索者精灵
+    const sprite = this.getSprite(pcId);
     if (!sprite) return;
 
-    this.followSprite(sprite.rawSprite); // 镜头跟随
+    this.followSprite(sprite.rawSprite);
 
-    // 走到终点
+    // waypoints = [start, end]，从 sprite 当前位置走到终点
     if (waypoints?.length) {
       const mm = this.getMovementManager();
       if (mm) {
-        const end = waypoints[waypoints.length - 1];
-        await this._walkTo(sprite, mm, end.x, end.y);
+        const dest = waypoints[waypoints.length - 1];
+        await new Promise<void>((r) => mm.walkTo(sprite, dest.x, dest.y, { onComplete: () => r() }));
       }
     }
+
     // 浮字
     if (exploreRecord) {
       log.info(`explore: ${pcId} — ${exploreRecord}`);
       await new Promise<void>((resolve) => sprite.showExploreRecord(exploreRecord, resolve));
     }
-  }
-
-  private _walkTo(
-    sprite: CharacterSprite,
-    mm: MovementManager,
-    tx: number,
-    ty: number
-  ): Promise<void> {
-    return new Promise((r) => mm.walkTo(sprite, tx, ty, { onComplete: () => r() }));
   }
 }

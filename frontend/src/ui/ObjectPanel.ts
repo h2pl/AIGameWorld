@@ -27,6 +27,7 @@ export class ObjectPanel extends Panel {
   protected buildDOM(): HTMLElement {
     const el = document.createElement("div");
     el.className = "panel object-panel";
+    el.dataset.testid = "object-panel";
     el.style.display = "none"; // 默认隐藏 / Hidden by default
     el.innerHTML = `
       <div class="panel-header">

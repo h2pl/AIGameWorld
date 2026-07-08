@@ -37,6 +37,7 @@ export class GameScene extends Phaser.Scene {
   private eventManager!: EventManager;
   private bgm!: BGMPlayer;
   private terrainSprites: Phaser.GameObjects.Sprite[] = [];
+  private terrainObjects: any[] = [];
   private sceneBuilt = false;
   private sceneData: SceneSetupData | null = null;
   private _onPlayPaused!: () => void;
@@ -83,12 +84,22 @@ export class GameScene extends Phaser.Scene {
       sceneKey: "Game",
       sceneBuilt: false,
       gameState: () => this._getTestState(),
+      clickObject: (idx: number) => {
+        const obj = this.terrainObjects[idx];
+        if (obj) this._onObjectClick(obj);
+      },
     };
   }
 
   /** 返回可序列化的游戏状态快照 / Return serializable game state snapshot */
   private _getTestState(): Record<string, unknown> {
     const state = worldStore.getState();
+    const pcThinkCounts: Record<string, number> = {};
+    let activeThoughtBubbles = 0;
+    this.pcManager?.sprites.forEach((sp, id) => {
+      pcThinkCounts[id] = sp.getThinkCount();
+      if (sp.hasActiveThoughtBubble()) activeThoughtBubbles++;
+    });
     return {
       scene: "Game",
       sceneBuilt: this.sceneBuilt,
@@ -98,6 +109,9 @@ export class GameScene extends Phaser.Scene {
       actorCount: this.actorManager?.sprites.size ?? 0,
       displayTick: state.display_tick,
       worldId: state.world_id,
+      pcThinkCounts,
+      activeThoughtBubbles,
+      terrainObjectCount: this.terrainObjects.length,
     };
   }
 
@@ -238,21 +252,26 @@ export class GameScene extends Phaser.Scene {
   /** 构建场景物体 / Build terrain objects */
   private _buildTerrain(objects: any[]): void {
     this.terrainSprites = [];
+    this.terrainObjects = [];
     for (const obj of objects) {
       const key = `obj_${obj.id}`;
       if (!this.textures.exists(key)) makeObjectTexture(this, obj, key, this.ts);
       const { wx, wy } = gridToWorld(obj.position_x, obj.position_y, this.ts);
+      this.terrainObjects.push(obj);
       this.terrainSprites.push(
         this.add
           .sprite(wx, wy, key)
           .setOrigin(0.5, 1)
           .setDepth(DEPTH.CHARACTER - 1)
           .setInteractive({ useHandCursor: true })
-          .on("pointerdown", () =>
-            document.dispatchEvent(new CustomEvent("object-interacted", { detail: obj }))
-          )
+          .on("pointerdown", () => this._onObjectClick(obj))
       );
     }
+  }
+
+  /** 场景物体点击处理 / Scene object click handler */
+  private _onObjectClick(obj: any): void {
+    document.dispatchEvent(new CustomEvent("object-interacted", { detail: obj }));
   }
 
   /** 构建角色精灵 + 相机 / Build character sprites + camera */
@@ -312,6 +331,7 @@ export class GameScene extends Phaser.Scene {
       if (s.active) s.destroy();
     });
     this.terrainSprites = [];
+    this.terrainObjects = [];
     this.hud.destroy();
     this.talkHandler?.clear();
     this.cameras.main.setBounds(0, 0, CONFIG.CANVAS.width, CONFIG.CANVAS.height);

@@ -32,13 +32,14 @@ export class NarrativePanel extends Panel {
   protected buildDOM(): HTMLElement {
     const el = document.createElement("div");
     el.className = "panel narrative-panel";
+    el.dataset.testid = "narrative-panel";
     // 面板主体 HTML / Panel body HTML
     el.innerHTML = `
       <div class="panel-header">
         <span class="panel-icon">📖</span><span class="panel-title">叙事 / Narrative</span>
         <button class="panel-history-btn" id="narr-history-btn" title="叙事历史">🕓</button>
       </div>
-      <div class="panel-body narrative-body"></div>
+      <div class="panel-body narrative-body" data-testid="narrative-body"></div>
       <div class="history-overlay" id="narr-history-overlay" style="display:none">
         <div class="history-panel">
           <div class="history-header">

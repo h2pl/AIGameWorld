@@ -36,6 +36,7 @@ export class DMCreationPanel extends Panel {
   protected buildDOM(): HTMLElement {
     const el = document.createElement("div");
     el.className = "panel dm-creation-panel";
+    el.dataset.testid = "dm-creation-panel";
     // 面板主体 HTML / Panel body HTML
     el.innerHTML = `
       <div class="panel-header">
@@ -43,9 +44,9 @@ export class DMCreationPanel extends Panel {
         <span class="panel-title">DM 创造情境</span>
         <button class="panel-history-btn" id="dm-create-history-btn" title="情境历史">🕓</button>
       </div>
-      <div class="panel-body dm-creation-body">
-        <div class="dm-creation-brief"></div>
-        <div class="dm-creation-hints" style="display:none"></div>
+      <div class="panel-body dm-creation-body" data-testid="dm-creation-body">
+        <div class="dm-creation-brief" data-testid="dm-creation-brief"></div>
+        <div class="dm-creation-hints" style="display:none" data-testid="dm-creation-hints"></div>
       </div>
       <div class="history-overlay" id="dm-create-history-overlay" style="display:none">
         <div class="history-panel">

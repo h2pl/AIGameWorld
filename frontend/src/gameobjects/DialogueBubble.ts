@@ -214,6 +214,11 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     });
   }
 
+  /** 获取泡泡样式 / Get bubble style */
+  getStyle(): BubbleStyle {
+    return this.style;
+  }
+
   override destroy(fromScene?: boolean): void {
     if (this.timer) {
       window.clearTimeout(this.timer);
