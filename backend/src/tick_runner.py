@@ -66,8 +66,15 @@ class TickLoopManager:
 
     def stop(self, world_id: str):
         self.running_worlds[world_id] = False
-        # We don't cancel immediately to let the current tick finish gracefully
-        # The loop_id check ensures old loops will exit even if start is called quickly
+        # 立即停止当前 tick，防止 reset 后继续生成数据 / Cancel immediately to avoid extra ticks after reset
+        task = self.tasks.get(world_id)
+        if task is not None and not task.done():
+            task.cancel()
+
+    def is_running(self, world_id: str) -> bool:
+        """task 真正结束才算停止 / Consider stopped only when task is done."""
+        task = self.tasks.get(world_id)
+        return task is not None and not task.done()
 
 
 class TickBatchRunner:

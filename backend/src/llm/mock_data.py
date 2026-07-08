@@ -221,9 +221,11 @@ DATASET_TAVERN: MockDataset = {
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "酒馆角落的木板微微翘起，下面似乎藏着什么。去检查一下。",
-                "explore_x": 10, "explore_y": 12,
+                "explore_x": 10,
+                "explore_y": 12,
             }
         },
         {
@@ -245,17 +247,21 @@ DATASET_TAVERN: MockDataset = {
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "酒馆后门有点异样，顺着一串湿脚印去小巷深处看看。",
-                "explore_x": 8, "explore_y": 15,
+                "explore_x": 8,
+                "explore_y": 15,
             }
         },
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "窗台上有积满灰尘的陶罐，也许里面有什么线索。",
-                "explore_x": 12, "explore_y": 8,
+                "explore_x": 12,
+                "explore_y": 8,
             }
         },
         {
@@ -272,6 +278,22 @@ DATASET_TAVERN: MockDataset = {
                 "target_id": "door_cellar",
                 "target_type": "scene_object",
                 "thought": "那个通往地窖的门虚掩着，说不定下面有什么好东西。",
+            }
+        },
+        {
+            "action": {
+                "action_type": "combat",
+                "target_id": "goblin",
+                "target_type": "actor",
+                "thought": "那只地精一直躲在木桶后面窥视，肯定不怀好意。先拔剑把它逼出来。",
+            }
+        },
+        {
+            "action": {
+                "action_type": "combat",
+                "target_id": "skeleton",
+                "target_type": "actor",
+                "thought": "角落里那具骸骨突然动了一下——不死生物不能留。",
             }
         },
     ],
@@ -472,17 +494,21 @@ DATASET_DESERT: MockDataset = {
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "沙地上散落着碎裂的陶片，上面刻着象形文字。去看看石柱附近有没有更多线索。",
-                "explore_x": 12, "explore_y": 15,
+                "explore_x": 12,
+                "explore_y": 15,
             }
         },
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "一只蜥蜴叼着生锈的箭头钻进岩石缝隙，附近说不定有古代战场遗迹。",
-                "explore_x": 25, "explore_y": 10,
+                "explore_x": 25,
+                "explore_y": 10,
             }
         },
         {
@@ -496,9 +522,11 @@ DATASET_DESERT: MockDataset = {
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "枯死的棕榈树旁有一口干涸的水井，井壁上似乎有发光的苔藓。过去看看。",
-                "explore_x": 8, "explore_y": 25,
+                "explore_x": 8,
+                "explore_y": 25,
             }
         },
         {
@@ -646,7 +674,8 @@ DATASET_COMBAT: MockDataset = {
     ],
     "explore": [
         {
-            "end_x": 20, "end_y": 15,
+            "end_x": 20,
+            "end_y": 15,
             "explore_record": "树林边缘的灌木丛里散落着几支断裂的箭矢和一块被丢弃的兽皮盾牌。",
         },
     ],
@@ -678,15 +707,23 @@ DATASET_COMBAT: MockDataset = {
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "战斗结束后巡视林中营地，看看有没有战利品或敌人的侦察情报。",
-                "explore_x": 20, "explore_y": 15,
+                "explore_x": 20,
+                "explore_y": 15,
             }
         },
     ],
     "interact": [
-        {"success": True, "narration": "他从倒下的兽人军阀腰带上扯下一块金属徽章——这是战帮的信物，拿着它可以伪装身份通过前方的哨站。"},
-        {"success": False, "narration": "营地的铁笼被粗铁链锁死，里面关着的不是俘虏而是几只饿疯了的座狼——它们撞得铁笼摇摇欲坠。"},
+        {
+            "success": True,
+            "narration": "他从倒下的兽人军阀腰带上扯下一块金属徽章——这是战帮的信物，拿着它可以伪装身份通过前方的哨站。",
+        },
+        {
+            "success": False,
+            "narration": "营地的铁笼被粗铁链锁死，里面关着的不是俘虏而是几只饿疯了的座狼——它们撞得铁笼摇摇欲坠。",
+        },
     ],
 }
 
@@ -766,15 +803,18 @@ DATASET_AZURE_TOWN: MockDataset = {
     ],
     "explore": [
         {
-            "end_x": 18, "end_y": 8,
+            "end_x": 18,
+            "end_y": 8,
             "explore_record": "顺着马车辙印走到镇口，发现路牌被人刻意用铁钉改变了指向——箭头正对着北边哨塔的方向。",
         },
         {
-            "end_x": 12, "end_y": 13,
+            "end_x": 12,
+            "end_y": 13,
             "explore_record": "喷泉池底沉着一枚铜质徽章，边缘刻着「蔚蓝守望」四个字，但表面已经被刮花了。",
         },
         {
-            "end_x": 30, "end_y": 4,
+            "end_x": 30,
+            "end_y": 4,
             "explore_record": "镇外小山坡上有一片新翻的土堆，扒开土层露出一个铁匣，里面装着几卷空白羊皮纸。",
         },
     ],
@@ -791,16 +831,35 @@ DATASET_AZURE_TOWN: MockDataset = {
     "combat": [
         {
             "narration": "他从花丛后闪出，一剑劈开偷袭者的短矛，随即反击将其击退。",
-            "target_defeated": True, "result": "袭击者倒地",
+            "target_defeated": True,
+            "result": "袭击者倒地",
         },
     ],
     "actor_decision": [
-        {"action_type": "talk", "target_id": "rogue", "target_type": "pc", "thought": "那个贼头贼脑的人一直在打量花店——他可能在找我藏在玫瑰丛下的东西。"},
-        {"action_type": "talk", "target_id": "cleric", "target_type": "pc", "thought": "牧师身上的圣徽不对劲，它在靠近黑玫瑰时会发光。得警告他们。"},
-        {"action_type": "combat", "target_id": "fighter", "target_type": "pc", "thought": "那个重甲战士堵住了哨塔的路口，必须引开他。"},
+        {
+            "action_type": "talk",
+            "target_id": "rogue",
+            "target_type": "pc",
+            "thought": "那个贼头贼脑的人一直在打量花店——他可能在找我藏在玫瑰丛下的东西。",
+        },
+        {
+            "action_type": "talk",
+            "target_id": "cleric",
+            "target_type": "pc",
+            "thought": "牧师身上的圣徽不对劲，它在靠近黑玫瑰时会发光。得警告他们。",
+        },
+        {
+            "action_type": "combat",
+            "target_id": "fighter",
+            "target_type": "pc",
+            "thought": "那个重甲战士堵住了哨塔的路口，必须引开他。",
+        },
     ],
     "reflection": [
-        {"behavior_summary": "镇口路牌被篡改指向北边坡地，顺着车辙发现了铁匣和空白羊皮纸。", "insight": "哨塔的异常火光和黑玫瑰可能有关联——有人在掩盖什么。"},
+        {
+            "behavior_summary": "镇口路牌被篡改指向北边坡地，顺着车辙发现了铁匣和空白羊皮纸。",
+            "insight": "哨塔的异常火光和黑玫瑰可能有关联——有人在掩盖什么。",
+        },
     ],
     "summarize": [
         {"summary": "蔚蓝镇的冒险者发现了被篡改的路牌和花店老妇人的秘密，哨塔的悬赏还没解开。"},
@@ -809,17 +868,21 @@ DATASET_AZURE_TOWN: MockDataset = {
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "镇口的路牌被人动了手脚，这不是偶然。顺着马车辙印出去看看，车辙指向了北边坡地。",
-                "explore_x": 18, "explore_y": 8,
+                "explore_x": 18,
+                "explore_y": 8,
             }
         },
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "喷泉池水干了，池底似乎有金属反光。去看看池底有什么东西。",
-                "explore_x": 12, "explore_y": 13,
+                "explore_x": 12,
+                "explore_y": 13,
             }
         },
         {
@@ -887,15 +950,18 @@ DATASET_TABA_TOWN: MockDataset = {
     ],
     "explore": [
         {
-            "end_x": 35, "end_y": 20,
+            "end_x": 35,
+            "end_y": 20,
             "explore_record": "东边森林边缘倒着几棵被连根拔起的大树，树干上有粗壮利爪留下的深沟。",
         },
         {
-            "end_x": 15, "end_y": 45,
+            "end_x": 15,
+            "end_y": 45,
             "explore_record": "镇子南边的老磨坊水车仍在转动，但整座建筑已经倾斜——地基下似乎被什么东西掏空了。",
         },
         {
-            "end_x": 45, "end_y": 30,
+            "end_x": 45,
+            "end_y": 30,
             "explore_record": "后山里发现一个被藤蔓覆盖的矿坑入口，坑道深处传来微弱的敲击声。",
         },
     ],
@@ -908,26 +974,49 @@ DATASET_TABA_TOWN: MockDataset = {
                     "text": "都躲在家里呢。地底下有东西在挖洞，昨晚连教堂的地基都被掏空了一块。",
                 },
                 {"speaker_id": "fighter", "text": "什么东西？"},
-                {"speaker_id": "guard", "text": "不知道。但它每次经过，地面就会震动——就像心跳一样有规律。"},
+                {
+                    "speaker_id": "guard",
+                    "text": "不知道。但它每次经过，地面就会震动——就像心跳一样有规律。",
+                },
             ],
         },
     ],
     "combat": [
         {
             "narration": "地面突然隆起，一只覆盖着甲壳的巨大蠕虫从土中冲出。他侧身闪过黏液喷吐，环首刀狠狠劈进虫体的关节处。",
-            "target_defeated": True, "result": "掘地蠕虫缩回地下",
+            "target_defeated": True,
+            "result": "掘地蠕虫缩回地下",
         },
     ],
     "interact": [
-        {"success": True, "narration": "他撬开喷泉池底的暗格，池水从裂缝中涌出——不是普通的水，而是带着微弱荧光的蓝色液体。"},
-        {"success": False, "narration": "暗格盖板被厚重的石板从下方顶住了。推开需要更大的力量——或者找到控制石板升降的旁路机关。"},
+        {
+            "success": True,
+            "narration": "他撬开喷泉池底的暗格，池水从裂缝中涌出——不是普通的水，而是带着微弱荧光的蓝色液体。",
+        },
+        {
+            "success": False,
+            "narration": "暗格盖板被厚重的石板从下方顶住了。推开需要更大的力量——或者找到控制石板升降的旁路机关。",
+        },
     ],
     "actor_decision": [
-        {"action_type": "combat", "target_id": "rogue", "target_type": "pc", "thought": "那个敏捷的家伙跑到磨坊下面去了——不能让他发现矿井的入口。"},
-        {"action_type": "combat", "target_id": "wizard", "target_type": "pc", "thought": "法师在感应地下的震动，如果让他完全施法可能会惊醒深处的巢穴之主。"},
+        {
+            "action_type": "combat",
+            "target_id": "rogue",
+            "target_type": "pc",
+            "thought": "那个敏捷的家伙跑到磨坊下面去了——不能让他发现矿井的入口。",
+        },
+        {
+            "action_type": "combat",
+            "target_id": "wizard",
+            "target_type": "pc",
+            "thought": "法师在感应地下的震动，如果让他完全施法可能会惊醒深处的巢穴之主。",
+        },
     ],
     "reflection": [
-        {"behavior_summary": "在森林边缘发现了被利爪连根拔起的大树，磨坊地基也被掏空了。", "insight": "地底的巨型生物正在向镇子方向移动——它的掘进路线是一条直线，目标似乎是钟楼。"},
+        {
+            "behavior_summary": "在森林边缘发现了被利爪连根拔起的大树，磨坊地基也被掏空了。",
+            "insight": "地底的巨型生物正在向镇子方向移动——它的掘进路线是一条直线，目标似乎是钟楼。",
+        },
     ],
     "summarize": [
         {"summary": "塔巴镇的冒险者发现镇子地下有巨型蠕虫在活动，钟楼成了它的目标。"},
@@ -936,17 +1025,21 @@ DATASET_TABA_TOWN: MockDataset = {
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "东边森林里传来的嚎叫声越来越近，那些被连根拔起的大树一定和这些声音有关。",
-                "explore_x": 35, "explore_y": 20,
+                "explore_x": 35,
+                "explore_y": 20,
             }
         },
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "南边老磨坊附近的地面有异常的塌陷，可能地下有通道。去看看塌陷有多深。",
-                "explore_x": 15, "explore_y": 45,
+                "explore_x": 15,
+                "explore_y": 45,
             }
         },
         {
@@ -1014,15 +1107,18 @@ DATASET_TUNNEL: MockDataset = {
     ],
     "explore": [
         {
-            "end_x": 10, "end_y": 5,
+            "end_x": 10,
+            "end_y": 5,
             "explore_record": "隧道墙壁上渗出一层薄薄的水膜，指尖划过能感觉到微弱的脉搏——像是洞穴本身在呼吸。",
         },
         {
-            "end_x": 25, "end_y": 10,
+            "end_x": 25,
+            "end_y": 10,
             "explore_record": "一堆碎石后面露出半截铁镐——这不是矿工的镐，上面刻着矮人王国的纹章。",
         },
         {
-            "end_x": 15, "end_y": 15,
+            "end_x": 15,
+            "end_y": 15,
             "explore_record": "地面有一个被黏液填满的小坑，黏液里泡着一把还发着光的匕首，刀身符文轻轻震动。",
         },
     ],
@@ -1030,9 +1126,15 @@ DATASET_TUNNEL: MockDataset = {
         {
             "turns": [
                 {"speaker_id": "rogue", "text": "这些蛛丝太粘了，踩上去会被缠住。"},
-                {"speaker_id": "wizard", "text": "别碰那些丝线——它们是活的。每一根丝都在把地面的震动传回巢穴深处。"},
+                {
+                    "speaker_id": "wizard",
+                    "text": "别碰那些丝线——它们是活的。每一根丝都在把地面的震动传回巢穴深处。",
+                },
                 {"speaker_id": "rogue", "text": "你的意思是……它已经知道我们来了？"},
-                {"speaker_id": "wizard", "text": "从我们踏进洞口的第一步起，它就在数我们的人数了。"},
+                {
+                    "speaker_id": "wizard",
+                    "text": "从我们踏进洞口的第一步起，它就在数我们的人数了。",
+                },
             ],
         },
     ],
@@ -1049,15 +1151,29 @@ DATASET_TUNNEL: MockDataset = {
     "combat": [
         {
             "narration": "被蛛丝包裹的骷髅猛地挣断最后一根丝线，空洞的眼眶锁定了他。他抢在骷髅挥下骨剑之前，用剑柄狠狠砸碎了它的脊椎——骨头碎片和蛛丝一同散落在地上。",
-            "target_defeated": True, "result": "蛛丝骷髅散架倒地",
+            "target_defeated": True,
+            "result": "蛛丝骷髅散架倒地",
         },
     ],
     "actor_decision": [
-        {"action_type": "combat", "target_id": "fighter", "target_type": "pc", "thought": "那个穿重甲的人走得最慢——从天花板垂降到敌人身后，准备给战士致命一击。"},
-        {"action_type": "combat", "target_id": "wizard", "target_type": "pc", "thought": "法师手里的灯光暴露了所有人的位置。先解决掉光源。"},
+        {
+            "action_type": "combat",
+            "target_id": "fighter",
+            "target_type": "pc",
+            "thought": "那个穿重甲的人走得最慢——从天花板垂降到敌人身后，准备给战士致命一击。",
+        },
+        {
+            "action_type": "combat",
+            "target_id": "wizard",
+            "target_type": "pc",
+            "thought": "法师手里的灯光暴露了所有人的位置。先解决掉光源。",
+        },
     ],
     "reflection": [
-        {"behavior_summary": "在隧道中发现了矮人王国留下的铁镐和石碑，碑上的符文发光但触碰不了。", "insight": "这座洞穴曾经是矮人的矿场，蜘蛛入侵后矮人撤退了——但留下了某种力量的守护。"},
+        {
+            "behavior_summary": "在隧道中发现了矮人王国留下的铁镐和石碑，碑上的符文发光但触碰不了。",
+            "insight": "这座洞穴曾经是矮人的矿场，蜘蛛入侵后矮人撤退了——但留下了某种力量的守护。",
+        },
     ],
     "summarize": [
         {"summary": "冒险者进入蜘蛛隧道，发现了矮人遗迹和发光的符文石碑。"},
@@ -1066,17 +1182,21 @@ DATASET_TUNNEL: MockDataset = {
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "蜘蛛都在巢穴深处，现在洞口附近比较安静。趁它们没注意到我们，先摸清这条隧道的结构和退路。",
-                "explore_x": 10, "explore_y": 5,
+                "explore_x": 10,
+                "explore_y": 5,
             }
         },
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "碎石堆后面露出金属的反光，可能是什么工具或武器。爬过去看看那些年代久远的铁镐。",
-                "explore_x": 25, "explore_y": 10,
+                "explore_x": 25,
+                "explore_y": 10,
             }
         },
         {
@@ -1144,29 +1264,42 @@ DATASET_CATHEDRAL: MockDataset = {
     ],
     "explore": [
         {
-            "end_x": 28, "end_y": 15,
+            "end_x": 28,
+            "end_y": 15,
             "explore_record": "珊瑚覆盖的凹室里嵌着一枚古老的贝壳护符——上面刻着和海战中浮雕相同的祭司纹章。",
         },
         {
-            "end_x": 12, "end_y": 10,
+            "end_x": 12,
+            "end_y": 10,
             "explore_record": "浅水区的水底铺着一层细沙，沙子下面隐约可见马赛克拼贴的图案碎片。",
         },
         {
-            "end_x": 35, "end_y": 25,
+            "end_x": 35,
+            "end_y": 25,
             "explore_record": "一根断裂的石柱斜靠在墙上，柱身的浮雕描绘着一场古老的海战。",
         },
         {
-            "end_x": 20, "end_y": 30,
+            "end_x": 20,
+            "end_y": 30,
             "explore_record": "水面倒影中浮现出一张不属于任何冒险者的脸——它嘴唇翕动，似乎在念一段祷文。",
         },
     ],
     "talk": [
         {
             "turns": [
-                {"speaker_id": "cleric", "text": "这座教堂……被淹没了至少一百年。但为什么蜡烛还在燃烧？"},
-                {"speaker_id": "wizard", "text": "不是蜡烛，是魔法。水源源不断地供给着某种维持法术——把整座建筑封印在时间里。"},
+                {
+                    "speaker_id": "cleric",
+                    "text": "这座教堂……被淹没了至少一百年。但为什么蜡烛还在燃烧？",
+                },
+                {
+                    "speaker_id": "wizard",
+                    "text": "不是蜡烛，是魔法。水源源不断地供给着某种维持法术——把整座建筑封印在时间里。",
+                },
                 {"speaker_id": "cleric", "text": "封印什么？"},
-                {"speaker_id": "wizard", "text": "彩窗上画的那种东西。那些祭司不是把雕像沉入海里——他们是在用教堂压住它。"},
+                {
+                    "speaker_id": "wizard",
+                    "text": "彩窗上画的那种东西。那些祭司不是把雕像沉入海里——他们是在用教堂压住它。",
+                },
             ],
         },
     ],
@@ -1175,20 +1308,37 @@ DATASET_CATHEDRAL: MockDataset = {
             "success": True,
             "narration": "他把锈蚀的钥匙插入石板缝隙，石板缓缓下沉，底部竟是一块纯金打造的封蜡——上面龙飞凤舞地签着五个名字，最后一个名字的墨迹还未干透。",
         },
-        {"success": False, "narration": "他试图用手推开水下的石阶闸门，但水压加上锈蚀让闸门纹丝不动——可能需要找到泄水机关。"},
+        {
+            "success": False,
+            "narration": "他试图用手推开水下的石阶闸门，但水压加上锈蚀让闸门纹丝不动——可能需要找到泄水机关。",
+        },
     ],
     "combat": [
         {
             "narration": "水中突然伸出一条半透明的触手，卷向他的脚踝。他挥剑斩断触手，断裂处涌出黑色的冷雾，雾中浮现无数张扭曲的脸。",
-            "target_defeated": False, "result": "触手缩回黑暗，但更多在黑暗中涌动",
+            "target_defeated": False,
+            "result": "触手缩回黑暗，但更多在黑暗中涌动",
         },
     ],
     "actor_decision": [
-        {"action_type": "combat", "target_id": "cleric", "target_type": "pc", "thought": "圣光刺痛了我的眼睛，那个牧师必须死。"},
-        {"action_type": "combat", "target_id": "wizard", "target_type": "pc", "thought": "法师在读彩窗上的文字——他知道得太多了，不能让他继续。"},
+        {
+            "action_type": "combat",
+            "target_id": "cleric",
+            "target_type": "pc",
+            "thought": "圣光刺痛了我的眼睛，那个牧师必须死。",
+        },
+        {
+            "action_type": "combat",
+            "target_id": "wizard",
+            "target_type": "pc",
+            "thought": "法师在读彩窗上的文字——他知道得太多了，不能让他继续。",
+        },
     ],
     "reflection": [
-        {"behavior_summary": "找到了贝壳护符和断裂石柱上的海战浮雕，确认了祭司封印的事件。", "insight": "教堂是封印，不是建筑。每当水源衰减，封印就会减弱——我们来的正是时候。"},
+        {
+            "behavior_summary": "找到了贝壳护符和断裂石柱上的海战浮雕，确认了祭司封印的事件。",
+            "insight": "教堂是封印，不是建筑。每当水源衰减，封印就会减弱——我们来的正是时候。",
+        },
     ],
     "summarize": [
         {"summary": "冒险者涉水探索被淹没的古老教堂，发现这里其实是一座封印——压着某种深海之物。"},
@@ -1205,17 +1355,21 @@ DATASET_CATHEDRAL: MockDataset = {
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "贝壳螺旋图案指向的那个方向有一个被珊瑚覆盖的凹室。先去那边看看是否有通往更深层的入口。",
-                "explore_x": 28, "explore_y": 15,
+                "explore_x": 28,
+                "explore_y": 15,
             }
         },
         {
             "action": {
                 "action_type": "explore",
-                "target_id": None, "target_type": None,
+                "target_id": None,
+                "target_type": None,
                 "thought": "浅水区水底的马赛克拼贴图案似乎组成了某种地图。仔细查看那些彩色的碎片是否指向某个位置。",
-                "explore_x": 12, "explore_y": 10,
+                "explore_x": 12,
+                "explore_y": 10,
             }
         },
         {

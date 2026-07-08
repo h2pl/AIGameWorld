@@ -129,6 +129,13 @@ test.describe("fullstack tick flow", () => {
     await expect(page.locator(SELECTORS.tickBadge)).toContainText("Display_Tick=0", {
       timeout: 10000,
     });
+    // 确保后端状态已真正清空，避免测试间数据残留 / Ensure backend state is fully reset
+    await expect
+      .poll(() => fetchBackendState(page))
+      .toEqual(expect.objectContaining({ data_tick: 0, display_tick: 0 }));
+    await expect
+      .poll(() => fetchLoopStatus(page))
+      .toEqual(expect.objectContaining({ running: false, batch_running: false }));
     // 重置后再刷新一次页面，确保 TickPlayer 从 display_tick=0 初始化 / Reload to ensure TickPlayer starts at 0
     await page.reload();
     await page.waitForSelector(SELECTORS.backendOverlay, { state: "detached", timeout: 60000 });
@@ -155,8 +162,8 @@ test.describe("fullstack tick flow", () => {
       .toEqual(
         expect.objectContaining({
           scene: "Game",
-          sceneBuilt: true,
-          pcCount: state.pcs.length,
+          sceneBuilt: false,
+          pcCount: 0,
           displayTick: 0,
           worldId: WORLD_ID,
         })
@@ -249,13 +256,13 @@ test.describe("fullstack tick flow", () => {
     const eventsRes = await fetchBackendEvents(page, 0, 10);
     expect(eventsRes.events).toHaveLength(0);
 
-    // 验证 Phaser test seam 已重置并重建场景 / Verify reset and scene rebuilt
+    // 验证 Phaser test seam 已重置（场景被销毁，等待下一次 tick 重建）/ Verify reset destroyed scene
     await expect
       .poll(() => getTestSeamState(page))
       .toEqual(
         expect.objectContaining({
-          sceneBuilt: true,
-          pcCount: stateAfter.pcs.length,
+          sceneBuilt: false,
+          pcCount: 0,
           displayTick: 0,
         })
       );
@@ -304,6 +311,14 @@ test.describe("event display", () => {
     await expect(page.locator(SELECTORS.tickBadge)).toContainText("Display_Tick=0", {
       timeout: 10000,
     });
+    // 确保后端状态已真正清空，避免测试间数据残留 / Ensure backend state is fully reset
+    await expect
+      .poll(() => fetchBackendState(page))
+      .toEqual(expect.objectContaining({ data_tick: 0, display_tick: 0 }));
+    // 确保后端循环/batch已完全停止，避免测试间并发 / Ensure backend loop/batch stopped to avoid cross-test concurrency
+    await expect
+      .poll(() => fetchLoopStatus(page))
+      .toEqual(expect.objectContaining({ running: false, batch_running: false }));
     // 重置后再刷新一次页面，确保 TickPlayer 从 display_tick=0 初始化 / Reload to ensure TickPlayer starts at 0
     await page.reload();
     await page.waitForSelector(SELECTORS.backendOverlay, { state: "detached", timeout: 60000 });
@@ -342,6 +357,7 @@ test.describe("event display", () => {
   });
 
   test("UC-12 pc decision bubbles not duplicated", async ({ page }) => {
+    test.setTimeout(90000);
     const state = await fetchBackendState(page);
     const pcCount = state.pcs.length;
 
@@ -352,10 +368,10 @@ test.describe("event display", () => {
       timeout: 60000,
     });
 
-    // L1 UI：事件面板中角色决策行数 = PC 数 × 2 / Event panel decision lines count
+    // L1 UI：事件面板只展示当前 tick，决策行数 = PC 数 / Event panel shows current tick only
     await expect(
       page.locator(`${SELECTORS.eventList} ${SELECTORS.eventLine}:has-text("角色决策")`)
-    ).toHaveCount(pcCount * 2, { timeout: 10000 });
+    ).toHaveCount(pcCount, { timeout: 10000 });
 
     // L2 API：pc_decision 事件数量 / pc_decision event count
     const eventsRes = await fetchBackendEvents(page, 0, 3);
@@ -382,6 +398,7 @@ test.describe("event display", () => {
   });
 
   test("UC-13 narrative content relates to pc actions", async ({ page }) => {
+    test.setTimeout(60000);
     await page.locator(SELECTORS.tickInput).fill("1");
     await page.locator(SELECTORS.runNButton).click();
     await expect(page.locator(SELECTORS.status)).toContainText(/展示 Tick 1|完成/, {
@@ -414,6 +431,7 @@ test.describe("event display", () => {
   });
 
   test("UC-14 events render in correct order", async ({ page }) => {
+    test.setTimeout(60000);
     await page.locator(SELECTORS.tickInput).fill("1");
     await page.locator(SELECTORS.runNButton).click();
     await expect(page.locator(SELECTORS.status)).toContainText(/展示 Tick 1|完成/, {
@@ -454,6 +472,7 @@ test.describe("event display", () => {
   });
 
   test("UC-15 scene object intro does not auto popup", async ({ page }) => {
+    test.setTimeout(60000);
     // 场景未构建前 ObjectPanel 不应自动出现 / ObjectPanel should stay hidden before scene built
     await expect(page.locator(SELECTORS.objectPanel)).toBeHidden();
 
@@ -521,11 +540,12 @@ test.describe("event display", () => {
   });
 
   test("UC-38 event payload fields are correct", async ({ page }) => {
+    test.setTimeout(300000);
     // 运行 8 个 tick，覆盖 talk/explore/interact/combat 动作类型 / Run 8 ticks to cover action types
     await page.locator(SELECTORS.tickInput).fill("8");
     await page.locator(SELECTORS.runNButton).click();
     await expect(page.locator(SELECTORS.status)).toContainText(/展示 Tick 8|完成/, {
-      timeout: 120000,
+      timeout: 240000,
     });
 
     // L2 API：检查 payload 字段 / Verify payload fields

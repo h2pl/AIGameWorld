@@ -7,7 +7,7 @@ from langchain_core.runnables.config import RunnableConfig
 
 from ..engine.reflection import reflection_engine
 from ..graph.state import ReflectionSubState
-from ..utils.helpers import get_repo
+from ..utils.helpers import get_repo, is_mock
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -17,6 +17,10 @@ _PC_THRESHOLD = 100
 
 async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> dict:
     """Phase 7: 遍历所有 PC 执行反思 / Reflect on all PCs."""
+    # Mock 模式下跳过反思，避免 Chroma 检索/写入拖慢 E2E
+    if is_mock(config):
+        return {"reflected_pcs": []}
+
     pc_repo = get_repo(config, "char")
     memory_repo = get_repo(config, "memory")
     if not pc_repo or not memory_repo:

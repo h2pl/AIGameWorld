@@ -56,7 +56,7 @@ async def loop_resume(world_id: str, orch=Depends(get_orch)):
 async def loop_status(world_id: str):
     """获取循环状态."""
     return {
-        "running": loop_manager.running_worlds.get(world_id, False),
+        "running": loop_manager.is_running(world_id),
         "batch_running": batch_runner.is_running(world_id),
         "batch_target": batch_runner.get_target(world_id),
         "batch_completed": batch_runner.get_completed(world_id),

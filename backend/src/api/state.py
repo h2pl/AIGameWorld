@@ -1,6 +1,7 @@
 """World 状态路由 / World state routes."""
 
 import json
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -70,7 +71,7 @@ async def get_pack_state(world_id: str, db=Depends(get_db)):
         data_tick = await world_repo.get_data_tick(world_id)
         display_tick = await world_repo.get_display_tick(world_id)
 
-        cfg = load_config("../config.yaml")
+        cfg = load_config(os.environ.get("AIGW_CONFIG", "../config.yaml"))
         db_name = Path(cfg.db_name).name
 
         return {

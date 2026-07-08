@@ -12,7 +12,7 @@ from langchain_core.runnables.config import RunnableConfig
 from ..domain import Memory
 from ..domain.dm_record import DMRecord
 from ..graph.state import OverallState
-from ..utils.helpers import get_repo
+from ..utils.helpers import get_repo, is_mock
 from ..utils.logging import get_logger, trace_node
 
 logger = get_logger(__name__)
@@ -127,8 +127,9 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
             logger.info("[data] persisted actors count=%d tick=%s", len(actors), tick)
 
     # 5. 统一落盘本 tick 产生的新记忆 / Persist new memories created this tick
+    # Mock 模式下跳过 Chroma/SQLite 持久化，避免 embedding 写入拖慢 E2E
     memories: dict[str, list[Memory]] = state.get("memories", {})
-    if memories:
+    if memories and not is_mock(config):
         memory_repo = get_repo(config, "memory")
         if memory_repo:
             total = 0

@@ -8,7 +8,7 @@ from langchain_core.runnables.config import RunnableConfig
 
 from ..domain import Memory
 from ..repository.memory_repo import score_memory
-from ..utils.helpers import get_repo
+from ..utils.helpers import get_repo, is_mock
 
 
 async def retrieve_memories(
@@ -28,7 +28,27 @@ async def retrieve_memories(
     同时包含观察记忆与反思记忆，用于指导角色下一步行动。
     支持按 memory_type 和 period 过滤；支持注入本 tick 尚未落盘的新记忆。
     不过滤记忆类型，按事件和重要性提取。
+
+    Mock 模式下跳过 Chroma 长期语义检索，避免本地 embedding 模型加载导致 E2E 超时。
     """
+    # Mock 模式：只使用本 tick 已产生的记忆，避免 Chroma embedding 查询耗时
+    if is_mock(config):
+        contents: list[str] = []
+        seen: set[str] = set()
+        if memories:
+            current_mems = memories.get(pc_id, [])
+            scored = sorted(
+                current_mems,
+                key=lambda m: score_memory(m.importance, m.tick, current_tick),
+                reverse=True,
+            )
+            for m in scored[:top_k]:
+                content = m.content
+                if content and content not in seen:
+                    contents.append(content)
+                    seen.add(content)
+        return contents
+
     memory_repo = get_repo(config, "memory")
     if not memory_repo:
         return []

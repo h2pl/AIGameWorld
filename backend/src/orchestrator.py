@@ -72,6 +72,7 @@ class Orchestrator:
         if self._llm:
             config["configurable"]["llm"] = self._llm
             config["configurable"]["reflection_interval"] = self._reflection_interval
+            config["configurable"]["mock"] = getattr(self._llm, "_mock", False)
         return config
 
     async def reset(self, world_id: str) -> None:
