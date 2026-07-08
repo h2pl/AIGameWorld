@@ -13,8 +13,6 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
 from ...schemas.llm_output import DMNarrativeSchema, DMOutput
-from ...schemas.request import DMCreateRequest, DMNarrateRequest
-from ...schemas.response import DMCreateResponse, DMNarrateResponse
 from ...services.memory_service import retrieve_dm_records
 from ...utils.helpers import get_llm, get_repo
 from ...utils.logging import get_logger
@@ -26,9 +24,11 @@ _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
 
 
 async def dm_create(
-    req: DMCreateRequest,
+    tick: int,
+    world_id: str = "",
+    plot_brief: str = "",
     config: RunnableConfig = None,
-) -> DMCreateResponse:
+) -> dict:
     """Phase 1: DM 创造情境 / DM creates situation."""
     llm = get_llm(config)
     if llm is None:
@@ -37,9 +37,9 @@ async def dm_create(
     scene_repo = get_repo(config, "scene")
     scenes: list[dict] = []
     scene_objects_by_scene: dict[str, list[dict]] = {}
-    if scene_repo and req.world_id:
-        raw_scenes = await scene_repo.list_scenes(req.world_id)
-        all_objects = await scene_repo.list_objects_by_world(req.world_id)
+    if scene_repo and world_id:
+        raw_scenes = await scene_repo.list_scenes(world_id)
+        all_objects = await scene_repo.list_objects_by_world(world_id)
         for obj in all_objects:
             scene_objects_by_scene.setdefault(obj.get("scene_id", ""), []).append(obj)
         scenes = [
@@ -47,22 +47,21 @@ async def dm_create(
         ]
 
     # 检索 DM 记忆（复用 dm_records）/ Retrieve DM memories from dm_records
-    recent_summary = ""
     memories: list[str] = []
     try:
         mems = await retrieve_dm_records(
-            req.world_id or "", config=config, top_k=5, before_tick=req.tick
+            world_id or "", config=config, top_k=5, before_tick=tick
         )
         memories = list(mems) if mems else []
     except Exception:
         logger.warning("[engine] dm_create memory retrieval failed, continuing without memories")
 
-    logger.info("[engine] dm_create tick=%s world=%s", req.tick, req.world_id or "-")
-    system_prompt = await _render_dm_system(config, req.world_id)
+    logger.info("[engine] dm_create tick=%s world=%s", tick, world_id or "-")
+    system_prompt = await _render_dm_system(config, world_id)
     prompt = _PROMPTS.get_template("dm/dm_create.jinja").render(
         scenes=scenes,
-        recent_summary=recent_summary,
-        plot_brief_prev=req.plot_brief,
+        recent_summary="",
+        plot_brief_prev=plot_brief,
         memories=memories,
         pacing={},
     )
@@ -74,17 +73,27 @@ async def dm_create(
     if len(result.hints) > 4:
         result.hints = result.hints[:4]
 
-    # plot_brief 由 data_service.persist_tick 统一写入 dm_records，
-    # 这里不需要单独存储 DM 记忆。
-    return DMCreateResponse(
-        hints=result.hints,
-        plot_brief=result.plot_brief,
-        scene_id=result.scene_id,
-        ext=result.model_dump(),
-    )
+    return {
+        "hints": result.hints,
+        "plot_brief": result.plot_brief,
+        "scene_id": result.scene_id,
+        "ext": result.model_dump(),
+    }
 
 
-async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DMNarrateResponse:
+async def dm_narrate(
+    tick: int,
+    world_id: str,
+    plot_brief: str,
+    hints: list[str],
+    events: list,
+    scene: dict,
+    scene_objects: list[dict],
+    pcs: dict,
+    actors: dict,
+    actions: list[dict],
+    config: RunnableConfig = None,
+) -> str:
     """Phase 6: DM 叙事 / DM narrates.
 
     注意：本函数不再提供 fallback 叙事。LLM 返回空视为后端/模型异常，
@@ -95,31 +104,30 @@ async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DM
         raise RuntimeError("[dm_narrate] LLM client not configured")
 
     # 检索 DM 记忆（复用 dm_records）/ Retrieve DM memories from dm_records
-    memories: list[str] = []
+    dm_memories: list[str] = []
     try:
         mems = await retrieve_dm_records(
-            req.world_id or "", config=config, top_k=3, before_tick=req.tick
+            world_id or "", config=config, top_k=3, before_tick=tick
         )
-        memories = list(mems) if mems else []
+        dm_memories = list(mems) if mems else []
     except Exception:
         logger.warning("[engine] dm_narrate memory retrieval failed, continuing without memories")
 
     # actions.result 可能是 Pydantic 模型，模板用 dict.get，需要统一转 dict
-    # / Normalize action results so Jinja can safely use .get()
-    actions = _normalize_actions(req.actions)
+    normalized_actions = _normalize_actions(actions)
 
-    system_prompt = await _render_dm_system(config, req.world_id)
+    system_prompt = await _render_dm_system(config, world_id)
     prompt = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
-        tick=req.tick,
-        plot_brief=req.plot_brief,
-        hints=req.hints,
-        scene=req.scene,
-        scene_objects=req.scene_objects,
-        pcs=list(req.pcs.values()),
-        actors=list(req.actors.values()),
-        events=req.events,
-        actions=actions,
-        memories=memories,
+        tick=tick,
+        plot_brief=plot_brief,
+        hints=hints,
+        scene=scene,
+        scene_objects=scene_objects,
+        pcs=list(pcs.values()),
+        actors=list(actors.values()),
+        events=events,
+        actions=normalized_actions,
+        memories=dm_memories,
     )
 
     result = await llm.call_structured(
@@ -131,18 +139,15 @@ async def dm_narrate(req: DMNarrateRequest, config: RunnableConfig = None) -> DM
     narrative = (result.narrative or "").strip()
     if not narrative:
         logger.error(
-            "[engine] dm_narrate produced empty narrative; tick=%s prompt_len=%s prompt_preview=%s",
-            req.tick,
-            len(prompt),
-            prompt[:1200],
+            "[engine] dm_narrate produced empty narrative; tick=%s prompt_preview=%s",
+            tick, prompt[:1200],
         )
         raise RuntimeError(
-            f"[dm_narrate] LLM returned empty narrative at tick={req.tick}; "
-            "check model/prompt. Raw response should be in debug logs."
+            f"[dm_narrate] LLM returned empty narrative at tick={tick}"
         )
 
-    logger.info("[engine] dm_narrate tick=%s narrative_len=%s", req.tick, len(narrative))
-    return DMNarrateResponse(narrative_out=narrative)
+    logger.info("[engine] dm_narrate tick=%s narrative_len=%s", tick, len(narrative))
+    return narrative
 
 
 def _normalize_actions(actions: list[dict[str, Any]] | None) -> list[dict[str, Any]]:

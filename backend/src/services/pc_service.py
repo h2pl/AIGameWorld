@@ -62,28 +62,27 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
     scene_objects = state.get("scene_objects", [])
     pcs = state.get("pcs", {})
     actors = state.get("actors", {})
-    pc_memory_map = state.get("memories", {})
+    memories = state.get("memories", {})
     actions: list[Action] = []
 
     for order, decision in enumerate(decisions):
         pc_id = decision.pc_id
         target_id = decision.target_id or ""
-        decision_dict = decision.model_dump()
 
         # 各 engine 内部自行更新 pcs 坐标
         talk_result = await talk_engine.process_talk_action(
-            decision=decision_dict,
+            decision=decision,
             plot_brief=plot_brief,
             hints=hints,
             scene_id=scene_id,
             tick=tick,
             pcs=pcs,
             actors=actors,
-            pc_memory_map=pc_memory_map,
+            pc_memory_map=memories,
             config=config,
         )
         interact_result = await interact_engine.process_interact_action(
-            decision=decision_dict,
+            decision=decision,
             scene=scene,
             scene_objects=scene_objects,
             pcs=pcs,
@@ -91,22 +90,22 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
             tick=tick,
             plot_brief=plot_brief,
             hints=hints,
-            pc_memory_map=pc_memory_map,
+            pc_memory_map=memories,
             config=config,
         )
         combat_result = await combat_engine.process_combat_action(
-            decision=decision_dict,
+            decision=decision,
             scene=scene,
             pcs=pcs,
             actors=actors,
             plot_brief=plot_brief,
             hints=hints,
             tick=tick,
-            pc_memory_map=pc_memory_map,
+            pc_memory_map=memories,
             config=config,
         )
         explore_result = await explore_engine.process_explore_action(
-            decision=decision_dict,
+            decision=decision,
             scene=scene,
             scene_objects=scene_objects,
             pcs=pcs,
@@ -114,7 +113,7 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
             plot_brief=plot_brief,
             hints=hints,
             tick=tick,
-            pc_memory_map=pc_memory_map,
+            pc_memory_map=memories,
             config=config,
         )
 
@@ -137,6 +136,6 @@ async def act(state: OverallState, config: RunnableConfig = None) -> dict:
     result: dict = {"actions": actions}
     if pcs:
         result["pcs"] = pcs
-    if pc_memory_map:
-        result["memories"] = pc_memory_map
+    if memories:
+        result["memories"] = memories
     return result

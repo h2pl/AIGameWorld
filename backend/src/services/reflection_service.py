@@ -7,7 +7,6 @@ from langchain_core.runnables.config import RunnableConfig
 
 from ..engine.reflection import reflection_engine
 from ..graph.state import ReflectionSubState
-from ..schemas.request import ReflectionRequest
 from ..utils.helpers import get_repo
 from ..utils.logging import get_logger
 
@@ -71,20 +70,18 @@ async def _reflect_one(
     past_refs = await memory_repo.retrieve_reflections(char_id, "behavior growth", top_k=3)
     past_texts = [r.content for r in past_refs]
 
-    result = await engine.reflect(
-        ReflectionRequest(
-            pc_id=char_id,
-            pc_name=name,
-            pc_type=char_type,
-            arc_stage=arc_stage,
-            arc_description=arc_desc,
-            memories=[{"content": m.content, "importance": m.importance} for m in recent_mems],
-            recent_reflections=past_texts,
-            tick=tick,
-        ),
-        config,
+    results = await engine.reflect(
+        pc_id=char_id,
+        pc_name=name,
+        pc_type=char_type,
+        arc_stage=arc_stage,
+        arc_description=arc_desc,
+        memories=[{"content": m.content, "importance": m.importance} for m in recent_mems],
+        recent_reflections=past_texts,
+        tick=tick,
+        config=config,
     )
 
-    if result.insights_out:
-        return result.insights_out[0]
+    if results:
+        return results[0]
     return None

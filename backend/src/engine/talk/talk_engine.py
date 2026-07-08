@@ -12,7 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, Memory, PlayerCharacter, Scene
+from ...domain import Actor, Decision, Memory, PlayerCharacter, Scene
 from ...schemas.engine_result import TalkActionResult
 from ...schemas.llm_output import DialogueSchema
 from ...services.memory_service import retrieve_memories
@@ -26,7 +26,7 @@ _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
 
 
 async def process_talk_action(
-    decision: dict,
+    decision: Decision,
     plot_brief: str,
     hints: list[str],
     scene_id: str,
@@ -37,13 +37,13 @@ async def process_talk_action(
     config: RunnableConfig = None,
 ) -> TalkActionResult | None:
     """处理单个 talk 决策 → 生成多轮对话，更新发起者坐标到目标旁边，写入 pc_memory_map"""
-    if decision.get("type") != "talk":
+    if decision.type != "talk":
         return None
 
-    char_id = decision.get("pc_id", "")
-    target_id = decision.get("target_id", "")
-    target_type = decision.get("target_type", "")
-    reason = decision.get("description", "")
+    char_id = decision.pc_id
+    target_id = decision.target_id or ""
+    target_type = decision.target_type or ""
+    reason = decision.description
 
     turns = await _generate_dialogue(
         char_id,

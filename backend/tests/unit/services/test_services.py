@@ -129,7 +129,7 @@ class TestCharacterService:
         ):
             result = await pc_service.act(state)
         mock_talk.assert_awaited_once_with(
-            decision=decision.model_dump(),
+            decision=decision,
             plot_brief="",
             hints=[],
             scene_id="scene-1",
@@ -140,7 +140,7 @@ class TestCharacterService:
             config=None,
         )
         mock_interact.assert_awaited_once_with(
-            decision=decision.model_dump(),
+            decision=decision,
             scene=Scene(id="scene-1"),
             scene_objects=[],
             pcs={},
@@ -152,7 +152,7 @@ class TestCharacterService:
             config=None,
         )
         mock_combat.assert_awaited_once_with(
-            decision=decision.model_dump(),
+            decision=decision,
             scene=Scene(id="scene-1"),
             pcs={},
             actors={},
@@ -230,9 +230,8 @@ class TestDMAndReflectionService:
     @pytest.mark.asyncio
     async def test_dm_narrate_returns_narrative(self):
         """DM narrate 返回叙事文本 / DM narrate returns narrative text."""
-        engine_result = SimpleNamespace(narrative_out="战斗爆发。")
         with patch.object(
-            dm_service.dm_engine, "dm_narrate", AsyncMock(return_value=engine_result)
+            dm_service.dm_engine, "dm_narrate", AsyncMock(return_value="战斗爆发。")
         ):
             result = await dm_service.dm_narrate(
                 _overall_state(tick=10, dm_record=DMRecord(tick=10, world_id="w-1"))

@@ -13,7 +13,7 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, Memory, PlayerCharacter
+from ...domain import Actor, Decision, Memory, PlayerCharacter, Scene
 from ...schemas.engine_result import CombatActionResult
 from ...schemas.llm_output import CombatNarrationSchema
 from ...services.memory_service import retrieve_memories
@@ -27,8 +27,8 @@ _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
 
 
 async def process_combat_action(
-    decision: dict,
-    scene: dict[str, Any] | None = None,
+    decision: Decision,
+    scene: Scene | None = None,
     pcs: dict[str, PlayerCharacter] | None = None,
     actors: dict[str, Actor] | None = None,
     plot_brief: str = "",
@@ -38,12 +38,12 @@ async def process_combat_action(
     config: RunnableConfig = None,
 ) -> CombatActionResult | None:
     """处理单个 combat 决策：走位 → LLM 生成战斗 → 状态更新 → 记忆."""
-    if decision.get("type") != "combat":
+    if decision.type != "combat":
         return None
 
-    pc_id = decision.get("pc_id", "")
-    target_id = decision.get("target_id", "")
-    target_type = decision.get("target_type", "")
+    pc_id = decision.pc_id
+    target_id = decision.target_id or ""
+    target_type = decision.target_type or ""
     if not pc_id or not target_id:
         return None
 

@@ -10,8 +10,6 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.runnables.config import RunnableConfig
 
 from ...schemas.llm_output import ReflectionOutputSchema
-from ...schemas.request import ReflectionRequest
-from ...schemas.response import ReflectionResponse
 from ...utils.helpers import get_llm
 from ...utils.logging import get_logger
 
@@ -23,49 +21,56 @@ _PC_TEMPLATE = _PROMPTS.get_template("reflect_pc.jinja")
 _ACTOR_TEMPLATE = _PROMPTS.get_template("reflect_actor.jinja")
 
 
-async def reflect(req: ReflectionRequest, config: RunnableConfig = None) -> ReflectionResponse:
+async def reflect(
+    pc_id: str,
+    pc_name: str,
+    pc_type: str,
+    arc_stage: str,
+    arc_description: str,
+    memories: list[dict],
+    recent_reflections: list[str],
+    tick: int = 0,
+    config: RunnableConfig = None,
+) -> list[dict]:
     """角色反思入口 / Character reflection entry point."""
     llm = get_llm(config)
     if llm is None:
-        logger.warning("[reflection] LLM not configured, returning empty insight for %s", req.pc_id)
-        return ReflectionResponse(
-            insights_out=[_format_insight(req, ReflectionOutputSchema().model_dump())]
-        )
+        logger.warning("[reflection] LLM not configured, returning empty insight for %s", pc_id)
+        return [_format_insight(pc_id, pc_name, pc_type, tick, ReflectionOutputSchema().model_dump())]
 
-    template = _PC_TEMPLATE if req.pc_type == "pc" else _ACTOR_TEMPLATE
+    template = _PC_TEMPLATE if pc_type == "pc" else _ACTOR_TEMPLATE
     prompt = template.render(
-        pc_name=req.pc_name,
-        arc_stage=req.arc_stage,
-        arc_description=req.arc_description,
-        memories=req.memories[-5:] if req.pc_type == "pc" else req.memories[-3:],
-        recent_reflections=req.recent_reflections[-3:],
+        pc_name=pc_name,
+        arc_stage=arc_stage,
+        arc_description=arc_description,
+        memories=memories[-5:] if pc_type == "pc" else memories[-3:],
+        recent_reflections=recent_reflections[-3:],
     )
 
     result = await llm.call_structured(
-        f"reflect_{req.pc_type}",
+        f"reflect_{pc_type}",
         ReflectionOutputSchema,
         [{"role": "user", "content": prompt}],
     )
-    insight = _format_insight(req, result.model_dump())
-    return ReflectionResponse(insights_out=[insight])
+    return [_format_insight(pc_id, pc_name, pc_type, tick, result.model_dump())]
 
 
-def _format_insight(req: ReflectionRequest, result: dict) -> dict:
+def _format_insight(pc_id: str, pc_name: str, pc_type: str, tick: int, result: dict) -> dict:
     """格式化反思输出 / Format reflection output."""
-    if req.pc_type == "pc":
+    if pc_type == "pc":
         text = " ".join(
             filter(None, [result.get("arc_analysis"), result.get("personality_insight")])
         )
-        text = f"{req.pc_name}: {text or '（无有效反思）'}"
+        text = f"{pc_name}: {text or '（无有效反思）'}"
         importance = 10
     else:
-        text = f"{req.pc_name}: {result.get('behavior_summary', '（无有效总结）')}"
+        text = f"{pc_name}: {result.get('behavior_summary', '（无有效总结）')}"
         importance = 5
 
     return {
-        "pc_id": req.pc_id,
+        "pc_id": pc_id,
         "insight": text,
         "memory_type": "reflection",
         "importance": importance,
-        "tick": req.tick,
+        "tick": tick,
     }

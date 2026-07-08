@@ -93,11 +93,11 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
     world_id = state.get("world_id", "")
 
     # 1. 写 dm_records / Write DM record
-    dm_ext = state.get("dm_record")
-    if isinstance(dm_ext, DMRecord) and world_id:
+    dm_record = state.get("dm_record")
+    if isinstance(dm_record, DMRecord) and world_id:
         record_repo = get_repo(config, "dm_record")
         if record_repo:
-            await record_repo.save_plot_brief(dm_ext)
+            await record_repo.save_plot_brief(dm_record)
             logger.info("[data] wrote dm_record tick=%s", tick)
 
     # 2. 写事件到 tick_events / Write events to tick_events
@@ -127,12 +127,12 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
             logger.info("[data] persisted actors count=%d tick=%s", len(actors), tick)
 
     # 5. 统一落盘本 tick 产生的新记忆 / Persist new memories created this tick
-    pc_memories: dict[str, list[Memory]] = state.get("memories", {})
-    if pc_memories:
+    memories: dict[str, list[Memory]] = state.get("memories", {})
+    if memories:
         memory_repo = get_repo(config, "memory")
         if memory_repo:
             total = 0
-            for pc_id, mems in pc_memories.items():
+            for pc_id, mems in memories.items():
                 for m in mems:
                     await memory_repo.store(
                         pc_id=m.pc_id or pc_id,

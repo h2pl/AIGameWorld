@@ -12,7 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, Memory, PlayerCharacter
+from ...domain import Actor, Decision, Memory, PlayerCharacter, Scene
 from ...domain.scene_object import SceneObject
 from ...schemas.engine_result import InteractActionResult
 from ...schemas.llm_output import InteractOutputSchema
@@ -27,9 +27,9 @@ _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
 
 
 async def process_interact_action(
-    decision: dict,
-    scene: dict[str, Any] | None = None,
-    scene_objects: list[dict[str, Any]] | None = None,
+    decision: Decision,
+    scene: Scene | None = None,
+    scene_objects: list[SceneObject] | None = None,
     pcs: dict[str, PlayerCharacter] | None = None,
     actors: dict[str, Actor] | None = None,
     tick: int = 0,
@@ -39,13 +39,13 @@ async def process_interact_action(
     config: RunnableConfig = None,
 ) -> InteractActionResult | None:
     """处理单个 interact 决策：移动→LLM 裁决→记忆 / Resolve interact: move → LLM judge → memory."""
-    if decision.get("type") != "interact":
+    if decision.type != "interact":
         return None
-    object_id = decision.get("target_id", "")
+    object_id = decision.target_id or ""
     if not object_id:
         return None
 
-    char_id = decision.get("pc_id", "")
+    char_id = decision.pc_id
     pc = (pcs or {}).get(char_id)
     if pc is None:
         return None

@@ -13,7 +13,7 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from ...domain import Actor, Memory, PlayerCharacter
+from ...domain import Actor, Decision, Memory, PlayerCharacter, Scene, SceneObject
 from ...schemas.engine_result import ExploreActionResult
 from ...schemas.llm_output import ExploreOutputSchema
 from ...services.memory_service import retrieve_memories
@@ -27,7 +27,7 @@ _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
 
 
 async def process_explore_action(
-    decision: dict,
+    decision: Decision,
     scene: Scene | None = None,
     scene_objects: list[SceneObject] | None = None,
     pcs: dict[str, PlayerCharacter] | None = None,
@@ -39,10 +39,10 @@ async def process_explore_action(
     config: RunnableConfig = None,
 ) -> ExploreActionResult | None:
     """处理单个 explore 决策 → LLM 生成终点+探索记录，直接修改 PC 领域模型，防重叠."""
-    if decision.get("type") != "explore":
+    if decision.type != "explore":
         return None
 
-    pc_id = decision.get("pc_id", "")
+    pc_id = decision.pc_id
     pc = (pcs or {}).get(pc_id)
     if pc is None:
         return None
