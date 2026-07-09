@@ -155,7 +155,7 @@ export async function getTestSeamState(page: Page): Promise<Record<string, unkno
 
 // ── beforeEach：重置 + 4x 倍速 / Reset + 4x speed ────────────
 
-/** beforeEach 标准流程：重置 → 刷新 → 1x 倍速（默认速度，避免 headless crash） */
+/** beforeEach 标准流程：重置 → 刷新 → 4x 倍速 */
 export async function resetAndPrepare(page: Page): Promise<void> {
   await page.goto("/");
   await page.waitForSelector(SELECTORS.backendOverlay, {
@@ -181,7 +181,7 @@ export async function resetAndPrepare(page: Page): Promise<void> {
     timeout: 90000,
   });
   await expect(page.locator(SELECTORS.runNButton)).toBeEnabled({ timeout: 10000 });
-  // 默认 1x 速度，避免 headless Phaser + scene_setup rebuild 导致的 GPU crash
+  await page.locator(SELECTORS.speed4x).click();
 }
 
 // ── 辅助：运行 N tick 并等待完成 / Run N ticks and wait ─────
