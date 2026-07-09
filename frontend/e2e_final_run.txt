@@ -1,0 +1,321 @@
+[backend] INFO:     Started server process [9332]
+[backend] [Config] LLM provider: deepseek
+[backend] INFO:     Waiting for application startup.
+[backend] 2026-07-09 16:22:47 | main                     | INFO     | [lifespan] logging configured level=INFO json=False rotation=H
+[backend] 2026-07-09 16:22:47 | storage.sqlite_client    | INFO     | [storage] connected e2e.db
+[backend] 2026-07-09 16:22:47 | storage.sqlite_client    | INFO     | [storage] schema initialized
+[backend] 2026-07-09 16:22:47 | main                     | INFO     | [lifespan] db=data/e2e.db ready
+[backend] 2026-07-09 16:22:47 | repo.world_repo          | INFO     | [repo] delete id=mock_world
+[backend] 2026-07-09 16:22:47 | repo.event_repo          | INFO     | [repo] deleted events for world=mock_world
+[backend] 2026-07-09 16:22:47 | repo.world_repo          | INFO     | [repo] create id=mock_world
+[backend] 2026-07-09 16:22:47 | main                     | INFO     | [lifespan] mock data seeded into data/e2e.db
+[backend] 2026-07-09 16:22:55 | storage.chroma_client    | INFO     | [chroma] using default embedding function
+[backend] 2026-07-09 16:22:59 | repo.knowledge_repo      | INFO     | [knowledge] indexed pack=forgotten_realms chunks=32
+[backend] 2026-07-09 16:22:59 | orchestrator             | INFO     | [orchestrator] init
+[backend] 2026-07-09 16:22:59 | graph.graph              | INFO     | [graph] building tick graph
+[backend] 2026-07-09 16:22:59 | graph.checkpoints        | INFO     | [graph] checkpointer type=memory
+[backend] 2026-07-09 16:22:59 | main                     | INFO     | [lifespan] orchestrator ready
+[backend] 2026-07-09 16:22:59 | uvicorn.error            | INFO     | Application startup complete.
+[backend] 2026-07-09 16:22:59 | uvicorn.error            | INFO     | Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+[backend] 2026-07-09 16:23:00 | uvicorn.access           | INFO     | 127.0.0.1:54802 - "GET /health HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:23:00 | uvicorn.access           | INFO     | 127.0.0.1:54804 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[e2e setup] backend ready
+
+Running 38 tests using 1 worker
+
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:23:01 | uvicorn.access           | INFO     | 127.0.0.1:60622 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:23:01 | repo.event_repo          | INFO     | [repo] deleted events for world=mock_world
+[backend] 2026-07-09 16:23:01 | graph.checkpoints        | INFO     | [graph] checkpointer type=memory
+[backend] 2026-07-09 16:23:01 | orchestrator             | INFO     | [orchestrator] reset complete for mock_world
+[backend] 2026-07-09 16:23:01 | api                      | INFO     | [api] world.reset world=mock_world
+[backend] 2026-07-09 16:23:01 | uvicorn.access           | INFO     | 127.0.0.1:60634 - "POST /api/world/mock_world/reset HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:23:01 | uvicorn.access           | INFO     | 127.0.0.1:60637 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:23:01 | uvicorn.access           | INFO     | 127.0.0.1:60640 - "GET /api/world/mock_world/loop/status HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:23:02 | uvicorn.access           | INFO     | 127.0.0.1:50402 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:23:02 | api                      | INFO     | [api] tick.batch world=mock_world:1
+[backend] 2026-07-09 16:23:02 | tick_runner              | INFO     | [batch] Started 1 ticks for world mock_world
+[backend] 2026-07-09 16:23:02 | uvicorn.access           | INFO     | 127.0.0.1:50404 - "POST /api/world/mock_world/tick/batch/1 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:02 | uvicorn.access           | INFO     | 127.0.0.1:50406 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:03 | engine.dm.dm_engine      | INFO     | [engine] dm_create tick=1 world=mock_world
+[backend] 2026-07-09 16:23:03 | performance              | INFO     | [performance] dm.create tick=1 1216.8ms
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:23:03 | uvicorn.access           | INFO     | 127.0.0.1:50409 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:23:03 | uvicorn.access           | INFO     | 127.0.0.1:50412 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:03 | performance              | INFO     | [performance] data.load_world tick=1 1.0ms
+[backend] 2026-07-09 16:23:03 | performance              | INFO     | [performance] data.load_scene tick=1 0.4ms
+[backend] 2026-07-09 16:23:03 | performance              | INFO     | [performance] data.load_actors tick=1 0.4ms
+[backend] 2026-07-09 16:23:03 | performance              | INFO     | [performance] data.load_pcs tick=1 0.3ms
+[backend] 2026-07-09 16:23:03 | performance              | INFO     | [performance] data.load_scene_objects tick=1 0.9ms
+[backend] 2026-07-09 16:23:03 | performance              | INFO     | [performance] tick_init.assign_positions tick=1 0.1ms
+[backend] 2026-07-09 16:23:03 | performance              | INFO     | [performance] tick_init.dm_create_event tick=1 0.0ms
+[backend] 2026-07-09 16:23:03 | performance              | INFO     | [performance] tick_init.scene_setup_snapshot tick=1 0.1ms
+[backend] 2026-07-09 16:23:03 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=cleric
+[backend] 2026-07-09 16:23:03 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=fighter
+[backend] 2026-07-09 16:23:03 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=rogue
+[backend] 2026-07-09 16:23:03 | engine.decision.decision_engine | WARNING  | [engine] target chest_1 (scene_object) not in scene, downgrading to wait
+[backend] 2026-07-09 16:23:03 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=wizard
+[backend] 2026-07-09 16:23:03 | performance              | INFO     | [performance] pc.decide tick=1 18.8ms
+[backend] 2026-07-09 16:23:03 | engine.explore.explore_engine | INFO     | [engine] cleric explore start pos=(20,20) scene=village_elderwood
+[backend] 2026-07-09 16:23:03 | engine.explore.explore_engine | INFO     | [engine] cleric explore: (20,20) → (10,12) | 吧台后方的木地板有一块微微翘起，下面似乎藏着一张泛黄的羊皮纸
+[backend] 2026-07-09 16:23:03 | engine.combat.combat_engine | INFO     | [combat] fighter → skeleton : 他挥剑劈向地精，剑锋在烛光下划出一道弧光，将敌人逼得连退两步 (defeated=False)
+[backend] 2026-07-09 16:23:03 | engine.talk.talk_engine  | INFO     | [engine] wizard ↔ guard : 4 turns
+[backend] 2026-07-09 16:23:03 | performance              | INFO     | [performance] pc.act tick=1 22.8ms
+[backend] 2026-07-09 16:23:03 | service.event_service    | INFO     | [service] flushed events tick=1 count=9
+[backend] 2026-07-09 16:23:04 | uvicorn.access           | INFO     | 127.0.0.1:51320 - "GET /api/metrics/summary?world_id=mock_world&last_n=100 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:04 | engine.dm.dm_engine      | INFO     | [engine] dm_narrate tick=1 narrative_len=98
+[backend] 2026-07-09 16:23:04 | performance              | INFO     | [performance] dm.narrate tick=1 916.0ms
+[backend] 2026-07-09 16:23:04 | repo.dm_record_repo      | INFO     | [repo] save_plot_brief tick=1
+[backend] 2026-07-09 16:23:04 | uvicorn.access           | INFO     | 127.0.0.1:51314 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:04 | service.data_service     | INFO     | [data] wrote dm_record tick=1
+[backend] 2026-07-09 16:23:04 | repo.event_repo          | INFO     | [repo] insert tick=1 count=10
+[backend] 2026-07-09 16:23:04 | service.data_service     | INFO     | [data] wrote events tick=1 count=10
+[backend] 2026-07-09 16:23:04 | service.data_service     | INFO     | [data] persisted pcs count=4 tick=1
+[backend] 2026-07-09 16:23:04 | service.data_service     | INFO     | [data] persisted actors count=6 tick=1
+[backend] 2026-07-09 16:23:04 | performance              | INFO     | [performance] data.persist tick=1 47.8ms
+[backend] 2026-07-09 16:23:04 | performance              | INFO     | [performance] tick tick=1
+[backend] 2026-07-09 16:23:04 | utils.metrics            | INFO     | [metrics] tick=1 latency=2283ms llm=0 tokens=0/0 cost=$0.000000
+[backend] 2026-07-09 16:23:04 | tick_runner              | INFO     | [batch] Finished world mock_world: 1/1 ticks
+[backend] 2026-07-09 16:23:04 | uvicorn.access           | INFO     | 127.0.0.1:64885 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:12 | uvicorn.access           | INFO     | 127.0.0.1:52273 - "GET /api/metrics/summary?world_id=mock_world&last_n=100 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:14 | api                      | INFO     | [api] tick.display world=mock_world:1
+2026-07-09 16:23:14 | uvicorn.access           | INFO     | 127.0.0.1:51830 - "POST /api/world/mock_world/tick/display/1 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:15 | uvicorn.access           | INFO     | 127.0.0.1:54918 - "GET /api/metrics/summary?world_id=mock_world&last_n=100 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:15 | uvicorn.access           | INFO     | 127.0.0.1:54916 - "GET /api/world/mock_world/events?since_tick=0&tick_limit=1 HTTP/1.1" 200
+  ok  1 [chromium] › tests\e2e\action-playback.spec.ts:20:3 › action playback › UC-16 talk action plays dialogue bubbles (14.5s)
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:23:16 | uvicorn.access           | INFO     | 127.0.0.1:65008 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:23:16 | uvicorn.access           | INFO     | 127.0.0.1:65014 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:23:16 | uvicorn.access           | INFO     | 127.0.0.1:56537 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:16 | repo.event_repo          | INFO     | [repo] deleted events for world=mock_world
+[backend] 2026-07-09 16:23:16 | graph.checkpoints        | INFO     | [graph] checkpointer type=memory
+[backend] 2026-07-09 16:23:16 | orchestrator             | INFO     | [orchestrator] reset complete for mock_world
+[backend] 2026-07-09 16:23:16 | api                      | INFO     | [api] world.reset world=mock_world
+[backend] 2026-07-09 16:23:16 | uvicorn.access           | INFO     | 127.0.0.1:62694 - "POST /api/world/mock_world/reset HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:23:16 | uvicorn.access           | INFO     | 127.0.0.1:65312 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:23:16 | uvicorn.access           | INFO     | 127.0.0.1:65315 - "GET /api/world/mock_world/loop/status HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:23:17 | uvicorn.access           | INFO     | 127.0.0.1:55653 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:23:17 | api                      | INFO     | [api] tick.batch world=mock_world:1
+[backend] 2026-07-09 16:23:17 | tick_runner              | INFO     | [batch] Started 1 ticks for world mock_world
+[backend] 2026-07-09 16:23:17 | uvicorn.access           | INFO     | 127.0.0.1:55663 - "POST /api/world/mock_world/tick/batch/1 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:18 | engine.dm.dm_engine      | INFO     | [engine] dm_create tick=1 world=mock_world
+[backend] 2026-07-09 16:23:18 | performance              | INFO     | [performance] dm.create tick=1 1253.2ms
+[backend] 2026-07-09 16:23:18 | uvicorn.access           | INFO     | 127.0.0.1:55665 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:18 | performance              | INFO     | [performance] data.load_world tick=1 1.4ms
+[backend] 2026-07-09 16:23:18 | performance              | INFO     | [performance] data.load_scene tick=1 0.6ms
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:23:18 | uvicorn.access           | INFO     | 127.0.0.1:55668 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:23:18 | performance              | INFO     | [performance] data.load_actors tick=1 14.6ms
+[backend] 2026-07-09 16:23:18 | performance              | INFO     | [performance] data.load_pcs tick=1 0.9ms
+[backend] 2026-07-09 16:23:18 | performance              | INFO     | [performance] data.load_scene_objects tick=1 1.0ms
+[backend] 2026-07-09 16:23:18 | performance              | INFO     | [performance] tick_init.assign_positions tick=1 0.1ms
+[backend] 2026-07-09 16:23:18 | performance              | INFO     | [performance] tick_init.dm_create_event tick=1 0.1ms
+[backend] 2026-07-09 16:23:18 | performance              | INFO     | [performance] tick_init.scene_setup_snapshot tick=1 0.1ms
+[backend] 2026-07-09 16:23:18 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=cleric
+[backend] 2026-07-09 16:23:18 | engine.decision.decision_engine | WARNING  | [engine] target chest_1 (scene_object) not in scene, downgrading to wait
+[backend] 2026-07-09 16:23:18 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=fighter
+[backend] 2026-07-09 16:23:18 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=rogue
+[backend] 2026-07-09 16:23:18 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=wizard
+[backend] 2026-07-09 16:23:18 | performance              | INFO     | [performance] pc.decide tick=1 1.6ms
+[backend] 2026-07-09 16:23:18 | engine.interact.interact_engine | INFO     | [interact] fighter → door_cellar : success | 机关应声弹开，里面露出一枚刻着龙纹的徽章和一小袋金币——看起
+[backend] 2026-07-09 16:23:18 | engine.combat.combat_engine | INFO     | [combat] rogue → skeleton : 他挥剑劈向地精，剑锋在烛光下划出一道弧光，将敌人逼得连退两步 (defeated=False)
+[backend] 2026-07-09 16:23:18 | engine.talk.talk_engine  | INFO     | [engine] wizard ↔ merchant : 4 turns
+[backend] 2026-07-09 16:23:18 | performance              | INFO     | [performance] pc.act tick=1 23.1ms
+[backend] 2026-07-09 16:23:18 | service.event_service    | INFO     | [service] flushed events tick=1 count=9
+[backend] 2026-07-09 16:23:19 | engine.dm.dm_engine      | INFO     | [engine] dm_narrate tick=1 narrative_len=98
+[backend] 2026-07-09 16:23:19 | performance              | INFO     | [performance] dm.narrate tick=1 1056.2ms
+[backend] 2026-07-09 16:23:19 | uvicorn.access           | INFO     | 127.0.0.1:62129 - "GET /api/metrics/summary?world_id=mock_world&last_n=100 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:19 | uvicorn.access           | INFO     | 127.0.0.1:62133 - "GET /api/metrics/summary?world_id=mock_world&last_n=100 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:19 | repo.dm_record_repo      | INFO     | [repo] save_plot_brief tick=1
+[backend] 2026-07-09 16:23:19 | uvicorn.access           | INFO     | 127.0.0.1:62125 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:23:19 | service.data_service     | INFO     | [data] wrote dm_record tick=1
+[backend] 2026-07-09 16:23:19 | repo.event_repo          | INFO     | [repo] insert tick=1 count=10
+[backend] 2026-07-09 16:23:19 | service.data_service     | INFO     | [data] wrote events tick=1 count=10
+[backend] 2026-07-09 16:23:19 | service.data_service     | INFO     | [data] persisted pcs count=4 tick=1
+[backend] 2026-07-09 16:23:19 | service.data_service     | INFO     | [data] persisted actors count=6 tick=1
+[backend] 2026-07-09 16:23:19 | performance              | INFO     | [performance] data.persist tick=1 46.2ms
+[backend] 2026-07-09 16:23:19 | performance              | INFO     | [performance] tick tick=1
+[backend] 2026-07-09 16:23:19 | utils.metrics            | INFO     | [metrics] tick=1 latency=2469ms llm=0 tokens=0/0 cost=$0.000000
+[backend] 2026-07-09 16:23:19 | tick_runner              | INFO     | [batch] Finished world mock_world: 1/1 ticks
+[backend] 2026-07-09 16:23:20 | uvicorn.access           | INFO     | 127.0.0.1:62139 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+  x   2 [chromium] › tests\e2e\action-playback.spec.ts:50:3 › action playback › UC-17 explore action walks to waypoints (7.2s)
+[backend] 2026-07-09 16:23:22 | uvicorn.error            | INFO     | Shutting down
+[backend] 2026-07-09 16:23:23 | uvicorn.error            | INFO     | Waiting for application shutdown.
+[backend] 2026-07-09 16:23:23 | storage.sqlite_client    | INFO     | [storage] closed
+[backend] 2026-07-09 16:23:23 | uvicorn.error            | INFO     | Application shutdown complete.
+[backend] 2026-07-09 16:23:23 | uvicorn.error            | INFO     | Finished server process [9332]
+[e2e teardown] backend stopped
+
+
+  1) [chromium] › tests\e2e\action-playback.spec.ts:50:3 › action playback › UC-17 explore action walks to waypoints 
+
+    Test was interrupted.
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('[data-testid="control-status"]')
+    Expected pattern: /就绪|完成|展示/
+    Received string:  "生成 Tick 数据中..."
+
+    Call log:
+      - Expect "toContainText" with timeout 30000ms
+      - waiting for locator('[data-testid="control-status"]')
+        6 × locator resolved to <span data-testid="control-status" class="control-status-waiting">生成 Tick 数据中...</span>
+          - unexpected value "生成 Tick 数据中..."
+        5 × locator resolved to <span class="" data-testid="control-status">生成 Tick 数据中...</span>
+          - unexpected value "生成 Tick 数据中..."
+
+
+       at helpers.ts:196
+
+      194 |   await waitForBackendTick(page, n, timeout);
+      195 |   // 再等前端 UI 稳定 / Let UI settle
+    > 196 |   await expect(page.locator(SELECTORS.status)).toContainText(/就绪|完成|展示/, { timeout: 30000 });
+          |                                                ^
+      197 | }
+      198 |
+        at runNTicks (E:\Projects\AIGameWorld\frontend\tests\e2e\helpers.ts:196:48)
+        at E:\Projects\AIGameWorld\frontend\tests\e2e\action-playback.spec.ts:52:5
+
+    Error: browserContext.close: Test ended.
+    Browser logs:
+
+    <launching> C:\Users\Hpl\AppData\Local\ms-playwright\chromium_headless_shell-1228\chrome-headless-shell-win64\chrome-headless-shell.exe --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=C:\Users\Hpl\AppData\Local\Temp\playwright_chromiumdev_profile-Qy2hiS --remote-debugging-pipe --no-startup-window
+    <launched> pid=18312
+    [pid=18312][err] [0709/162301.325:INFO:CONSOLE:495] "[vite] connecting...", source: http://localhost:3000/@vite/client (495)
+    [pid=18312][err] [0709/162301.343:INFO:CONSOLE:618] "[vite] connected.", source: http://localhost:3000/@vite/client (618)
+    [pid=18312][err] [0709/162301.455:INFO:CONSOLE:16] "08:23:01.455 [Main] === START ===", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162301.467:INFO:CONSOLE:16] "08:23:01.468 [Bootstrap] backend ready after 1 attempt(s)", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162301.468:INFO:CONSOLE:16] "08:23:01.468 [Bootstrap] loading world: /api/world/mock_world/state", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162301.489:INFO:CONSOLE:16] "08:23:01.488 [Bootstrap] world loaded: id=mock_world scenes=2", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162301.570:INFO:CONSOLE:8457] "%c %c %c %c %c Phaser v3.90.0 (WebGL | Web Audio) %c https://phaser.io/v390 background: #ff0000 background: #ffff00 background: #00ff00 background: #00ffff color: #ffffff; background: #000000 background: transparent", source: http://localhost:3000/node_modules/.vite/deps/phaser.js?v=8960cbe5 (8457)
+    [pid=18312][err] [0709/162301.573:INFO:CONSOLE:16] "08:23:01.574 [Main] === READY, world_id=mock_world ===", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162301.618:ERROR:gpu\command_buffer\service\gl_utils.cc:430] [.WebGL-0x131c001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+    [pid=18312][err] [0709/162301.678:INFO:CONSOLE:16] "08:23:01.678 [Boot] world has 2 scenes: village_elderwood, desert", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162301.678:INFO:CONSOLE:16] "08:23:01.679 [Boot] loading tileset: %s ← %s tuxemon-sample-32px-extruded /assets/rpg_tileset.png", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162301.678:INFO:CONSOLE:16] "08:23:01.679 [Boot] loading tilemap: %s ← %s village_elderwood /assets/tuxemon-town.json", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162301.678:INFO:CONSOLE:16] "08:23:01.679 [Boot] loading tileset: %s ← %s Desert /assets/tmw_desert_spacing.png", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162301.678:INFO:CONSOLE:16] "08:23:01.679 [Boot] loading tilemap: %s ← %s desert /assets/desert.json", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162301.683:INFO:CONSOLE:0] "[.WebGL-0x131c001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://localhost:3000/ (0)
+    [pid=18312][err] [0709/162301.685:ERROR:gpu\command_buffer\service\gl_utils.cc:430] [.WebGL-0x131c001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+    [pid=18312][err] [0709/162301.697:INFO:CONSOLE:0] "[.WebGL-0x131c001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://localhost:3000/ (0)
+    [pid=18312][err] [0709/162301.703:ERROR:gpu\command_buffer\service\gl_utils.cc:430] [.WebGL-0x131c001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+    [pid=18312][err] [0709/162301.707:INFO:CONSOLE:0] "[.WebGL-0x131c001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://localhost:3000/ (0)
+    [pid=18312][err] [0709/162301.708:ERROR:gpu\command_buffer\service\gl_utils.cc:430] [.WebGL-0x131c001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+    [pid=18312][err] [0709/162301.712:INFO:CONSOLE:0] "[.WebGL-0x131c001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)", source: http://localhost:3000/ (0)
+    [pid=18312][err] [0709/162301.722:INFO:CONSOLE:16] "08:23:01.723 [Boot] all assets loaded", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162301.722:INFO:CONSOLE:16] "08:23:01.723 [Boot] ready, starting Game scene", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162301.945:INFO:CONSOLE:495] "[vite] connecting...", source: http://localhost:3000/@vite/client (495)
+    [pid=18312][err] [0709/162301.961:INFO:CONSOLE:618] "[vite] connected.", source: http://localhost:3000/@vite/client (618)
+    [pid=18312][err] [0709/162302.148:INFO:CONSOLE:16] "08:23:02.148 [Main] === START ===", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162302.173:INFO:CONSOLE:16] "08:23:02.173 [Bootstrap] backend ready after 1 attempt(s)", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162302.174:INFO:CONSOLE:16] "08:23:02.173 [Bootstrap] loading world: /api/world/mock_world/state", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162302.190:INFO:CONSOLE:16] "08:23:02.190 [Bootstrap] world loaded: id=mock_world scenes=2", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162302.219:INFO:CONSOLE:8457] "%c %c %c %c %c Phaser v3.90.0 (WebGL | Web Audio) %c https://phaser.io/v390 background: #ff0000 background: #ffff00 background: #00ff00 background: #00ffff color: #ffffff; background: #000000 background: transparent", source: http://localhost:3000/node_modules/.vite/deps/phaser.js?v=8960cbe5 (8457)
+    [pid=18312][err] [0709/162302.220:INFO:CONSOLE:16] "08:23:02.221 [Main] === READY, world_id=mock_world ===", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162302.250:INFO:CONSOLE:16] "08:23:02.251 [Boot] world has 2 scenes: village_elderwood, desert", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162302.250:INFO:CONSOLE:16] "08:23:02.251 [Boot] loading tileset: %s ← %s tuxemon-sample-32px-extruded /assets/rpg_tileset.png", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162302.250:INFO:CONSOLE:16] "08:23:02.251 [Boot] loading tilemap: %s ← %s village_elderwood /assets/tuxemon-town.json", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162302.250:INFO:CONSOLE:16] "08:23:02.251 [Boot] loading tileset: %s ← %s Desert /assets/tmw_desert_spacing.png", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162302.250:INFO:CONSOLE:16] "08:23:02.251 [Boot] loading tilemap: %s ← %s desert /assets/desert.json", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162302.288:INFO:CONSOLE:16] "08:23:02.288 [Boot] all assets loaded", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162302.288:INFO:CONSOLE:16] "08:23:02.288 [Boot] ready, starting Game scene", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.818:INFO:CONSOLE:16] "08:23:04.818 [EventManager] tick=1 events=10 types=[scene_setup,dm_create,pc_decision,pc_explore,pc_decision,pc_combat,pc_decision,pc_decision,pc_talk,dm_narrative]", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.818:INFO:CONSOLE:16] "08:23:04.818 [EventManager] dispatch scene_setup", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.830:INFO:CONSOLE:16] "08:23:04.828 [Scene] build scene=village_elderwood pcs=4 actors=6", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.832:INFO:CONSOLE:16] "08:23:04.829 [MapManager] build sceneId=village_elderwood tilesets=%d tile_size=%d 1 32", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.838:INFO:CONSOLE:16] "08:23:04.838 [MapManager]   tileset OK: %s tuxemon-sample-32px-extruded", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.839:INFO:CONSOLE:16] "08:23:04.838 [MapManager]   layers: %s Below Player, World, Above Player", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.839:INFO:CONSOLE:16] "08:23:04.839 [MapManager]   layer OK: %s Below Player", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.839:INFO:CONSOLE:16] "08:23:04.839 [MapManager]   layer OK: %s World", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.839:INFO:CONSOLE:16] "08:23:04.839 [MapManager]   above layer OK: %s Above Player", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.839:INFO:CONSOLE:16] "08:23:04.839 [MapManager] build OK map=1280x1280px", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.839:INFO:CONSOLE:16] "08:23:04.839 [Scene] camera zoom=%.2f (map=%dx%d canvas=%dx%d) 1 1280 1280 960 640", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.854:INFO:CONSOLE:16] "08:23:04.854 [Scene] buildChars: pcs=4 actors=6", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162304.905:INFO:CONSOLE:16] "08:23:04.906 [EventManager] dispatch dm_create", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162305.942:INFO:CONSOLE:16] "08:23:05.943 [EventManager] dispatch pc_decision", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162305.946:INFO:CONSOLE:16] "08:23:05.947 [DecisionHandler] decision pc=cleric action=explore target=", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162306.837:INFO:CONSOLE:16] "08:23:06.837 [EventManager] dispatch pc_explore", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162307.066:INFO:CONSOLE:16] "08:23:07.066 [ExploreHandler] explore: cleric — 吧台后方的木地板有一块微微翘起，下面似乎藏着一张泛黄的羊皮纸。", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162307.771:INFO:CONSOLE:16] "08:23:07.771 [EventManager] dispatch pc_decision", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162307.773:INFO:CONSOLE:16] "08:23:07.773 [DecisionHandler] decision pc=fighter action=combat target=skeleton", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162308.691:INFO:CONSOLE:16] "08:23:08.691 [EventManager] dispatch pc_combat", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162308.945:INFO:CONSOLE:16] "08:23:08.945 [CombatHandler] combat narration: fighter → skeleton — 他挥剑劈向地精，剑锋在烛光下划出一道弧光，将敌人逼得连退两步。", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162309.637:INFO:CONSOLE:16] "08:23:09.637 [EventManager] dispatch pc_decision", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162309.640:INFO:CONSOLE:16] "08:23:09.640 [DecisionHandler] decision pc=rogue action=wait target=", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162310.520:INFO:CONSOLE:16] "08:23:10.521 [EventManager] dispatch pc_decision", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162310.522:INFO:CONSOLE:16] "08:23:10.523 [DecisionHandler] decision pc=wizard action=talk target=guard", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162311.408:INFO:CONSOLE:16] "08:23:11.409 [EventManager] dispatch pc_talk", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162311.411:INFO:CONSOLE:16] "08:23:11.411 [TalkHandler] talk pc=wizard target=guard waypoints=[{"x":21,"y":19},{"x":23,"y":18}]", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162311.411:INFO:CONSOLE:16] "08:23:11.412 [EventManager] dispatch dm_narrative", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162315.757:INFO:CONSOLE:495] "[vite] connecting...", source: http://localhost:3000/@vite/client (495)
+    [pid=18312][err] [0709/162315.827:INFO:CONSOLE:618] "[vite] connected.", source: http://localhost:3000/@vite/client (618)
+    [pid=18312][err] [0709/162316.021:INFO:CONSOLE:16] "08:23:16.021 [Main] === START ===", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.041:INFO:CONSOLE:16] "08:23:16.042 [Bootstrap] backend ready after 1 attempt(s)", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.041:INFO:CONSOLE:16] "08:23:16.042 [Bootstrap] loading world: /api/world/mock_world/state", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.069:INFO:CONSOLE:16] "08:23:16.069 [Bootstrap] world loaded: id=mock_world scenes=2", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.114:INFO:CONSOLE:8457] "%c %c %c %c %c Phaser v3.90.0 (WebGL | Web Audio) %c https://phaser.io/v390 background: #ff0000 background: #ffff00 background: #00ff00 background: #00ffff color: #ffffff; background: #000000 background: transparent", source: http://localhost:3000/node_modules/.vite/deps/phaser.js?v=8960cbe5 (8457)
+    [pid=18312][err] [0709/162316.120:INFO:CONSOLE:16] "08:23:16.121 [Main] === READY, world_id=mock_world ===", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.208:INFO:CONSOLE:16] "08:23:16.208 [Boot] world has 2 scenes: village_elderwood, desert", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.208:INFO:CONSOLE:16] "08:23:16.209 [Boot] loading tileset: %s ← %s tuxemon-sample-32px-extruded /assets/rpg_tileset.png", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.208:INFO:CONSOLE:16] "08:23:16.209 [Boot] loading tilemap: %s ← %s village_elderwood /assets/tuxemon-town.json", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.208:INFO:CONSOLE:16] "08:23:16.209 [Boot] loading tileset: %s ← %s Desert /assets/tmw_desert_spacing.png", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.208:INFO:CONSOLE:16] "08:23:16.209 [Boot] loading tilemap: %s ← %s desert /assets/desert.json", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.251:INFO:CONSOLE:16] "08:23:16.252 [Boot] all assets loaded", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.251:INFO:CONSOLE:16] "08:23:16.252 [Boot] ready, starting Game scene", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.338:INFO:CONSOLE:16] "08:23:16.338 [EventManager] replay tick=1 events=10", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.357:INFO:CONSOLE:16] "08:23:16.357 [Scene] build scene=village_elderwood pcs=4 actors=6", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.358:INFO:CONSOLE:16] "08:23:16.358 [MapManager] build sceneId=village_elderwood tilesets=%d tile_size=%d 1 32", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.364:INFO:CONSOLE:16] "08:23:16.364 [MapManager]   tileset OK: %s tuxemon-sample-32px-extruded", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.364:INFO:CONSOLE:16] "08:23:16.364 [MapManager]   layers: %s Below Player, World, Above Player", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.364:INFO:CONSOLE:16] "08:23:16.365 [MapManager]   layer OK: %s Below Player", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.364:INFO:CONSOLE:16] "08:23:16.365 [MapManager]   layer OK: %s World", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.365:INFO:CONSOLE:16] "08:23:16.365 [MapManager]   above layer OK: %s Above Player", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.365:INFO:CONSOLE:16] "08:23:16.365 [MapManager] build OK map=1280x1280px", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.365:INFO:CONSOLE:16] "08:23:16.366 [Scene] camera zoom=%.2f (map=%dx%d canvas=%dx%d) 1 1280 1280 960 640", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.383:INFO:CONSOLE:16] "08:23:16.384 [Scene] buildChars: pcs=4 actors=6", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162316.897:INFO:CONSOLE:495] "[vite] connecting...", source: http://localhost:3000/@vite/client (495)
+    [pid=18312][err] [0709/162316.913:INFO:CONSOLE:618] "[vite] connected.", source: http://localhost:3000/@vite/client (618)
+    [pid=18312][err] [0709/162317.176:INFO:CONSOLE:16] "08:23:17.176 [Main] === START ===", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162317.204:INFO:CONSOLE:16] "08:23:17.204 [Bootstrap] backend ready after 1 attempt(s)", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162317.204:INFO:CONSOLE:16] "08:23:17.205 [Bootstrap] loading world: /api/world/mock_world/state", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162317.227:INFO:CONSOLE:16] "08:23:17.227 [Bootstrap] world loaded: id=mock_world scenes=2", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162317.267:INFO:CONSOLE:8457] "%c %c %c %c %c Phaser v3.90.0 (WebGL | Web Audio) %c https://phaser.io/v390 background: #ff0000 background: #ffff00 background: #00ff00 background: #00ffff color: #ffffff; background: #000000 background: transparent", source: http://localhost:3000/node_modules/.vite/deps/phaser.js?v=8960cbe5 (8457)
+    [pid=18312][err] [0709/162317.270:INFO:CONSOLE:16] "08:23:17.271 [Main] === READY, world_id=mock_world ===", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162317.316:INFO:CONSOLE:16] "08:23:17.316 [Boot] world has 2 scenes: village_elderwood, desert", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162317.316:INFO:CONSOLE:16] "08:23:17.316 [Boot] loading tileset: %s ← %s tuxemon-sample-32px-extruded /assets/rpg_tileset.png", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162317.316:INFO:CONSOLE:16] "08:23:17.316 [Boot] loading tilemap: %s ← %s village_elderwood /assets/tuxemon-town.json", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162317.316:INFO:CONSOLE:16] "08:23:17.317 [Boot] loading tileset: %s ← %s Desert /assets/tmw_desert_spacing.png", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162317.316:INFO:CONSOLE:16] "08:23:17.317 [Boot] loading tilemap: %s ← %s desert /assets/desert.json", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162317.355:INFO:CONSOLE:16] "08:23:17.355 [Boot] all assets loaded", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162317.355:INFO:CONSOLE:16] "08:23:17.355 [Boot] ready, starting Game scene", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.102:INFO:CONSOLE:16] "08:23:20.099 [EventManager] tick=1 events=10 types=[scene_setup,dm_create,pc_decision,pc_decision,pc_interact,pc_decision,pc_combat,pc_decision,pc_talk,dm_narrative]", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.102:INFO:CONSOLE:16] "08:23:20.100 [EventManager] dispatch scene_setup", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.102:INFO:CONSOLE:16] "08:23:20.103 [Scene] build scene=village_elderwood pcs=4 actors=6", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.103:INFO:CONSOLE:16] "08:23:20.104 [MapManager] build sceneId=village_elderwood tilesets=%d tile_size=%d 1 32", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.108:INFO:CONSOLE:16] "08:23:20.109 [MapManager]   tileset OK: %s tuxemon-sample-32px-extruded", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.109:INFO:CONSOLE:16] "08:23:20.109 [MapManager]   layers: %s Below Player, World, Above Player", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.109:INFO:CONSOLE:16] "08:23:20.109 [MapManager]   layer OK: %s Below Player", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.109:INFO:CONSOLE:16] "08:23:20.109 [MapManager]   layer OK: %s World", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.109:INFO:CONSOLE:16] "08:23:20.109 [MapManager]   above layer OK: %s Above Player", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.109:INFO:CONSOLE:16] "08:23:20.109 [MapManager] build OK map=1280x1280px", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.109:INFO:CONSOLE:16] "08:23:20.109 [Scene] camera zoom=%.2f (map=%dx%d canvas=%dx%d) 1 1280 1280 960 640", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.116:INFO:CONSOLE:16] "08:23:20.116 [Scene] buildChars: pcs=4 actors=6", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162320.164:INFO:CONSOLE:16] "08:23:20.164 [EventManager] dispatch dm_create", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162321.200:INFO:CONSOLE:16] "08:23:21.200 [EventManager] dispatch pc_decision", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162321.204:INFO:CONSOLE:16] "08:23:21.205 [DecisionHandler] decision pc=cleric action=wait target=", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162322.107:INFO:CONSOLE:16] "08:23:22.108 [EventManager] dispatch pc_decision", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=18312][err] [0709/162322.111:INFO:CONSOLE:16] "08:23:22.111 [DecisionHandler] decision pc=fighter action=interact target=door_cellar", source: http://localhost:3000/src/utils/logger.ts (16)
+
+    Error Context: test-results\action-playback-action-pla-e2ba8-e-action-walks-to-waypoints-chromium\error-context.md
+
+  1 interrupted
+    [chromium] › tests\e2e\action-playback.spec.ts:50:3 › action playback › UC-17 explore action walks to waypoints 
+  36 did not run
+  1 passed (41.7s)
