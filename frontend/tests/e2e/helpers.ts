@@ -155,7 +155,7 @@ export async function getTestSeamState(page: Page): Promise<Record<string, unkno
 
 // ── beforeEach：重置 + 4x 倍速 / Reset + 4x speed ────────────
 
-/** beforeEach 标准流程：重置 → 刷新 → 4x 倍速 / Standard beforeEach: reset → reload → 4x speed */
+/** beforeEach 标准流程：重置 + 4x 倍速（不 reload，scene_setup rebuild 本就重置状态） */
 export async function resetAndPrepare(page: Page): Promise<void> {
   await page.goto("/");
   await page.waitForSelector(SELECTORS.backendOverlay, {
@@ -175,13 +175,7 @@ export async function resetAndPrepare(page: Page): Promise<void> {
   await expect
     .poll(() => fetchLoopStatus(page))
     .toEqual(expect.objectContaining({ running: false, batch_running: false }));
-  await page.reload();
-  // scene_setup 会触发完整场景重建，需要额外等待时间
-  await page.waitForSelector(SELECTORS.backendOverlay, {
-    state: "detached",
-    timeout: 90000,
-  });
-  await expect(page.locator(SELECTORS.runNButton)).toBeEnabled({ timeout: 10000 });
+  // 不 reload——scene_setup 已通过事件驱动重置场景，避免 Phaser 二次初始化导致内存崩溃
   await page.locator(SELECTORS.speed4x).click();
 }
 

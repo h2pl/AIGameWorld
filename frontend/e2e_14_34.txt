@@ -1,0 +1,140 @@
+[backend] warning: `VIRTUAL_ENV=E:/Projects/multi-agent-manager/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+[backend] INFO:     Started server process [13868]
+[backend] INFO:     Waiting for application startup.
+[backend] [Config] LLM provider: deepseek
+[backend] 2026-07-09 16:36:26 | main                     | INFO     | [lifespan] logging configured level=INFO json=False rotation=H
+[backend] 2026-07-09 16:36:26 | storage.sqlite_client    | INFO     | [storage] connected e2e.db
+[backend] 2026-07-09 16:36:26 | storage.sqlite_client    | INFO     | [storage] schema initialized
+[backend] 2026-07-09 16:36:26 | main                     | INFO     | [lifespan] db=data/e2e.db ready
+[backend] 2026-07-09 16:36:26 | repo.world_repo          | INFO     | [repo] delete id=mock_world
+[backend] 2026-07-09 16:36:26 | repo.event_repo          | INFO     | [repo] deleted events for world=mock_world
+[backend] 2026-07-09 16:36:26 | repo.world_repo          | INFO     | [repo] create id=mock_world
+[backend] 2026-07-09 16:36:26 | main                     | INFO     | [lifespan] mock data seeded into data/e2e.db
+[WebServer] 16:36:35 [vite] http proxy error: /api/metrics/summary?world_id=mock_world&last_n=100
+[WebServer] AggregateError [ECONNREFUSED]: 
+[WebServer]     at internalConnectMultiple (node:net:1135:18)
+[WebServer]     at afterConnectMultiple (node:net:1716:7)
+[backend] 2026-07-09 16:36:35 | storage.chroma_client    | INFO     | [chroma] using default embedding function
+[backend] 2026-07-09 16:36:39 | repo.knowledge_repo      | INFO     | [knowledge] indexed pack=forgotten_realms chunks=32
+[backend] 2026-07-09 16:36:39 | orchestrator             | INFO     | [orchestrator] init
+[backend] 2026-07-09 16:36:39 | graph.graph              | INFO     | [graph] building tick graph
+[backend] 2026-07-09 16:36:39 | graph.checkpoints        | INFO     | [graph] checkpointer type=memory
+[backend] 2026-07-09 16:36:39 | main                     | INFO     | [lifespan] orchestrator ready
+[backend] 2026-07-09 16:36:39 | uvicorn.error            | INFO     | Application startup complete.
+[backend] 2026-07-09 16:36:39 | uvicorn.error            | INFO     | Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+[backend] 2026-07-09 16:36:39 | uvicorn.access           | INFO     | 127.0.0.1:52952 - "GET /health HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:36:39 | uvicorn.access           | INFO     | 127.0.0.1:52954 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[e2e setup] backend ready
+
+Running 2 tests using 1 worker
+
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:36:40 | uvicorn.access           | INFO     | 127.0.0.1:54667 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:36:40 | repo.event_repo          | INFO     | [repo] deleted events for world=mock_world
+[backend] 2026-07-09 16:36:40 | graph.checkpoints        | INFO     | [graph] checkpointer type=memory
+[backend] 2026-07-09 16:36:40 | orchestrator             | INFO     | [orchestrator] reset complete for mock_world
+[backend] 2026-07-09 16:36:40 | api                      | INFO     | [api] world.reset world=mock_world
+[backend] 2026-07-09 16:36:40 | uvicorn.access           | INFO     | 127.0.0.1:57206 - "POST /api/world/mock_world/reset HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:36:40 | uvicorn.access           | INFO     | 127.0.0.1:57209 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:36:40 | uvicorn.access           | INFO     | 127.0.0.1:57212 - "GET /api/world/mock_world/loop/status HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:36:41 | uvicorn.access           | INFO     | 127.0.0.1:49740 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:36:41 | api                      | INFO     | [api] tick.batch world=mock_world:1
+[backend] 2026-07-09 16:36:41 | tick_runner              | INFO     | [batch] Started 1 ticks for world mock_world
+[backend] 2026-07-09 16:36:41 | uvicorn.access           | INFO     | 127.0.0.1:49745 - "POST /api/world/mock_world/tick/batch/1 HTTP/1.1" 200
+[backend] 2026-07-09 16:36:42 | engine.dm.dm_engine      | INFO     | [engine] dm_create tick=1 world=mock_world
+[backend] 2026-07-09 16:36:42 | performance              | INFO     | [performance] dm.create tick=1 1177.6ms
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:36:42 | uvicorn.access           | INFO     | 127.0.0.1:49748 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:36:42 | uvicorn.access           | INFO     | 127.0.0.1:49750 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:36:42 | performance              | INFO     | [performance] data.load_world tick=1 0.3ms
+[backend] 2026-07-09 16:36:42 | performance              | INFO     | [performance] data.load_scene tick=1 0.4ms
+[backend] 2026-07-09 16:36:42 | performance              | INFO     | [performance] data.load_actors tick=1 3.0ms
+[backend] 2026-07-09 16:36:42 | performance              | INFO     | [performance] data.load_pcs tick=1 1.0ms
+[backend] 2026-07-09 16:36:42 | performance              | INFO     | [performance] data.load_scene_objects tick=1 0.7ms
+[backend] 2026-07-09 16:36:42 | performance              | INFO     | [performance] tick_init.assign_positions tick=1 0.1ms
+[backend] 2026-07-09 16:36:42 | performance              | INFO     | [performance] tick_init.dm_create_event tick=1 0.0ms
+[backend] 2026-07-09 16:36:42 | performance              | INFO     | [performance] tick_init.scene_setup_snapshot tick=1 0.1ms
+[backend] 2026-07-09 16:36:42 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=cleric
+[backend] 2026-07-09 16:36:42 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=fighter
+[backend] 2026-07-09 16:36:42 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=rogue
+[backend] 2026-07-09 16:36:42 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=wizard
+[backend] 2026-07-09 16:36:42 | performance              | INFO     | [performance] pc.decide tick=1 11.5ms
+[backend] 2026-07-09 16:36:42 | engine.interact.interact_engine | INFO     | [interact] cleric → door_cellar : success | 他仔细检查目标，在夹层中找到一卷泛黄的羊皮纸——上面用褪色的
+[backend] 2026-07-09 16:36:42 | engine.combat.combat_engine | INFO     | [combat] fighter → goblin : 他挥剑劈向地精，剑锋在烛光下划出一道弧光，将敌人逼得连退两步 (defeated=False)
+[backend] 2026-07-09 16:36:42 | engine.combat.combat_engine | INFO     | [combat] rogue → goblin : 长矛擦过他的护甲，火星四溅；他趁机反手一击，重创了面前的敌人 (defeated=False)
+[backend] 2026-07-09 16:36:42 | engine.explore.explore_engine | INFO     | [engine] wizard explore start pos=(21,19) scene=village_elderwood
+[backend] 2026-07-09 16:36:42 | engine.explore.explore_engine | INFO     | [engine] wizard explore: (21,19) → (10,12) | 吧台后方的木地板有一块微微翘起，下面似乎藏着一张泛黄的羊皮纸
+[backend] 2026-07-09 16:36:42 | performance              | INFO     | [performance] pc.act tick=1 20.0ms
+[backend] 2026-07-09 16:36:42 | service.event_service    | INFO     | [service] flushed events tick=1 count=10
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:36:42 | uvicorn.access           | INFO     | 127.0.0.1:49761 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:36:43 | engine.dm.dm_engine      | INFO     | [engine] dm_narrate tick=1 narrative_len=94
+[backend] 2026-07-09 16:36:43 | performance              | INFO     | [performance] dm.narrate tick=1 729.6ms
+[backend] 2026-07-09 16:36:43 | uvicorn.access           | INFO     | 127.0.0.1:49765 - "GET /api/metrics/summary?world_id=mock_world&last_n=100 HTTP/1.1" 200
+[backend] 2026-07-09 16:36:43 | uvicorn.access           | INFO     | 127.0.0.1:49763 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:36:43 | repo.dm_record_repo      | INFO     | [repo] save_plot_brief tick=1
+[backend] 2026-07-09 16:36:43 | service.data_service     | INFO     | [data] wrote dm_record tick=1
+[backend] 2026-07-09 16:36:43 | repo.event_repo          | INFO     | [repo] insert tick=1 count=11
+[backend] 2026-07-09 16:36:43 | service.data_service     | INFO     | [data] wrote events tick=1 count=11
+[backend] 2026-07-09 16:36:43 | service.data_service     | INFO     | [data] persisted pcs count=4 tick=1
+[backend] 2026-07-09 16:36:43 | service.data_service     | INFO     | [data] persisted actors count=6 tick=1
+[backend] 2026-07-09 16:36:43 | performance              | INFO     | [performance] data.persist tick=1 48.1ms
+[backend] 2026-07-09 16:36:43 | performance              | INFO     | [performance] tick tick=1
+[backend] 2026-07-09 16:36:43 | utils.metrics            | INFO     | [metrics] tick=1 latency=2065ms llm=0 tokens=0/0 cost=$0.000000
+[backend] 2026-07-09 16:36:43 | tick_runner              | INFO     | [batch] Finished world mock_world: 1/1 ticks
+[backend] 2026-07-09 16:36:43 | uvicorn.access           | INFO     | 127.0.0.1:49770 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:36:51 | uvicorn.access           | INFO     | 127.0.0.1:59536 - "GET /api/metrics/summary?world_id=mock_world&last_n=100 HTTP/1.1" 200
+  x  1 [chromium] › tests\e2e\error-recovery.spec.ts:242:3 › mock speed & event integrity › UC-34 PC position persists across ticks (11.4s)
+[backend] 2026-07-09 16:36:51 | uvicorn.error            | INFO     | Shutting down
+[backend] 2026-07-09 16:36:51 | uvicorn.error            | INFO     | Waiting for application shutdown.
+[backend] 2026-07-09 16:36:51 | storage.sqlite_client    | INFO     | [storage] closed
+[backend] 2026-07-09 16:36:51 | uvicorn.error            | INFO     | Application shutdown complete.
+[backend] 2026-07-09 16:36:51 | uvicorn.error            | INFO     | Finished server process [13868]
+[e2e teardown] backend stopped
+
+
+  1) [chromium] › tests\e2e\error-recovery.spec.ts:242:3 › mock speed & event integrity › UC-34 PC position persists across ticks 
+
+    Test was interrupted.
+
+    Error: locator.click: Target page, context or browser has been closed
+    Call log:
+      - waiting for locator('[data-testid="btn-run-n"]')
+        - locator resolved to <button disabled data-testid="btn-run-n">跑N个Tick</button>
+      - attempting click action
+        2 × waiting for element to be visible, enabled and stable
+          - element is not enabled
+        - retrying click action
+        - waiting 20ms
+        2 × waiting for element to be visible, enabled and stable
+          - element is not enabled
+        - retrying click action
+          - waiting 100ms
+        15 × waiting for element to be visible, enabled and stable
+           - element is not enabled
+         - retrying click action
+           - waiting 500ms
+
+
+       at helpers.ts:193
+
+      191 | export async function runNTicks(page: Page, n: number, timeout = 60000): Promise<void> {
+      192 |   await page.locator(SELECTORS.tickInput).fill(String(n));
+    > 193 |   await page.locator(SELECTORS.runNButton).click();
+          |                                            ^
+      194 |   // 等后端 data_tick 到达目标（不检查 UI，scene_setup 会改变状态文本）
+      195 |   await waitForBackendTick(page, n, timeout);
+      196 | }
+        at runNTicks (E:\Projects\AIGameWorld\frontend\tests\e2e\helpers.ts:193:44)
+        at E:\Projects\AIGameWorld\frontend\tests\e2e\error-recovery.spec.ts:261:5
+
+    Error: browserContext.close: Target page, context or browser has been closed
+
+    Error Context: test-results\error-recovery-mock-speed--7e13c-ition-persists-across-ticks-chromium\error-context.md
+
+  1 interrupted
+    [chromium] › tests\e2e\error-recovery.spec.ts:242:3 › mock speed & event integrity › UC-34 PC position persists across ticks 
+  1 did not run
