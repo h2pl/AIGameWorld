@@ -1,6 +1,6 @@
 # AIGameWorld 可观测性、RAG 增强、监控与评估体系架构
 
-> 涵盖四大方向：(1) RAG 增强与 ChromaDB 深化应用 (2) 全链路追踪 (3) 性能/业务/Token 成本监控 (4) LLM 评估系统
+> 三层可观测性策略：(1) RAG 增强 (2) 双链路追踪（开发期 LangSmith + 生产期 Langfuse）(3) 三层评估（LangSmith 开发评估 + Langfuse 生产监控 + 自研 WorldStateEvaluator 游戏业务评估）
 > 参考业界 2025-2026 最佳实践，结合项目现状给出可落地方案。
 
 ---
@@ -79,43 +79,66 @@ ef = embedding_functions.SentenceTransformerEmbeddingFunction(
 
 ---
 
-## 二、全链路追踪（Distributed Tracing）
+## 二、双链路追踪（Dual Tracing Strategy）
 
-### 2.1 当前状态
+> 核心策略：**LangSmith 负责开发期深度调试，Langfuse 负责生产期运营监控**。
+> 两者互补而非替代——LangSmith 深度集成 LangGraph 帮你把 Agent 做对，Langfuse OTel-native 帮你把 Agent 跑稳。
 
-| 组件 | 现状 | 差距 |
-|------|------|------|
-| LangGraph 回调 | `TickGraphCallback(BaseCallbackHandler)` 记录 node 延迟 + LLM token | 仅写日志，无 trace 链路 |
-| 日志系统 | `utils/logging.py` 分层日志（api/graph/service/engine/repo） | 无 span 关联、无 trace_id |
-| Langfuse | config.yaml 有配置项但 `enabled: false` | 未接入 |
-| 前端 | 无任何 trace 传播 | 前后端链路断裂 |
+### 2.1 双追踪策略总览
 
-**核心差距**：当前只有"日志"，没有"链路"——无法将一个 tick 的完整流程（API 请求 → Graph 节点 → LLM 调用 → 事件处理 → 前端渲染）串成一条可追踪的链路。
+| 维度 | LangSmith（开发期） | Langfuse（生产期） |
+|------|---------------------|-------------------|
+| **核心定位** | 帮你把 Agent **做对** | 帮你把 Agent **跑稳** |
+| **Graph/Node 调试** | ✅ LangGraph 原生深度集成 | ⚠️ 支持，但非核心场景 |
+| **Prompt 管理** | ✅ 版本管理、实验、Playground | ❌ 不支持 |
+| **数据集管理** | ✅ 原生评估数据集、批量运行 | ❌ 不支持 |
+| **回归测试** | ✅ Prompt/Model/Graph 变更后自动回归 | ❌ 不支持 |
+| **LLM Judge** | ✅ 内置评估流程（开发阶段） | ⚠️ 支持，但更偏生产 |
+| **Token/Cost 追踪** | ⚠️ 支持，但不如 Langfuse | ✅ 长期统计分析更强 |
+| **Dashboard** | ⚠️ 开发调试视图 | ✅ 更强的生产监控面板 |
+| **性能/延迟** | ⚠️ 开发期够用 | ✅ 更偏运维 P50/P95/P99 |
+| **告警/分析** | ❌ 不支持 | ✅ 生产运营告警更强 |
+| **部署方式** | SaaS | 自托管（数据不出境） |
+| **采样策略** | 开发期全量 | 生产期按需采样 |
 
-### 2.2 业界方案对比
+### 2.2 LangSmith：开发期深度调试
 
-| 方案 | 特点 | 与 LangGraph 集成 | 开源 | 适合场景 |
-|------|------|-------------------|------|----------|
-| **Langfuse** | OTel-native、`@observe` 装饰器、自托管 | 官方集成 | 是 | 需要 OTel 标准 + 数据主权 |
-| **LangSmith** | LangChain/LangGraph 深度集成 | 原生 | 否（SaaS） | 纯 LangChain 技术栈 |
-| **Arize Phoenix** | 开源、OTel、内建评估 | 社区集成 | 是 | 需要评估+追踪一体化 |
-| **OTel + Jaeger/Grafana** | 厂商中立、标准协议 | 需手动埋点 | 是 | 已有 Grafana 体系 |
+LangSmith 与 LangGraph 原生集成，是开发阶段的核心工具：
 
-### 2.3 推荐方案：Langfuse（自托管）
+**核心能力**：
+1. **LangGraph 深度集成**：直接在 LangSmith UI 中查看 Graph 执行路径、Node 输入输出、State 变化
+2. **Prompt 管理**：`.jinja` 模板的版本管理、A/B 实验、在线 Playground 即时调试
+3. **数据集管理**：原生评估数据集创建、管理、批量运行（与第八节评估系统联动）
+4. **回归测试**：Prompt/Model/Graph 变更后自动运行评估套件，防止退化
+5. **LLM Judge**：内置 LLM-as-Judge 评估流程，开发阶段快速验证生成质量
 
-**选择理由**：
-1. **OTel-native**：Langfuse SDK v3+ 基于 OpenTelemetry，与 OTel GenAI semconv 1.29+ 对齐
-2. **LangGraph 原生集成**：Langfuse 官方提供 `CallbackHandler`，直接注入 `config["callbacks"]`
-3. **自托管**：项目已有 `LANGFUSE_BASE_URL=http://localhost:3000`，数据不出境
-4. **评估集成**：Langfuse 内建 LLM-as-Judge 评估，可在 trace 基础上直接评分
-5. **Token 成本追踪**：自动从 LLM 响应中提取 token usage，按 model 计费
-
-### 2.4 实施方案
-
-#### Step 1：启用 Langfuse 基础追踪
+**接入方式**：
 
 ```python
-# backend/src/utils/tracing.py
+import os
+os.environ["LANGSMITH_API_KEY"] = "..."
+os.environ["LANGSMITH_PROJECT"] = "aigameworld-dev"
+
+# LangGraph 自动集成——无需额外代码，LangSmith 自动捕获 Graph 执行
+config = {
+    "configurable": {"thread_id": world_id},
+}
+result = await graph.ainvoke(state, config)
+```
+
+### 2.3 Langfuse：生产期运营监控
+
+Langfuse 基于 OpenTelemetry，是生产阶段的核心工具：
+
+**核心能力**：
+1. **Token/Cost 追踪**：自动从 LLM 响应提取 token usage，按 model 计费，长期统计趋势分析
+2. **Dashboard**：生产监控面板——按 tag/metadata 过滤、Daily/Monthly 聚合
+3. **性能/延迟**：运维视角的 P50/P95/P99 延迟监控
+4. **告警/分析**：生产异常告警、成本异常检测、预算超支预警
+
+**接入方式**：
+
+```python
 from langfuse.callback import CallbackHandler
 
 def create_langfuse_handler(tick: int, world_id: str) -> CallbackHandler:
@@ -124,10 +147,7 @@ def create_langfuse_handler(tick: int, world_id: str) -> CallbackHandler:
         tags=[f"world:{world_id}", f"tick:{tick}"],
         metadata={"world_id": world_id, "tick": tick},
     )
-```
 
-```python
-# 在 graph.invoke 中注入
 config = {
     "configurable": {"thread_id": world_id},
     "callbacks": [create_langfuse_handler(tick, world_id)],
@@ -135,7 +155,7 @@ config = {
 result = await graph.ainvoke(state, config)
 ```
 
-#### Step 2：Span 层级设计
+### 2.4 Span 层级设计（两套系统共享）
 
 ```
 Trace: tick-{tick}
@@ -161,46 +181,21 @@ Trace: tick-{tick}
     └── Generation: LLM call (if triggered)
 ```
 
-#### Step 3：前端链路传播
-
-在前端 API 请求头中注入 `trace_id`：
-
-```typescript
-// frontend/src/api/client.ts
-async function fetchWithTrace(url: string, options?: RequestInit) {
-  const traceId = crypto.randomUUID();
-  return fetch(url, {
-    ...options,
-    headers: {
-      ...options?.headers,
-      "X-Trace-Id": traceId,
-    },
-  });
-}
-```
-
-后端 FastAPI 中间件提取并传播：
-
-```python
-@app.middleware("http")
-async def trace_middleware(request, call_next):
-    trace_id = request.headers.get("X-Trace-Id", str(uuid4()))
-    request.state.trace_id = trace_id
-    response = await call_next(request)
-    response.headers["X-Trace-Id"] = trace_id
-    return response
-```
-
-#### Step 4：配置生效
+### 2.5 配置策略
 
 ```yaml
 # config.yaml
 observability:
+  langsmith:
+    enabled: true                       # 开发期始终启用
+    project: "aigameworld-dev"
+    sampling_rate: 1.0                  # 开发期全量采样
+
   langfuse:
-    enabled: true                    # 改为 true
-    tracing_environment: "development"
-    sampling_rate: 1.0               # 开发环境全量采样
-    cost_tracking: true              # 启用成本追踪
+    enabled: true                       # 生产期启用
+    tracing_environment: "production"
+    sampling_rate: 0.1                  # 生产期 10% 采样
+    cost_tracking: true                 # 启用成本追踪
 ```
 
 ---
@@ -352,194 +347,91 @@ async def get_cost_metrics(world_id: str):
 
 ---
 
-## 四、LLM 评估系统
+## 四、三层评估体系（Three-Layer Evaluation）
 
-### 4.1 当前状态
+> 核心策略：**LangSmith 帮你把 Agent 做对，Langfuse 帮你把 Agent 跑稳，自研 Evaluator 帮你判断游戏世界是否符合业务规则**。
+> 三层评估互补而非替代——分别覆盖开发、生产、业务三个不同维度。
 
-| 组件 | 现状 | 差距 |
-|------|------|------|
-| 回归测试 | `test_prompt_regression.py` + `test_character_prompts.py` | 只检查输出 JSON 格式，不评估内容质量 |
-| 反思系统 | `reflection_engine.py` + `reflect_pc.jinja` | 有自反思机制但无外部评估 |
-| 输出 Schema | `schemas/llm_output.py` 定义了结构 | 只验证结构不验证语义 |
-
-### 4.2 评估框架对比
-
-| 框架 | 特点 | 集成难度 | 适合场景 |
-|------|------|----------|----------|
-| **RAGAS** | RAG 四指标（Faithfulness/Context Precision/Context Recall/Answer Relevancy）+ LLM-as-Judge | 中 | RAG 检索质量评估 |
-| **DeepEval** | PyTest 风格、20+ 内置指标、CI/CD 友好 | 低 | 回归测试中内嵌质量评估 |
-| **LangSmith Evals** | 与 LangChain 生态深度集成、支持数据集管理 | 低 | 已用 LangSmith 追踪时 |
-| **Arize Phoenix** | 开源、OTel 原生、评估+追踪一体 | 中 | 需要开源+自托管 |
-
-### 4.3 推荐方案：DeepEval + RAGAS 组合
-
-**选择理由**：
-1. **DeepEval**：PyTest 风格，可嵌入现有 `backend/tests/` 体系，CI/CD 友好
-2. **RAGAS**：专注 RAG 评估，与 ChromaDB 记忆检索评估天然契合
-3. 两者都支持 **LLM-as-Judge** 模式，可用独立模型评估生成质量
-
-### 4.4 评估维度设计
-
-#### 按生成阶段评估
-
-| 阶段 | 评估维度 | 评估方法 | 指标 |
-|------|----------|----------|------|
-| DM 创建情境 | 剧情合理性、与世界观一致性 | LLM-as-Judge | Correctness 1-5, Consistency 1-5 |
-| DM 叙事 | 叙事连贯性、与上文衔接 | LLM-as-Judge + 语义相似度 | Faithfulness, Narrative Coherence |
-| PC 决策 | 决策合理性、角色性格一致性 | LLM-as-Judge | Decision Rationality 1-5 |
-| 对话 | 对话自然度、角色口吻一致性 | LLM-as-Judge | Dialogue Quality 1-5 |
-| 探索/交互 | 探索描述丰富度、环境一致性 | LLM-as-Judge | Description Richness 1-5 |
-| 战斗 | 战斗逻辑合理性、结果可信度 | LLM-as-Judge | Combat Logic 1-5 |
-| 记忆检索 | 检索相关性、覆盖度 | RAGAS | Context Precision, Context Recall |
-| 反思 | 反思深度、行为改善建议质量 | LLM-as-Judge | Reflection Depth 1-5 |
-
-#### 按评估层次
+### 4.1 三层评估架构
 
 ```
-┌─────────────────────────────────────────┐
-│ L3: 人工评估（Golden Dataset + 人工标注）│  ← 季度/版本发布
-├─────────────────────────────────────────┤
-│ L2: LLM-as-Judge（自动评估）            │  ← 每日/每次 prompt 变更
-├─────────────────────────────────────────┤
-│ L1: 确定性检查（格式/Schema/长度）       │  ← 每次 CI
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ Layer 3: 自研 WorldStateEvaluator                                    │
+│ 帮你判断游戏世界是否符合业务规则                                        │
+│ → DnD 规则一致性、NPC 行为、地图有效性、世界不变量                        │
+│ → 通用平台无法替代，RPG 项目核心评估层                                    │
+├──────────────────────────────────────────────────────────────────────┤
+│ Layer 2: Langfuse（生产期）                                           │
+│ 帮你把 Agent 跑稳（监控、成本、性能、运营）                               │
+│ → Token/Cost Dashboard、延迟 P50/P95/P99、生产告警                     │
+├──────────────────────────────────────────────────────────────────────┤
+│ Layer 1: LangSmith（开发期）                                          │
+│ 帮你把 Agent 做对（开发、评估、回归）                                    │
+│ → Prompt 实验追踪、数据集管理 + 批量运行、内置 LLM-as-Judge、变更回归      │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.5 实施方案
+### 4.2 Layer 1：LangSmith — 帮你把 Agent 做对
 
-#### Step 1：构建 Golden Dataset
+LangSmith 是开发阶段的核心评估平台，深度集成 LangGraph 生态：
 
-```yaml
-# backend/evals/golden_dataset/dm_create.yaml
-- tick: 1
-  scene: "酒馆"
-  pcs: ["战士艾瑞克", "法师米娅"]
-  expected_elements:
-    - 应提及酒馆环境
-    - 应为角色设定初始目标
-    - 不应出现与场景无关的事件
-  quality_score: 5  # 人工标注
-```
+| 能力 | 说明 |
+|------|------|
+| **Prompt 实验追踪** | 每次 Prompt 变更自动记录，支持 A/B 对比 |
+| **数据集管理 + 批量运行** | 原生评估数据集创建、管理、批量运行评估 |
+| **内置 LLM-as-Judge** | 开发阶段快速验证 DM 叙事质量、PC 决策合理性 |
+| **变更回归** | Prompt/Model/Graph 变更后自动回归评估，防止退化 |
 
-```yaml
-# backend/evals/golden_dataset/narrative_coherence.yaml
-- tick_pair: [1, 2]
-  tick_1_narrative: "艾瑞克在酒馆听到关于地下城的传闻..."
-  tick_2_narrative: "艾瑞克决定前往地下城探索..."
-  expected: "tick 2 应自然衔接 tick 1 的事件"
-  coherence_score: 4
-```
+**开发期评估流程**：
+1. 在 LangSmith 中创建评估数据集（Golden Dataset）
+2. 修改 Prompt/Graph 后，一键批量运行评估
+3. 对比修改前后评分，确认是否改善
+4. 连续低于阈值的维度自动生成失败报告
 
-#### Step 2：DeepEval 集成
+### 4.3 Layer 2：Langfuse — 帮你把 Agent 跑稳
 
-```python
-# backend/tests/eval/test_dm_quality.py
-from deepeval import assert_test
-from deepeval.test_case import LLMTestCase
-from deepeval.metrics import GEval
+Langfuse 是生产阶段的核心监控平台，专注运营稳定性：
 
-# 定义评估指标
-narrative_coherence_metric = GEval(
-    name="Narrative Coherence",
-    criteria="""评估叙事文本是否：
-    1. 与上一轮叙事自然衔接
-    2. 角色行为符合其性格设定
-    3. 情节发展逻辑合理
-    4. 无矛盾或突兀转折""",
-    evaluation_params=["input", "actual_output"],
-)
+| 能力 | 说明 |
+|------|------|
+| **Token/Cost Dashboard** | 按模型/按 purpose 统计 token 消耗和成本趋势 |
+| **延迟 P50/P95/P99** | 运维视角的 Tick 延迟、LLM 调用延迟监控 |
+| **生产告警** | 成本异常、延迟突增、错误率上升自动告警 |
 
-def test_dm_narrative_coherence():
-    test_case = LLMTestCase(
-        input=prev_narrative,
-        actual_output=current_narrative,
-        context=[scene_description, character_profiles],
-    )
-    assert_test(test_case, [narrative_coherence_metric])
-```
+**生产期监控重点**：
+- 每个 tick 的 token 消耗和成本
+- LLM 调用延迟是否在 SLA 内
+- 错误率和重试率趋势
 
-#### Step 3：RAGAS 记忆检索评估
+### 4.4 Layer 3：自研 WorldStateEvaluator — 帮你判断游戏世界是否符合业务规则
 
-```python
-# backend/tests/eval/test_memory_rag.py
-from ragas import evaluate
-from ragas.metrics import context_precision, context_recall, faithfulness
-from datasets import Dataset
+这是 RPG 项目最核心、也是任何通用平台都无法替代的评估层。详见**第八节**。
 
-def test_memory_retrieval_quality():
-    """评估 ChromaDB 记忆检索质量"""
-    data = {
-        "question": [query_for_each_tick],
-        "contexts": [retrieved_memories_for_each_tick],
-        "answer": [llm_generated_narrative],
-        "ground_truth": [expected_relevant_memories],
-    }
-    dataset = Dataset.from_dict(data)
-    result = evaluate(dataset, metrics=[context_precision, context_recall, faithfulness])
-    # 断言质量门槛
-    assert result["context_precision"] >= 0.7
-    assert result["faithfulness"] >= 0.8
-```
-
-#### Step 4：评估驱动的 Prompt 优化闭环
-
-```
-评估结果 → 定位低分维度 → 分析失败 case → 修改 prompt 模板 → 重新评估 → 确认提升
-     ↑                                                                  │
-     └────────────── 回归验证 ←──────────────────────────────────────────┘
-```
-
-**具体流程**：
-1. 每次修改 `.jinja` 模板后，自动运行评估套件
-2. 对比修改前后评分，确认是否改善
-3. 如果某个维度连续 3 次低于阈值（如 Faithfulness < 0.7），自动生成失败报告
-4. 失败报告包含：低分 case → LLM 分析原因 → 建议改进方向
-
-#### Step 5：评估 API 与 Dashboard
-
-```python
-# backend/src/api/eval.py
-@router.post("/api/eval/run")
-async def run_evaluation(world_id: str, dimensions: list[str]):
-    """触发评估并返回结果"""
-    ...
-
-@router.get("/api/eval/results")
-async def get_eval_results(world_id: str, last_n: int = 10):
-    """获取最近 N 次评估结果趋势"""
-    ...
-```
+LangSmith 评估"Agent 是否正确"（输出质量、Prompt 效果），自研 Evaluator 评估"游戏世界是否合理"（规则一致性、世界不变量）。
 
 ---
 
 ## 五、实施路线图
 
-| Phase | 内容 | 预计工期 | 依赖 |
-|-------|------|----------|------|
-| **P1** | 启用 Langfuse 追踪 + Token 成本统计 | 1 周 | Langfuse 自托管部署 |
-| **P1** | Embedding 模型升级为 BGE-M3 | 3 天 | 模型下载 + ChromaDB 迁移 |
-| **P2** | TickMetrics 收集器 + 成本 Dashboard | 1 周 | P1 Langfuse |
-| **P2** | Golden Dataset 构建 + DeepEval 集成 | 1 周 | 人工标注 |
-| **P3** | World Pack 知识库 RAG | 1 周 | P1 BGE-M3 |
-| **P3** | RAGAS 记忆检索评估 | 1 周 | P2 DeepEval + P3 RAG |
-| **P4** | 前端 trace 传播 + 评估 Dashboard | 1 周 | P1 + P2 |
-| **P4** | 评估驱动 Prompt 优化闭环 | 持续 | P2 + P3 |
+| Phase | 内容 | 依赖 |
+|-------|------|------|
+| **P1** | LangSmith 追踪 + BGE-M3 embedding 升级 | LangSmith 项目配置 + 模型下载 |
+| **P2** | Langfuse 生产监控 + MetricsCollector | P1 LangSmith + Langfuse 自托管部署 |
+| **P3** | World Pack RAG + 自研 WorldStateEvaluator | P1 BGE-M3 + 游戏规则定义 |
+| **P4** | 评估 Dashboard + Prompt 优化闭环 | P2 Langfuse + P3 Evaluator |
 
 ---
 
 ## 六、技术栈汇总
 
-| 能力 | 技术选型 | 版本要求 | 部署方式 |
-|------|----------|----------|----------|
-| 链路追踪 | Langfuse SDK v3+ | Python ≥ 3.10 | Docker 自托管 |
-| 链路标准 | OpenTelemetry GenAI semconv | 1.29+ | 嵌入应用 |
-| Embedding | BGE-M3 (BAAI) | 最新 | 本地 Transformers |
-| 向量存储 | ChromaDB | ≥ 0.4 | 本地 PersistentClient |
-| LLM 评估 | DeepEval | ≥ 1.0 | pip install + CI |
-| RAG 评估 | RAGAS | ≥ 0.4 | pip install + CI |
-| 成本追踪 | Langfuse + 自定义 MetricsCollector | — | 嵌入应用 |
-| 指标存储 | SQLite `tick_metrics` 表 | — | 复用现有 DB |
-| 可视化 | Langfuse Dashboard + 前端面板 | — | — |
+| 能力 | 工具 | 侧重点 |
+|------|------|--------|
+| 开发调试 + 评估 | LangSmith | 开发期：Graph 调试、Prompt 实验、回归评估 |
+| 生产监控 + 成本 | Langfuse | 生产期：Token 成本、延迟、告警 |
+| 游戏业务评估 | 自研 WorldStateEvaluator | RPG 特有：规则一致性、NPC 逻辑、地图有效性 |
+| Embedding | BGE-M3 (BAAI) | 中文语义检索 |
+| 向量存储 | ChromaDB | 本地 PersistentClient |
+| 指标存储 | SQLite `tick_metrics` 表 | 复用现有 DB |
 
 ---
 
@@ -554,3 +446,53 @@ async def get_eval_results(world_id: str, last_n: int = 10):
 - [Best LLM Evaluation Frameworks in 2026](https://futureagi.com/blog/llm-evaluation-frameworks-metrics-best-practices/)
 - [Tracking LLM Token Usage Across Providers (Portkey)](https://portkey.ai/blog/tracking-llm-token-usage-across-providers-teams-and-workloads/)
 - [LLM Observability Best Practices (Maxim AI)](https://www.getmaxim.ai/articles/llm-observability-best-practices-for-2025)
+
+---
+
+## 八、自研 World State Evaluator
+
+> 通用 LLM 评估平台无法理解游戏世界的业务规则。这一层是 RPG 项目最核心、
+> 也是任何通用平台都无法替代的评估能力。
+
+### 8.1 设计理念
+
+一句话总结：
+- LangSmith 帮你把 Agent **做对**（开发、评估、回归）
+- Langfuse 帮你把 Agent **跑稳**（监控、成本、性能、运营）
+- 自研 Evaluator 帮你判断**游戏世界是否符合业务规则**
+
+### 8.2 评估维度
+
+| 维度 | 检查内容 | 实现方式 | 严重级别 |
+|------|----------|----------|----------|
+| 规则一致性 | DnD 规则执行是否正确（伤害计算、技能检定） | 确定性断言 | P0 Critical |
+| NPC 行为一致性 | NPC 行为是否符合性格设定和记忆 | LLM-as-Judge | P1 High |
+| 地图空间有效性 | PC/Actor 坐标是否在合法范围内 | 确定性断言 | P0 Critical |
+| 任务因果一致性 | 事件之间是否有因果逻辑 | LLM-as-Judge | P1 High |
+| 世界状态不变量 | 活着的NPC不会消失、物品不重复 | 确定性断言 | P0 Critical |
+| 叙事连贯性 | DM叙事是否前后衔接 | LLM-as-Judge | P2 Medium |
+| 角色决策合理性 | PC决策是否符合角色状态和情境 | LLM-as-Judge | P2 Medium |
+
+### 8.3 确定性规则检查（每 tick 自动运行）
+
+```python
+class WorldStateEvaluator:
+    """游戏世界状态评估器 / Game world state evaluator."""
+
+    def evaluate(self, state: OverallState, events: list[TickEvent]) -> EvalReport:
+        # P0: 地图空间有效性
+        self._check_positions(state)
+        # P0: 世界状态不变量
+        self._check_invariants(state, events)
+        # P0: DnD规则一致性
+        self._check_combat_rules(events)
+        # P1: 任务因果性
+        self._check_event_causality(events)
+        return self._report
+```
+
+### 8.4 LLM-as-Judge 规则（评估套件运行时）
+
+使用独立模型评估 NPC 行为一致性和叙事连贯性，
+与 LangSmith 的评估互补——LangSmith 评估"Agent 是否正确"，
+自研 Evaluator 评估"游戏世界是否合理"。

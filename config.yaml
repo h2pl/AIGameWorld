@@ -123,8 +123,14 @@ logging:
 
 # === 可观测性 / Observability ===
 observability:
+  # LangSmith：开发期调试 + Prompt实验 + 评估回归
+  # 通过环境变量与 LangGraph 原生集成，无需手动创建 handler
+  langsmith:
+    enabled: false                    # 改为 true 启用（需设置 LANGCHAIN_API_KEY）
+    project: "aigameworld"            # LangSmith 项目名
+  # Langfuse：生产期监控 + Token成本 + 延迟告警
   langfuse:
-    enabled: false                  # 改为 true 启用 / Set true to enable
+    enabled: false                    # 改为 true 启用（需设置 LANGFUSE_PUBLIC_KEY/SECRET_KEY）
     tracing_environment: "development"
     sampling_rate: 1.0               # 开发环境全量采样 / Full sampling in dev
     cost_tracking: true              # Token 成本追踪 / Token cost tracking

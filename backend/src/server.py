@@ -29,6 +29,7 @@ from src.api.state import router as state_router
 from src.api.tick import router as tick_router
 from src.api.view import router as view_router
 from src.api.world import router as world_router
+from src.api.world_eval import router as world_eval_router
 from src.storage.sqlite_client import SQLiteClient
 from src.utils.logging import configure_format, get_logger, setup_logging
 
@@ -137,6 +138,13 @@ async def lifespan(app: FastAPI):
     await metrics_collector.initialize()
     app.state.metrics_collector = metrics_collector
 
+    # LangSmith 开发期追踪 / LangSmith dev-time tracing
+    from src.utils.tracing import configure_langsmith, is_langsmith_enabled
+
+    if is_langsmith_enabled():
+        configure_langsmith()
+        logger.info("[server] LangSmith tracing enabled")
+
     # 评估存储 / Evaluation store
     from src.evals.evaluator import EvalStore
 
@@ -144,18 +152,38 @@ async def lifespan(app: FastAPI):
     await eval_store.initialize()
     app.state.eval_store = eval_store
 
+    # 游戏世界状态评估器 / Game world state evaluator
+    from src.eval.world_state_evaluator import WorldStateEvaluator
+
+    world_evaluator = WorldStateEvaluator()
+    app.state.world_evaluator = world_evaluator
+
+    # LangSmith 评估桥接 / LangSmith eval bridge
+    if is_langsmith_enabled():
+        from src.eval.langsmith_runner import create_langsmith_eval_config
+
+        eval_config = create_langsmith_eval_config()
+        if eval_config:
+            app.state.langsmith_eval_config = eval_config
+            logger.info(
+                "[server] LangSmith eval bridge configured: %s", eval_config.get("project_name")
+            )
+
+    repos = {
+        "char": PcRepo(db),
+        "actor": ActorRepo(db),
+        "dm_record": DMRecordRepo(db),
+        "scene": SceneRepo(db),
+        "world": WorldRepo(db),
+        "event": TickEventRepo(db),
+        "memory": memory_repo,
+        "knowledge": knowledge_repo,
+    }
+    app.state.repos = repos
+
     app.state.orchestrator = Orchestrator(
         llm=llm,
-        repos={
-            "char": PcRepo(db),
-            "actor": ActorRepo(db),
-            "dm_record": DMRecordRepo(db),
-            "scene": SceneRepo(db),
-            "world": WorldRepo(db),
-            "event": TickEventRepo(db),
-            "memory": memory_repo,
-            "knowledge": knowledge_repo,
-        },
+        repos=repos,
         metrics_collector=metrics_collector,
     )
     logger.info("[lifespan] orchestrator ready")
@@ -186,3 +214,4 @@ app.include_router(view_router)
 app.include_router(mock_router)
 app.include_router(metrics_router)
 app.include_router(eval_router)
+app.include_router(world_eval_router)

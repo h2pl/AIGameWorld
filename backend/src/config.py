@@ -109,9 +109,17 @@ class LangfuseConfig(BaseModel):
     tracing_environment: str = "development"
 
 
+class LangSmithConfig(BaseModel):
+    """LangSmith 开发期追踪配置 / LangSmith dev-time tracing config."""
+
+    enabled: bool = False
+    project: str = "aigameworld"
+
+
 class ObservabilityConfig(BaseModel):
     """可观测性配置 / Observability configuration."""
 
+    langsmith: LangSmithConfig = LangSmithConfig()
     langfuse: LangfuseConfig = LangfuseConfig()
 
 

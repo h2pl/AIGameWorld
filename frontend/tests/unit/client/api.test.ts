@@ -15,42 +15,59 @@ describe("API client", () => {
   it("should fetch events with correct URL", async () => {
     const mock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
+      headers: new Headers({ "X-Trace-Id": "test-trace" }),
       json: async () => ({ events: [], display_tick: 0, data_tick: 0 }),
     } as Response);
 
     await API.fetchEvents(BASE, WORLD, 5);
-    expect(mock).toHaveBeenCalledWith(`${BASE}/api/world/${WORLD}/events?since_tick=5`);
+    expect(mock).toHaveBeenCalledWith(
+      `${BASE}/api/world/${WORLD}/events?since_tick=5`,
+      expect.objectContaining({ headers: expect.any(Object) })
+    );
   });
 
   it("should throw on non-ok fetchEvents response", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: false, status: 500 } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: new Headers(),
+    } as Response);
     await expect(API.fetchEvents(BASE, WORLD, 0)).rejects.toThrow("events 500");
   });
 
   it("should trigger batch with correct URL", async () => {
-    const mock = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as Response);
+    const mock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      headers: new Headers(),
+    } as Response);
     await API.triggerBatch(BASE, WORLD, 3);
     expect(mock).toHaveBeenCalledWith(
       `${BASE}/api/world/${WORLD}/tick/batch/3`,
-      { method: "POST" }
+      expect.objectContaining({ method: "POST", headers: expect.any(Object) })
     );
   });
 
   it("should reset world", async () => {
-    const mock = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as Response);
+    const mock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      headers: new Headers(),
+    } as Response);
     await API.resetWorld(BASE, WORLD);
     expect(mock).toHaveBeenCalledWith(
       `${BASE}/api/world/${WORLD}/reset`,
-      { method: "POST" }
+      expect.objectContaining({ method: "POST", headers: expect.any(Object) })
     );
   });
 
   it("should sync display tick", async () => {
-    const mock = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as Response);
+    const mock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      headers: new Headers(),
+    } as Response);
     await API.syncDisplayTick(BASE, WORLD, 10);
     expect(mock).toHaveBeenCalledWith(
       `${BASE}/api/world/${WORLD}/tick/display/10`,
-      { method: "POST" }
+      expect.objectContaining({ method: "POST", headers: expect.any(Object) })
     );
   });
 });
