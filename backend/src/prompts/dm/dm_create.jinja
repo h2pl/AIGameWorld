@@ -24,15 +24,18 @@
 上轮叙事：{{ prev_narrative }}
 {% endif %}
 
+{# 世界观知识 / World Pack knowledge #}
+{% if world_knowledge %}
+相关知识：
+{{ world_knowledge }}
+{% endif %}
+
 {# 场景列表 / Available scenes #}
 {% if scenes %}
 可用场景列表（请从以下 id 中精确选择当前场景）：
 {% for s in scenes %}
 - {{ s.id }}：{{ s.name }}（{{ s.type }}）
   描述：{{ s.description or "无" }}
-  {% if s.tilemap_summary %}
-  地图语义摘要：{{ s.tilemap_summary }}
-  {% endif %}
   地图尺寸：{{ s.map_width }} × {{ s.map_height }}
   出生点：({{ s.spawn_x }}, {{ s.spawn_y }})
   {% if s.environment %}

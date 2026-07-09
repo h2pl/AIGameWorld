@@ -1,0 +1,20 @@
+# 角色决策合理性评估数据集 / PC Decision rationality evaluation dataset
+
+- id: decision_001
+  description: "战士在战斗中的决策"
+  character:
+    name: "艾瑞克"
+    role: "战士"
+    personality: "勇敢、直率"
+    hp: 80
+  situation: "前方有地精守卫，后方有撤退路线"
+  expected_actions:
+    - "attack（攻击地精）— 最符合勇敢性格"
+    - "explore（侦查路线）— 合理的谨慎选择"
+  unexpected_actions:
+    - "wait（原地等待）— 不符合勇敢性格"
+    - "flee（逃跑）— 不符合勇敢性格"
+  scoring_criteria:
+    personality_consistency: 5  # 性格一致性 1-5
+    situation_rationality: 4    # 情境合理性 1-5
+    action_diversity: 3         # 行动多样性 1-5

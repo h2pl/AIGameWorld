@@ -65,7 +65,10 @@ describe("CombatHandler", () => {
 
     expect(follow).toHaveBeenCalledWith(sprite.rawSprite);
     expect(mm.walkTo).toHaveBeenCalledWith(sprite, 3, 4, expect.any(Object));
-    expect(sprite.showExploreRecord).toHaveBeenCalledWith("他一剑劈向地精。", expect.any(Function));
+    expect(sprite.showExploreRecord).toHaveBeenCalledWith(
+      "⚔️ 他一剑劈向地精。",
+      expect.any(Function)
+    );
   });
 
   it("should show narration even without waypoints", async () => {
@@ -81,7 +84,7 @@ describe("CombatHandler", () => {
     await handler.handle(makeEvent({ pc_id: "pc1", waypoints: [], narration: "战斗结束。" }));
 
     expect(mm.walkTo).not.toHaveBeenCalled();
-    expect(sprite.showExploreRecord).toHaveBeenCalledWith("战斗结束。", expect.any(Function));
+    expect(sprite.showExploreRecord).toHaveBeenCalledWith("⚔️ 战斗结束。", expect.any(Function));
   });
 
   it("should remove defeated actor from scene", async () => {

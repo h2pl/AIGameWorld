@@ -85,6 +85,7 @@ llm_purposes:
 # === 数据库 / Database ===
 database:
   chroma_path: "data/chroma/"
+  embedding_model: "bge-m3"           # 嵌入模型：bge-m3（推荐）/ default（ChromaDB 内置）
 
 # === 自动运行 / Auto Run ===
 auto_run:
@@ -123,5 +124,7 @@ logging:
 # === 可观测性 / Observability ===
 observability:
   langfuse:
-    enabled: false
+    enabled: true                   # 改为 true 启用 / Set true to enable
     tracing_environment: "development"
+    sampling_rate: 1.0               # 开发环境全量采样 / Full sampling in dev
+    cost_tracking: true              # Token 成本追踪 / Token cost tracking

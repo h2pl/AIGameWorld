@@ -16,13 +16,16 @@
 上一轮叙事：{{ prev_narrative }}
 {% endif %}
 
+{# 世界观知识 / World Pack knowledge #}
+{% if world_knowledge %}
+相关知识：
+{{ world_knowledge }}
+{% endif %}
+
 {# 当前场景 / Current scene #}
 {% if scene %}
 场景：{{ scene.name or scene.id }}（{{ scene.type }}）
 描述：{{ scene.description or "无" }}
-{% if scene.tilemap_summary %}
-地图语义摘要：{{ scene.tilemap_summary }}
-{% endif %}
 地图尺寸：{{ scene.map_width | default(40) }} × {{ scene.map_height | default(40) }}
 出生点：({{ scene.spawn_x | default(0) }}, {{ scene.spawn_y | default(0) }})
 {% endif %}

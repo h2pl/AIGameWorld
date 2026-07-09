@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from src.api.deps import get_db
 from src.config import load_config
@@ -38,7 +38,7 @@ def _char_from_row(r: dict, is_pc: bool, pos_offset: int) -> dict:
 
 
 @router.get("/{world_id}/state")
-async def get_pack_state(world_id: str, db=Depends(get_db)):
+async def get_pack_state(world_id: str, request: Request, db=Depends(get_db)):
     """获取世界初始状态（场景、角色、物品、物体）/ Get initial world state."""
     try:
         scene_repo = SceneRepo(db)
@@ -76,6 +76,7 @@ async def get_pack_state(world_id: str, db=Depends(get_db)):
 
         return {
             "world_id": world_id,
+            "trace_id": getattr(request.state, "trace_id", ""),
             "data_tick": data_tick,
             "display_tick": display_tick,
             "llm_mock": cfg.llm_mock,

@@ -26,6 +26,7 @@ class Orchestrator:
         llm: Any = None,
         reflection_interval: int = 5,
         repos: Any = None,
+        metrics_collector=None,
     ):
         logger.info("[orchestrator] init")
         if repos is None:
@@ -36,6 +37,7 @@ class Orchestrator:
         self._llm = llm
         self._reflection_interval = reflection_interval
         self._repos = repos
+        self._metrics = metrics_collector  # 指标收集器 / Metrics collector
         self._locks: dict[str, asyncio.Lock] = {}
 
     async def run_tick(self, world_id: str) -> dict:
@@ -52,11 +54,33 @@ class Orchestrator:
             initial_state: OverallState = {"tick": tick, "world_id": world_id}
 
             config = self._make_config(world_id, tick)
-            config["callbacks"] = [TickGraphCallback(tick=tick)]
+            callbacks = [
+                TickGraphCallback(tick=tick, world_id=world_id, metrics_collector=self._metrics)
+            ]
+            # 链路追踪：注入 Langfuse handler / Tracing: inject Langfuse handler
+            from src.utils.tracing import create_langfuse_handler
+
+            langfuse_handler = create_langfuse_handler(tick, world_id)
+            if langfuse_handler:
+                callbacks.append(langfuse_handler)
+            config["callbacks"] = callbacks
+
+            # 指标收集：开始追踪 / Metrics: start tracking
+            if self._metrics:
+                self._metrics.start_tick(world_id, tick)
 
             t_start = time.monotonic()
-            result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
+            try:
+                result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
+            except Exception as e:
+                if self._metrics:
+                    self._metrics.record_error(world_id, str(e))
+                raise
             log_phase("tick", tick, elapsed=time.monotonic() - t_start)
+
+            # 指标收集：结束追踪 / Metrics: finish tracking
+            if self._metrics:
+                await self._metrics.finish_tick(world_id)
 
             return {"tick": result["tick"]}
 

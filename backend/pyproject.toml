@@ -35,11 +35,18 @@ dev = [
     "mypy>=2.1",                    # 类型检查 / Type checking
     "httpx>=0.28.1",                # HTTP 测试客户端 / HTTP test client
     "pyright>=1.1.411",
+    "deepeval>=2.0",                # LLM 评估框架 / LLM evaluation framework
 ]
 
 # === 生产扩展 / Production Extensions ===
 production = [
     "langchain-mcp-adapters>=0.3",  # MCP 协议接入（远期）/ MCP protocol (future)
+]
+
+# === 可选依赖组（需 C++ 编译环境）/ Optional dependency groups (needs C++ compiler) ===
+[project.optional-dependencies]
+rag-eval = [
+    "ragas>=0.4",                   # RAG 评估 / RAG evaluation（需 scikit-network C++ 编译）
 ]
 
 # === Ruff Lint 配置 / Ruff Lint Config ===

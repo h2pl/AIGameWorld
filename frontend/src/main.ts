@@ -12,6 +12,7 @@ import { CharacterPanel } from "./ui/CharacterPanel";
 import { ObjectPanel } from "./ui/ObjectPanel";
 import { HistoryEventPanel } from "./ui/HistoryEventPanel";
 import { MockConfigPanel } from "./ui/MockConfigPanel";
+import { MetricsPanel } from "./ui/MetricsPanel";
 import { ControlBar } from "./ui/ControlBar";
 import "./ui/styles.css";
 import { createLogger } from "./utils/logger";
@@ -66,6 +67,8 @@ async function main(): Promise<void> {
   new CharacterPanel().mount(app);
   new ObjectPanel().mount(app);
   new MockConfigPanel().mount(app);
+  const metricsPanel = new MetricsPanel();
+  metricsPanel.mount(app);
   const historyPanel = new HistoryEventPanel(world.world_id);
   historyPanel.mount(app);
   window.addEventListener("show-event-history", () =>

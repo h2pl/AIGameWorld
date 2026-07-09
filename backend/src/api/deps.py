@@ -8,6 +8,7 @@ from fastapi import Request
 
 from src.orchestrator import Orchestrator
 from src.storage.sqlite_client import SQLiteClient
+from src.utils.metrics import MetricsCollector
 
 
 def get_db(request: Request) -> SQLiteClient:
@@ -24,3 +25,11 @@ def get_orch(request: Request) -> Orchestrator:
     if orch is None:
         raise RuntimeError("Orchestrator not initialized")
     return orch
+
+
+def get_metrics_collector(request: Request) -> MetricsCollector:
+    """从 app.state 获取 MetricsCollector."""
+    mc = getattr(request.app.state, "metrics_collector", None)
+    if mc is None:
+        raise RuntimeError("MetricsCollector not initialized")
+    return mc

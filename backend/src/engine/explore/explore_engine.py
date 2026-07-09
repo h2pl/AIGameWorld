@@ -61,7 +61,13 @@ async def process_explore_action(
     map_width, map_height = _get_map_bounds(scene)
     # 记录起点 / Record start position（应与 scene_setup 事件中该 PC 的坐标一致）
     start_x, start_y = pc.position_x, pc.position_y
-    logger.info("[engine] %s explore start pos=(%d,%d) scene=%s", pc_id, start_x, start_y, scene.id if scene else "?")
+    logger.info(
+        "[engine] %s explore start pos=(%d,%d) scene=%s",
+        pc_id,
+        start_x,
+        start_y,
+        scene.id if scene else "?",
+    )
 
     # 调用 LLM 生成探索目的地与记录 / Generate destination and record via LLM
     result = await _generate_explore_data(

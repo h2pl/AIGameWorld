@@ -64,6 +64,21 @@ async def dm_create(
     except Exception:
         logger.warning("[engine] dm_create memory retrieval failed, continuing without memories")
 
+    # 检索 World Pack 知识 / Retrieve World Pack knowledge
+    world_knowledge = ""
+    try:
+        knowledge_repo = get_repo(config, "knowledge")
+        if knowledge_repo:
+            world_knowledge = knowledge_repo.retrieve_for_purpose(
+                purpose="dm_create",
+                query=plot_brief or prev_narrative or world_id or "",
+                top_k=3,
+            )
+    except Exception:
+        logger.warning(
+            "[engine] dm_create knowledge retrieval failed, continuing without knowledge"
+        )
+
     logger.info("[engine] dm_create tick=%s world=%s", tick, world_id or "-")
     system_prompt = await _render_dm_system(config, world_id)
     prompt = _PROMPTS.get_template("dm/dm_create.jinja").render(
@@ -72,6 +87,7 @@ async def dm_create(
         plot_brief_prev=plot_brief,
         prev_narrative=prev_narrative,
         memories=memories,
+        world_knowledge=world_knowledge,
         pacing={},
     )
     result = await llm.call_structured(
@@ -119,6 +135,21 @@ async def dm_narrate(
     except Exception:
         logger.warning("[engine] dm_narrate memory retrieval failed, continuing without memories")
 
+    # 检索 World Pack 知识 / Retrieve World Pack knowledge
+    world_knowledge = ""
+    try:
+        knowledge_repo = get_repo(config, "knowledge")
+        if knowledge_repo:
+            world_knowledge = knowledge_repo.retrieve_for_purpose(
+                purpose="dm_narrate",
+                query=(plot_brief or (scene.description if scene else None) or world_id or ""),
+                top_k=3,
+            )
+    except Exception:
+        logger.warning(
+            "[engine] dm_narrate knowledge retrieval failed, continuing without knowledge"
+        )
+
     system_prompt = await _render_dm_system(config, world_id)
     prompt = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
         tick=tick,
@@ -132,6 +163,7 @@ async def dm_narrate(
         actions=actions,
         prev_narrative=prev_narrative,
         memories=dm_memories,
+        world_knowledge=world_knowledge,
     )
 
     result = await llm.call_structured(

@@ -10,9 +10,6 @@
 
 当前场景：{{ scene.name or scene.id }}（{{ scene.type }}）
 {{ scene.description or "无" }}
-{% if scene.tilemap_summary %}
-地图语义摘要：{{ scene.tilemap_summary }}
-{% endif %}
 
 攻击者：{{ pc.name }}（id: {{ pc.id }}，{{ pc.role }}{% if pc.race %}，{{ pc.race }}{% endif %}）
 - 生命：{{ pc.hp }} / {{ pc.max_hp }}，护甲：{{ pc.ac }}，命中加值：{{ pc.attack_bonus }}，伤害骰：{{ pc.damage_dice }}

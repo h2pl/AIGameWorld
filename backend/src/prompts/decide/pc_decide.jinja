@@ -20,10 +20,6 @@ DM 提示：
 {# 当前场景具体信息 / Concrete current scene info #}
 当前场景：{{ scene.name }}（{{ scene.type }}）
 {{ scene.description }}
-{% if scene.tilemap_summary %}
-地图语义摘要：{{ scene.tilemap_summary }}
-{% endif %}
-
 
 {# 场景物体具体信息 / Concrete scene object info #}
 {% if scene_objects %}

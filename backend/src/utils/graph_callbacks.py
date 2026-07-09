@@ -14,9 +14,11 @@ from .logging import log_graph, log_llm
 class TickGraphCallback(BaseCallbackHandler):
     """全链路日志回调——自动记录顶层 Graph node + LLM 的执行耗时."""
 
-    def __init__(self, tick: int = 0):
+    def __init__(self, tick: int = 0, world_id: str = "", metrics_collector=None):
         super().__init__()
         self._tick = tick
+        self._world_id = world_id
+        self._metrics = metrics_collector
         self._timers: dict[str, float] = {}
         self._llm_count = 0
 
@@ -55,6 +57,10 @@ class TickGraphCallback(BaseCallbackHandler):
         node = _lg_node(metadata)
         if not node:
             return
+        # 指标收集：记录事件类型 / Metrics: record event type
+        if self._metrics:
+            event_type = node.split(".")[-1] if "." in node else node
+            self._metrics.record_event(self._world_id, event_type)
         log_graph(
             node,
             self._tick,
@@ -127,6 +133,14 @@ class TickGraphCallback(BaseCallbackHandler):
                 **_token_usage(response),
             },
         )
+        # 指标收集：记录 LLM Token 消耗 / Metrics: record LLM token usage
+        tu = _token_usage(response)
+        if self._metrics and tu:
+            self._metrics.record_llm(
+                self._world_id,
+                tu.get("tokens_in", 0),
+                tu.get("tokens_out", 0),
+            )
 
     def on_llm_error(
         self,

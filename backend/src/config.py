@@ -67,6 +67,7 @@ class DatabaseConfig(BaseModel):
     """数据库配置 / Database configuration."""
 
     chroma_path: str = "data/chroma/"
+    embedding_model: str = "default"  # 嵌入模型：bge-m3（推荐）/ default（ChromaDB 内置）
 
 
 class ServerConfig(BaseModel):
