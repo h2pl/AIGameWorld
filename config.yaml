@@ -124,7 +124,7 @@ logging:
 # === 可观测性 / Observability ===
 observability:
   langfuse:
-    enabled: true                   # 改为 true 启用 / Set true to enable
+    enabled: false                  # 改为 true 启用 / Set true to enable
     tracing_environment: "development"
     sampling_rate: 1.0               # 开发环境全量采样 / Full sampling in dev
     cost_tracking: true              # Token 成本追踪 / Token cost tracking
