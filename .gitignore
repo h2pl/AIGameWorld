@@ -24,6 +24,9 @@ dist/
 *.log
 backend/data/chroma/
 frontend/test-results/
+frontend/tests/e2e/.backend.pid
+frontend/e2e-result.json
+frontend/*-e2e.txt
 
 # Environment
 .env
