@@ -58,7 +58,11 @@ class Orchestrator:
                 TickGraphCallback(tick=tick, world_id=world_id, metrics_collector=self._metrics)
             ]
             # 链路追踪：注入 Langfuse handler / Tracing: inject Langfuse handler
-            from src.utils.tracing import create_langfuse_handler, get_langfuse_metadata
+            from src.utils.tracing import (
+                create_langfuse_handler,
+                get_langfuse_metadata,
+                langfuse_trace_context,
+            )
 
             langfuse_handler = create_langfuse_handler(tick, world_id)
             if langfuse_handler:
@@ -77,7 +81,10 @@ class Orchestrator:
 
             t_start = time.monotonic()
             try:
-                result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
+                # 用 Langfuse root trace context 包裹，OTel context 自动传播到所有子 span
+                # / Wrap with Langfuse root trace context for OTel context propagation
+                with langfuse_trace_context(tick, world_id):
+                    result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
             except Exception as e:
                 if self._metrics:
                     self._metrics.record_error(world_id, str(e))

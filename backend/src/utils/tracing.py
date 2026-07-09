@@ -8,6 +8,7 @@ LangSmith 通过环境变量自动集成（LANGCHAIN_TRACING_V2=true），
 Langfuse v4 通过 langfuse.langchain.CallbackHandler 注入 config["callbacks"]。
 """
 
+import contextlib
 import os
 from typing import Any
 
@@ -59,6 +60,40 @@ def create_langfuse_handler(tick: int, world_id: str) -> Any | None:
     except Exception as e:
         logger.warning("[tracing] failed to create Langfuse handler: %s", e)
         return None
+
+
+def langfuse_trace_context(tick: int, world_id: str):
+    """创建 Langfuse root trace context / Create Langfuse root trace context.
+
+    在 graph.ainvoke() 外层包裹，通过 OTel context propagation 让所有子 span
+    （CallbackHandler 创建的节点 span + LLM span + @trace_node span）
+    自动挂到同一个 trace 下，解决 trace 分散问题。
+
+    用法 / Usage:
+        with langfuse_trace_context(tick, world_id):
+            result = await graph.ainvoke(state, config)
+    """
+    if not is_langfuse_enabled():
+        return contextlib.nullcontext()
+
+    try:
+        from langfuse import get_client
+
+        client = get_client()
+        if not client:
+            return contextlib.nullcontext()
+
+        # 创建 root span，OTel context 自动传播到所有子 span / Create root span
+        cm = client.start_as_current_observation(
+            as_type="chain",
+            name=f"{world_id}__tick_{tick}",
+            input={"tick": tick, "world_id": world_id},
+            metadata={"tick": tick, "world_id": world_id, "langfuse_session_id": world_id},
+        )
+        return cm
+    except Exception as e:
+        logger.debug("[tracing] langfuse trace context failed: %s", e)
+        return contextlib.nullcontext()
 
 
 def get_langfuse_metadata(tick: int, world_id: str) -> dict[str, Any]:
