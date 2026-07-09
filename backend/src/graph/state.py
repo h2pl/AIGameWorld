@@ -50,6 +50,7 @@ class OverallState(TypedDict, total=False):
     memories: dict[str, list[Memory]]  # 本 tick 新记忆 / new memories this tick
 
     tick_events: list[TickEvent]  # tick 事件列表 / tick event list
+    pcs_snapshot: dict[str, dict]  # tick_init 截屏的 PC 数据（flush_events 构建 scene_setup 用）
 
 
 class PcSubState(TypedDict):

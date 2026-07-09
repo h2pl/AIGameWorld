@@ -10,7 +10,7 @@ import time
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from src.domain import PlayerCharacter, World
+from src.domain import PlayerCharacter, Scene, World
 from src.orchestrator import Orchestrator
 from src.repository import (
     ActorRepo,
@@ -56,6 +56,13 @@ async def client(tmp_path):
 
     # 创建测试世界 / Create test world
     await repos["world"].create(World(id="e2e_mock", name="E2E Mock World"))
+
+    # 创建测试场景 / Create test scene (required for scene_setup event)
+    await repos["scene"].save_scene(
+        Scene(id="tavern", name="Tavern", type="indoor", description="A cozy tavern.",
+              spawn_x=10, spawn_y=10, map_width=40, map_height=40),
+        world_id="e2e_mock",
+    )
 
     # 创建测试 PC，使其参与决策 / Create test PC so it can make decisions
     await repos["char"].save(

@@ -139,20 +139,45 @@ def _group_decision_action_pairs(
 
 
 def flush_events(state: OverallState, config: RunnableConfig = None) -> dict:
-    """构造 PC 事件并追加到已有 tick_events.
-
-    dm_create 和 scene_setup 事件由 tick_init 阶段提前构建，此处仅追加：
-    每个 PC 的 决策→行动.
-    """
+    """从 tick_init 快照构建 scene_setup，追加 PC 决策/行动事件"""
     decisions = _decision_events(state)
     actions = _action_events(state)
     pc_evts = _group_decision_action_pairs(decisions, actions)
 
     prev_events = list(state.get("tick_events", []))
+
+    # 用 pcs_snapshot 构建 scene_setup / Build scene_setup from snapshot
+    snapshot = state.get("pcs_snapshot", {})
+    ss = _scene_setup_from_snapshot(state, snapshot)
+    if ss:
+        prev_events = [ss, *prev_events]
+
     events = [*prev_events, *pc_evts]
     tick = state.get("tick", 0)
     logger.info("[service] flushed events tick=%s count=%d", tick, len(events))
     return {"tick_events": events}
+
+
+def _scene_setup_from_snapshot(state: OverallState, snapshot: dict) -> TickEvent | None:
+    """从 pcs_snapshot 构建 scene_setup TickEvent"""
+    scene_data = snapshot.get("scene")
+    if not scene_data:
+        return None
+    scene_id = scene_data.get("id", "")
+    if not scene_id:
+        return None
+    return TickEvent(
+        type=TickEventType.SCENE_SETUP,
+        tick=state.get("tick", 0),
+        world_id=state.get("world_id", ""),
+        payload={
+            "scene_id": scene_id,
+            "scene": scene_data,
+            "pcs": list(snapshot.get("pcs", {}).values()),
+            "actors": list(snapshot.get("actors", {}).values()),
+            "scene_objects": snapshot.get("scene_objects", []),
+        },
+    )
 
 
 def emit_narrative_event(state: OverallState, config: RunnableConfig = None) -> dict:

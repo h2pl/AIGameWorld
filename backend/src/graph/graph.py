@@ -6,10 +6,7 @@ START
  dm_service.dm_create              [node]      DM 创造情境
  |
  v
- load_data_subgraph                [subgraph]  从 DB 加载 state
- |
- v
- tick_init_subgraph                [subgraph]  坐标分配 + dm_create/scene_setup 事件
+ load_data_subgraph                [subgraph]  从 DB 加载 state + tick_init 事件
  |
  v
  pc_subgraph                       [subgraph]  角色决策+行动
@@ -30,10 +27,8 @@ START
  END
 """
 
-# LangGraph 核心 / LangGraph core
 from langgraph.graph import END, StateGraph
 
-# 服务层 / Service layer
 from ..services import (
     data_service,
     dm_service,
@@ -41,14 +36,9 @@ from ..services import (
     reflection_service,
 )
 from ..utils.logging import get_logger
-
-# 根状态定义 / Root state definition
 from .state import OverallState
-
-# 子图 / Subgraphs
 from .subgraphs import load_data_subgraph as load_data_subgraph_module
 from .subgraphs import pc_subgraph as pc_subgraph_module
-from .subgraphs import tick_init_subgraph as tick_init_subgraph_module
 
 logger = get_logger(__name__)
 
@@ -60,7 +50,6 @@ def build_tick_graph() -> StateGraph:
 
     graph.add_node("dm_service.dm_create", dm_service.dm_create)
     graph.add_node("load_data_subgraph", load_data_subgraph_module.load_data_subgraph)
-    graph.add_node("tick_init_subgraph", tick_init_subgraph_module.tick_init_subgraph)
     graph.add_node("pc_subgraph", pc_subgraph_module.pc_subgraph)
     graph.add_node("event_service.flush_events", event_service.flush_events)
     graph.add_node("dm_service.dm_narrate", dm_service.dm_narrate)
@@ -70,8 +59,7 @@ def build_tick_graph() -> StateGraph:
 
     graph.set_entry_point("dm_service.dm_create")
     graph.add_edge("dm_service.dm_create", "load_data_subgraph")
-    graph.add_edge("load_data_subgraph", "tick_init_subgraph")
-    graph.add_edge("tick_init_subgraph", "pc_subgraph")
+    graph.add_edge("load_data_subgraph", "pc_subgraph")
     graph.add_edge("pc_subgraph", "event_service.flush_events")
     graph.add_edge("event_service.flush_events", "dm_service.dm_narrate")
     graph.add_edge("dm_service.dm_narrate", "event_service.emit_narrative_event")

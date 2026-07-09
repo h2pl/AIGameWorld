@@ -62,31 +62,20 @@ async def build_dm_create_event(state: OverallState, config=None) -> dict:
     return {"tick_events": [*prev, event]}
 
 
-@trace_node("tick_init.scene_setup_event")
-async def build_scene_setup_event(state: OverallState, config=None) -> dict:
-    """构建 scene_setup 事件——此时 PC 坐标为起始坐标，未被 action 更新."""
+@trace_node("tick_init.scene_setup_snapshot")
+async def save_scene_setup_snapshot(state: OverallState, config=None) -> dict:
+    """截屏 scene/pcs/actors/scene_objects，供 flush_events 构建 scene_setup."""
     scene = state.get("scene")
     if scene is None:
         return {}
-    scene_id = scene.id
-    if not scene_id:
-        return {}
-
-    pcs = list(state.get("pcs", {}).values())
-    actors = list(state.get("actors", {}).values())
-    scene_objects = state.get("scene_objects", [])
-
-    event = TickEvent(
-        type=TickEventType.SCENE_SETUP,
-        tick=state.get("tick", 0),
-        world_id=state.get("world_id", ""),
-        payload={
-            "scene_id": scene_id,
-            "scene": scene,
+    pcs = {pc_id: pc.model_dump() for pc_id, pc in state.get("pcs", {}).items()}
+    actors = {actor_id: actor.model_dump() for actor_id, actor in state.get("actors", {}).items()}
+    scene_objects = [obj.model_dump() for obj in state.get("scene_objects", [])]
+    return {
+        "pcs_snapshot": {
+            "scene": scene.model_dump(),
             "pcs": pcs,
             "actors": actors,
             "scene_objects": scene_objects,
         },
-    )
-    prev = list(state.get("tick_events", []))
-    return {"tick_events": [*prev, event]}
+    }
