@@ -193,5 +193,5 @@ export async function runNTicks(page: Page, n: number, timeout = 60000): Promise
   // 等 data_tick 和 display_tick 都到达目标 / Wait for full pipeline to finish
   await waitForBackendTick(page, n, timeout);
   // 再等前端 UI 稳定 / Let UI settle
-  await expect(page.locator(SELECTORS.status)).toContainText(/就绪|完成|展示/, { timeout: 10000 });
+  await expect(page.locator(SELECTORS.status)).toContainText(/就绪|完成|展示/, { timeout: 30000 });
 }

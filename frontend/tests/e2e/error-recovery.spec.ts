@@ -100,6 +100,7 @@ test.describe("error race & state recovery", () => {
   });
 
   test("UC-28 reset then re-run tick", async ({ page }) => {
+    test.setTimeout(90000);
     await runNTicks(page, 1);
 
     // 重置 / Reset

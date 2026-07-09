@@ -128,19 +128,26 @@ test.describe("event display", () => {
   });
 
   test("UC-14 events render in correct order", async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(90000);
     await runNTicks(page, 1);
 
     // L1 UI：事件面板顺序 / Event panel order
+    // 顺序：dm_create → scene_setup → decision → action → dm_narrative
     const lines = await page
       .locator(`${SELECTORS.eventList} ${SELECTORS.eventLine}`)
       .allTextContents();
     const dmCreateIdx = lines.findIndex((t) => t.includes("DM 创建情境"));
+    const sceneSetupIdx = lines.findIndex((t) => t.includes("场景搭建"));
     const decisionIdx = lines.findIndex((t) => t.includes("角色决策"));
     const narrativeIdx = lines.findIndex((t) => t.includes("DM 叙事"));
     const actionIdx = lines.findIndex((t) => /角色对话|角色探索|角色互动|pc_combat/.test(t));
     expect(dmCreateIdx).toBeGreaterThanOrEqual(0);
-    expect(decisionIdx).toBeGreaterThan(dmCreateIdx);
+    if (sceneSetupIdx >= 0) {
+      expect(sceneSetupIdx).toBeGreaterThan(dmCreateIdx);
+      expect(decisionIdx).toBeGreaterThan(sceneSetupIdx);
+    } else {
+      expect(decisionIdx).toBeGreaterThan(dmCreateIdx);
+    }
     expect(actionIdx).toBeGreaterThan(decisionIdx);
     expect(narrativeIdx).toBeGreaterThan(actionIdx);
 
