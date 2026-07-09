@@ -128,7 +128,7 @@ export async function fetchLoopStatus(page: Page): Promise<LoopStatus> {
   return (await res.json()) as LoopStatus;
 }
 
-/** 轮询等待后端 data_tick 达到目标 / Poll until backend data_tick reaches target */
+/** 轮询等待后端 data_tick + display_tick 都达到目标 / Poll until both reach target */
 export async function waitForBackendTick(
   page: Page,
   expectedTick: number,
@@ -137,10 +137,10 @@ export async function waitForBackendTick(
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const state = await fetchBackendState(page);
-    if (state.data_tick >= expectedTick) return state;
+    if (state.data_tick >= expectedTick && state.display_tick >= expectedTick) return state;
     await new Promise((r) => setTimeout(r, 200));
   }
-  throw new Error(`data_tick 未在 ${timeout}ms 内达到 ${expectedTick}`);
+  throw new Error(`data_tick/display_tick 未在 ${timeout}ms 内达到 ${expectedTick}`);
 }
 
 // ── Test seam / Game state ────────────────────────────────────
@@ -186,12 +186,12 @@ export async function resetAndPrepare(page: Page): Promise<void> {
 
 // ── 辅助：运行 N tick 并等待完成 / Run N ticks and wait ─────
 
-/** 运行 N 个 tick 并等待完成 / Run N ticks and wait for completion */
+/** 运行 N 个 tick 并等待前后端全部完成 / Run N ticks and wait for complete pipeline finish */
 export async function runNTicks(page: Page, n: number, timeout = 60000): Promise<void> {
   await page.locator(SELECTORS.tickInput).fill(String(n));
   await page.locator(SELECTORS.runNButton).click();
-  // 等后端 data_tick + display_tick 都到达 / Wait for both data_tick and display_tick
+  // 等 data_tick 和 display_tick 都到达目标 / Wait for full pipeline to finish
   await waitForBackendTick(page, n, timeout);
-  // 等前端 UI 稳定 / Let frontend UI settle
-  await page.waitForTimeout(2000);
+  // 再等前端 UI 稳定 / Let UI settle
+  await expect(page.locator(SELECTORS.status)).toContainText(/就绪|完成|展示/, { timeout: 10000 });
 }
