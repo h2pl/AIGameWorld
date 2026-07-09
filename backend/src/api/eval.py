@@ -1,10 +1,16 @@
 """评估 API 路由 / Evaluation API routes."""
 
+import sys
 from pathlib import Path
 
 from fastapi import APIRouter, Query, Request
 
 from src.utils.logging import get_logger
+
+# 将 backend/ 根目录加入 sys.path，以便导入 evals 包 / Add backend root to sys.path for evals package
+_BACKEND_ROOT = str(Path(__file__).parent.parent.parent)
+if _BACKEND_ROOT not in sys.path:
+    sys.path.insert(0, _BACKEND_ROOT)
 
 logger = get_logger(__name__)
 
@@ -22,7 +28,7 @@ def _get_eval_store(request: Request):
 @router.get("/datasets")
 async def list_datasets():
     """列出可用的 Golden Dataset / List available golden datasets."""
-    from src.evals.evaluator import load_golden_dataset
+    from evals.evaluator import load_golden_dataset
 
     datasets = []
     if _GOLDEN_DIR.is_dir():
@@ -72,7 +78,7 @@ async def run_evaluation(
 
     注意：L2 LLM-as-Judge 评估需要在测试环境中运行，不通过 API 触发。
     """
-    from src.evals.evaluator import check_chinese_ratio, check_length, load_golden_dataset
+    from evals.evaluator import check_chinese_ratio, check_length, load_golden_dataset
 
     data = load_golden_dataset(dataset)
     if not data:

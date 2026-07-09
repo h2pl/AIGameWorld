@@ -146,7 +146,7 @@ async def lifespan(app: FastAPI):
         logger.info("[server] LangSmith tracing enabled")
 
     # 评估存储 / Evaluation store
-    from src.evals.evaluator import EvalStore
+    from src.eval.eval_store import EvalStore
 
     eval_store = EvalStore(sqlite=db)
     await eval_store.initialize()
