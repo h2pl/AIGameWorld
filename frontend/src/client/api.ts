@@ -138,6 +138,7 @@ export interface MetricsSummary {
   total_cost_usd: number;
   avg_latency_ms: number;
   avg_tokens_per_tick: number;
+  avg_stage_latencies?: Record<string, number>;
 }
 
 /** GET /api/metrics/ticks */

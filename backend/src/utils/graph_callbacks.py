@@ -57,14 +57,16 @@ class TickGraphCallback(BaseCallbackHandler):
         node = _lg_node(metadata)
         if not node:
             return
-        # 指标收集：记录事件类型 / Metrics: record event type
+        latency_ms = round((time.monotonic() - t0) * 1000, 1)
+        # 指标收集：记录事件类型 + 分阶段延迟 / Metrics: record event type + stage latency
         if self._metrics:
             event_type = node.split(".")[-1] if "." in node else node
             self._metrics.record_event(self._world_id, event_type)
+            self._metrics.record_stage_latency(self._world_id, node, latency_ms)
         log_graph(
             node,
             self._tick,
-            latency_ms=round((time.monotonic() - t0) * 1000, 1),
+            latency_ms=latency_ms,
             event="done",
             run_id=cid,
         )

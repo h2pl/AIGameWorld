@@ -14,7 +14,7 @@ const EVENT_ICONS: Record<string, string> = {
   scene_setup: "🗺️",
   scene_objects: "📦",
   character_move: "🚶",
-  pc_decision: "💡",
+  pc_decision: "🧠",
   pc_explore: "🔍",
   character_talk: "🗣️",
   pc_talk: "🗣️",
@@ -161,7 +161,7 @@ function _formatPayload(ev: EventData): string {
     case "dm_create":
       return String(p.plot_brief || "");
     case "dm_narrative":
-      return trunc(String(p.text || p.narrative || ""));
+      return String(p.text || p.narrative || "");
     case "pc_decision": {
       const action = String(p.action_type || "wait");
       const target = p.target_id ? String(p.target_id) : undefined;
@@ -170,23 +170,25 @@ function _formatPayload(ev: EventData): string {
       const pos = ex !== undefined && ey !== undefined ? { x: ex, y: ey } : undefined;
       const reason = String(p.thought || "");
       const label = actionLabel(action, target, pos);
-      return reason ? `【${pcName}】${label} — ${trunc(reason, 30)}` : `【${pcName}】${label}`;
+      // 先展示思考过程，最后展示决定结果 / Thought first, decision last
+      return reason
+        ? `【${pcName}】思考: ${reason} → 决定: ${label}`
+        : `【${pcName}】决定: ${label}`;
     }
     case "scene_setup":
       return `进入「${String(p.scene_name || p.scene_id || "")}」`;
     case "pc_explore":
     case "character_explore": {
       const record = p.explore_record as string | undefined;
-      return record ? `【${pcName}】探索: ${trunc(record, 40)}` : `【${pcName}】四处探索`;
+      return record ? `【${pcName}】探索: ${record}` : `【${pcName}】四处探索`;
     }
     case "pc_talk":
     case "character_talk": {
-      const r = p.result as Record<string, unknown> | undefined;
-      const turns = (r?.turns ?? []) as Array<{ speaker_id: string; text: string }>;
+      const turns = (p.turns ?? []) as Array<{ speaker_id: string; text: string }>;
       const target = p.target_id ? String(p.target_id) : undefined;
       if (turns.length) {
-        const preview = turns.map((t) => trunc(t.text, 12)).join(" / ");
-        return `【${pcName}】与${target || "他人"}对话: ${trunc(preview, 50)}`;
+        const preview = turns.map((t) => t.text).join(" / ");
+        return `【${pcName}】与${target || "他人"}对话: ${preview}`;
       }
       return `【${pcName}】与${target || "他人"}交谈`;
     }
@@ -194,7 +196,7 @@ function _formatPayload(ev: EventData): string {
       const target = p.target_id ? String(p.target_id) : undefined;
       const narration = (p.narration as string) || "";
       return narration
-        ? `【${pcName}】与${target || "物体"}交互: ${trunc(narration, 40)}`
+        ? `【${pcName}】与${target || "物体"}交互: ${narration}`
         : `【${pcName}】与${target || "物体"}交互`;
     }
     case "pc_combat": {
@@ -202,7 +204,7 @@ function _formatPayload(ev: EventData): string {
       const narration = (p.narration as string) || "";
       const defeated = p.target_defeated ? "，击败目标" : "";
       return narration
-        ? `【${pcName}】与${target || "敌人"}战斗: ${trunc(narration, 40)}${defeated}`
+        ? `【${pcName}】与${target || "敌人"}战斗: ${narration}${defeated}`
         : `【${pcName}】与${target || "敌人"}战斗${defeated}`;
     }
     case "character_move":
@@ -210,8 +212,4 @@ function _formatPayload(ev: EventData): string {
     default:
       return `[${_readableType(ev.type)}]`;
   }
-}
-
-function trunc(s: string, n = 30): string {
-  return s.length > n ? s.slice(0, n) + "…" : s;
 }

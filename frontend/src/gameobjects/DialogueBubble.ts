@@ -17,7 +17,6 @@ const MIN_WIDTH = 100;
 const MAX_WIDTH = 260;
 const CORNER_RADIUS = 10;
 const ARROW_HEIGHT = 8;
-const MAX_LINES = 4;
 const TEXT_FONT =
   '16px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", SimHei, Segoe UI, sans-serif';
 const NAR_FONT =
@@ -182,52 +181,9 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     this.timer = window.setTimeout(() => this._advance(), showMs);
   }
 
-  /** 将长文本按最大行数拆成多页 / Split long text into pages */
-  private _splitPages(scene: Phaser.Scene, fullText: string): string[] {
-    const style: Phaser.Types.GameObjects.Text.TextStyle = {
-      font: TEXT_FONT,
-      color: TEXT_COLOR,
-      wordWrap: { width: MAX_WIDTH - PADDING_X * 2, useAdvancedWrap: true },
-      align: "center",
-    };
-
-    // 用 MAX_LINES 行参考文本计算每页最大高度
-    const ref = scene.add
-      .text(0, 0, Array(MAX_LINES).fill("中").join("\n"), style)
-      .setVisible(false);
-    const maxHeight = ref.height;
-    ref.destroy();
-
-    const pages: string[] = [];
-    let start = 0;
-    while (start < fullText.length) {
-      let lo = start + 1;
-      let hi = fullText.length;
-      let best = start + 1;
-      while (lo <= hi) {
-        const mid = Math.floor((lo + hi) / 2);
-        const chunk = fullText.slice(start, mid);
-        const temp = scene.add.text(0, 0, chunk, style).setVisible(false);
-        const fits = temp.height <= maxHeight;
-        temp.destroy();
-        if (fits) {
-          best = mid;
-          lo = mid + 1;
-        } else {
-          hi = mid - 1;
-        }
-      }
-      // 尽量在空格或标点处断开，避免截断单词
-      if (best < fullText.length) {
-        const snap = fullText.slice(start, best).search(/[\s，。！？.,!?]\S*$/);
-        if (snap > 0) {
-          best = start + snap + 1;
-        }
-      }
-      pages.push(fullText.slice(start, best));
-      start = best;
-    }
-    return pages.length ? pages : [fullText];
+  /** 单气泡显示完整内容，不再分页 / Show full content in one bubble, no pagination */
+  private _splitPages(_scene: Phaser.Scene, fullText: string): string[] {
+    return [fullText];
   }
 
   /** 淡出并销毁 / Fade out and destroy */

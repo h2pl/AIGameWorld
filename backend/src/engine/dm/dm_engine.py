@@ -98,6 +98,17 @@ async def dm_create(
     if len(result.hints) > 4:
         result.hints = result.hints[:4]
 
+    # 校验 LLM 返回的 scene_id 是否在可用场景列表中 / Validate scene_id exists
+    valid_scene_ids = {s.id for s in scenes}
+    if valid_scene_ids and result.scene_id not in valid_scene_ids:
+        fallback = scenes[0].id
+        logger.warning(
+            "[engine] dm_create returned invalid scene_id=%s, falling back to %s",
+            result.scene_id,
+            fallback,
+        )
+        result.scene_id = fallback
+
     return DMRecord(
         world_id=world_id,
         tick=tick,

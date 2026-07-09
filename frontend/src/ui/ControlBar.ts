@@ -47,6 +47,24 @@ export class ControlBar extends Panel {
       this.statusEl.classList.add("control-status-waiting");
     } else {
       this.statusEl.classList.remove("control-status-waiting");
+      // 恢复到当前运行状态对应的文本 / Restore text matching current runState
+      this.statusEl.textContent = this._stateText();
+    }
+  }
+
+  /** 根据当前 runState 返回对应状态文本 / Return status text for current runState */
+  private _stateText(): string {
+    switch (this.runState) {
+      case "idle":
+        return "就绪";
+      case "connecting":
+        return "连接中...";
+      case "running":
+        return "运行中...";
+      case "paused":
+        return "已暂停";
+      default:
+        return "就绪";
     }
   }
 
@@ -136,11 +154,19 @@ export class ControlBar extends Panel {
       this._updateButtons();
       this.statusEl.textContent = "运行中...";
       await this.callbacks.onRun(n);
-      this.statusEl.textContent = `完成: ${this.callbacks.getTickCount()} tick`;
-    } catch {
-      this.statusEl.textContent = "错误";
-    } finally {
       this.runState = "idle";
+      this.statusEl.textContent = `完成: ${this.callbacks.getTickCount()} tick`;
+    } catch (e) {
+      this.runState = "idle";
+      const msg = e instanceof Error ? e.message : String(e);
+      this.statusEl.textContent = `错误: ${msg}`;
+      this.statusEl.classList.add("control-status-error");
+      // 5 秒后恢复就绪状态 / Reset to ready after 5s
+      setTimeout(() => {
+        this.statusEl.classList.remove("control-status-error");
+        if (this.runState === "idle") this.statusEl.textContent = "就绪";
+      }, 5000);
+    } finally {
       this._updateButtons();
     }
   }

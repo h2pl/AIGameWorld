@@ -138,8 +138,18 @@ async def lifespan(app: FastAPI):
     await metrics_collector.initialize()
     app.state.metrics_collector = metrics_collector
 
+    # 将 metrics_collector 注入 LLM 客户端，用于记录 token 用量 / Inject metrics collector into LLM client
+    llm._metrics_collector = metrics_collector
+
     # LangSmith 开发期追踪 / LangSmith dev-time tracing
     from src.utils.tracing import configure_langsmith, is_langsmith_enabled
+
+    # 同步 config.yaml 可观测性配置到环境变量 / Sync observability config to env vars
+    if cfg.observability.langsmith.enabled:
+        os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
+        os.environ.setdefault("LANGCHAIN_PROJECT", cfg.observability.langsmith.project)
+    if cfg.observability.langfuse.enabled:
+        os.environ.setdefault("LANGFUSE_ENABLED", "true")
 
     if is_langsmith_enabled():
         configure_langsmith()

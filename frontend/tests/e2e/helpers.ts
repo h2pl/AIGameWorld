@@ -190,6 +190,12 @@ export async function resetAndPrepare(page: Page): Promise<void> {
 export async function runNTicks(page: Page, n: number, timeout = 60000): Promise<void> {
   await page.locator(SELECTORS.tickInput).fill(String(n));
   await page.locator(SELECTORS.runNButton).click();
-  // 等后端 data_tick 到达目标（不检查 UI，scene_setup 会改变状态文本）
+  // 等后端 data_tick 到达目标 / Wait for backend data_tick to reach target
   await waitForBackendTick(page, n, timeout);
+  // 等后端 batch 完成 / Wait for backend batch to finish
+  await expect
+    .poll(() => fetchLoopStatus(page), { timeout: 15000 })
+    .toEqual(expect.objectContaining({ batch_running: false }));
+  // 等前端 TickPlayer 处理完毕 + ControlBar 状态稳定 / Wait for frontend to finish processing
+  await expect(page.locator(SELECTORS.status)).toContainText(/就绪|完成|展示/, { timeout: 60000 });
 }

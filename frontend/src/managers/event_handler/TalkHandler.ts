@@ -45,9 +45,8 @@ export class TalkHandler {
       }
     }
 
-    // 2. 显示对话 / Show dialogue
-    const result = payload.result as Record<string, unknown> | undefined;
-    const turns = result?.turns as Array<{ speaker_id: string; text: string }> | undefined;
+    // 2. 显示对话 / Show dialogue（turns 在 payload 顶层，与后端 event_service 对齐）
+    const turns = payload.turns as Array<{ speaker_id: string; text: string }> | undefined;
     if (turns?.length) {
       await this._playDialogueTurns(turns);
     }

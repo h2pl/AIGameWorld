@@ -492,6 +492,13 @@
   background: rgba(0, 210, 255, 0.12) !important;
 }
 
+/* ===== 控制栏错误状态 — tick 生成失败时高亮提示 / Control bar error state ===== */
+.control-status-error {
+  color: #ff4757 !important;
+  border-color: rgba(255, 71, 87, 0.5) !important;
+  background: rgba(255, 71, 87, 0.12) !important;
+}
+
 @keyframes controlWaitingPulse {
   0%,
   100% {

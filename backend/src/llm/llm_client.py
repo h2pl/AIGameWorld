@@ -10,7 +10,8 @@ from typing import Any
 import requests
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain_core.outputs import ChatGeneration, ChatResult
+from langchain_core.outputs import ChatGeneration, ChatResult, LLMResult
+from langchain_core.runnables import ensure_config
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, ValidationError
 
@@ -148,7 +149,19 @@ class RequestsChatModel(BaseChatModel):
                 "content_preview": content[:120],
             },
         )
-        return ChatResult(generations=[ChatGeneration(message=AIMessage(content=content))])
+        # 提取 token 用量 / Extract token usage from API response
+        llm_output: dict[str, Any] = {}
+        if "usage" in data:
+            u = data["usage"]
+            llm_output["token_usage"] = {
+                "prompt_tokens": u.get("prompt_tokens", 0),
+                "completion_tokens": u.get("completion_tokens", 0),
+                "total_tokens": u.get("total_tokens", 0),
+            }
+        return ChatResult(
+            generations=[ChatGeneration(message=AIMessage(content=content))],
+            llm_output=llm_output,
+        )
 
     @property
     def _llm_type(self) -> str:
@@ -276,6 +289,8 @@ class LLMClient:
         self._fallbacks: dict[str, BaseChatModel | None] = {}
         self._timeouts: dict[str, int] = {}
         self._retries: dict[str, int] = {}
+        self._metrics_collector: Any = None  # 由 server.py 注入 / Injected by server.py
+        self._current_world_id = ""  # 由 orchestrator 每个 tick 设置 / Set per-tick by orchestrator
 
         for purpose, cfg in [
             ("dm_create", llm_config.dm_create),
@@ -293,6 +308,28 @@ class LLMClient:
             self._fallbacks[purpose] = _build_fallback_model(cfg, fallback_url)
             self._timeouts[purpose] = cfg.timeout
             self._retries[purpose] = cfg.retries
+
+    # --------------------------------------------------------
+    # 指标收集 / Metrics recording
+    # --------------------------------------------------------
+
+    def set_context(self, world_id: str) -> None:
+        """设置当前 tick 的 world_id，供指标收集使用 / Set current world_id for metrics."""
+        self._current_world_id = world_id
+
+    def _record_tokens(self, result: ChatResult | LLMResult) -> None:
+        """从 LLM 响应中提取 token 用量并上报 / Extract and record token usage from LLM response.
+
+        兼容 ChatResult（_agenerate）和 LLMResult（agenerate）两种返回类型。
+        """
+        if not self._metrics_collector or not self._current_world_id:
+            return
+        llm_output = result.llm_output or {}
+        tu = llm_output.get("token_usage", {})
+        tokens_in = tu.get("prompt_tokens", 0)
+        tokens_out = tu.get("completion_tokens", 0)
+        if tokens_in or tokens_out:
+            self._metrics_collector.record_llm(self._current_world_id, tokens_in, tokens_out)
 
     # --------------------------------------------------------
     # call —— 纯文本调用
@@ -324,12 +361,20 @@ class LLMClient:
         for attempt in range(max_attempts):
             t_start = time.monotonic()
             try:
+                # 用公开 API agenerate 代替私有 _agenerate，使 LangGraph callbacks
+                # 自动传播到 LLM 调用（Langfuse/LangSmith 能捕获 prompt 与 token）。
+                # / Use public agenerate so callbacks propagate from LangGraph config.
+                lc_config = ensure_config()
                 result = await asyncio.wait_for(
-                    model._agenerate(tick_messages),
+                    model.agenerate([tick_messages], callbacks=lc_config.get("callbacks")),
                     timeout=timeout,
                 )
                 elapsed = time.monotonic() - t_start
-                content = str(result.generations[0].message.content)
+                # agenerate 返回 LLMResult，generations 是 List[List[ChatGeneration]]
+                gen = result.generations[0][0]
+                msg = getattr(gen, "message", None)
+                content = str(msg.content) if msg else ""
+                self._record_tokens(result)
                 logger.info(
                     f"[{purpose}] 调用成功",
                     extra=_log_ctx(
@@ -434,13 +479,23 @@ class LLMClient:
         for attempt in range(max_attempts):
             t_start = time.monotonic()
             try:
+                # 用公开 API agenerate 代替私有 _agenerate，使 LangGraph callbacks
+                # 自动传播到 LLM 调用（Langfuse/LangSmith 能捕获 prompt 与 token）。
+                # / Use public agenerate so callbacks propagate from LangGraph config.
+                lc_config = ensure_config()
                 result = await asyncio.wait_for(
-                    model._agenerate(augmented, **generate_kwargs),
+                    model.agenerate(
+                        [augmented], callbacks=lc_config.get("callbacks"), **generate_kwargs
+                    ),
                     timeout=timeout,
                 )
                 elapsed = time.monotonic() - t_start
-                content = str(result.generations[0].message.content)
+                # agenerate 返回 LLMResult，generations 是 List[List[ChatGeneration]]
+                gen = result.generations[0][0]
+                msg = getattr(gen, "message", None)
+                content = str(msg.content) if msg else ""
                 last_content = content
+                self._record_tokens(result)
 
                 # 尝试解析 JSON
                 json_str = _extract_json(content)

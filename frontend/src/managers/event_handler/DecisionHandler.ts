@@ -37,7 +37,7 @@ export class DecisionHandler {
 
     // 语义自然的决策文案 / Natural decision text
     const decisionLine = `决定：${actionLabel(actionType, targetId, explorePos)}`;
-    const text = thought ? `${thought}\n${decisionLine}` : decisionLine;
+    const text = thought ? `思考：${thought}\n${decisionLine}` : decisionLine;
 
     return new Promise<void>((resolve) => {
       sprite.think(text, () => resolve());

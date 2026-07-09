@@ -13,6 +13,14 @@ const log = createLogger("TickPlayer");
 
 export type PlayerState = "idle" | "running" | "paused" | "stopped";
 
+/** Batch 执行失败错误 / Batch execution failure error */
+export class BatchFailedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BatchFailedError";
+  }
+}
+
 export class TickPlayer {
   private _state: PlayerState = "idle";
   private _pending = false;
@@ -74,6 +82,8 @@ export class TickPlayer {
 
     this._emitWaiting(true);
     let delivered = 0;
+    let staleRounds = 0; // 连续无事件轮次 / Consecutive empty-poll rounds
+    const STALE_CHECK_THRESHOLD = 4; // 连续 4 轮（~2s）无事件后开始查 batch 状态 / Start checking batch status after 4 empty rounds
     while (this._state === "running" && this._lastTick < targetTick) {
       this._emitWaiting(true);
       try {
@@ -82,17 +92,25 @@ export class TickPlayer {
           const tick = this._lastTick + 1;
           const evs = data.events.filter((ev) => ev.tick === tick);
           if (!evs.length) {
+            staleRounds++;
+            await this._checkBatchFailed(staleRounds, STALE_CHECK_THRESHOLD);
             await _sleep(speedMs(500));
             continue;
           }
           this._lastTick = tick;
+          staleRounds = 0;
           this._emitWaiting(false);
           await this._playTick(tick, evs);
           await API.syncDisplayTick(this._baseUrl, this._worldId, tick);
           onTick(tick, evs);
           delivered++;
+        } else {
+          staleRounds++;
+          await this._checkBatchFailed(staleRounds, STALE_CHECK_THRESHOLD);
         }
-      } catch {
+      } catch (e) {
+        // BatchFailedError 向上传播；网络错误降级为继续轮询 / Propagate batch failures; swallow network errors
+        if (e instanceof BatchFailedError) throw e;
         await _sleep(speedMs(500));
       }
       if (this._lastTick >= targetTick) break;
@@ -100,8 +118,22 @@ export class TickPlayer {
     }
     this._state = "idle";
     this._pending = false;
-    this._emitWaiting(false);
+    // 不再 _emitWaiting(false)——ControlBar._handleRun 完成后会自己设文本
+    // / Skip _emitWaiting(false) here; ControlBar._handleRun will set text on resolve
     return delivered;
+  }
+
+  /** 检查 batch 是否已失败 / Check if batch has failed.
+   * 连续无事件轮次超过阈值后查询后端 batch 状态：
+   * - batch_running=false 说明 batch 已结束但目标未达成（失败/取消）→ 抛错
+   * - batch_running=true 说明仍在跑，继续等待
+   */
+  private async _checkBatchFailed(staleRounds: number, threshold: number): Promise<void> {
+    if (staleRounds < threshold) return;
+    const status = await API.fetchLoopStatus(this._baseUrl, this._worldId);
+    if (!status.batch_running) {
+      throw new BatchFailedError("后端 tick 生成失败，请检查后端日志");
+    }
   }
 
   /** 启动自动循环播放 / Start auto-play loop */

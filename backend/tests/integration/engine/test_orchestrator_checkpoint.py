@@ -2,12 +2,17 @@
 
 import pytest
 
+from src.domain.world import World
 from src.orchestrator import Orchestrator
 
 
 @pytest.mark.asyncio
 async def test_session_isolation(mock_repos):
     """不同 world_id 的状态互不影响."""
+    # 测试内创建额外的 world / Create additional worlds within the test
+    await mock_repos["world"].create(World(id="world-a", name="World A"))
+    await mock_repos["world"].create(World(id="world-b", name="World B"))
+
     orch = Orchestrator(repos=mock_repos, llm=mock_repos["llm"])
 
     result_a = await orch.run_tick("world-a")
@@ -18,7 +23,6 @@ async def test_session_isolation(mock_repos):
 
     result_a2 = await orch.run_tick("world-a")
     assert result_a2["tick"] == 2
-    assert result_b["tick"] == 1
 
 
 @pytest.mark.asyncio

@@ -46,6 +46,7 @@ class TickMetrics:
     action_types: dict[str, int] = field(default_factory=lambda: defaultdict(int))
     errors: list[str] = field(default_factory=list)
     model: str = "default"
+    stage_latencies: dict[str, float] = field(default_factory=dict)
 
     @property
     def latency_ms(self) -> float:
@@ -127,6 +128,12 @@ class MetricsCollector:
             m.events_count += 1
             m.action_types[event_type] += 1
 
+    def record_stage_latency(self, world_id: str, stage: str, latency_ms: float) -> None:
+        """记录分阶段延迟 / Record per-stage latency."""
+        m = self._current.get(world_id)
+        if m:
+            m.stage_latencies[stage] = latency_ms
+
     def record_error(self, world_id: str, error: str) -> None:
         """记录错误 / Record error."""
         m = self._current.get(world_id)
@@ -196,6 +203,7 @@ class MetricsCollector:
                 "estimated_cost_usd": round(m.estimated_cost_usd, 8),
                 "action_types": dict(m.action_types),
                 "errors": m.errors,
+                "stage_latencies": dict(m.stage_latencies),
             }
             for m in results[-last_n:]
         ]
@@ -216,6 +224,16 @@ class MetricsCollector:
         total_cost = sum(r["estimated_cost_usd"] for r in recent)
         latencies = [r["latency_ms"] for r in recent if r["latency_ms"] > 0]
 
+        # 聚合分阶段延迟 / Aggregate per-stage latencies
+        stage_sums: dict[str, list[float]] = defaultdict(list)
+        for r in recent:
+            for stage, lat in r.get("stage_latencies", {}).items():
+                if lat > 0:
+                    stage_sums[stage].append(lat)
+        avg_stage_latencies = {
+            stage: round(sum(lats) / len(lats), 1) for stage, lats in stage_sums.items()
+        }
+
         return {
             "total_ticks": len(recent),
             "total_tokens_in": total_tokens_in,
@@ -225,4 +243,5 @@ class MetricsCollector:
             "avg_tokens_per_tick": round((total_tokens_in + total_tokens_out) / len(recent), 0)
             if recent
             else 0,
+            "avg_stage_latencies": avg_stage_latencies,
         }

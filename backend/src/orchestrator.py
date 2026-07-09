@@ -58,16 +58,22 @@ class Orchestrator:
                 TickGraphCallback(tick=tick, world_id=world_id, metrics_collector=self._metrics)
             ]
             # 链路追踪：注入 Langfuse handler / Tracing: inject Langfuse handler
-            from src.utils.tracing import create_langfuse_handler
+            from src.utils.tracing import create_langfuse_handler, get_langfuse_metadata
 
             langfuse_handler = create_langfuse_handler(tick, world_id)
             if langfuse_handler:
                 callbacks.append(langfuse_handler)
+                # v4：通过 metadata 传递 trace 元数据 / v4: pass trace metadata via metadata
+                config["metadata"] = get_langfuse_metadata(tick, world_id)
             config["callbacks"] = callbacks
 
             # 指标收集：开始追踪 / Metrics: start tracking
             if self._metrics:
                 self._metrics.start_tick(world_id, tick)
+
+            # 设置 LLM 客户端的 world_id 上下文，供 token 指标收集 / Set world_id context for LLM token metrics
+            if self._llm and hasattr(self._llm, "set_context"):
+                self._llm.set_context(world_id)
 
             t_start = time.monotonic()
             try:
@@ -87,11 +93,13 @@ class Orchestrator:
     def _make_config(self, world_id: str, tick: int) -> dict:
         """构造 LangGraph 执行配置 / Build LangGraph run config."""
         # 每个 tick 使用独立 thread_id，避免累加器字段跨 tick 累积
+        # run_name 统一为 {world_id}__tick_{tick}，LangSmith/Langfuse 面板一致
         config: dict[str, Any] = {
             "configurable": {
                 "thread_id": f"{world_id}__tick_{tick}",
                 "repos": self._repos,
-            }
+            },
+            "run_name": f"{world_id}__tick_{tick}",
         }
         if self._llm:
             config["configurable"]["llm"] = self._llm

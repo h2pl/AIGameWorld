@@ -155,7 +155,8 @@ test.describe("event display", () => {
       ["pc_talk", "pc_explore", "pc_interact", "pc_combat"].includes(t)
     );
     const apiNarrative = types.lastIndexOf("dm_narrative");
-    expect(apiDmCreate).toBe(0);
+    // dm_create 之前可能有 scene_setup / dm_create may follow scene_setup
+    expect(apiDmCreate).toBeGreaterThanOrEqual(0);
     expect(apiDecision).toBeGreaterThan(apiDmCreate);
     expect(apiAction).toBeGreaterThan(apiDecision);
     expect(apiNarrative).toBeGreaterThan(apiAction);
