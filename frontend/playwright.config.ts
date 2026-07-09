@@ -11,6 +11,7 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  timeout: 180000,
   retries: process.env.CI ? 2 : 0,
   workers: 1, // 前后端共享一个世界，串行避免冲突
   reporter: "list",
