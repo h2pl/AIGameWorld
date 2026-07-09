@@ -190,7 +190,8 @@ export async function resetAndPrepare(page: Page): Promise<void> {
 export async function runNTicks(page: Page, n: number, timeout = 60000): Promise<void> {
   await page.locator(SELECTORS.tickInput).fill(String(n));
   await page.locator(SELECTORS.runNButton).click();
-  await expect(page.locator(SELECTORS.status)).toContainText(new RegExp(`展示 Tick ${n}|完成`), {
-    timeout,
-  });
+  // 等后端 data_tick + display_tick 都到达 / Wait for both data_tick and display_tick
+  await waitForBackendTick(page, n, timeout);
+  // 等前端 UI 稳定 / Let frontend UI settle
+  await page.waitForTimeout(2000);
 }
