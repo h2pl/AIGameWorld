@@ -53,10 +53,19 @@ app = FastAPI(title="AIGameWorld API", version="0.1.0")
 
 @app.middleware("http")
 async def trace_middleware(request, call_next):
-    """链路追踪中间件：传播 trace_id / Trace middleware: propagate trace_id."""
+    """全链路追踪中间件：创建 root span + 传播 trace_id.
+
+    / Full-chain tracing middleware: create root span + propagate trace_id.
+    Langfuse root span 包裹整个请求，CallbackHandler 自动挂到其下。
+    """
+    from src.utils.tracing import start_request_span
+
     trace_id = request.headers.get("X-Trace-Id", str(uuid.uuid4()))
     request.state.trace_id = trace_id
-    response = await call_next(request)
+
+    with start_request_span(request.method, request.url.path):
+        response = await call_next(request)
+
     response.headers["X-Trace-Id"] = trace_id
     return response
 

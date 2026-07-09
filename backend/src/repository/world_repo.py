@@ -3,6 +3,7 @@
 from ..domain.world import World
 from ..storage.sqlite_client import SQLiteClient
 from ..utils.logging import get_logger
+from ..utils.tracing import traced
 
 logger = get_logger(__name__)
 
@@ -11,6 +12,7 @@ class WorldRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
+    @traced()
     async def create(self, w: World) -> None:
         await self._db.execute(
             "INSERT INTO worlds (id, name, description, version, rule_set, author, data_tick, display_tick, updated_at) "
@@ -29,6 +31,7 @@ class WorldRepo:
         await self._db.commit()
         logger.info("[repo] create id=%s", w.id)
 
+    @traced()
     async def get(self, world_id: str) -> World | None:
         row = await self._db.fetch_one(
             "SELECT id, name, description, version, rule_set, author, data_tick, display_tick "
@@ -37,12 +40,14 @@ class WorldRepo:
         )
         return _row_to_world(row) if row else None
 
+    @traced()
     async def list_all(self) -> list[World]:
         rows = await self._db.fetch_all(
             "SELECT id, name, description, version, rule_set, author, data_tick, display_tick FROM worlds"
         )
         return [_row_to_world(r) for r in rows]
 
+    @traced()
     async def get_data_tick(self, world_id: str) -> int:
         """获取后端已生成的最新 data_tick，world 不存在返回 0."""
         row = await self._db.fetch_one(
@@ -51,6 +56,7 @@ class WorldRepo:
         )
         return row["data_tick"] if row else 0
 
+    @traced()
     async def get_display_tick(self, world_id: str) -> int:
         """获取前端已展示到的 tick，world 不存在返回 0."""
         row = await self._db.fetch_one(
@@ -59,6 +65,7 @@ class WorldRepo:
         )
         return row["display_tick"] if row else 0
 
+    @traced()
     async def increment_data_tick(self, world_id: str) -> int:
         """data_tick +1 并返回新值."""
         await self._db.execute(
@@ -72,6 +79,7 @@ class WorldRepo:
         )
         return row["data_tick"] if row else 0
 
+    @traced()
     async def set_display_tick(self, world_id: str, tick: int) -> None:
         """更新前端已展示到的 tick."""
         await self._db.execute(
@@ -80,6 +88,7 @@ class WorldRepo:
         )
         await self._db.commit()
 
+    @traced()
     async def reset_tick(self, world_id: str) -> None:
         """重置 data_tick 和 display_tick 为 0."""
         await self._db.execute(
@@ -88,6 +97,7 @@ class WorldRepo:
         )
         await self._db.commit()
 
+    @traced()
     async def delete(self, world_id: str) -> None:
         """删除指定 world 记录 / Delete a world record."""
         await self._db.execute("DELETE FROM worlds WHERE id = ?", (world_id,))

@@ -10,8 +10,7 @@ from typing import Any
 import requests
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain_core.outputs import ChatGeneration, ChatResult, LLMResult
-from langchain_core.runnables import ensure_config
+from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, ValidationError
 
@@ -151,15 +150,27 @@ class RequestsChatModel(BaseChatModel):
         )
         # 提取 token 用量 / Extract token usage from API response
         llm_output: dict[str, Any] = {}
+        usage_metadata: dict[str, int] | None = None
         if "usage" in data:
             u = data["usage"]
+            tokens_in = u.get("prompt_tokens", 0)
+            tokens_out = u.get("completion_tokens", 0)
             llm_output["token_usage"] = {
-                "prompt_tokens": u.get("prompt_tokens", 0),
-                "completion_tokens": u.get("completion_tokens", 0),
+                "prompt_tokens": tokens_in,
+                "completion_tokens": tokens_out,
                 "total_tokens": u.get("total_tokens", 0),
             }
+            # ainvoke() 返回 AIMessage，token 信息通过 usage_metadata 传递
+            usage_metadata = {
+                "input_tokens": tokens_in,
+                "output_tokens": tokens_out,
+                "total_tokens": u.get("total_tokens", 0),
+            }
+        msg = AIMessage(content=content)
+        if usage_metadata:
+            msg.usage_metadata = usage_metadata  # type: ignore[assignment]
         return ChatResult(
-            generations=[ChatGeneration(message=AIMessage(content=content))],
+            generations=[ChatGeneration(message=msg)],
             llm_output=llm_output,
         )
 
@@ -317,17 +328,15 @@ class LLMClient:
         """设置当前 tick 的 world_id，供指标收集使用 / Set current world_id for metrics."""
         self._current_world_id = world_id
 
-    def _record_tokens(self, result: ChatResult | LLMResult) -> None:
-        """从 LLM 响应中提取 token 用量并上报 / Extract and record token usage from LLM response.
-
-        兼容 ChatResult（_agenerate）和 LLMResult（agenerate）两种返回类型。
-        """
+    def _record_tokens_from_message(self, msg: AIMessage) -> None:
+        """从 AIMessage.usage_metadata 提取 token 用量并上报 / Record token usage from AIMessage."""
         if not self._metrics_collector or not self._current_world_id:
             return
-        llm_output = result.llm_output or {}
-        tu = llm_output.get("token_usage", {})
-        tokens_in = tu.get("prompt_tokens", 0)
-        tokens_out = tu.get("completion_tokens", 0)
+        usage = getattr(msg, "usage_metadata", None)
+        if not usage:
+            return
+        tokens_in = usage.get("input_tokens", 0)
+        tokens_out = usage.get("output_tokens", 0)
         if tokens_in or tokens_out:
             self._metrics_collector.record_llm(self._current_world_id, tokens_in, tokens_out)
 
@@ -361,20 +370,17 @@ class LLMClient:
         for attempt in range(max_attempts):
             t_start = time.monotonic()
             try:
-                # 用公开 API agenerate 代替私有 _agenerate，使 LangGraph callbacks
-                # 自动传播到 LLM 调用（Langfuse/LangSmith 能捕获 prompt 与 token）。
-                # / Use public agenerate so callbacks propagate from LangGraph config.
-                lc_config = ensure_config()
-                result = await asyncio.wait_for(
-                    model.agenerate([tick_messages], callbacks=lc_config.get("callbacks")),
+                # 用 ainvoke()（Runnable API）代替 agenerate()，callbacks 自动从
+                # contextvars 传播（LangGraph 已设置），避免 handler 重复注册。
+                # / Use ainvoke() (Runnable API) so callbacks propagate from contextvars
+                # automatically—no double registration, LLM span attaches to parent trace.
+                msg = await asyncio.wait_for(
+                    model.ainvoke(tick_messages),
                     timeout=timeout,
                 )
                 elapsed = time.monotonic() - t_start
-                # agenerate 返回 LLMResult，generations 是 List[List[ChatGeneration]]
-                gen = result.generations[0][0]
-                msg = getattr(gen, "message", None)
                 content = str(msg.content) if msg else ""
-                self._record_tokens(result)
+                self._record_tokens_from_message(msg)
                 logger.info(
                     f"[{purpose}] 调用成功",
                     extra=_log_ctx(
@@ -479,23 +485,17 @@ class LLMClient:
         for attempt in range(max_attempts):
             t_start = time.monotonic()
             try:
-                # 用公开 API agenerate 代替私有 _agenerate，使 LangGraph callbacks
-                # 自动传播到 LLM 调用（Langfuse/LangSmith 能捕获 prompt 与 token）。
-                # / Use public agenerate so callbacks propagate from LangGraph config.
-                lc_config = ensure_config()
-                result = await asyncio.wait_for(
-                    model.agenerate(
-                        [augmented], callbacks=lc_config.get("callbacks"), **generate_kwargs
-                    ),
+                # 用 ainvoke()（Runnable API）代替 agenerate()，callbacks 自动从
+                # contextvars 传播，避免 handler 重复注册。
+                # / Use ainvoke() so callbacks propagate from contextvars automatically.
+                msg = await asyncio.wait_for(
+                    model.ainvoke(augmented, **generate_kwargs),
                     timeout=timeout,
                 )
                 elapsed = time.monotonic() - t_start
-                # agenerate 返回 LLMResult，generations 是 List[List[ChatGeneration]]
-                gen = result.generations[0][0]
-                msg = getattr(gen, "message", None)
                 content = str(msg.content) if msg else ""
                 last_content = content
-                self._record_tokens(result)
+                self._record_tokens_from_message(msg)
 
                 # 尝试解析 JSON
                 json_str = _extract_json(content)

@@ -442,11 +442,12 @@ def log_repo(repo: str, op: str, **extra) -> None:
 
 
 def trace_node(name: str = ""):
-    """节点追踪装饰器——日志 + Langfuse span 双通道 / Node tracing decorator: logging + Langfuse span.
+    """节点追踪装饰器——结构化日志 / Node tracing decorator: structured logging.
 
     - 始终记录结构化日志（log_node）
-    - Langfuse 启用时自动创建 span，挂到当前 trace 上下文（OTel context propagation）
-    - LangSmith 通过 LangGraph callback 捕获节点级 trace
+    - Langfuse/LangSmith 的 trace 由 LangGraph CallbackHandler 自动捕获
+      （CallbackHandler 内部用 runId/parentRunId 维护父子关系，不依赖 OTel context，
+       所以不要在此处用 start_as_current_observation 创建独立 span——会导致 trace 分散）
     """
 
     def decorator(func):
@@ -457,40 +458,25 @@ def trace_node(name: str = ""):
             if args and isinstance(args[0], dict):
                 tick = args[0].get("tick", 0)
             t0 = _time.monotonic()
-            # Langfuse span：未启用时降级为 nullcontext / Langfuse span or nullcontext fallback
-            with _langfuse_span(node_name):
-                try:
-                    result = await func(*args, **kwargs)
-                    latency_ms = round((_time.monotonic() - t0) * 1000, 1)
-                    log_node(
-                        node_name,
-                        tick,
-                        latency_ms,
-                        status="ok",
-                        output=_node_out(node_name, result),
-                    )
-                    return result
-                except Exception:
-                    latency_ms = round((_time.monotonic() - t0) * 1000, 1)
-                    log_node(node_name, tick, latency_ms, status="error")
-                    raise
+            try:
+                result = await func(*args, **kwargs)
+                latency_ms = round((_time.monotonic() - t0) * 1000, 1)
+                log_node(
+                    node_name,
+                    tick,
+                    latency_ms,
+                    status="ok",
+                    output=_node_out(node_name, result),
+                )
+                return result
+            except Exception:
+                latency_ms = round((_time.monotonic() - t0) * 1000, 1)
+                log_node(node_name, tick, latency_ms, status="error")
+                raise
 
         return wrapper
 
     return decorator
-
-
-def _langfuse_span(name: str):
-    """获取 Langfuse span context manager，未启用返回 nullcontext / Get Langfuse span or nullcontext."""
-    try:
-        from langfuse import get_client
-
-        client = get_client()
-        if client:
-            return client.start_as_current_observation(as_type="span", name=name)
-    except Exception as e:
-        logging.getLogger(__name__).debug("[langfuse] span creation failed: %s", e)
-    return contextlib.nullcontext()
 
 
 def _node_out(name: str, result: object) -> dict:
