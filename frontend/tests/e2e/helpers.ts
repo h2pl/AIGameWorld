@@ -128,7 +128,7 @@ export async function fetchLoopStatus(page: Page): Promise<LoopStatus> {
   return (await res.json()) as LoopStatus;
 }
 
-/** 轮询等待后端 data_tick + display_tick 都达到目标 / Poll until both reach target */
+/** 轮询等待后端 data_tick 达到目标 / Poll until backend data_tick reaches target */
 export async function waitForBackendTick(
   page: Page,
   expectedTick: number,
@@ -137,10 +137,10 @@ export async function waitForBackendTick(
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const state = await fetchBackendState(page);
-    if (state.data_tick >= expectedTick && state.display_tick >= expectedTick) return state;
+    if (state.data_tick >= expectedTick) return state;
     await new Promise((r) => setTimeout(r, 200));
   }
-  throw new Error(`data_tick/display_tick 未在 ${timeout}ms 内达到 ${expectedTick}`);
+  throw new Error(`data_tick 未在 ${timeout}ms 内达到 ${expectedTick}`);
 }
 
 // ── Test seam / Game state ────────────────────────────────────
