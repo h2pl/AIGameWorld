@@ -1,0 +1,221 @@
+[backend] warning: `VIRTUAL_ENV=E:/Projects/multi-agent-manager/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+[backend] INFO:     Started server process [16292]
+[backend] [Config] LLM provider: deepseek
+[backend] INFO:     Waiting for application startup.
+[backend] 2026-07-09 16:32:20 | main                     | INFO     | [lifespan] logging configured level=INFO json=False rotation=H
+[backend] 2026-07-09 16:32:20 | storage.sqlite_client    | INFO     | [storage] connected e2e.db
+[backend] 2026-07-09 16:32:20 | storage.sqlite_client    | INFO     | [storage] schema initialized
+[backend] 2026-07-09 16:32:20 | main                     | INFO     | [lifespan] db=data/e2e.db ready
+[backend] 2026-07-09 16:32:20 | repo.world_repo          | INFO     | [repo] delete id=mock_world
+[backend] 2026-07-09 16:32:20 | repo.event_repo          | INFO     | [repo] deleted events for world=mock_world
+[backend] 2026-07-09 16:32:20 | repo.world_repo          | INFO     | [repo] create id=mock_world
+[backend] 2026-07-09 16:32:20 | main                     | INFO     | [lifespan] mock data seeded into data/e2e.db
+[backend] 2026-07-09 16:32:28 | storage.chroma_client    | INFO     | [chroma] using default embedding function
+[backend] 2026-07-09 16:32:32 | repo.knowledge_repo      | INFO     | [knowledge] indexed pack=forgotten_realms chunks=32
+[backend] 2026-07-09 16:32:32 | orchestrator             | INFO     | [orchestrator] init
+[backend] 2026-07-09 16:32:32 | graph.graph              | INFO     | [graph] building tick graph
+[backend] 2026-07-09 16:32:32 | graph.checkpoints        | INFO     | [graph] checkpointer type=memory
+[backend] 2026-07-09 16:32:32 | main                     | INFO     | [lifespan] orchestrator ready
+[backend] 2026-07-09 16:32:32 | uvicorn.error            | INFO     | Application startup complete.
+[backend] 2026-07-09 16:32:32 | uvicorn.error            | INFO     | Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+[backend] 2026-07-09 16:32:32 | uvicorn.access           | INFO     | 127.0.0.1:59712 - "GET /health HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:32 | uvicorn.access           | INFO     | 127.0.0.1:59714 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[e2e setup] backend ready
+
+Running 1 test using 1 worker
+
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:33 | uvicorn.access           | INFO     | 127.0.0.1:50494 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:32:33 | repo.event_repo          | INFO     | [repo] deleted events for world=mock_world
+[backend] 2026-07-09 16:32:33 | graph.checkpoints        | INFO     | [graph] checkpointer type=memory
+[backend] 2026-07-09 16:32:33 | orchestrator             | INFO     | [orchestrator] reset complete for mock_world
+[backend] 2026-07-09 16:32:33 | api                      | INFO     | [api] world.reset world=mock_world
+[backend] 2026-07-09 16:32:33 | uvicorn.access           | INFO     | 127.0.0.1:59393 - "POST /api/world/mock_world/reset HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:33 | uvicorn.access           | INFO     | 127.0.0.1:59396 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:32:33 | uvicorn.access           | INFO     | 127.0.0.1:59399 - "GET /api/world/mock_world/loop/status HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:34 | uvicorn.access           | INFO     | 127.0.0.1:59987 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:32:34 | api                      | INFO     | [api] tick.batch world=mock_world:1
+[backend] 2026-07-09 16:32:34 | tick_runner              | INFO     | [batch] Started 1 ticks for world mock_world
+[backend] 2026-07-09 16:32:34 | uvicorn.access           | INFO     | 127.0.0.1:59990 - "POST /api/world/mock_world/tick/batch/1 HTTP/1.1" 200
+[backend] 2026-07-09 16:32:35 | engine.dm.dm_engine      | INFO     | [engine] dm_create tick=1 world=mock_world
+[backend] 2026-07-09 16:32:35 | performance              | INFO     | [performance] dm.create tick=1 1271.3ms
+[backend] 2026-07-09 16:32:35 | uvicorn.access           | INFO     | 127.0.0.1:54671 - "GET /api/metrics/summary?world_id=mock_world&last_n=100 HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:35 | uvicorn.access           | INFO     | 127.0.0.1:59993 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:32:35 | uvicorn.access           | INFO     | 127.0.0.1:59995 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:32:35 | performance              | INFO     | [performance] data.load_world tick=1 0.9ms
+[backend] 2026-07-09 16:32:35 | performance              | INFO     | [performance] data.load_scene tick=1 0.7ms
+[backend] 2026-07-09 16:32:35 | performance              | INFO     | [performance] data.load_actors tick=1 0.5ms
+[backend] 2026-07-09 16:32:35 | performance              | INFO     | [performance] data.load_pcs tick=1 0.6ms
+[backend] 2026-07-09 16:32:35 | performance              | INFO     | [performance] data.load_scene_objects tick=1 0.8ms
+[backend] 2026-07-09 16:32:35 | performance              | INFO     | [performance] tick_init.assign_positions tick=1 0.1ms
+[backend] 2026-07-09 16:32:35 | performance              | INFO     | [performance] tick_init.dm_create_event tick=1 0.0ms
+[backend] 2026-07-09 16:32:35 | performance              | INFO     | [performance] tick_init.scene_setup_snapshot tick=1 0.1ms
+[backend] 2026-07-09 16:32:35 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=cleric
+[backend] 2026-07-09 16:32:35 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=fighter
+[backend] 2026-07-09 16:32:35 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=rogue
+[backend] 2026-07-09 16:32:35 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=wizard
+[backend] 2026-07-09 16:32:35 | performance              | INFO     | [performance] pc.decide tick=1 12.9ms
+[backend] 2026-07-09 16:32:35 | engine.explore.explore_engine | INFO     | [engine] cleric explore start pos=(20,20) scene=village_elderwood
+[backend] 2026-07-09 16:32:35 | engine.explore.explore_engine | INFO     | [engine] cleric explore: (20,20) → (12,8) | 窗台上摆着一个积满灰尘的陶罐，罐底隐约可见缕刻的纹路——像是
+[backend] 2026-07-09 16:32:35 | engine.combat.combat_engine | INFO     | [combat] fighter → goblin : 长矛擦过他的护甲，火星四溅；他趁机反手一击，重创了面前的敌人 (defeated=False)
+[backend] 2026-07-09 16:32:35 | uvicorn.access           | INFO     | 127.0.0.1:64034 - "POST /api/world/mock_world/loop/pause HTTP/1.1" 200
+[backend] 2026-07-09 16:32:35 | graph                    | ERROR    | [graph] unknown tick=1 error
+[backend] 2026-07-09 16:32:35 | graph                    | ERROR    | [graph] unknown tick=1 error
+[backend] 2026-07-09 16:32:35 | graph                    | ERROR    | [graph] unknown tick=1 error
+[backend] 2026-07-09 16:32:35 | graph                    | ERROR    | [graph] unknown tick=1 error
+[backend] 2026-07-09 16:32:35 | tick_runner              | INFO     | [batch] Cancelled for world mock_world after 0 ticks
+[backend] 2026-07-09 16:32:35 | tick_runner              | INFO     | [batch] Finished world mock_world: 0/1 ticks
+[backend] 2026-07-09 16:32:35 | repo.event_repo          | INFO     | [repo] deleted events for world=mock_world
+[backend] 2026-07-09 16:32:35 | graph.checkpoints        | INFO     | [graph] checkpointer type=memory
+[backend] 2026-07-09 16:32:35 | orchestrator             | INFO     | [orchestrator] reset complete for mock_world
+[backend] 2026-07-09 16:32:35 | api                      | INFO     | [api] world.reset world=mock_world
+[backend] 2026-07-09 16:32:35 | uvicorn.access           | INFO     | 127.0.0.1:64036 - "POST /api/world/mock_world/reset HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:35 | uvicorn.access           | INFO     | 127.0.0.1:64039 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:35 | uvicorn.access           | INFO     | 127.0.0.1:64042 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:32:36 | uvicorn.access           | INFO     | 127.0.0.1:64044 - "GET /api/metrics/summary?world_id=mock_world&last_n=100 HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:36 | uvicorn.access           | INFO     | 127.0.0.1:64047 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:36 | uvicorn.access           | INFO     | 127.0.0.1:64050 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:36 | uvicorn.access           | INFO     | 127.0.0.1:64053 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:36 | uvicorn.access           | INFO     | 127.0.0.1:64056 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:37 | uvicorn.access           | INFO     | 127.0.0.1:58298 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:37 | uvicorn.access           | INFO     | 127.0.0.1:62514 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:37 | uvicorn.access           | INFO     | 127.0.0.1:65078 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:37 | uvicorn.access           | INFO     | 127.0.0.1:51830 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:38 | uvicorn.access           | INFO     | 127.0.0.1:52376 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:38 | uvicorn.access           | INFO     | 127.0.0.1:57853 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:38 | uvicorn.access           | INFO     | 127.0.0.1:57856 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:38 | uvicorn.access           | INFO     | 127.0.0.1:58675 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:39 | uvicorn.access           | INFO     | 127.0.0.1:58678 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:39 | uvicorn.access           | INFO     | 127.0.0.1:58959 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:39 | uvicorn.access           | INFO     | 127.0.0.1:58962 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:39 | uvicorn.access           | INFO     | 127.0.0.1:58967 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:39 | uvicorn.access           | INFO     | 127.0.0.1:58970 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:40 | uvicorn.access           | INFO     | 127.0.0.1:55037 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:40 | uvicorn.access           | INFO     | 127.0.0.1:55040 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:40 | uvicorn.access           | INFO     | 127.0.0.1:54345 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:40 | uvicorn.access           | INFO     | 127.0.0.1:54348 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:41 | uvicorn.access           | INFO     | 127.0.0.1:54354 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:41 | uvicorn.access           | INFO     | 127.0.0.1:54357 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:41 | uvicorn.access           | INFO     | 127.0.0.1:61893 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:41 | uvicorn.access           | INFO     | 127.0.0.1:60087 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:42 | uvicorn.access           | INFO     | 127.0.0.1:58994 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:42 | uvicorn.access           | INFO     | 127.0.0.1:58997 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:42 | uvicorn.access           | INFO     | 127.0.0.1:56456 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:42 | uvicorn.access           | INFO     | 127.0.0.1:65313 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:42 | uvicorn.access           | INFO     | 127.0.0.1:51950 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:43 | uvicorn.access           | INFO     | 127.0.0.1:51953 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:43 | uvicorn.access           | INFO     | 127.0.0.1:51956 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:43 | uvicorn.access           | INFO     | 127.0.0.1:51959 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:43 | uvicorn.access           | INFO     | 127.0.0.1:51962 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:32:44 | uvicorn.access           | INFO     | 127.0.0.1:63824 - "GET /api/metrics/summary?world_id=mock_world&last_n=100 HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:44 | uvicorn.access           | INFO     | 127.0.0.1:63827 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:44 | uvicorn.access           | INFO     | 127.0.0.1:63830 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:44 | uvicorn.access           | INFO     | 127.0.0.1:57120 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:44 | uvicorn.access           | INFO     | 127.0.0.1:57123 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:32:45 | uvicorn.access           | INFO     | 127.0.0.1:57126 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:32:45 | uvicorn.error            | INFO     | Shutting down
+  x  1 [chromium] › tests\e2e\error-recovery.spec.ts:102:3 › error race & state recovery › UC-28 reset then re-run tick (12.0s)
+[backend] 2026-07-09 16:32:45 | uvicorn.error            | INFO     | Waiting for application shutdown.
+[backend] 2026-07-09 16:32:45 | storage.sqlite_client    | INFO     | [storage] closed
+[backend] 2026-07-09 16:32:45 | uvicorn.error            | INFO     | Application shutdown complete.
+[backend] 2026-07-09 16:32:45 | uvicorn.error            | INFO     | Finished server process [16292]
+[e2e teardown] backend stopped
+
+
+  1) [chromium] › tests\e2e\error-recovery.spec.ts:102:3 › error race & state recovery › UC-28 reset then re-run tick 
+
+    Test was interrupted.
+
+    Error: browserContext.close: Test ended.
+    Browser logs:
+
+    <launching> C:\Users\Hpl\AppData\Local\ms-playwright\chromium_headless_shell-1228\chrome-headless-shell-win64\chrome-headless-shell.exe --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=C:\Users\Hpl\AppData\Local\Temp\playwright_chromiumdev_profile-dxOzlm --remote-debugging-pipe --no-startup-window
+    <launched> pid=21540
+    [pid=21540][err] [0709/163233.321:INFO:CONSOLE:495] "[vite] connecting...", source: http://localhost:3000/@vite/client (495)
+    [pid=21540][err] [0709/163233.340:INFO:CONSOLE:618] "[vite] connected.", source: http://localhost:3000/@vite/client (618)
+    [pid=21540][err] [0709/163233.443:INFO:CONSOLE:16] "08:32:33.443 [Main] === START ===", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163233.454:INFO:CONSOLE:16] "08:32:33.454 [Bootstrap] backend ready after 1 attempt(s)", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163233.454:INFO:CONSOLE:16] "08:32:33.454 [Bootstrap] loading world: /api/world/mock_world/state", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163233.471:INFO:CONSOLE:16] "08:32:33.472 [Bootstrap] world loaded: id=mock_world scenes=2", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163233.542:INFO:CONSOLE:8457] "%c %c %c %c %c Phaser v3.90.0 (WebGL | Web Audio) %c https://phaser.io/v390 background: #ff0000 background: #ffff00 background: #00ff00 background: #00ffff color: #ffffff; background: #000000 background: transparent", source: http://localhost:3000/node_modules/.vite/deps/phaser.js?v=8960cbe5 (8457)
+    [pid=21540][err] [0709/163233.545:INFO:CONSOLE:16] "08:32:33.545 [Main] === READY, world_id=mock_world ===", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163233.584:ERROR:gpu\command_buffer\service\gl_utils.cc:430] [.WebGL-0x41fc001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+    [pid=21540][err] [0709/163233.640:INFO:CONSOLE:16] "08:32:33.641 [Boot] world has 2 scenes: village_elderwood, desert", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163233.641:INFO:CONSOLE:16] "08:32:33.641 [Boot] loading tileset: %s ← %s tuxemon-sample-32px-extruded /assets/rpg_tileset.png", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163233.641:INFO:CONSOLE:16] "08:32:33.642 [Boot] loading tilemap: %s ← %s village_elderwood /assets/tuxemon-town.json", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163233.641:INFO:CONSOLE:16] "08:32:33.642 [Boot] loading tileset: %s ← %s Desert /assets/tmw_desert_spacing.png", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163233.641:INFO:CONSOLE:16] "08:32:33.642 [Boot] loading tilemap: %s ← %s desert /assets/desert.json", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163233.644:INFO:CONSOLE:0] "[.WebGL-0x41fc001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://localhost:3000/ (0)
+    [pid=21540][err] [0709/163233.647:ERROR:gpu\command_buffer\service\gl_utils.cc:430] [.WebGL-0x41fc001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+    [pid=21540][err] [0709/163233.659:INFO:CONSOLE:0] "[.WebGL-0x41fc001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://localhost:3000/ (0)
+    [pid=21540][err] [0709/163233.662:ERROR:gpu\command_buffer\service\gl_utils.cc:430] [.WebGL-0x41fc001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+    [pid=21540][err] [0709/163233.667:INFO:CONSOLE:0] "[.WebGL-0x41fc001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://localhost:3000/ (0)
+    [pid=21540][err] [0709/163233.669:ERROR:gpu\command_buffer\service\gl_utils.cc:430] [.WebGL-0x41fc001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+    [pid=21540][err] [0709/163233.681:INFO:CONSOLE:16] "08:32:33.682 [Boot] all assets loaded", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163233.682:INFO:CONSOLE:16] "08:32:33.682 [Boot] ready, starting Game scene", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163233.682:INFO:CONSOLE:0] "[.WebGL-0x41fc001a7c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)", source: http://localhost:3000/ (0)
+    [pid=21540][err] [0709/163233.867:INFO:CONSOLE:495] "[vite] connecting...", source: http://localhost:3000/@vite/client (495)
+    [pid=21540][err] [0709/163233.878:INFO:CONSOLE:618] "[vite] connected.", source: http://localhost:3000/@vite/client (618)
+    [pid=21540][err] [0709/163234.050:INFO:CONSOLE:16] "08:32:34.050 [Main] === START ===", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163234.072:INFO:CONSOLE:16] "08:32:34.072 [Bootstrap] backend ready after 1 attempt(s)", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163234.072:INFO:CONSOLE:16] "08:32:34.073 [Bootstrap] loading world: /api/world/mock_world/state", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163234.090:INFO:CONSOLE:16] "08:32:34.090 [Bootstrap] world loaded: id=mock_world scenes=2", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163234.118:INFO:CONSOLE:8457] "%c %c %c %c %c Phaser v3.90.0 (WebGL | Web Audio) %c https://phaser.io/v390 background: #ff0000 background: #ffff00 background: #00ff00 background: #00ffff color: #ffffff; background: #000000 background: transparent", source: http://localhost:3000/node_modules/.vite/deps/phaser.js?v=8960cbe5 (8457)
+    [pid=21540][err] [0709/163234.120:INFO:CONSOLE:16] "08:32:34.120 [Main] === READY, world_id=mock_world ===", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163234.147:INFO:CONSOLE:16] "08:32:34.148 [Boot] world has 2 scenes: village_elderwood, desert", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163234.149:INFO:CONSOLE:16] "08:32:34.149 [Boot] loading tileset: %s ← %s tuxemon-sample-32px-extruded /assets/rpg_tileset.png", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163234.149:INFO:CONSOLE:16] "08:32:34.149 [Boot] loading tilemap: %s ← %s village_elderwood /assets/tuxemon-town.json", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163234.149:INFO:CONSOLE:16] "08:32:34.149 [Boot] loading tileset: %s ← %s Desert /assets/tmw_desert_spacing.png", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163234.149:INFO:CONSOLE:16] "08:32:34.149 [Boot] loading tilemap: %s ← %s desert /assets/desert.json", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163234.185:INFO:CONSOLE:16] "08:32:34.185 [Boot] all assets loaded", source: http://localhost:3000/src/utils/logger.ts (16)
+    [pid=21540][err] [0709/163234.185:INFO:CONSOLE:16] "08:32:34.185 [Boot] ready, starting Game scene", source: http://localhost:3000/src/utils/logger.ts (16)
+
+    Error Context: test-results\error-recovery-error-race--cd66b-C-28-reset-then-re-run-tick-chromium\error-context.md
+
+  1 interrupted
+    [chromium] › tests\e2e\error-recovery.spec.ts:102:3 › error race & state recovery › UC-28 reset then re-run tick 

@@ -176,9 +176,10 @@ export async function resetAndPrepare(page: Page): Promise<void> {
     .poll(() => fetchLoopStatus(page))
     .toEqual(expect.objectContaining({ running: false, batch_running: false }));
   await page.reload();
+  // scene_setup 会触发完整场景重建，需要额外等待时间
   await page.waitForSelector(SELECTORS.backendOverlay, {
     state: "detached",
-    timeout: 60000,
+    timeout: 90000,
   });
   await expect(page.locator(SELECTORS.runNButton)).toBeEnabled({ timeout: 10000 });
   await page.locator(SELECTORS.speed4x).click();

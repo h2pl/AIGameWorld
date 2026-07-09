@@ -1,0 +1,251 @@
+[WebServer] 16:30:35 [vite] http proxy error: /api/metrics/summary?world_id=mock_world&last_n=100
+[WebServer] AggregateError [ECONNREFUSED]: 
+[WebServer]     at internalConnectMultiple (node:net:1135:18)
+[WebServer]     at afterConnectMultiple (node:net:1716:7)
+[backend] warning: `VIRTUAL_ENV=E:/Projects/multi-agent-manager/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+[backend] INFO:     Started server process [19092]
+INFO:     Waiting for application startup.
+[backend] [Config] LLM provider: deepseek
+[backend] 2026-07-09 16:30:40 | main                     | INFO     | [lifespan] logging configured level=INFO json=False rotation=H
+[backend] 2026-07-09 16:30:40 | storage.sqlite_client    | INFO     | [storage] connected e2e.db
+[backend] 2026-07-09 16:30:40 | storage.sqlite_client    | INFO     | [storage] schema initialized
+[backend] 2026-07-09 16:30:40 | main                     | INFO     | [lifespan] db=data/e2e.db ready
+[backend] 2026-07-09 16:30:40 | repo.world_repo          | INFO     | [repo] delete id=mock_world
+[backend] 2026-07-09 16:30:40 | repo.event_repo          | INFO     | [repo] deleted events for world=mock_world
+[backend] 2026-07-09 16:30:40 | repo.world_repo          | INFO     | [repo] create id=mock_world
+[backend] 2026-07-09 16:30:40 | main                     | INFO     | [lifespan] mock data seeded into data/e2e.db
+[backend] 2026-07-09 16:30:46 | storage.chroma_client    | INFO     | [chroma] using default embedding function
+[backend] 2026-07-09 16:30:49 | repo.knowledge_repo      | INFO     | [knowledge] indexed pack=forgotten_realms chunks=32
+[backend] 2026-07-09 16:30:49 | orchestrator             | INFO     | [orchestrator] init
+[backend] 2026-07-09 16:30:49 | graph.graph              | INFO     | [graph] building tick graph
+[backend] 2026-07-09 16:30:49 | graph.checkpoints        | INFO     | [graph] checkpointer type=memory
+[backend] 2026-07-09 16:30:49 | main                     | INFO     | [lifespan] orchestrator ready
+[backend] 2026-07-09 16:30:49 | uvicorn.error            | INFO     | Application startup complete.
+[backend] 2026-07-09 16:30:49 | uvicorn.error            | INFO     | Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+[backend] 2026-07-09 16:30:50 | uvicorn.access           | INFO     | 127.0.0.1:58525 - "GET /health HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:50 | uvicorn.access           | INFO     | 127.0.0.1:58527 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[e2e setup] backend ready
+
+Running 3 tests using 1 worker
+
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:51 | uvicorn.access           | INFO     | 127.0.0.1:50040 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:30:51 | repo.event_repo          | INFO     | [repo] deleted events for world=mock_world
+[backend] 2026-07-09 16:30:51 | graph.checkpoints        | INFO     | [graph] checkpointer type=memory
+[backend] 2026-07-09 16:30:51 | orchestrator             | INFO     | [orchestrator] reset complete for mock_world
+[backend] 2026-07-09 16:30:51 | api                      | INFO     | [api] world.reset world=mock_world
+[backend] 2026-07-09 16:30:51 | uvicorn.access           | INFO     | 127.0.0.1:50042 - "POST /api/world/mock_world/reset HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:51 | uvicorn.access           | INFO     | 127.0.0.1:50045 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:30:51 | uvicorn.access           | INFO     | 127.0.0.1:50048 - "GET /api/world/mock_world/loop/status HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:51 | uvicorn.access           | INFO     | 127.0.0.1:62211 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:30:51 | api                      | INFO     | [api] tick.batch world=mock_world:1
+[backend] 2026-07-09 16:30:51 | tick_runner              | INFO     | [batch] Started 1 ticks for world mock_world
+[backend] 2026-07-09 16:30:51 | uvicorn.access           | INFO     | 127.0.0.1:62213 - "POST /api/world/mock_world/tick/batch/1 HTTP/1.1" 200
+[backend] 2026-07-09 16:30:51 | uvicorn.access           | INFO     | 127.0.0.1:62218 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:30:52 | engine.dm.dm_engine      | INFO     | [engine] dm_create tick=1 world=mock_world
+[backend] 2026-07-09 16:30:52 | performance              | INFO     | [performance] dm.create tick=1 830.2ms
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:52 | uvicorn.access           | INFO     | 127.0.0.1:62216 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:30:52 | uvicorn.access           | INFO     | 127.0.0.1:62220 - "GET /api/world/mock_world/events?since_tick=0 HTTP/1.1" 200
+[backend] 2026-07-09 16:30:52 | performance              | INFO     | [performance] data.load_world tick=1 0.6ms
+[backend] 2026-07-09 16:30:52 | performance              | INFO     | [performance] data.load_scene tick=1 0.5ms
+[backend] 2026-07-09 16:30:52 | performance              | INFO     | [performance] data.load_actors tick=1 0.3ms
+[backend] 2026-07-09 16:30:52 | performance              | INFO     | [performance] data.load_pcs tick=1 0.3ms
+[backend] 2026-07-09 16:30:52 | performance              | INFO     | [performance] data.load_scene_objects tick=1 0.4ms
+[backend] 2026-07-09 16:30:52 | performance              | INFO     | [performance] tick_init.assign_positions tick=1 0.1ms
+[backend] 2026-07-09 16:30:52 | performance              | INFO     | [performance] tick_init.dm_create_event tick=1 0.0ms
+[backend] 2026-07-09 16:30:52 | performance              | INFO     | [performance] tick_init.scene_setup_snapshot tick=1 0.1ms
+[backend] 2026-07-09 16:30:52 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=cleric
+[backend] 2026-07-09 16:30:52 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=fighter
+[backend] 2026-07-09 16:30:52 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=rogue
+[backend] 2026-07-09 16:30:52 | engine.decision.decision_engine | INFO     | [engine] decide tick=1 pc=wizard
+[backend] 2026-07-09 16:30:52 | performance              | INFO     | [performance] pc.decide tick=1 9.1ms
+[backend] 2026-07-09 16:30:52 | engine.explore.explore_engine | INFO     | [engine] cleric explore start pos=(20,20) scene=village_elderwood
+[backend] 2026-07-09 16:30:52 | engine.explore.explore_engine | INFO     | [engine] cleric explore: (20,20) → (10,12) | 吧台后方的木地板有一块微微翘起，下面似乎藏着一张泛黄的羊皮纸
+[backend] 2026-07-09 16:30:52 | engine.talk.talk_engine  | INFO     | [engine] fighter ↔ blacksmith : 4 turns
+[backend] 2026-07-09 16:30:52 | engine.explore.explore_engine | INFO     | [engine] rogue explore start pos=(20,19) scene=village_elderwood
+[backend] 2026-07-09 16:30:52 | engine.explore.explore_engine | INFO     | [engine] rogue explore: (20,19) → (8,15) | 酒馆后门的台阶上有一串湿脚印，通向小巷深处，泥里还嵌着一枚银
+[backend] 2026-07-09 16:30:52 | engine.combat.combat_engine | INFO     | [combat] wizard → goblin : 长矛擦过他的护甲，火星四溅；他趁机反手一击，重创了面前的敌人 (defeated=False)
+[backend] 2026-07-09 16:30:52 | performance              | INFO     | [performance] pc.act tick=1 21.4ms
+[backend] 2026-07-09 16:30:52 | uvicorn.access           | INFO     | 127.0.0.1:62222 - "POST /api/world/mock_world/loop/pause HTTP/1.1" 200
+[backend] 2026-07-09 16:30:52 | graph                    | ERROR    | [graph] unknown tick=1 error
+[backend] 2026-07-09 16:30:52 | graph                    | ERROR    | [graph] unknown tick=1 error
+[backend] 2026-07-09 16:30:52 | graph                    | ERROR    | [graph] unknown tick=1 error
+[backend] 2026-07-09 16:30:52 | tick_runner              | INFO     | [batch] Cancelled for world mock_world after 0 ticks
+[backend] 2026-07-09 16:30:52 | tick_runner              | INFO     | [batch] Finished world mock_world: 0/1 ticks
+[backend] 2026-07-09 16:30:52 | repo.event_repo          | INFO     | [repo] deleted events for world=mock_world
+[backend] 2026-07-09 16:30:52 | graph.checkpoints        | INFO     | [graph] checkpointer type=memory
+[backend] 2026-07-09 16:30:52 | orchestrator             | INFO     | [orchestrator] reset complete for mock_world
+[backend] 2026-07-09 16:30:52 | api                      | INFO     | [api] world.reset world=mock_world
+[backend] 2026-07-09 16:30:52 | uvicorn.access           | INFO     | 127.0.0.1:62224 - "POST /api/world/mock_world/reset HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:52 | uvicorn.access           | INFO     | 127.0.0.1:62227 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:53 | uvicorn.access           | INFO     | 127.0.0.1:62230 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:53 | uvicorn.access           | INFO     | 127.0.0.1:62233 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:53 | uvicorn.access           | INFO     | 127.0.0.1:62236 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:30:53 | uvicorn.access           | INFO     | 127.0.0.1:62831 - "GET /api/metrics/summary?world_id=mock_world&last_n=100 HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:53 | uvicorn.access           | INFO     | 127.0.0.1:62834 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:54 | uvicorn.access           | INFO     | 127.0.0.1:62837 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:54 | uvicorn.access           | INFO     | 127.0.0.1:62840 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:54 | uvicorn.access           | INFO     | 127.0.0.1:62843 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:54 | uvicorn.access           | INFO     | 127.0.0.1:62846 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:54 | uvicorn.access           | INFO     | 127.0.0.1:62849 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:55 | uvicorn.access           | INFO     | 127.0.0.1:62852 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:55 | uvicorn.access           | INFO     | 127.0.0.1:62855 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:55 | uvicorn.access           | INFO     | 127.0.0.1:62858 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:55 | uvicorn.access           | INFO     | 127.0.0.1:62861 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:56 | uvicorn.access           | INFO     | 127.0.0.1:62864 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:56 | uvicorn.access           | INFO     | 127.0.0.1:62867 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:56 | uvicorn.access           | INFO     | 127.0.0.1:62870 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:56 | uvicorn.access           | INFO     | 127.0.0.1:62873 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:56 | uvicorn.access           | INFO     | 127.0.0.1:62876 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:57 | uvicorn.access           | INFO     | 127.0.0.1:62879 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:57 | uvicorn.access           | INFO     | 127.0.0.1:62882 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:57 | uvicorn.access           | INFO     | 127.0.0.1:62885 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:57 | uvicorn.access           | INFO     | 127.0.0.1:62888 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:58 | uvicorn.access           | INFO     | 127.0.0.1:62891 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:58 | uvicorn.access           | INFO     | 127.0.0.1:62894 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:58 | uvicorn.access           | INFO     | 127.0.0.1:62897 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:58 | uvicorn.access           | INFO     | 127.0.0.1:62900 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:59 | uvicorn.access           | INFO     | 127.0.0.1:62903 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:59 | uvicorn.access           | INFO     | 127.0.0.1:62906 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:59 | uvicorn.access           | INFO     | 127.0.0.1:62909 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:59 | uvicorn.access           | INFO     | 127.0.0.1:62912 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:30:59 | uvicorn.access           | INFO     | 127.0.0.1:62915 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:00 | uvicorn.access           | INFO     | 127.0.0.1:63205 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:00 | uvicorn.access           | INFO     | 127.0.0.1:55251 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:00 | uvicorn.access           | INFO     | 127.0.0.1:55255 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:00 | uvicorn.access           | INFO     | 127.0.0.1:55258 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:01 | uvicorn.access           | INFO     | 127.0.0.1:55264 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:01 | uvicorn.access           | INFO     | 127.0.0.1:55267 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:01 | uvicorn.access           | INFO     | 127.0.0.1:55270 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] 2026-07-09 16:31:01 | uvicorn.access           | INFO     | 127.0.0.1:59690 - "GET /api/metrics/summary?world_id=mock_world&last_n=100 HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:01 | uvicorn.access           | INFO     | 127.0.0.1:55273 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:02 | uvicorn.access           | INFO     | 127.0.0.1:59703 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:02 | uvicorn.access           | INFO     | 127.0.0.1:59706 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:02 | uvicorn.access           | INFO     | 127.0.0.1:59709 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:02 | uvicorn.access           | INFO     | 127.0.0.1:59712 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:02 | uvicorn.access           | INFO     | 127.0.0.1:59715 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:03 | uvicorn.access           | INFO     | 127.0.0.1:59718 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:03 | uvicorn.access           | INFO     | 127.0.0.1:59721 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:03 | uvicorn.access           | INFO     | 127.0.0.1:59724 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:03 | uvicorn.access           | INFO     | 127.0.0.1:59727 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:04 | uvicorn.access           | INFO     | 127.0.0.1:59730 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:04 | uvicorn.access           | INFO     | 127.0.0.1:59734 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:04 | uvicorn.access           | INFO     | 127.0.0.1:59738 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:04 | uvicorn.access           | INFO     | 127.0.0.1:59741 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:04 | uvicorn.access           | INFO     | 127.0.0.1:59744 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:05 | uvicorn.access           | INFO     | 127.0.0.1:59747 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:05 | uvicorn.access           | INFO     | 127.0.0.1:59750 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:05 | uvicorn.access           | INFO     | 127.0.0.1:59753 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:05 | uvicorn.access           | INFO     | 127.0.0.1:59756 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:06 | uvicorn.access           | INFO     | 127.0.0.1:59759 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:06 | uvicorn.access           | INFO     | 127.0.0.1:59764 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:06 | uvicorn.access           | INFO     | 127.0.0.1:59771 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:06 | uvicorn.access           | INFO     | 127.0.0.1:59774 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:07 | uvicorn.access           | INFO     | 127.0.0.1:59777 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:07 | uvicorn.access           | INFO     | 127.0.0.1:59780 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:07 | uvicorn.access           | INFO     | 127.0.0.1:59783 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:07 | uvicorn.access           | INFO     | 127.0.0.1:59786 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:07 | uvicorn.access           | INFO     | 127.0.0.1:59789 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:08 | uvicorn.access           | INFO     | 127.0.0.1:59792 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:08 | uvicorn.access           | INFO     | 127.0.0.1:59795 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:08 | uvicorn.access           | INFO     | 127.0.0.1:59799 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:08 | uvicorn.access           | INFO     | 127.0.0.1:59805 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:09 | uvicorn.access           | INFO     | 127.0.0.1:59808 - "GET /api/world/mock_world/state HTTP/1.1" 200
+[backend] [Config] LLM provider: deepseek
+2026-07-09 16:31:09 | uvicorn.access           | INFO     | 127.0.0.1:59811 - "GET /api/world/mock_world/state HTTP/1.1" 200
+  x  1 [chromium] › tests\e2e\error-recovery.spec.ts:102:3 › error race & state recovery › UC-28 reset then re-run tick (18.6s)
+[backend] 2026-07-09 16:31:09 | uvicorn.error            | INFO     | Shutting down
+[backend] 2026-07-09 16:31:09 | uvicorn.error            | INFO     | Waiting for application shutdown.
+[backend] 2026-07-09 16:31:09 | storage.sqlite_client    | INFO     | [storage] closed
+[backend] 2026-07-09 16:31:09 | uvicorn.error            | INFO     | Application shutdown complete.
+[backend] 2026-07-09 16:31:09 | uvicorn.error            | INFO     | Finished server process [19092]
+[e2e teardown] backend stopped
+
+
+  1) [chromium] › tests\e2e\error-recovery.spec.ts:102:3 › error race & state recovery › UC-28 reset then re-run tick 
+
+    Test was interrupted.
+
+    Error: browserContext.close: Target page, context or browser has been closed
+
+    Error Context: test-results\error-recovery-error-race--cd66b-C-28-reset-then-re-run-tick-chromium\error-context.md
+
+  1 interrupted
+    [chromium] › tests\e2e\error-recovery.spec.ts:102:3 › error race & state recovery › UC-28 reset then re-run tick 
+  2 did not run
