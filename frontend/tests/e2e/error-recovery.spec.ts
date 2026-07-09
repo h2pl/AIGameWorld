@@ -244,8 +244,14 @@ test.describe("mock speed & event integrity", () => {
     await runNTicks(page, 1);
 
     // 记录 tick 1 后 PC 位置 / Record PC positions after tick 1
-    const state1 = await getTestSeamState(page);
-    const pos1 = state1!.pcPositions as Record<string, { tx: number; ty: number }>;
+    // 轮询等待 pcPositions 就绪（scene_setup rebuild 后测试 seam 可能延迟更新）
+    let pos1: Record<string, { tx: number; ty: number }> = {};
+    await expect.poll(() => getTestSeamState(page).then(s => {
+      const p = s!.pcPositions as Record<string, { tx: number; ty: number }>;
+      if (Object.keys(p).length <= 0) throw new Error("pcPositions empty");
+      pos1 = p;
+      return Object.keys(p).length;
+    }), { timeout: 30000 }).toBeGreaterThan(0);
 
     // L2 API：/state 中 PC 坐标存在 / PC positions exist in /state API
     const backendState = await fetchBackendState(page);
