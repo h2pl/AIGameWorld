@@ -9,12 +9,11 @@ Langfuse 全链路 trace 架构（官方推荐 + 全链路 span）：
 2. propagate_attributes 设置 session_id/user_id/trace_name/tags
 3. CallbackHandler 自动追踪 LangGraph 节点 + LLM 调用
 4. @traced 装饰器在 engine/repo 层创建子 span（挂到 root span 下）
-5. trace_db 在 storage 层创建 DB 操作 span
 
-@traced 和 trace_db 会检查当前 OTel context 是否有有效父 span，
+@traced 会检查当前 OTel context 是否有有效父 span，
 无父 span 时跳过 span 创建，避免孤儿 trace。
-/ @traced and trace_db check for valid parent span in OTel context,
-skip span creation when no parent exists to avoid orphan traces.
+/ @traced checks for valid parent span in OTel context,
+skips span creation when no parent exists to avoid orphan traces.
 
 参考文档：
 - https://langfuse.com/integrations/frameworks/langchain
@@ -23,7 +22,8 @@ skip span creation when no parent exists to avoid orphan traces.
 
 import functools
 import os
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from opentelemetry import trace as otel_trace
 
@@ -58,6 +58,7 @@ def traced(name: str | None = None) -> Callable[[F], F]:
     无父 span 时跳过 span 创建，避免孤儿 trace。
     / Skips span creation when no parent span exists to avoid orphan traces.
     """
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):

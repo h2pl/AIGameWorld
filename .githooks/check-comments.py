@@ -30,6 +30,7 @@ SKIP_GLOBS = [
     "test_*.py",         # 后端测试文件 / Backend test files
     "*.tsx",             # Tiled tileset 定义（第三方自动生成）/ Tiled tileset defs (auto-generated)
     "*.tmx",             # Tiled 地图文件（第三方自动生成）/ Tiled map files (auto-generated)
+    "fixtures/*.json",   # 评估 fixture 数据文件 / Eval fixture data files
 ]
 # 白名单确切文件名（不含路径）/ Whitelist exact filenames
 SKIP_FILES = {

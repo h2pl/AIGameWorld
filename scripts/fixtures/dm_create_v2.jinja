@@ -1,0 +1,41 @@
+{# Variant 版本：简化指令，测试是否提升输出质量 #}
+
+你是 DM（地下城主），请根据以下信息为当前 tick 创造一个场景情境。
+
+{% if memories %}
+最近故事发展：
+{% for mem in memories %}
+- {{ mem }}
+{% endfor %}
+{% endif %}
+
+{% if plot_brief_prev %}
+上一步剧情：{{ plot_brief_prev }}
+{% endif %}
+
+{% if prev_narrative %}
+上轮叙事：{{ prev_narrative }}
+{% endif %}
+
+{% if world_knowledge %}
+世界观知识：{{ world_knowledge }}
+{% endif %}
+
+{% if scenes %}
+可用场景（请从中选择 scene_id）：
+{% for s in scenes %}
+- {{ s.id }}：{{ s.name }}（{{ s.type }}）— {{ s.description }}
+{% endfor %}
+{% endif %}
+
+请输出 JSON，包含：
+- scene_id：从上方场景列表中选择
+- plot_brief：2-3 句场景设置（简体中文）
+- hints：2-4 条环境线索（简体中文，描述视觉/听觉/嗅觉等感知细节）
+
+输出格式：
+{
+  "hints": ["...", "..."],
+  "plot_brief": "...",
+  "scene_id": "..."
+}
