@@ -87,7 +87,7 @@ class Orchestrator:
 
                     langfuse = get_client()
                     trace_name = f"{world_id}__tick_{tick}"
-                    with langfuse.start_as_current_observation(as_type="span", name=trace_name):
+                    with langfuse.start_as_current_observation(as_type="span", name="run_tick"):
                         with propagate_attributes(
                             session_id=world_id,
                             user_id=world_id,
