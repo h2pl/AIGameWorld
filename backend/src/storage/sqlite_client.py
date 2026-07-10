@@ -7,6 +7,7 @@ from typing import Any
 import aiosqlite
 
 from ..utils.logging import get_logger
+from ..utils.tracing import trace_db
 
 logger = get_logger(__name__)
 
@@ -83,19 +84,23 @@ class SQLiteClient:
         return self._db
 
     async def execute(self, sql: str, params: tuple = ()) -> None:
-        await self._db.execute(sql, params)
+        async with trace_db("execute", sql):
+            await self._db.execute(sql, params)
 
     async def fetch_all(self, sql: str, params: tuple = ()) -> list[dict[str, Any]]:
-        async with self._db.execute(sql, params) as cursor:
-            return [dict(row) for row in await cursor.fetchall()]
+        async with trace_db("fetch_all", sql):
+            async with self._db.execute(sql, params) as cursor:
+                return [dict(row) for row in await cursor.fetchall()]
 
     async def fetch_one(self, sql: str, params: tuple = ()) -> dict[str, Any] | None:
-        async with self._db.execute(sql, params) as cursor:
-            row = await cursor.fetchone()
-            return dict(row) if row else None
+        async with trace_db("fetch_one", sql):
+            async with self._db.execute(sql, params) as cursor:
+                row = await cursor.fetchone()
+                return dict(row) if row else None
 
     async def commit(self) -> None:
-        await self._db.commit()
+        async with trace_db("commit"):
+            await self._db.commit()
 
     async def begin(self) -> None:
         await self._db.execute("BEGIN")

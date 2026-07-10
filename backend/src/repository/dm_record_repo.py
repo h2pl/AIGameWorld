@@ -6,6 +6,7 @@ from ..domain.dm_record import DMRecord
 from ..domain.story_summary import StorySummary
 from ..storage.sqlite_client import SQLiteClient
 from ..utils.logging import get_logger
+from ..utils.tracing import traced
 
 logger = get_logger(__name__)
 
@@ -16,6 +17,7 @@ class DMRecordRepo:
 
     # ── DM Records ──
 
+    @traced()
     async def save_plot_brief(self, record: DMRecord) -> None:
         """写入 plot_brief + hints + ext（dm_create 阶段）."""
         logger.info("[repo] save_plot_brief tick=%s", record.tick)
@@ -35,6 +37,7 @@ class DMRecordRepo:
         )
         await self._db.commit()
 
+    @traced()
     async def update_narrative(self, record: DMRecord) -> None:
         """更新 dm_narrative + ext（dm_narrate 阶段）."""
         logger.info("[repo] update_narrative tick=%s", record.tick)
@@ -50,6 +53,7 @@ class DMRecordRepo:
         )
         await self._db.commit()
 
+    @traced()
     async def max_tick(self, world_id: str) -> int:
         """获取 world 下最大 tick 号."""
         row = await self._db.fetch_one(
@@ -57,6 +61,7 @@ class DMRecordRepo:
         )
         return row["m"] if row and row["m"] is not None else 0
 
+    @traced()
     async def load_latest_plot_brief(self, world_id: str, before_tick: int) -> str:
         """加载 before_tick 之前最新的 plot_brief."""
         row = await self._db.fetch_one(
@@ -66,6 +71,7 @@ class DMRecordRepo:
         )
         return row["plot_brief"] if row and row["plot_brief"] else ""
 
+    @traced()
     async def load_by_world(self, world_id: str, limit: int = 50) -> list[DMRecord]:
         """按 world 加载 DM 记录（按 tick 升序）."""
         rows = await self._db.fetch_all(
@@ -75,6 +81,7 @@ class DMRecordRepo:
         )
         return [_row_to_record(r) for r in reversed(rows)]
 
+    @traced()
     async def load_range(self, world_id: str, tick_start: int, tick_end: int) -> list[DMRecord]:
         """按 tick 范围加载 DM 记录."""
         rows = await self._db.fetch_all(
@@ -86,6 +93,7 @@ class DMRecordRepo:
 
     # ── Story Summaries ──
 
+    @traced()
     async def insert_summary(self, summary: StorySummary) -> None:
         """插入一条故事摘要."""
         logger.info("[repo] insert_summary ticks=%s-%s", summary.tick_start, summary.tick_end)
@@ -96,16 +104,19 @@ class DMRecordRepo:
         )
         await self._db.commit()
 
+    @traced()
     async def delete_by_world(self, world_id: str) -> None:
         """删除指定 world 下所有 DM 记录 / Delete all DM records for a world."""
         await self._db.execute("DELETE FROM dm_records WHERE world_id = ?", (world_id,))
         await self._db.commit()
 
+    @traced()
     async def delete_summaries_by_world(self, world_id: str) -> None:
         """删除指定 world 下所有摘要 / Delete all summaries for a world."""
         await self._db.execute("DELETE FROM story_summaries WHERE world_id = ?", (world_id,))
         await self._db.commit()
 
+    @traced()
     async def load_summaries(self, world_id: str) -> list[StorySummary]:
         """按 world 加载所有摘要."""
         rows = await self._db.fetch_all(

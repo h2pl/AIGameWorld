@@ -1,35 +1,114 @@
 """链路追踪 / Distributed Tracing.
 
-双追踪架构（官方推荐极简方案）：
+双追踪架构：
 - LangSmith：开发期调试 + Prompt 实验 + 评估回归（与 LangGraph 原生集成，环境变量驱动）
-- Langfuse：生产期监控 + Token 成本 + 延迟告警（CallbackHandler + metadata 驱动）
+- Langfuse：生产期监控 + Token 成本 + 延迟告警（CallbackHandler + 全链路 span）
 
-Langfuse 接入方式（官方推荐）：
-1. 环境变量初始化全局 client（LANGFUSE_HOST / LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY）
-2. create_langfuse_handler() 创建无参 CallbackHandler
-3. get_langfuse_metadata() 生成 langfuse_* 前缀 metadata
-4. 传入 graph.ainvoke(config={"callbacks": [handler], "metadata": metadata})
+Langfuse 全链路 trace 架构（官方推荐 + 全链路 span）：
+1. orchestrator.run_tick 用 start_as_current_observation 创建 root span
+2. propagate_attributes 设置 session_id/user_id/trace_name/tags
+3. CallbackHandler 自动追踪 LangGraph 节点 + LLM 调用
+4. @traced 装饰器在 engine/repo 层创建子 span（挂到 root span 下）
+5. trace_db 在 storage 层创建 DB 操作 span
 
-CallbackHandler 自动创建 root trace + session_id + LangGraph 节点 + LLM 调用追踪。
-无需手动创建 OTel span 或自定义装饰器。
-/ No manual OTel span creation or custom decorators needed.
+@traced 和 trace_db 会检查当前 OTel context 是否有有效父 span，
+无父 span 时跳过 span 创建，避免孤儿 trace。
+/ @traced and trace_db check for valid parent span in OTel context,
+skip span creation when no parent exists to avoid orphan traces.
 
 参考文档：
 - https://langfuse.com/integrations/frameworks/langchain
 - https://langfuse.com/docs/observability/features/sessions
 """
 
+import asyncio
+import functools
 import os
-from typing import Any
+from contextlib import asynccontextmanager
+from typing import Any, AsyncGenerator, Callable, TypeVar
+
+from opentelemetry import trace as otel_trace
 
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+F = TypeVar("F", bound=Callable[..., Any])
+
 
 def is_langfuse_enabled() -> bool:
     """检查 Langfuse 是否启用 / Check if Langfuse tracing is enabled."""
     return os.environ.get("LANGFUSE_ENABLED", "false").lower() == "true"
+
+
+def _has_parent_span() -> bool:
+    """检查当前 OTel context 是否有有效父 span / Check for valid parent span.
+
+    无父 span 时返回 False，用于避免创建孤儿 trace。
+    / Returns False when no parent span exists, preventing orphan traces.
+    """
+    current_span = otel_trace.get_current_span()
+    return current_span.get_span_context().is_valid
+
+
+def traced(name: str | None = None) -> Callable[[F], F]:
+    """异步方法装饰器：在 Langfuse 中创建子 span / Decorator: create child span in Langfuse.
+
+    span name 自动从 __module__ 和函数名推断（如 "dm.DmEngine.dm_create"），
+    或通过 name 参数显式指定。
+
+    无父 span 时跳过 span 创建，避免孤儿 trace。
+    / Skips span creation when no parent span exists to avoid orphan traces.
+    """
+    def decorator(func: F) -> F:
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            if not is_langfuse_enabled() or not _has_parent_span():
+                return await func(*args, **kwargs)
+
+            span_name = name or f"{func.__module__}.{func.__qualname__}"
+            # 去掉 src. 前缀 / Strip src. prefix
+            if span_name.startswith("src."):
+                span_name = span_name[4:]
+
+            try:
+                from langfuse import get_client
+
+                langfuse = get_client()
+                with langfuse.start_as_current_observation(as_type="span", name=span_name) as span:
+                    if span:
+                        span._otel_span.set_attribute("method", func.__qualname__)
+                    return await func(*args, **kwargs)
+            except Exception:
+                # Langfuse 不可用时直接执行 / Execute directly when Langfuse unavailable
+                return await func(*args, **kwargs)
+
+        return wrapper  # type: ignore[return-value]
+
+    return decorator
+
+
+@asynccontextmanager
+async def trace_db(operation: str, sql: str | None = None) -> AsyncGenerator[Any, None]:
+    """数据库操作 span / Database operation span.
+
+    无父 span 时跳过 span 创建，避免孤儿 trace（如后端启动时的 init_schema）。
+    / Skips span creation when no parent span exists (e.g. init_schema on startup).
+    """
+    if not is_langfuse_enabled() or not _has_parent_span():
+        yield None
+        return
+
+    try:
+        from langfuse import get_client
+
+        langfuse = get_client()
+        with langfuse.start_as_current_observation(as_type="span", name=f"db.{operation}") as span:
+            if span and sql:
+                span._otel_span.set_attribute("db.statement", sql[:200])
+            yield span
+    except Exception:
+        yield None
 
 
 def create_langfuse_handler(tick: int, world_id: str) -> Any | None:

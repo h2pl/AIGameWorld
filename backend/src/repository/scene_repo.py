@@ -5,6 +5,7 @@ import json
 
 from ..domain import Scene, SceneObject, SceneObjectType
 from ..storage.sqlite_client import SQLiteClient
+from ..utils.tracing import traced
 
 
 class SceneRepo:
@@ -13,6 +14,7 @@ class SceneRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
+    @traced()
     async def list_scenes(self, world_id: str) -> list[Scene]:
         """按 world_id 加载场景摘要列表."""
         rows = await self._db.fetch_all(
@@ -21,6 +23,7 @@ class SceneRepo:
         )
         return [_row_to_scene(r, world_id) for r in rows]
 
+    @traced()
     async def get_scene(self, scene_id: str) -> Scene | None:
         """按 scene_id 加载单个场景."""
         row = await self._db.fetch_one(
@@ -31,6 +34,7 @@ class SceneRepo:
             return None
         return _row_to_scene(row)
 
+    @traced()
     async def save_scene(self, scene: Scene, world_id: str) -> None:
         """写入单条场景."""
         await self._db.execute(
@@ -53,6 +57,7 @@ class SceneRepo:
         )
         await self._db.commit()
 
+    @traced()
     async def save_tilemap_summary(self, scene_id: str, summary: str) -> None:
         """更新场景 tilemap 语义摘要 / Update tilemap semantic summary."""
         await self._db.execute(
@@ -61,6 +66,7 @@ class SceneRepo:
         )
         await self._db.commit()
 
+    @traced()
     async def save_object(self, obj: SceneObject) -> None:
         """写入单条场景对象."""
         await self._db.execute(
@@ -81,6 +87,7 @@ class SceneRepo:
         )
         await self._db.commit()
 
+    @traced()
     async def list_objects_by_world(self, world_id: str) -> list[dict]:
         """按 world_id 加载场景物体列表 / List scene objects by world."""
         rows = await self._db.fetch_all(
@@ -99,6 +106,7 @@ class SceneRepo:
             for r in rows
         ]
 
+    @traced()
     async def get_object_ids(self, scene_id: str) -> list[str]:
         """按 scene_id 查询场景物体 id 列表 / List scene object ids by scene."""
         rows = await self._db.fetch_all(
@@ -107,12 +115,14 @@ class SceneRepo:
         )
         return [r["id"] for r in rows]
 
+    @traced()
     async def delete_by_world(self, world_id: str) -> None:
         """删除指定 world 下所有场景及场景对象 / Delete all scenes and objects for a world."""
         await self._db.execute("DELETE FROM scene_objects WHERE world_id = ?", (world_id,))
         await self._db.execute("DELETE FROM scenes WHERE world_id = ?", (world_id,))
         await self._db.commit()
 
+    @traced()
     async def load_all(self) -> dict[str, SceneObject]:
         """加载全部场景对象."""
         rows = await self._db.fetch_all("SELECT * FROM scene_objects")

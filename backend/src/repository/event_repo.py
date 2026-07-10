@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from ..domain.event import TickEvent
 from ..storage.sqlite_client import SQLiteClient
 from ..utils.logging import get_logger
+from ..utils.tracing import traced
 
 logger = get_logger(__name__)
 
@@ -22,6 +23,7 @@ class TickEventRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
+    @traced()
     async def insert_tick_events(
         self,
         tick: int,
@@ -50,6 +52,7 @@ class TickEventRepo:
         await self._db.commit()
         logger.info("[repo] insert tick=%s count=%d", tick, len(tick_events))
 
+    @traced()
     async def load_by_tick_range(self, world_id: str, tick_start: int, tick_end: int) -> list[dict]:
         """按 world_id + tick 范围加载事件."""
         rows = await self._db.fetch_all(
@@ -62,6 +65,7 @@ class TickEventRepo:
             for r in rows
         ]
 
+    @traced()
     async def delete_by_world(self, world_id: str) -> int:
         """删除指定 world 的全部事件."""
         await self._db.execute("DELETE FROM tick_events WHERE world_id = ?", (world_id,))

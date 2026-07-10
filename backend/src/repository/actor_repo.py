@@ -4,6 +4,7 @@ from typing import Any
 
 from ..domain import Actor
 from ..storage.sqlite_client import SQLiteClient
+from ..utils.tracing import traced
 
 
 def _val(data: dict[str, Any], key: str, default: Any = None) -> Any:
@@ -16,6 +17,7 @@ class ActorRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
+    @traced()
     async def save(self, actor: Actor) -> None:
         """保存/更新 Actor / Insert or update an actor."""
         await self._db.execute(
@@ -52,6 +54,7 @@ class ActorRepo:
         )
         await self._db.commit()
 
+    @traced()
     async def load_all(self, world_id: str | None = None) -> list[Actor]:
         if world_id:
             rows = await self._db.fetch_all("SELECT * FROM actors WHERE world_id = ?", (world_id,))
@@ -59,13 +62,16 @@ class ActorRepo:
             rows = await self._db.fetch_all("SELECT * FROM actors")
         return [_actor_from_row(r) for r in rows]
 
+    @traced()
     async def load_one(self, actor_id: str) -> Actor | None:
         row = await self._db.fetch_one("SELECT * FROM actors WHERE id = ?", (actor_id,))
         return _actor_from_row(row) if row else None
 
+    @traced()
     async def list_rows(self, world_id: str) -> list[dict]:
         return await self._db.fetch_all("SELECT * FROM actors WHERE world_id = ?", (world_id,))
 
+    @traced()
     async def delete_by_world(self, world_id: str) -> None:
         """删除 world 下全部 Actor / Delete all actors in a world."""
         await self._db.execute("DELETE FROM actors WHERE world_id = ?", (world_id,))
