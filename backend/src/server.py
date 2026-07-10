@@ -53,17 +53,48 @@ app = FastAPI(title="AIGameWorld API", version="0.1.0")
 
 @app.middleware("http")
 async def trace_middleware(request, call_next):
-    """透传 trace_id 响应头 / Propagate trace_id response header.
+    """HTTP 请求 span + session_id 传播 / HTTP request span + session_id propagation.
 
-    注意：不在此处创建 Langfuse root span，否则 CallbackHandler 的
-    _take_root_trace_context 会检测到有效 OTel span 而不创建新 trace，
-    导致 session_id 只设在子 observation 上，session 页面不更新。
-    / Do NOT create a Langfuse root span here. CallbackHandler must create
-    its own root trace so session_id is set at trace root level.
+    全链路 trace 入口：HTTP span → run_tick span → CallbackHandler → engine/repo/storage。
+    从 URL 提取 world_id 设置 session_id，使所有 span 归属同一 session。
+    / Full-chain entry: HTTP span → run_tick span → CallbackHandler → engine/repo/storage.
+    Extracts world_id from URL to set session_id for all spans.
     """
+    import re
+
+    from src.utils.tracing import is_langfuse_enabled
+
     trace_id = request.headers.get("X-Trace-Id", str(uuid.uuid4()))
     request.state.trace_id = trace_id
-    response = await call_next(request)
+
+    if not is_langfuse_enabled():
+        response = await call_next(request)
+        response.headers["X-Trace-Id"] = trace_id
+        return response
+
+    # 从 URL 提取 world_id / Extract world_id from URL
+    path = request.url.path
+    m = re.search(r"/api/world/([^/]+)", path)
+    world_id = m.group(1) if m else None
+
+    try:
+        from langfuse import get_client, propagate_attributes
+
+        langfuse = get_client()
+        span_name = f"{request.method} {path}"
+        with langfuse.start_as_current_observation(as_type="span", name=span_name):
+            # 如果有 world_id，设置 session_id/user_id（传播给所有子 span）
+            if world_id:
+                with propagate_attributes(
+                    session_id=world_id,
+                    user_id=world_id,
+                ):
+                    response = await call_next(request)
+            else:
+                response = await call_next(request)
+    except Exception:
+        response = await call_next(request)
+
     response.headers["X-Trace-Id"] = trace_id
     return response
 
