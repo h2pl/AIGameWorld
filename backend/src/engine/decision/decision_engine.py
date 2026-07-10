@@ -9,6 +9,7 @@ from langchain_core.runnables.config import RunnableConfig
 from src.utils.tracing import traced
 
 from ...domain import Actor, Decision, DMRecord, PlayerCharacter, Scene, SceneObject
+from ...repository.neo4j_repo import Neo4jRepo
 from ...schemas.llm_output import CharacterActionSchema, PCDecideSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm
