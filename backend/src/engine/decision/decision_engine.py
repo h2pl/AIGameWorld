@@ -61,6 +61,31 @@ async def decide(
 
     query = f"{plot_brief} {scene.description if scene else ''}".strip()
     memories = await retrieve_memories(pc_id, query, config=config, top_k=5)
+    
+    # ==== 显式提取最新反思，作为角色的核心认知 ====
+    from ...utils.helpers import get_repo
+    memory_repo = get_repo(config, "memory")
+    core_beliefs = []
+    if memory_repo:
+        recent_reflections = await memory_repo.retrieve_reflections(pc_id, query="", top_k=2)
+        core_beliefs = [r.content for r in recent_reflections]
+
+    from ...services.memory_service import compress_context
+    if llm and len(memories) > 3:
+        memories = await compress_context(query, memories, llm)
+
+    # ==== 引入 GraphRAG 关系记忆 ====
+    neo4j_repo = Neo4jRepo()
+    semantic_context = await neo4j_repo.get_semantic_context(pc_id, scene.id if scene else None)
+    await neo4j_repo.close()
+    
+    # 拼接到记忆里
+    if semantic_context:
+        memories.insert(0, f"[关系网络常识]:\\n{semantic_context}")
+        
+    if core_beliefs:
+        beliefs_str = "\\n".join(f"- {b}" for b in core_beliefs)
+        memories.insert(0, f"[近期核心反思]:\\n{beliefs_str}")
 
     ctx = {
         "me": me,

@@ -1,11 +1,11 @@
 """记忆仓储 / Memory Repository.
 
-基于三层记忆架构：
-- 短期：内存 deque（每角色最近 10 条 observation）
-- 中期：SQLite `memories` 表（按角色/世界持久化）
-- 长期：ChromaDB（语义检索 + 反思集合）
+基于 AI Agent 三层记忆系统核心架构：
+1. 短期记忆 (Short-Term Memory)：内存 deque（当下的意识流，滑动窗口）
+2. 长期记忆 (Long-Term Memory)：SQLite + ChromaDB 双向绑定（陈年旧事与经验，时间衰减+语义打分）
+3. 关系记忆/语义网络 (Semantic Memory)：SQLite 结构化关系表（世界观与人设，无需频繁走向量）
 
-对齐 design/04-agent-layer.md §8 + 06-data-layer.md §6。
+对齐 Gemini 提案与 design/04-agent-layer.md §8 + 06-data-layer.md §6。
 """
 
 from collections import deque
@@ -27,26 +27,35 @@ def score_memory(
     base_importance: int,
     memory_tick: int,
     current_tick: int,
-    half_life: int = 10,
-    recent_window: int = 2,
-    recent_boost: float = 1.5,
+    similarity: float = 1.0,
+    alpha: float = 1.0,   # 语义相关度权重 (Relevance)
+    beta: float = 1.0,    # 时间衰减权重 (Recency)
+    gamma: float = 1.0,   # 重要度权重 (Importance)
+    half_life: int = 10,  # 时间衰减半衰期
 ) -> float:
-    """计算记忆综合重要性分数 / Compute composite memory importance score.
+    """计算长时记忆的三要素综合检索分数 (Relevance + Recency + Importance).
 
-    - base_importance: 事件类型决定的基础重要性（1-10）。
-    - 时间衰减: 以 half_life 为半衰期做指数衰减。
-    - 近期加成: current_tick - memory_tick <= recent_window 时乘以加成。
+    公式: Score = α * Relevance + β * Recency + γ * Importance
     """
     if current_tick <= 0:
         return float(base_importance)
+
+    # 1. Relevance: ChromaDB 的相似度分数，归一化到 0-1 之间
+    relevance_score = max(0.0, min(1.0, similarity))
+
+    # 2. Recency: 指数衰减，时间越久远，分数越趋近于 0
     delta = max(0, current_tick - memory_tick)
-    decay = 0.5 ** (delta / half_life) if half_life > 0 else 1.0
-    boost = recent_boost if delta <= recent_window else 1.0
-    return base_importance * decay * boost
+    recency_score = 0.5 ** (delta / half_life) if half_life > 0 else 1.0
+
+    # 3. Importance: 基础重要度归一化到 0-1 之间 (假设满分是 10)
+    importance_score = min(1.0, base_importance / 10.0)
+
+    # 综合算分
+    return (alpha * relevance_score) + (beta * recency_score) + (gamma * importance_score)
 
 
 class MemoryRepo:
-    """角色记忆存取——短期(deque) + 中期(SQLite) + 长期(ChromaDB) + 反思(ChromaDB)."""
+    """角色记忆存取——短期记忆(deque) + 长期记忆(SQLite+ChromaDB) + 关系记忆(SQLite表) + 反思引擎."""
 
     def __init__(self, chroma: ChromaClient, sqlite=None):
         self._chroma = chroma
@@ -95,6 +104,24 @@ class MemoryRepo:
         await self._sqlite.execute(
             "CREATE INDEX IF NOT EXISTS idx_memories_period ON memories(period)"
         )
+        await self._sqlite.execute(
+            """
+            CREATE TABLE IF NOT EXISTS semantic_network (
+                id          TEXT PRIMARY KEY,
+                world_id    TEXT    NOT NULL,
+                subject     TEXT    NOT NULL,
+                predicate   TEXT    NOT NULL,
+                object      TEXT    NOT NULL,
+                confidence  REAL    NOT NULL DEFAULT 1.0,
+                updated_at  TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+                UNIQUE(world_id, subject, predicate, object)
+            )
+            """
+        )
+        await self._sqlite.execute(
+            "CREATE INDEX IF NOT EXISTS idx_semantic_network_subject ON semantic_network(world_id, subject)"
+        )
+        
         await self._sqlite.commit()
         self._table_ensured = True
 
@@ -114,7 +141,7 @@ class MemoryRepo:
             return "short_term"
         return "medium_term"
 
-    # ── 短期记忆 / Short-term ──
+    # ── 1. 短期记忆 / Short-Term Memory ──
     def _short_queue(self, pc_id: str) -> deque[Memory]:
         if pc_id not in self._short_term:
             self._short_term[pc_id] = deque(maxlen=10)
@@ -134,7 +161,7 @@ class MemoryRepo:
         entity_type: str = "pc",
         world_id: str = "",
     ) -> Memory:
-        """存储新记忆（短期 + 中期 + 长期）."""
+        """存储新记忆（短期记忆 + 长期记忆双写）."""
         resolved_period = period or self._period_for(importance, memory_type)
         mem = Memory(
             id=f"mem_{pc_id}_{tick}_{uuid4().hex[:6]}",
@@ -245,7 +272,7 @@ class MemoryRepo:
         entity_types: list[str] | None = None,
         current_tick: int = 0,
     ) -> list[Memory]:
-        """检索相关记忆（短期全量 + 中期最近 + 长期语义 Top-K），支持类型/周期/实体过滤，按综合重要性分数排序."""
+        """检索长期记忆（ID双写：ChromaDB粗排召回 + SQLite拉取补齐 + 三要素精排）"""
         short = list(self._short_queue(pc_id))
 
         mid_term: list[Memory] = []
@@ -272,21 +299,28 @@ class MemoryRepo:
             mid_term = [_memory_from_row(r) for r in rows]
 
         col_name = _MEM_PREFIX.format(pc_id=pc_id)
-        results = self._chroma.query(collection=col_name, query_text=query, top_k=top_k)
-        long_term = [
-            Memory(
-                id=r["meta"].get("id", ""),
-                pc_id=pc_id,
-                content=r["text"],
-                tick=r["meta"].get("tick", 0),
-                importance=r["meta"].get("importance", 1),
-                memory_type=r["meta"].get("type", "observation"),
-                period=r["meta"].get("period", "medium_term"),
-                entity_type=r["meta"].get("entity_type", "pc"),
-                world_id=r["meta"].get("world_id", ""),
-            )
-            for r in results
-        ]
+        # Stage 1: Coarse Recall (from ChromaDB)
+        results = self._chroma.query(collection=col_name, query_text=query, top_k=top_k * 3) # fetch more for re-ranking
+        candidate_ids = set()
+        semantic_scores = {} # mem_id -> similarity score
+
+        for r in results:
+            mem_id = r["meta"].get("id", "")
+            if mem_id:
+                candidate_ids.add(mem_id)
+                # Chroma distance is often 0 (identical) to 2 (opposite). 
+                # Convert to a similarity multiplier (higher is better).
+                distance = r.get("distance", 1.0)
+                similarity = max(0.0, 1.0 - (distance / 2.0))
+                semantic_scores[mem_id] = similarity
+
+        long_term: list[Memory] = []
+        if candidate_ids and self._sqlite:
+            # Stage 2: Fetch full structured data from SQLite by IDs
+            placeholders = ",".join("?" * len(candidate_ids))
+            sql_full = f"SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id FROM memories WHERE id IN ({placeholders})"
+            rows = await self._sqlite.fetch_all(sql_full, tuple(candidate_ids))
+            long_term = [_memory_from_row(r) for r in rows]
 
         def _matches_filters(m: Memory) -> bool:
             return (
@@ -302,17 +336,27 @@ class MemoryRepo:
             if m.id not in seen and _matches_filters(m):
                 merged.append(m)
                 seen.add(m.id)
-        merged.sort(
-            key=lambda m: score_memory(m.importance, m.tick, current_tick),
-            reverse=True,
-        )
+
+        # Stage 3: Re-rank in memory
+        def _get_final_score(m: Memory) -> float:
+            base_score = score_memory(m.importance, m.tick, current_tick)
+            
+            # Semantic bonus
+            semantic_bonus = 0.0
+            if m.id in semantic_scores:
+                similarity = semantic_scores[m.id]
+                semantic_bonus = base_score * similarity * 1.5
+                
+            return base_score + semantic_bonus
+
+        merged.sort(key=_get_final_score, reverse=True)
         return merged[:top_k]
 
     @traced()
     async def retrieve_reflections(
         self, pc_id: str, query: str, top_k: int = 3, current_tick: int = 0
     ) -> list[Memory]:
-        """检索反思记忆（长期反思集合 + 中期 SQLite 反思记录），按综合重要性分数排序."""
+        """检索反思记忆（语义记忆反思集合 + 情景记忆 SQLite 反思记录），按综合重要性分数排序."""
         col_name = _REFLECT_PREFIX.format(pc_id=pc_id)
         results = self._chroma.query(collection=col_name, query_text=query, top_k=top_k)
         reflections = [
@@ -345,10 +389,72 @@ class MemoryRepo:
                     reflections.append(m)
                     seen.add(m.id)
             reflections.sort(
-                key=lambda m: score_memory(m.importance, m.tick, current_tick),
+                key=lambda m: score_memory(m.importance, m.tick, current_tick, similarity=1.0),
                 reverse=True,
             )
         return reflections[:top_k]
+
+    # ── 3. 关系记忆 / Semantic Memory (Phase 2) ──
+    @traced()
+    async def upsert_relation(
+        self,
+        world_id: str,
+        subject: str,
+        predicate: str,
+        object_: str,
+        confidence: float = 1.0,
+    ) -> None:
+        """更新或插入一条语义关系 / Upsert a semantic relation (Triple)."""
+        if not self._sqlite:
+            return
+        if not self._table_ensured:
+            await self._ensure_table()
+            
+        rel_id = f"rel_{uuid4().hex[:8]}"
+        await self._sqlite.execute(
+            """
+            INSERT INTO semantic_network (id, world_id, subject, predicate, object, confidence)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(world_id, subject, predicate, object) 
+            DO UPDATE SET 
+                confidence = excluded.confidence,
+                updated_at = datetime('now', 'localtime')
+            """,
+            (rel_id, world_id, subject, predicate, object_, confidence)
+        )
+        await self._sqlite.commit()
+
+    @traced()
+    async def get_relations_for(
+        self, world_id: str, subject: str
+    ) -> list[dict]:
+        """获取某主体的所有语义关系 / Get all semantic relations for a subject."""
+        if not self._sqlite:
+            return []
+        if not self._table_ensured:
+            await self._ensure_table()
+            
+        rows = await self._sqlite.fetch_all(
+            "SELECT predicate, object, confidence FROM semantic_network WHERE world_id = ? AND subject = ?",
+            (world_id, subject)
+        )
+        return [dict(r) for r in rows]
+
+    @traced()
+    async def delete_relation(
+        self, world_id: str, subject: str, predicate: str, object_: str
+    ) -> None:
+        """删除一条语义关系 / Delete a semantic relation."""
+        if not self._sqlite:
+            return
+        if not self._table_ensured:
+            await self._ensure_table()
+            
+        await self._sqlite.execute(
+            "DELETE FROM semantic_network WHERE world_id = ? AND subject = ? AND predicate = ? AND object = ?",
+            (world_id, subject, predicate, object_)
+        )
+        await self._sqlite.commit()
 
     # ── 生命周期 / Lifecycle ──
 
@@ -375,7 +481,7 @@ class MemoryRepo:
         return total >= threshold
 
     def count(self, pc_id: str) -> int:
-        """返回某角色的短期记忆数."""
+        """返回某角色的工作记忆数."""
         return len(self._short_queue(pc_id))
 
 

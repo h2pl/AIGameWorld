@@ -14,6 +14,7 @@ from langchain_core.runnables.config import RunnableConfig
 from src.utils.tracing import traced
 
 from ...domain import Action, Actor, Decision, DMRecord, Memory, PlayerCharacter, Scene, SceneObject
+from ...repository.neo4j_repo import Neo4jRepo
 from ...schemas.llm_output import DialogueSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm, get_repo
@@ -74,6 +75,18 @@ async def process_talk_action(
     waypoints = _update_talker_position(
         char_id, target_id, target_type, pcs, actors, scene, scene_objects
     )
+
+    # ==== 写入 GraphRAG 关系图谱 ====
+    if target_id:
+        neo4j_repo = Neo4jRepo()
+        try:
+            await neo4j_repo.merge_relationship(
+                start_label="Actor", start_key="id", start_val=char_id,
+                end_label="Actor", end_key="id", end_val=target_id,
+                rel_type="TALKED_TO"
+            )
+        finally:
+            await neo4j_repo.close()
 
     logger.info("[engine] %s ↔ %s : %d turns", char_id, target_id, len(turns))
     return Action(

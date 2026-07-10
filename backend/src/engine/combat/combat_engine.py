@@ -24,6 +24,7 @@ from ...domain import (
     Scene,
     SceneObject,
 )
+from ...repository.neo4j_repo import Neo4jRepo
 from ...schemas.llm_output import CombatNarrationSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import dict_without, get_llm, validate_position
@@ -91,6 +92,18 @@ async def process_combat_action(
 
     # 4. 写入记忆 / Stage memory
     _store_combat_memory(pc_id, target_id, target_type, narration, tick, memories)
+
+    # ==== 写入 GraphRAG 关系图谱 ====
+    if target_id:
+        neo4j_repo = Neo4jRepo()
+        try:
+            await neo4j_repo.merge_relationship(
+                start_label="Actor", start_key="id", start_val=pc_id,
+                end_label="Actor", end_key="id", end_val=target_id,
+                rel_type="ATTACKED"
+            )
+        finally:
+            await neo4j_repo.close()
 
     logger.info(
         "[combat] %s → %s : %s (defeated=%s)",

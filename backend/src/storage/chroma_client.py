@@ -82,8 +82,20 @@ class ChromaClient:
         col = self.get_collection(collection)
         if col.count() == 0:
             return []
-        res = col.query(query_texts=[query_text], n_results=top_k, where=where)
-        return [
-            {"text": d, "meta": m}
-            for d, m in zip(res["documents"][0], res["metadatas"][0], strict=True)
-        ]
+        # include distances in the query to support semantic scoring later
+        res = col.query(
+            query_texts=[query_text], 
+            n_results=top_k, 
+            where=where,
+            include=["documents", "metadatas", "distances"]
+        )
+        out = []
+        # Handle cases where distances might be None or empty
+        distances = res.get("distances", [[]])
+        if not distances:
+            distances = [[]]
+            
+        for i, (d, m) in enumerate(zip(res["documents"][0], res["metadatas"][0], strict=True)):
+            dist = distances[0][i] if len(distances[0]) > i else 1.0
+            out.append({"text": d, "meta": m, "distance": dist})
+        return out

@@ -9,7 +9,7 @@ from typing import Any
 
 import requests
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, ValidationError
@@ -277,6 +277,38 @@ def _build_fallback_model(
     )
 
 
+def _inject_anthropic_cache(messages: list[BaseMessage]) -> list[BaseMessage]:
+    """为 Anthropic 家族模型注入 Prompt Caching 的 ephemeral 标记.
+    
+    Anthropic 要求将 cache_control 放在 block 内部。
+    我们会将消息列表中最后一个 SystemMessage 标记为可缓存的端点。
+    由于世界观、GraphRAG 等都在 SystemMessage 中，这能最大化缓存命中率。
+    """
+    if not messages:
+        return messages
+        
+    augmented = list(messages)
+    # 找到最后一个 SystemMessage
+    last_sys_idx = -1
+    for i, msg in enumerate(augmented):
+        if isinstance(msg, SystemMessage):
+            last_sys_idx = i
+            
+    if last_sys_idx >= 0:
+        msg = augmented[last_sys_idx]
+        if isinstance(msg.content, str):
+            # 转换为 Anthropic 支持的 content blocks 格式
+            augmented[last_sys_idx] = SystemMessage(
+                content=[
+                    {
+                        "type": "text",
+                        "text": msg.content,
+                        "cache_control": {"type": "ephemeral"}
+                    }
+                ]
+            )
+    return augmented
+
 # ============================================================
 # LLMClient —— 重试 + 结构化调用
 # ============================================================
@@ -354,6 +386,12 @@ class LLMClient:
         model = self._models[purpose]
         timeout = self._timeouts[purpose]
         max_attempts = self._retries[purpose] + 1
+        
+        # 针对 Anthropic 模型的 Prompt Caching 优化
+        augmented = tick_messages
+        model_name = _model_name(model).lower()
+        if "claude" in model_name or "anthropic" in model_name:
+            augmented = _inject_anthropic_cache(tick_messages)
 
         logger.info(
             f"[{purpose}] 开始调用",
@@ -375,7 +413,7 @@ class LLMClient:
                 # / Use ainvoke() (Runnable API) so callbacks propagate from contextvars
                 # automatically—no double registration, LLM span attaches to parent trace.
                 msg = await asyncio.wait_for(
-                    model.ainvoke(tick_messages),
+                    model.ainvoke(augmented),
                     timeout=timeout,
                 )
                 elapsed = time.monotonic() - t_start
@@ -466,6 +504,11 @@ class LLMClient:
         else:
             augmented = tick_messages
             generate_kwargs = {"response_format": {"type": "json_object"}}
+
+        # 针对 Anthropic 模型的 Prompt Caching 优化
+        model_name = _model_name(model).lower()
+        if "claude" in model_name or "anthropic" in model_name:
+            augmented = _inject_anthropic_cache(augmented)
 
         logger.info(
             f"[{purpose}] 开始结构化调用",

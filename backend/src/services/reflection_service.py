@@ -31,7 +31,7 @@ async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> d
     world_id = state.get("world_id")
 
     for pc in await pc_repo.load_all(world_id):
-        if _needs_reflection(memory_repo, pc.id, _PC_THRESHOLD):
+        if await _needs_reflection(memory_repo, pc.id, _PC_THRESHOLD, tick):
             insight = await _reflect_one(
                 reflection_engine,
                 pc.id,
@@ -52,10 +52,40 @@ async def reflect(state: ReflectionSubState, config: RunnableConfig = None) -> d
     return {"reflected_pcs": [i["pc_id"] for i in insights]}
 
 
-def _needs_reflection(memory_repo, pc_id: str, threshold: int) -> bool:
-    """判断是否触发反思 / Check if reflection should trigger."""
-    recent = list(memory_repo._short_queue(pc_id))
-    return sum(m.importance for m in recent) >= threshold
+async def _needs_reflection(memory_repo, pc_id: str, threshold: int, tick: int) -> bool:
+    """判断是否触发反思 (基于斯坦福小镇成熟架构) / Check if reflection should trigger.
+    1. 定期反思：每 50 个 tick 定期触发一次 (类似每天晚上反思)
+    2. 突发重大事件：短期记忆中出现了 importance >= 8 的极重要事件
+    3. 累计阈值：自上次反思以来的记忆重要度累计超过阈值 (默认 100)
+    """
+    # 1. 周期性触发 (定期整理记忆)
+    if tick > 0 and tick % 50 == 0:
+        return True
+
+    recent_mems = list(memory_repo._short_queue(pc_id))
+    if not recent_mems:
+        return False
+
+    # 2. 突发重大事件触发 (例如：被攻击、目击死亡)
+    if recent_mems[-1].importance >= 8:
+        return True
+
+    # 3. 累计重要度触发
+    # 查找上一次反思的 tick
+    past_refs = await memory_repo.retrieve_reflections(pc_id, query="", top_k=1)
+    last_reflect_tick = past_refs[0].tick if past_refs else 0
+
+    # 统计自上次反思以来的重要度总和 (通过 SQLite 快速聚合)
+    if memory_repo._sqlite:
+        rows = await memory_repo._sqlite.fetch_all(
+            "SELECT SUM(importance) as total FROM memories WHERE pc_id = ? AND tick > ? AND memory_type != 'reflection'",
+            (pc_id, last_reflect_tick)
+        )
+        total_importance = rows[0]["total"] if rows and rows[0]["total"] else 0
+        if total_importance >= threshold:
+            return True
+
+    return False
 
 
 async def _reflect_one(

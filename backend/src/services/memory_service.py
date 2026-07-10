@@ -11,6 +11,40 @@ from ..repository.memory_repo import score_memory
 from ..utils.helpers import get_repo, is_mock
 
 
+async def compress_context(query: str, raw_memories: list[str], llm) -> list[str]:
+    """如果长上下文过长，调用轻量级模型对记忆进行压缩提炼 / Compress long memory contexts."""
+    if not raw_memories or not llm:
+        return raw_memories
+        
+    # 如果记忆条数不多，或者总长度可控，则不压缩以节省延迟
+    total_len = sum(len(m) for m in raw_memories)
+    if len(raw_memories) <= 3 or total_len < 1000:
+        return raw_memories
+        
+    # 构建压缩 Prompt
+    prompt = f"当前情境或意图：{query}\n\n"
+    prompt += "以下是从角色记忆库中检索到的相关片段：\n"
+    for i, m in enumerate(raw_memories):
+        prompt += f"[{i+1}] {m}\n"
+    prompt += "\n请根据当前情境，将上述记忆压缩提炼成3-5条最核心的线索。过滤掉不相关的冗余细节。直接输出要点，不要任何寒暄。"
+    
+    from langchain_core.messages import HumanMessage
+    
+    try:
+        compressed_text = await llm.call(
+            purpose="reflection",  # 复用 reflection 的 LLM 配置，通常较轻量
+            tick_messages=[HumanMessage(content=prompt)]
+        )
+        if compressed_text:
+            return [line.strip("- ") for line in compressed_text.split("\n") if line.strip()]
+    except Exception as e:
+        from ..utils.logging import get_logger
+        logger = get_logger(__name__)
+        logger.error(f"[memory_service] Context compression failed: {e}")
+        
+    # 失败则降级返回原数据
+    return raw_memories
+
 async def retrieve_memories(
     pc_id: str,
     query: str,

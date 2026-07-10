@@ -16,11 +16,13 @@ from ..state import OverallState
 def build_tick_init_subgraph() -> StateGraph:
     """构建 tick 初始化子图."""
     graph = StateGraph(OverallState)
+    graph.add_node("tick_init.init_graph_db", tick_init_service.init_graph_db)
     graph.add_node("tick_init.assign_positions", tick_init_service.assign_pc_positions)
     graph.add_node("tick_init.dm_create_event", tick_init_service.build_dm_create_event)
     graph.add_node("tick_init.scene_setup_snapshot", tick_init_service.save_scene_setup_snapshot)
 
-    graph.set_entry_point("tick_init.assign_positions")
+    graph.set_entry_point("tick_init.init_graph_db")
+    graph.add_edge("tick_init.init_graph_db", "tick_init.assign_positions")
     graph.add_edge("tick_init.assign_positions", "tick_init.dm_create_event")
     graph.add_edge("tick_init.dm_create_event", "tick_init.scene_setup_snapshot")
     graph.add_edge("tick_init.scene_setup_snapshot", END)
