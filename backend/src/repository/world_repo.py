@@ -80,6 +80,15 @@ class WorldRepo:
         return row["data_tick"] if row else 0
 
     @traced()
+    async def set_data_tick(self, world_id: str, tick: int) -> None:
+        """时光倒流专用：直接设置 data_tick / Set data_tick directly for time travel."""
+        await self._db.execute(
+            "UPDATE worlds SET data_tick = ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
+            (tick, world_id),
+        )
+        await self._db.commit()
+
+    @traced()
     async def set_display_tick(self, world_id: str, tick: int) -> None:
         """更新前端已展示到的 tick."""
         await self._db.execute(

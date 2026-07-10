@@ -124,7 +124,61 @@ class Orchestrator:
             config["configurable"]["mock"] = getattr(self._llm, "_mock", False)
         return config
 
-    async def reset(self, world_id: str) -> None:
+    async def get_state(self, world_id: str, tick: int) -> dict[str, Any] | None:
+        """获取某个特定 Tick 结束时的世界状态快照 / Get the state snapshot of a specific tick."""
+        thread_id = f"{world_id}__tick_{tick}"
+        config = {"configurable": {"thread_id": thread_id}}
+        state_snapshot = await self._app.aget_state(config)
+        if not state_snapshot:
+            return None
+        return state_snapshot.values
+
+    async def get_state_history(self, world_id: str, limit: int = 10) -> list[dict[str, Any]]:
+        """获取最近的历史快照列表 / Get recent history of state snapshots."""
+        # 注意: 因为我们在 _make_config 里用了每个 tick 独立的 thread_id
+        # 这里需要遍历最近的几个 tick 来查各自的 thread_id
+        world_repo = self._repos.get("world")
+        current_tick = await world_repo.get_data_tick(world_id)
+        
+        history = []
+        for t in range(current_tick, max(0, current_tick - limit), -1):
+            state = await self.get_state(world_id, t)
+            if state:
+                history.append(state)
+        return history
+
+    async def rewind_to_tick(self, world_id: str, target_tick: int) -> None:
+        """时光倒流：将世界状态回滚到特定的 tick / Rewind world to a specific tick."""
+        world_repo = self._repos.get("world")
+        current_tick = await world_repo.get_data_tick(world_id)
+        
+        if target_tick >= current_tick or target_tick <= 0:
+            raise ValueError(f"Invalid target tick {target_tick}")
+
+        # 1. 恢复 World 数据表的 data_tick
+        await world_repo.set_data_tick(world_id, target_tick)
+
+        # 2. 清理数据库中大于 target_tick 的所有未来数据
+        # 清理未来的事件
+        event_repo = self._repos.get("event")
+        if event_repo:
+            await event_repo._db.execute("DELETE FROM tick_events WHERE world_id = ? AND tick > ?", (world_id, target_tick))
+            await event_repo._db.commit()
+
+        # 清理未来的 DM 记录和摘要
+        dm_repo = self._repos.get("dm_record")
+        if dm_repo:
+            await dm_repo._db.execute("DELETE FROM dm_records WHERE world_id = ? AND tick > ?", (world_id, target_tick))
+            await dm_repo._db.execute("DELETE FROM story_summaries WHERE world_id = ? AND tick > ?", (world_id, target_tick))
+            await dm_repo._db.commit()
+            
+        # 清理未来的记忆
+        memory_repo = self._repos.get("memory")
+        if memory_repo:
+            await memory_repo._sqlite.execute("DELETE FROM memories WHERE world_id = ? AND tick > ?", (world_id, target_tick))
+            await memory_repo._sqlite.commit()
+
+        logger.info(f"[orchestrator] Rewound world {world_id} to tick {target_tick}")
         """重置 world：清零 tick + 清理事件/DM记录/摘要 + 重置角色坐标 + 清空 checkpoint."""
         # 1. 清零 tick / Reset ticks to 0
         world_repo = self._repos.get("world")
