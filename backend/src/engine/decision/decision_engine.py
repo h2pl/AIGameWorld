@@ -6,8 +6,6 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from src.utils.tracing import traced
-
 from ...domain import Actor, Decision, DMRecord, PlayerCharacter, Scene, SceneObject
 from ...schemas.llm_output import CharacterActionSchema, PCDecideSchema
 from ...services.memory_service import retrieve_memories
@@ -26,7 +24,6 @@ _ACTION_TARGET_TYPES = {
 }
 
 
-@traced()
 async def decide(
     pc_id: str,
     tick: int,

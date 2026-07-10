@@ -15,7 +15,6 @@ from uuid import uuid4
 from ..domain.memory import Memory
 from ..storage.chroma_client import ChromaClient
 from ..utils.logging import get_logger
-from ..utils.tracing import traced
 
 logger = get_logger(__name__)
 
@@ -55,7 +54,6 @@ class MemoryRepo:
         self._table_ensured = False
 
     # ── 表初始化 / Table init ──
-    @traced()
     async def initialize(self) -> None:
         """异步初始化 SQLite 表（如提供 sqlite）."""
         if self._sqlite and not self._table_ensured:
@@ -122,7 +120,6 @@ class MemoryRepo:
 
     # ── 存储 / Store ──
 
-    @traced()
     async def store(
         self,
         pc_id: str,
@@ -187,7 +184,6 @@ class MemoryRepo:
         )
         return mem
 
-    @traced()
     async def store_reflection(
         self, pc_id: str, insight: str, tick: int, world_id: str = "", entity_type: str = "pc"
     ) -> Memory:
@@ -234,7 +230,6 @@ class MemoryRepo:
 
     # ── 检索 / Retrieve ──
 
-    @traced()
     async def retrieve(
         self,
         pc_id: str,
@@ -308,7 +303,6 @@ class MemoryRepo:
         )
         return merged[:top_k]
 
-    @traced()
     async def retrieve_reflections(
         self, pc_id: str, query: str, top_k: int = 3, current_tick: int = 0
     ) -> list[Memory]:
@@ -352,7 +346,6 @@ class MemoryRepo:
 
     # ── 生命周期 / Lifecycle ──
 
-    @traced()
     async def drop_character(self, pc_id: str) -> None:
         """删除角色所有记忆."""
         self._short_term.pop(pc_id, None)

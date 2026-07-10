@@ -53,19 +53,17 @@ app = FastAPI(title="AIGameWorld API", version="0.1.0")
 
 @app.middleware("http")
 async def trace_middleware(request, call_next):
-    """全链路追踪中间件：创建 root span + 传播 trace_id.
+    """透传 trace_id 响应头 / Propagate trace_id response header.
 
-    / Full-chain tracing middleware: create root span + propagate trace_id.
-    Langfuse root span 包裹整个请求，CallbackHandler 自动挂到其下。
+    注意：不在此处创建 Langfuse root span，否则 CallbackHandler 的
+    _take_root_trace_context 会检测到有效 OTel span 而不创建新 trace，
+    导致 session_id 只设在子 observation 上，session 页面不更新。
+    / Do NOT create a Langfuse root span here. CallbackHandler must create
+    its own root trace so session_id is set at trace root level.
     """
-    from src.utils.tracing import start_request_span
-
     trace_id = request.headers.get("X-Trace-Id", str(uuid.uuid4()))
     request.state.trace_id = trace_id
-
-    with start_request_span(request.method, request.url.path):
-        response = await call_next(request)
-
+    response = await call_next(request)
     response.headers["X-Trace-Id"] = trace_id
     return response
 

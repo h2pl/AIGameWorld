@@ -12,8 +12,6 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from src.utils.tracing import traced
-
 from ...domain import (
     Action,
     Actor,
@@ -35,7 +33,6 @@ _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
 
 
-@traced()
 async def process_combat_action(
     decision: Decision,
     tick: int,

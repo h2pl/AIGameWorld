@@ -9,8 +9,6 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.runnables.config import RunnableConfig
 
-from src.utils.tracing import traced
-
 from ...domain import Memory
 from ...schemas.llm_output import ReflectionOutputSchema
 from ...utils.helpers import get_llm
@@ -24,7 +22,6 @@ _PC_TEMPLATE = _PROMPTS.get_template("reflect_pc.jinja")
 _ACTOR_TEMPLATE = _PROMPTS.get_template("reflect_actor.jinja")
 
 
-@traced()
 async def reflect(
     pc_id: str,
     pc_name: str,

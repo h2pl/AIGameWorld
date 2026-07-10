@@ -13,7 +13,6 @@ from src.graph import checkpoints
 from src.graph.graph import OverallState, build_tick_graph
 from src.utils.graph_callbacks import TickGraphCallback
 from src.utils.logging import get_logger, log_phase
-from src.utils.tracing import traced
 
 logger = get_logger(__name__)
 
@@ -41,7 +40,6 @@ class Orchestrator:
         self._metrics = metrics_collector  # 指标收集器 / Metrics collector
         self._locks: dict[str, asyncio.Lock] = {}
 
-    @traced()
     async def run_tick(self, world_id: str) -> dict:
         """对指定 world 执行一个完整 Tick——data_tick 从 worlds 表读取并自增."""
         lock = self._locks.setdefault(world_id, asyncio.Lock())
@@ -59,20 +57,18 @@ class Orchestrator:
             callbacks = [
                 TickGraphCallback(tick=tick, world_id=world_id, metrics_collector=self._metrics)
             ]
-            # 链路追踪：注入 Langfuse handler / Tracing: inject Langfuse handler
-            # 全链路：FastAPI 中间件 start_request_span 创建 root span → CallbackHandler
-            # 在 root run 时检测 OTel context，自动挂到 root span → 各节点 observation
-            # 通过 _attach_observation 设置 OTel context → DB span 挂到节点 observation。
-            # trace_name/session_id/user_id/tags 通过 metadata langfuse_* 字段传递。
-            # / Full-chain: FastAPI middleware root span → CallbackHandler auto-attaches
-            # via OTel context → node observations set context via _attach_observation →
-            # DB spans nest under node. Trace attrs via metadata langfuse_* prefix.
-            from src.utils.tracing import create_langfuse_handler, get_langfuse_metadata
+
+            # Langfuse 追踪（官方推荐方式）/ Langfuse tracing (official recommended pattern)
+            # 文档：https://langfuse.com/docs/observability/features/sessions
+            # start_as_current_observation 创建 root span → propagate_attributes 设置
+            # session_id/user_id/tags → CallbackHandler 自动挂到 root span 下
+            # / start_as_current_observation creates root span → propagate_attributes sets
+            # session_id/user_id/tags → CallbackHandler auto-attaches under root span
+            from src.utils.tracing import create_langfuse_handler
 
             langfuse_handler = create_langfuse_handler(tick, world_id)
             if langfuse_handler:
                 callbacks.append(langfuse_handler)
-                config["metadata"] = get_langfuse_metadata(tick, world_id)
             config["callbacks"] = callbacks
 
             # 指标收集：开始追踪 / Metrics: start tracking
@@ -85,7 +81,21 @@ class Orchestrator:
 
             t_start = time.monotonic()
             try:
-                result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
+                if langfuse_handler:
+                    # 官方推荐：start_as_current_observation + propagate_attributes
+                    from langfuse import get_client, propagate_attributes
+
+                    langfuse = get_client()
+                    trace_name = f"{world_id}__tick_{tick}"
+                    with langfuse.start_as_current_observation(as_type="span", name=trace_name):
+                        with propagate_attributes(
+                            session_id=world_id,
+                            user_id=world_id,
+                            tags=[f"world:{world_id}", f"tick:{tick}"],
+                        ):
+                            result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
+                else:
+                    result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
             except Exception as e:
                 if self._metrics:
                     self._metrics.record_error(world_id, str(e))

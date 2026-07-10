@@ -11,8 +11,6 @@ from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from src.utils.tracing import traced
-
 from ...domain import Action, Actor, Decision, DMRecord, Memory, PlayerCharacter, Scene
 from ...domain.scene_object import SceneObject
 from ...schemas.llm_output import InteractOutputSchema
@@ -26,7 +24,6 @@ _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(str(_PROMPTS_ROOT)))
 
 
-@traced()
 async def process_interact_action(
     decision: Decision,
     tick: int,

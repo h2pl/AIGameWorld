@@ -4,7 +4,6 @@ from typing import Any
 
 from ..domain import PlayerCharacter
 from ..storage.sqlite_client import SQLiteClient
-from ..utils.tracing import traced
 
 
 def _val(data: dict[str, Any], key: str, default: Any = None) -> Any:
@@ -17,7 +16,6 @@ class PcRepo:
     def __init__(self, client: SQLiteClient):
         self._db = client
 
-    @traced()
     async def save(self, pc: PlayerCharacter) -> None:
         """保存/更新 PC / Insert or update a player character."""
         await self._db.execute(
@@ -50,7 +48,6 @@ class PcRepo:
         )
         await self._db.commit()
 
-    @traced()
     async def load_all(self, world_id: str | None = None) -> list[PlayerCharacter]:
         if world_id:
             rows = await self._db.fetch_all(
@@ -60,18 +57,15 @@ class PcRepo:
             rows = await self._db.fetch_all("SELECT * FROM player_characters")
         return [_pc_from_row(r) for r in rows]
 
-    @traced()
     async def load_one(self, pc_id: str) -> PlayerCharacter | None:
         row = await self._db.fetch_one("SELECT * FROM player_characters WHERE id = ?", (pc_id,))
         return _pc_from_row(row) if row else None
 
-    @traced()
     async def list_rows(self, world_id: str) -> list[dict]:
         return await self._db.fetch_all(
             "SELECT * FROM player_characters WHERE world_id = ?", (world_id,)
         )
 
-    @traced()
     async def reset_positions(self, world_id: str) -> None:
         await self._db.execute(
             "UPDATE player_characters SET position_x = 0, position_y = 0, updated_at = datetime('now', 'localtime') WHERE world_id = ?",
@@ -79,7 +73,6 @@ class PcRepo:
         )
         await self._db.commit()
 
-    @traced()
     async def delete_by_world(self, world_id: str) -> None:
         """删除 world 下全部 PC / Delete all player characters in a world."""
         await self._db.execute("DELETE FROM player_characters WHERE world_id = ?", (world_id,))
