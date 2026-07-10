@@ -343,8 +343,8 @@ class TestEventService:
         assert events == []
 
     @pytest.mark.asyncio
-    async def test_build_scene_setup_event(self):
-        """tick_init 构建 scene_setup 事件 / tick_init builds scene_setup event."""
+    async def test_save_scene_setup_snapshot(self):
+        """tick_init 截屏 scene/pcs/actors 供 flush_events 构建 scene_setup / tick_init saves snapshot for scene_setup."""
         state = _overall_state(
             tick=1,
             scene=Scene(id="scene-1", name="Tavern"),
@@ -355,10 +355,11 @@ class TestEventService:
             actors={},
             actions=[],
         )
-        result = await tick_init_service.build_scene_setup_event(state)
-        events = result.get("tick_events", [])
-        assert len(events) == 1
-        assert events[0].type.value == "scene_setup"
+        result = await tick_init_service.save_scene_setup_snapshot(state)
+        snapshot = result.get("pcs_snapshot", {})
+        assert snapshot["scene"]["id"] == "scene-1"
+        assert "pc-1" in snapshot["pcs"]
+        assert len(snapshot["scene_objects"]) == 1
 
     @pytest.mark.asyncio
     async def test_build_dm_create_event(self):

@@ -24,6 +24,7 @@ dependencies = [
     "pyyaml>=6.0",                  # Pack YAML 解析 / Pack YAML parsing
     "langfuse>=4.12",               # LLM 可观测性 / LLM observability
     "python-json-logger>=4.1.0",
+    "pandas>=3.0.3",
 ]
 
 # === 开发依赖 / Dev Dependencies ===

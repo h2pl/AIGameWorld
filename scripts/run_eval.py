@@ -185,7 +185,26 @@ async def run_evaluation(
         client=client,
     )
 
-    logger.info("评估完成！查看结果: https://smith.langchain.com/o/default/projects/p/aigameworld")
+    # 打印评估结果摘要 / Print evaluation results summary
+    await results.wait()  # 等待所有 feedback 上传完成
+    logger.info("评估完成！结果摘要：")
+    try:
+        df = results.to_pandas()
+        feedback_cols = [c for c in df.columns if "feedback." in c]
+        for _, row in df.iterrows():
+            print(f"\n--- Example: {row.get('example_id', '?')} ---")
+            for c in feedback_cols:
+                val = row[c]
+                if isinstance(val, dict):
+                    score = val.get("score", "?")
+                    comment = val.get("comment", "")
+                    print(f"  {c}: score={score} | {comment}")
+                else:
+                    print(f"  {c}: {val}")
+    except Exception as e:
+        print(f"结果转换失败: {e}")
+
+    logger.info("查看结果: https://smith.langchain.com/o/default/projects/p/aigameworld")
 
 
 def main() -> None:

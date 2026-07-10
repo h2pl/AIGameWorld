@@ -1,12 +1,22 @@
-{# Variant 版本：简化指令，测试是否提升输出质量 #}
+{# Variant v2：强调多感官细节 + 保留 1 个高质量示例 + hints 3-4 条 #}
 
-你是 DM（地下城主），请根据以下信息为当前 tick 创造一个场景情境。
+你的职责：根据可用场景列表为当前 tick 选择并创造一个具体、可感知的场景情境。
+你需要给出场景 id、剧情梗概（plot_brief）以及 3-4 条环境线索（hints）。
 
+重要：hints 必须包含至少 2 种不同感官的描写（视觉、听觉、嗅觉、触觉、温度等），
+让玩家仿佛身临其境。避免只写视觉描写。
+
+{# 记忆 / DM memories #}
 {% if memories %}
-最近故事发展：
+最近的故事发展：
 {% for mem in memories %}
 - {{ mem }}
 {% endfor %}
+{% endif %}
+
+{# 上下文注入 / Context injection #}
+{% if recent_summary %}
+最近摘要：{{ recent_summary }}
 {% endif %}
 
 {% if plot_brief_prev %}
@@ -17,25 +27,53 @@
 上轮叙事：{{ prev_narrative }}
 {% endif %}
 
+{# 世界观知识 / World Pack knowledge #}
 {% if world_knowledge %}
-世界观知识：{{ world_knowledge }}
+相关知识：
+{{ world_knowledge }}
 {% endif %}
 
+{# 场景列表 / Available scenes #}
 {% if scenes %}
-可用场景（请从中选择 scene_id）：
+可用场景列表（请从以下 id 中精确选择当前场景）：
 {% for s in scenes %}
-- {{ s.id }}：{{ s.name }}（{{ s.type }}）— {{ s.description }}
+- {{ s.id }}：{{ s.name }}（{{ s.type }}）
+  描述：{{ s.description or "无" }}
+  {% if s.environment %}
+  环境：{% if s.environment.weather %}天气 {{ s.environment.weather }}{% endif %}{% if s.environment.time_of_day %} / 时间 {{ s.environment.time_of_day }}{% endif %}
+  {% endif %}
 {% endfor %}
 {% endif %}
 
-请输出 JSON，包含：
-- scene_id：从上方场景列表中选择
-- plot_brief：2-3 句场景设置（简体中文）
-- hints：2-4 条环境线索（简体中文，描述视觉/听觉/嗅觉等感知细节）
+{# 输出约束 / Output spec #}
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）。
+
+字段约束：
+- hints（string[]）：3-4 条环境提示。每条必须是玩家可以直接感知到的感官细节。
+  必须涵盖至少 2 种感官（视觉、听觉、嗅觉、触觉、温度）。
+  必须使用简体中文。好的示例：
+  - "空气中弥漫着铁锈和陈旧血迹的腥味"（嗅觉）
+  - "脚下碎石被踩得嘎吱作响"（听觉+触觉）
+  - "北墙的裂缝里透出冰凉的风"（触觉+温度）
+- plot_brief（string）：2-3 句场景设置。描述角色抵达时现场的状态，
+  营造具体画面感，调动多种感官。不要写角色已做的事。
+  必须使用简体中文。
+- scene_id（string）：当前场景 id。必须从上方场景列表中精确选择一个 id。
 
 输出格式：
 {
-  "hints": ["...", "..."],
+  "hints": ["...", "...", "..."],
   "plot_brief": "...",
-  "scene_id": "..."
+  "scene_id": "tavern"
+}
+
+示例（十字路口黄昏，多感官氛围）：
+{
+  "hints": [
+    "岔路左侧的石碑上刻着褪色的路标，字母被苔藓遮住了一半，触摸时石面冰凉粗糙",
+    "商队留下的车辙在泥地上形成两条深沟，积水映着天边最后一抹橙光，空气中飘着湿润泥土和马粪的味道",
+    "一棵歪脖子老松的枝丫上挂着一串褪色的祈愿绳结，被风吹得沙沙作响，像是某种低语"
+  ],
+  "plot_brief": "暮色笼罩着三岔路口，路边立着一块被青苔覆盖的路碑。一辆翻倒的货车歪在路旁，空气中弥漫着潮湿泥土和远处营火的烟味。远处的山丘上有一点若隐若现的火光，伴随着断断续续的犬吠声。",
+  "scene_id": "crossroad"
 }

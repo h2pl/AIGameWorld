@@ -124,6 +124,31 @@ def dm_create_constraints_evaluator(run, example) -> dict:
     return {"key": "constraints", "score": 0.4, "comment": "; ".join(issues)}
 
 
+def _extract_json(content: str) -> dict | None:
+    """从 LLM 输出中提取 JSON（处理 markdown 代码块）/ Extract JSON from LLM output."""
+    import re
+
+    # 去除 markdown 代码块标记 / Strip markdown code blocks
+    cleaned = re.sub(r"```(?:json)?\s*", "", content)
+    cleaned = cleaned.replace("```", "").strip()
+
+    # 尝试直接解析 / Try direct parse
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    # 尝试提取第一个 {...} 块 / Try to extract first {...} block
+    match = re.search(r"\{[^{}]*\}", cleaned, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+
+    return None
+
+
 def make_dm_create_quality_evaluator(judge_llm: BaseChatModel):
     """创建 dm_create 质量评估器（LLM-as-Judge）/ Create quality evaluator with LLM judge."""
 
@@ -139,7 +164,7 @@ def make_dm_create_quality_evaluator(judge_llm: BaseChatModel):
 3. 场景一致性：hints 和 plot_brief 是否描述同一场景
 4. 中文质量：是否使用简体中文，语言是否流畅自然
 
-只输出一个 JSON：{"score": 0.85, "reason": "简短说明"}""",
+只输出一个 JSON，不要任何其他内容：{{"score": 0.85, "reason": "简短说明"}}""",
             ),
             ("human", "场景输出：\n{output}\n\n请评估。"),
         ]
@@ -155,16 +180,19 @@ def make_dm_create_quality_evaluator(judge_llm: BaseChatModel):
         try:
             result = chain.invoke({"output": json.dumps(output, ensure_ascii=False)})
             content = result.content if hasattr(result, "content") else str(result)
-            # 尝试解析 JSON / Try parse JSON
-            try:
-                parsed = json.loads(content)
+            parsed = _extract_json(content)
+            if parsed is not None:
                 return {
                     "key": "quality",
                     "score": float(parsed.get("score", 0.5)),
                     "comment": parsed.get("reason", ""),
                 }
-            except json.JSONDecodeError:
-                return {"key": "quality", "score": 0.5, "comment": "Judge 输出解析失败"}
+            # 解析失败时返回原始输出用于调试 / Return raw output for debugging
+            return {
+                "key": "quality",
+                "score": 0.5,
+                "comment": f"Judge 输出解析失败: {content[:200]}",
+            }
         except Exception as e:
             return {"key": "quality", "score": 0.5, "comment": f"Judge 调用失败: {e}"}
 
@@ -235,7 +263,7 @@ def make_pc_decision_quality_evaluator(judge_llm: BaseChatModel):
 3. 目标匹配：target_id 是否合理（talk 的对象是否有信息可提供等）
 4. 中文质量：是否使用简体中文，语言是否流畅自然
 
-只输出一个 JSON：{"score": 0.85, "reason": "简短说明"}""",
+只输出一个 JSON：{{"score": 0.85, "reason": "简短说明"}}""",
             ),
             ("human", "决策输出：\n{output}\n\n上下文：\n{context}\n\n请评估。"),
         ]
@@ -257,15 +285,18 @@ def make_pc_decision_quality_evaluator(judge_llm: BaseChatModel):
                 }
             )
             content = result.content if hasattr(result, "content") else str(result)
-            try:
-                parsed = json.loads(content)
+            parsed = _extract_json(content)
+            if parsed is not None:
                 return {
                     "key": "quality",
                     "score": float(parsed.get("score", 0.5)),
                     "comment": parsed.get("reason", ""),
                 }
-            except json.JSONDecodeError:
-                return {"key": "quality", "score": 0.5, "comment": "Judge 输出解析失败"}
+            return {
+                "key": "quality",
+                "score": 0.5,
+                "comment": f"Judge 输出解析失败: {content[:200]}",
+            }
         except Exception as e:
             return {"key": "quality", "score": 0.5, "comment": f"Judge 调用失败: {e}"}
 
