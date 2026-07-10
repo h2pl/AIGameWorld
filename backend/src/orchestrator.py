@@ -91,6 +91,7 @@ class Orchestrator:
                         with propagate_attributes(
                             session_id=world_id,
                             user_id=world_id,
+                            trace_name=trace_name,
                             tags=[f"world:{world_id}", f"tick:{tick}"],
                         ):
                             result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
