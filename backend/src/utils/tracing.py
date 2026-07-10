@@ -21,11 +21,9 @@ skip span creation when no parent exists to avoid orphan traces.
 - https://langfuse.com/docs/observability/features/sessions
 """
 
-import asyncio
 import functools
 import os
-from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Callable, TypeVar
+from typing import Any, Callable, TypeVar
 
 from opentelemetry import trace as otel_trace
 
@@ -86,29 +84,6 @@ def traced(name: str | None = None) -> Callable[[F], F]:
         return wrapper  # type: ignore[return-value]
 
     return decorator
-
-
-@asynccontextmanager
-async def trace_db(operation: str, sql: str | None = None) -> AsyncGenerator[Any, None]:
-    """数据库操作 span / Database operation span.
-
-    无父 span 时跳过 span 创建，避免孤儿 trace（如后端启动时的 init_schema）。
-    / Skips span creation when no parent span exists (e.g. init_schema on startup).
-    """
-    if not is_langfuse_enabled() or not _has_parent_span():
-        yield None
-        return
-
-    try:
-        from langfuse import get_client
-
-        langfuse = get_client()
-        with langfuse.start_as_current_observation(as_type="span", name=f"db.{operation}") as span:
-            if span and sql:
-                span._otel_span.set_attribute("db.statement", sql[:200])
-            yield span
-    except Exception:
-        yield None
 
 
 def create_langfuse_handler(tick: int, world_id: str) -> Any | None:
