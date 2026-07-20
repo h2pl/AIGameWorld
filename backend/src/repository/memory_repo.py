@@ -218,18 +218,9 @@ class MemoryRepo:
     async def store_reflection(
         self, pc_id: str, insight: str, tick: int, world_id: str = "", entity_type: str = "pc"
     ) -> Memory:
-        """存储反思洞察（重要性=10）."""
+        """存储反思洞察（重要性=10，仅写 ChromaDB，检索路径唯一）."""
         mem_id = f"reflect_{pc_id}_{tick}_{uuid4().hex[:6]}"
         period = "long_term"
-        if self._sqlite:
-            if not self._table_ensured:
-                await self._ensure_table()
-            await self._sqlite.execute(
-                "INSERT INTO memories (id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (mem_id, pc_id, insight, tick, 10, "reflection", period, entity_type, world_id),
-            )
-            await self._sqlite.commit()
 
         col_name = _REFLECT_PREFIX.format(pc_id=pc_id)
         self._chroma.add(
@@ -356,7 +347,7 @@ class MemoryRepo:
     async def retrieve_reflections(
         self, pc_id: str, query: str, top_k: int = 3, current_tick: int = 0
     ) -> list[Memory]:
-        """检索反思记忆（语义记忆反思集合 + 情景记忆 SQLite 反思记录），按综合重要性分数排序."""
+        """检索反思记忆（仅 ChromaDB 语义检索）."""
         col_name = _REFLECT_PREFIX.format(pc_id=pc_id)
         results = self._chroma.query(collection=col_name, query_text=query, top_k=top_k)
         reflections = [
@@ -371,27 +362,10 @@ class MemoryRepo:
             )
             for r in results
         ]
-
-        if self._sqlite:
-            if not self._table_ensured:
-                await self._ensure_table()
-            rows = await self._sqlite.fetch_all(
-                "SELECT id, pc_id, content, tick, importance, memory_type, world_id "
-                "FROM memories WHERE pc_id = ? AND memory_type = 'reflection' "
-                "ORDER BY tick DESC LIMIT ?",
-                (pc_id, top_k),
-            )
-            sqlite_refs = [_memory_from_row(r) for r in rows]
-            # 去重合并
-            seen = {m.id for m in reflections}
-            for m in sqlite_refs:
-                if m.id not in seen:
-                    reflections.append(m)
-                    seen.add(m.id)
-            reflections.sort(
-                key=lambda m: score_memory(m.importance, m.tick, current_tick, similarity=1.0),
-                reverse=True,
-            )
+        reflections.sort(
+            key=lambda m: score_memory(m.importance, m.tick, current_tick, similarity=1.0),
+            reverse=True,
+        )
         return reflections[:top_k]
 
     # ── 3. 关系记忆 / Semantic Memory (Phase 2) ──
