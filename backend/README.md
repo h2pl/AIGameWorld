@@ -122,6 +122,5 @@ uv run pytest                 # 运行测试（333 passed）
 
 ## 相关文档 / Related Docs
 
-- [AIGameWorld 知识库](../../../multi-agent-manager/knowledge/domains/dev/AIGameWorld/)
-- [架构方案](../../../multi-agent-manager/knowledge/domains/dev/AIGameWorld/docs/03-architecture.md)
-- [路线图](../../../multi-agent-manager/knowledge/domains/dev/AIGameWorld/ROADMAP.md)
+- [项目主页 README](../README.md)
+- [前端说明](../frontend/README.md)

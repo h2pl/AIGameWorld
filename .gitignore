@@ -26,7 +26,11 @@ backend/data/chroma/
 frontend/test-results/
 frontend/tests/e2e/.backend.pid
 frontend/e2e-result.json
+frontend/e2e*.txt
 frontend/*-e2e.txt
+frontend/final-e2e*.txt
+frontend/full-e2e*.txt
+frontend/uc*-result*.txt
 
 # Environment
 .env
