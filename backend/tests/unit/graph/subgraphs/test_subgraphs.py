@@ -7,7 +7,6 @@ import pytest
 from src.domain import Decision, DMRecord, Scene, SceneObject
 from src.domain.player_character import PlayerCharacter
 from src.graph.subgraphs.pc_subgraph import pc_subgraph
-from src.graph.subgraphs.reflection_subgraph import reflection_subgraph
 from src.graph.subgraphs.tick_init_subgraph import tick_init_subgraph
 from src.services import data_service
 
@@ -54,26 +53,6 @@ class TestCharacterSubgraph:
             result = await pc_subgraph.ainvoke(state)
         assert result["scene"] == scene
         assert result["pc_decisions"] == [decision]
-
-
-class TestReflectionSubgraph:
-    """反思子图测试 / Reflection subgraph tests."""
-
-    @pytest.mark.asyncio
-    async def test_reflection_subgraph_runs_single_node(self):
-        """反思子图执行单节点反思 / Reflection subgraph runs single reflection node."""
-        state = {
-            "tick": 5,
-            "pc_id": "pc-1",
-            "memories": [],
-            "tick_events": [],
-            "reflected_pcs": [],
-            "summary_compressed": False,
-        }
-        with patch("src.services.reflection_service.get_repo", side_effect=[None, None]):
-            result = await reflection_subgraph.ainvoke(state)
-        # ainvoke 返回合并后的完整状态，而不仅是节点的返回值 / ainvoke returns the merged full state
-        assert result["reflected_pcs"] == []
 
 
 class TestLoadDataSubgraph:

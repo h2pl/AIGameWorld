@@ -5,10 +5,10 @@ import os
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-
 from pydantic import BaseModel
 
-from src.api.deps import get_db, get_orchestrator
+from src.api.deps import get_db
+from src.api.deps import get_orch as get_orchestrator
 from src.config import load_config
 from src.repository.actor_repo import ActorRepo
 from src.repository.item_repo import ItemRepo
@@ -42,6 +42,7 @@ def _char_from_row(r: dict, is_pc: bool, pos_offset: int) -> dict:
 class RewindRequest(BaseModel):
     target_tick: int
 
+
 @router.get("/{world_id}/history")
 async def get_world_history(world_id: str, limit: int = 10, orchestrator=Depends(get_orchestrator)):
     """获取世界状态的历史快照 / Get history of state snapshots."""
@@ -51,16 +52,22 @@ async def get_world_history(world_id: str, limit: int = 10, orchestrator=Depends
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
+
 @router.post("/{world_id}/rewind")
 async def rewind_world(world_id: str, req: RewindRequest, orchestrator=Depends(get_orchestrator)):
     """时光倒流：将世界状态回滚到特定的 tick / Rewind world to a specific tick."""
     try:
         await orchestrator.rewind_to_tick(world_id, req.target_tick)
-        return {"status": "success", "message": f"World {world_id} rewound to tick {req.target_tick}"}
+        return {
+            "status": "success",
+            "message": f"World {world_id} rewound to tick {req.target_tick}",
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 async def get_pack_state(world_id: str, request: Request, db=Depends(get_db)):
     """获取世界初始状态（场景、角色、物品、物体）/ Get initial world state."""
     try:
