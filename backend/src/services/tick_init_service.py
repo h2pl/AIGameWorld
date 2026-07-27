@@ -17,36 +17,40 @@ async def init_graph_db(state: OverallState, config=None) -> dict:
     """初始化图数据库（仅在 tick=1 时执行）."""
     if state.get("tick", 0) != 1:
         return {}
-        
+
     pcs = state.get("pcs", {})
     if not pcs:
         return {}
-        
-    neo4j_repo = Neo4jRepo()
-    await neo4j_repo.verify_connectivity()
-    
+
+    try:
+        neo4j_repo = Neo4jRepo()
+        await neo4j_repo.verify_connectivity()
+    except Exception as e:
+        logger.warning("[tick_init] Neo4j unavailable, skipping graph init: %s", e)
+        return {}
+
     # 初始化 PC 节点
-    for pc in pcs.values():
-        await neo4j_repo.merge_node(
-            label="Actor",
-            properties={
-                "id": pc.id,
-                "name": pc.name,
-                "type": "pc"
-            }
-        )
-        
-    # 建立主角团内部的友军关系 (PARTY_MEMBER)
-    for pc1 in pcs.values():
-        for pc2 in pcs.values():
-            if pc1.id != pc2.id:
-                await neo4j_repo.merge_relationship(
-                    start_label="Actor", start_key="id", start_val=pc1.id,
-                    end_label="Actor", end_key="id", end_val=pc2.id,
-                    rel_type="PARTY_MEMBER"
-                )
-                
-    await neo4j_repo.close()
+    try:
+        for pc in pcs.values():
+            await neo4j_repo.merge_node(
+                label="Actor", properties={"id": pc.id, "name": pc.name, "type": "pc"}
+            )
+
+        # 建立主角团内部的友军关系 (PARTY_MEMBER)
+        for pc1 in pcs.values():
+            for pc2 in pcs.values():
+                if pc1.id != pc2.id:
+                    await neo4j_repo.merge_relationship(
+                        start_label="Actor",
+                        start_key="id",
+                        start_val=pc1.id,
+                        end_label="Actor",
+                        end_key="id",
+                        end_val=pc2.id,
+                        rel_type="PARTY_MEMBER",
+                    )
+    finally:
+        await neo4j_repo.close()
     return {}
 
 

@@ -68,6 +68,7 @@ async def rewind_world(world_id: str, req: RewindRequest, orchestrator=Depends(g
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@router.get("/{world_id}/state")
 async def get_pack_state(world_id: str, request: Request, db=Depends(get_db)):
     """获取世界初始状态（场景、角色、物品、物体）/ Get initial world state."""
     try:
