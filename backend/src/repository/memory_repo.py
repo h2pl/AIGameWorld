@@ -288,58 +288,40 @@ class MemoryRepo:
         entity_types: list[str] | None = None,
         current_tick: int = 0,
     ) -> list[Memory]:
-        """检索长期记忆（ID双写：ChromaDB粗排召回 + SQLite拉取补齐 + 三要素精排）"""
+        """检索记忆：短期(deque) + 持久化(ChromaDB语义→SQLite补全) → 合并精排.
+
+        三层来源：
+        1. short: deque 短期窗口（最近 10 条，recency 优先）
+        2. persistent: ChromaDB 语义召回 → SQLite 补全字段 → 精排
+        """
         short = list(self._short_queue(pc_id))
 
-        mid_term: list[Memory] = []
-        if self._sqlite:
-            if not self._table_ensured:
-                await self._ensure_table()
-            where = "WHERE pc_id = ?"
-            params: list[Any] = [pc_id]
-            if memory_types:
-                placeholders = ",".join("?" * len(memory_types))
-                where += f" AND memory_type IN ({placeholders})"
-                params.extend(memory_types)
-            if periods:
-                placeholders = ",".join("?" * len(periods))
-                where += f" AND period IN ({placeholders})"
-                params.extend(periods)
-            if entity_types:
-                placeholders = ",".join("?" * len(entity_types))
-                where += f" AND entity_type IN ({placeholders})"
-                params.extend(entity_types)
-            sql = f"SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id FROM memories {where} ORDER BY tick DESC LIMIT ?"  # noqa: S608
-            params.append(top_k)
-            rows = await self._sqlite.fetch_all(sql, tuple(params))
-            mid_term = [_memory_from_row(r) for r in rows]
-
+        # Stage 1: ChromaDB 语义召回 / Semantic recall from ChromaDB
         col_name = _MEM_PREFIX.format(pc_id=pc_id)
-        # Stage 1: Coarse Recall (from ChromaDB)
         results = self._chroma.query(
             collection=col_name, query_text=query, top_k=top_k * 3
-        )  # fetch more for re-ranking
+        )
         candidate_ids = set()
-        semantic_scores = {}  # mem_id -> similarity score
+        semantic_scores: dict[str, float] = {}
 
         for r in results:
             mem_id = r["meta"].get("id", "")
             if mem_id:
                 candidate_ids.add(mem_id)
-                # Chroma distance is often 0 (identical) to 2 (opposite).
-                # Convert to a similarity multiplier (higher is better).
                 distance = r.get("distance", 1.0)
-                similarity = max(0.0, 1.0 - (distance / 2.0))
-                semantic_scores[mem_id] = similarity
+                semantic_scores[mem_id] = max(0.0, 1.0 - (distance / 2.0))
 
-        long_term: list[Memory] = []
+        # Stage 2: SQLite 补全字段 / Fetch full data from SQLite
+        persistent: list[Memory] = []
         if candidate_ids and self._sqlite:
-            # Stage 2: Fetch full structured data from SQLite by IDs
+            if not self._table_ensured:
+                await self._ensure_table()
             placeholders = ",".join("?" * len(candidate_ids))
-            sql_full = f"SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id FROM memories WHERE id IN ({placeholders})"
-            rows = await self._sqlite.fetch_all(sql_full, tuple(candidate_ids))
-            long_term = [_memory_from_row(r) for r in rows]
+            sql = f"SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id FROM memories WHERE id IN ({placeholders})"  # noqa: S608
+            rows = await self._sqlite.fetch_all(sql, tuple(candidate_ids))
+            persistent = [_memory_from_row(r) for r in rows]
 
+        # 合并去重 / Merge and deduplicate
         def _matches_filters(m: Memory) -> bool:
             return (
                 (not memory_types or m.memory_type in memory_types)
@@ -347,29 +329,21 @@ class MemoryRepo:
                 and (not entity_types or m.entity_type in entity_types)
             )
 
-        # 合并去重（按 id），按综合重要性分数降序
         seen: set[str] = set()
         merged: list[Memory] = []
-        for m in short + mid_term + long_term:
+        for m in short + persistent:
             if m.id not in seen and _matches_filters(m):
                 merged.append(m)
                 seen.add(m.id)
 
-        # Stage 3: Re-rank in memory
+        # Stage 3: 精排 / Re-rank
         def _get_final_score(m: Memory) -> float:
             base_score = score_memory(m.importance, m.tick, current_tick)
-
-            # 短期记忆：recency 天然高权重，无需语义加分 / Short-term: recency is enough
             if m.period == "short_term":
                 return base_score * 1.2
-
-            # 长期记忆：语义相关性加分 / Long-term: semantic relevance bonus
-            semantic_bonus = 0.0
             if m.id in semantic_scores:
-                similarity = semantic_scores[m.id]
-                semantic_bonus = base_score * similarity * 1.5
-
-            return base_score + semantic_bonus
+                return base_score + base_score * semantic_scores[m.id] * 1.5
+            return base_score
 
         merged.sort(key=_get_final_score, reverse=True)
         return merged[:top_k]

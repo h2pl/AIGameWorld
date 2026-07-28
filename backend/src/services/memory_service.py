@@ -1,7 +1,9 @@
 """Memory Service——为各引擎提供按需记忆注入 / Memory injection service for engines.
 
-统一封装短期/中期/长期记忆的检索，供 prompt 注入。
-重要性评分 = 事件类型 base 分 + 时间衰减 + 近期加成，不引入额外 LLM。
+三种记忆类型：
+1. 短期记忆 (Short-Term)：deque 窗口，最近发生的事
+2. 长期记忆 (Long-Term)：ChromaDB 语义检索 + SQLite 补全
+3. 反思记忆 (Reflection)：LLM 生成的抽象洞察
 """
 
 from langchain_core.runnables.config import RunnableConfig
@@ -56,16 +58,15 @@ async def retrieve_memories(
     memories: dict[str, list[Memory]] | None = None,
     current_tick: int = 0,
 ) -> list[str]:
-    """按角色 + 查询语义检索相关记忆文本 / Retrieve relevant memory texts for a character.
+    """检索角色相关记忆，按综合分数排序返回内容文本.
 
-    返回按综合重要性分数（事件+时间）排序的记忆内容列表；无记忆或 repo 不可用时返回空列表。
-    同时包含观察记忆与反思记忆，用于指导角色下一步行动。
-    支持按 memory_type 和 period 过滤；支持注入本 tick 尚未落盘的新记忆。
-    不过滤记忆类型，按事件和重要性提取。
+    三种来源合并：
+    1. 短期记忆 (deque)  — 包含在 memory_repo.retrieve() 返回中
+    2. 长期记忆 (ChromaDB) — memory_repo.retrieve() 语义检索
+    3. 反思记忆 (Reflection) — memory_repo.retrieve_reflections()
 
-    Mock 模式下跳过 Chroma 长期语义检索，避免本地 embedding 模型加载导致 E2E 超时。
+    Mock 模式下跳过 Chroma 检索，仅用本 tick 新产生的记忆。
     """
-    # Mock 模式：只使用本 tick 已产生的记忆，避免 Chroma embedding 查询耗时
     if is_mock(config):
         contents: list[str] = []
         seen: set[str] = set()
@@ -77,29 +78,30 @@ async def retrieve_memories(
                 reverse=True,
             )
             for m in scored[:top_k]:
-                content = m.content
-                if content and content not in seen:
-                    contents.append(content)
-                    seen.add(content)
+                if m.content and m.content not in seen:
+                    contents.append(m.content)
+                    seen.add(m.content)
         return contents
 
     memory_repo = get_repo(config, "memory")
     if not memory_repo:
         return []
+
     try:
-        observations = await memory_repo.retrieve(
-            pc_id,
-            query,
+        # 短期 + 长期记忆 / Short-term + Long-term
+        retrieved = await memory_repo.retrieve(
+            pc_id, query,
             top_k=top_k,
             memory_types=memory_types,
             periods=periods,
             entity_types=["pc", "actor"],
             current_tick=current_tick,
         )
+
         contents: list[str] = []
         seen: set[str] = set()
 
-        # 1) 本 tick 已产生但尚未落盘的新记忆（score 排序）
+        # 本 tick 新产生的记忆（尚未落盘）/ Current tick memories not yet persisted
         if memories:
             current_mems = memories.get(pc_id, [])
             scored = sorted(
@@ -108,28 +110,28 @@ async def retrieve_memories(
                 reverse=True,
             )
             for m in scored[:top_k]:
-                content = m.content
-                if content and content not in seen:
-                    contents.append(content)
-                    seen.add(content)
+                if m.content and m.content not in seen:
+                    contents.append(m.content)
+                    seen.add(m.content)
 
-        # 2) 反思记忆
+        # 反思记忆 / Reflections
         if include_reflections:
             reflections = await memory_repo.retrieve_reflections(
                 pc_id, query, top_k=3, current_tick=current_tick
             )
             for m in reflections:
-                content = getattr(m, "content", None)
-                if content and content not in seen:
-                    contents.append(content)
-                    seen.add(content)
+                c = getattr(m, "content", None)
+                if c and c not in seen:
+                    contents.append(c)
+                    seen.add(c)
 
-        # 3) 观察/行为记忆
-        for m in observations:
-            content = getattr(m, "content", None)
-            if content and content not in seen:
-                contents.append(content)
-                seen.add(content)
+        # 短期 + 长期记忆 / Short-term + Long-term from retrieve()
+        for m in retrieved:
+            c = getattr(m, "content", None)
+            if c and c not in seen:
+                contents.append(c)
+                seen.add(c)
+
         return contents
     except TypeError:
         return []
