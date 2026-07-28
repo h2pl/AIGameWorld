@@ -50,16 +50,18 @@ class Memory(BaseModel):
     world_id: str = ""
 
 
-def importance_of(event_type: str) -> int:
-    """根据事件类型估算记忆重要性 / Estimate memory importance by event type."""
+def importance_of(memory_type: str) -> int:
+    """根据记忆类型估算重要性 / Estimate memory importance by type.
 
-    mapping = {
-        "character_death": 10,
-        "combat_hit": 8,
-        "boss_reveal": 9,
-        "quest_complete": 7,
-        "pc_talk": 3,
-        "character_explore": 2,
-        "move": 1,
+    用于各引擎写入记忆时统一赋值。
+    """
+
+    mapping: dict[str, int] = {
+        MemoryType.REFLECTION.value: 10,
+        MemoryType.COMBAT.value: 8,
+        MemoryType.INTERACT.value: 4,
+        MemoryType.TALK.value: 3,
+        MemoryType.EXPLORE.value: 2,
+        MemoryType.OBSERVATION.value: 1,
     }
-    return mapping.get(event_type, 2)
+    return mapping.get(memory_type, 2)

@@ -4,14 +4,13 @@ from unittest.mock import Mock
 
 import pytest
 
+from src.domain.memory import MemoryType, importance_of
 from src.repository.memory_repo import MemoryRepo
-from src.schemas.memory_schema import importance_of
 
 
 class TestMemoryRepoUnit:
     """Mock ChromaClient 的 MemoryRepo 单元测试."""
 
-    # 短期记忆应保留基本字段 / Short-term memory should keep core fields
     @pytest.mark.asyncio
     async def test_store_short_term(self):
         repo = MemoryRepo(Mock())
@@ -53,14 +52,23 @@ class TestMemoryRepoUnit:
 
 
 class TestImportanceOf:
-    def test_combat_hit(self):
-        assert importance_of("combat_hit") == 8
+    def test_combat(self):
+        assert importance_of(MemoryType.COMBAT.value) == 8
 
-    def test_character_death(self):
-        assert importance_of("character_death") == 10
+    def test_reflection(self):
+        assert importance_of(MemoryType.REFLECTION.value) == 10
 
-    def test_move(self):
-        assert importance_of("move") == 1
+    def test_talk(self):
+        assert importance_of(MemoryType.TALK.value) == 3
+
+    def test_explore(self):
+        assert importance_of(MemoryType.EXPLORE.value) == 2
+
+    def test_interact(self):
+        assert importance_of(MemoryType.INTERACT.value) == 4
+
+    def test_observation(self):
+        assert importance_of(MemoryType.OBSERVATION.value) == 1
 
     def test_unknown_type_default(self):
         assert importance_of("unknown_event") == 2

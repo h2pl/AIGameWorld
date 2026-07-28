@@ -13,7 +13,7 @@ from langchain_core.runnables.config import RunnableConfig
 
 from src.utils.tracing import traced
 
-from ...domain import Action, Actor, Decision, DMRecord, Memory, PlayerCharacter, Scene, SceneObject
+from ...domain import Action, Actor, Decision, DMRecord, Memory, MemoryType, PlayerCharacter, Scene, SceneObject, importance_of
 from ...repository.neo4j_repo import Neo4jRepo
 from ...schemas.llm_output import DialogueSchema
 from ...services.memory_service import retrieve_memories
@@ -223,8 +223,8 @@ def _store_dialogue_memory(
                 pc_id=char_id,
                 content=f"与 {target_id} 的对话：{transcript}",
                 tick=tick,
-                importance=3,
-                memory_type="talk",
+                importance=importance_of(MemoryType.TALK.value),
+                memory_type=MemoryType.TALK.value,
                 entity_type="pc",
             )
         )
@@ -235,8 +235,8 @@ def _store_dialogue_memory(
                 pc_id=target_id,
                 content=f"与 {char_id} 的对话：{transcript}",
                 tick=tick,
-                importance=3,
-                memory_type="talk",
+                importance=importance_of(MemoryType.TALK.value),
+                memory_type=MemoryType.TALK.value,
                 entity_type="pc" if target_type == "pc" else "actor",
             )
         )

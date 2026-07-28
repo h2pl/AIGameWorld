@@ -20,9 +20,11 @@ from ...domain import (
     Decision,
     DMRecord,
     Memory,
+    MemoryType,
     PlayerCharacter,
     Scene,
     SceneObject,
+    importance_of,
 )
 from ...repository.neo4j_repo import Neo4jRepo
 from ...schemas.llm_output import CombatNarrationSchema
@@ -255,8 +257,8 @@ def _store_combat_memory(
             pc_id=pc_id,
             content=f"与 {target_label} 战斗：{narration}",
             tick=tick,
-            importance=6,
-            memory_type="combat",
+            importance=importance_of(MemoryType.COMBAT.value),
+            memory_type=MemoryType.COMBAT.value,
             entity_type="pc",
         )
     )

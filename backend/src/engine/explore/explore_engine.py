@@ -20,9 +20,11 @@ from ...domain import (
     Decision,
     DMRecord,
     Memory,
+    MemoryType,
     PlayerCharacter,
     Scene,
     SceneObject,
+    importance_of,
 )
 from ...schemas.llm_output import ExploreOutputSchema
 from ...services.memory_service import retrieve_memories
@@ -221,8 +223,8 @@ def _store_explore_memory(
             pc_id=pc_id,
             content=f"探索发现：{explore_record}",
             tick=tick,
-            importance=2,
-            memory_type="explore",
+            importance=importance_of(MemoryType.EXPLORE.value),
+            memory_type=MemoryType.EXPLORE.value,
             entity_type="pc",
         )
     )

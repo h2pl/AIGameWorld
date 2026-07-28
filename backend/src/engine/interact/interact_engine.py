@@ -13,7 +13,7 @@ from langchain_core.runnables.config import RunnableConfig
 
 from src.utils.tracing import traced
 
-from ...domain import Action, Actor, Decision, DMRecord, Memory, PlayerCharacter, Scene
+from ...domain import Action, Actor, Decision, DMRecord, Memory, MemoryType, PlayerCharacter, Scene, importance_of
 from ...domain.scene_object import SceneObject
 from ...schemas.llm_output import InteractOutputSchema
 from ...services.memory_service import retrieve_memories
@@ -222,8 +222,8 @@ def _store_interact_memory(
             pc_id=pc_id,
             content=content,
             tick=tick,
-            importance=4,
-            memory_type="interact",
+            importance=importance_of(MemoryType.INTERACT.value),
+            memory_type=MemoryType.INTERACT.value,
             entity_type="pc",
         )
     )
