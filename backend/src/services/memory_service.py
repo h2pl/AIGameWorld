@@ -116,20 +116,24 @@ async def retrieve_memories(
         merged.sort(key=_score, reverse=True)
         merged = merged[:top_k]
 
+        # 5. 反思记忆前置 / Reflections first (higher-level insights)
         contents: list[str] = []
-        for m in merged:
-            if m.content and m.content not in contents:
-                contents.append(m.content)
+        seen: set[str] = set()
 
-        # 5. 反思记忆 / Reflections
         if include_reflections:
             reflections = await memory_repo.retrieve_reflections(
                 pc_id, query, top_k=3, current_tick=current_tick
             )
             for m in reflections:
                 c = getattr(m, "content", None)
-                if c and c not in contents:
+                if c and c not in seen:
                     contents.append(c)
+                    seen.add(c)
+
+        for m in merged:
+            if m.content and m.content not in seen:
+                contents.append(m.content)
+                seen.add(m.content)
 
         return contents
     except TypeError:
