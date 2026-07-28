@@ -163,7 +163,7 @@ async def _generate_explore_data(
 
     query = f"{scene.name if scene else ''} 探索周围环境".strip()
     memory_texts = await retrieve_memories(
-        pc_id, query, config=config, top_k=5, memories=memories, current_tick=tick
+        pc_id, query, config=config, top_k=5, current_tick=tick
     )
 
     ctx = {

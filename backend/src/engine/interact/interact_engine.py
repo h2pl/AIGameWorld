@@ -127,7 +127,7 @@ async def _generate_interact(
 
     query = f"{scene.name if scene else ''} 与 {obj.name if obj else object_id} 交互".strip()
     memory_texts = await retrieve_memories(
-        pc_id, query, config=config, top_k=5, memories=memories, current_tick=tick
+        pc_id, query, config=config, top_k=5, current_tick=tick
     )
 
     ctx = {

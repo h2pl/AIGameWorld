@@ -126,7 +126,7 @@ async def _generate_dialogue(
 
     query = f"{scene.name if scene else ''} 与 {target.name if target else target_id} 对话".strip()
     memory_texts = await retrieve_memories(
-        char_id, query, config=config, top_k=5, memories=memories, current_tick=tick
+        char_id, query, config=config, top_k=5, current_tick=tick
     )
 
     ctx = {

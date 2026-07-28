@@ -8,8 +8,6 @@
 
 from langchain_core.runnables.config import RunnableConfig
 
-from ..domain import Memory
-from ..repository.memory_repo import score_memory
 from ..utils.helpers import get_repo, is_mock
 
 
@@ -55,33 +53,18 @@ async def retrieve_memories(
     memory_types: list[str] | None = None,
     periods: list[str] | None = None,
     include_reflections: bool = True,
-    memories: dict[str, list[Memory]] | None = None,
     current_tick: int = 0,
 ) -> list[str]:
     """检索角色相关记忆，按综合分数排序返回内容文本.
 
-    三种来源合并：
-    1. 短期记忆 (deque)  — 包含在 memory_repo.retrieve() 返回中
-    2. 长期记忆 (ChromaDB) — memory_repo.retrieve() 语义检索
-    3. 反思记忆 (Reflection) — memory_repo.retrieve_reflections()
+    两种来源合并：
+    1. 短期 + 长期记忆 — memory_repo.retrieve() (deque + ChromaDB 语义检索)
+    2. 反思记忆 — memory_repo.retrieve_reflections()
 
-    Mock 模式下跳过 Chroma 检索，仅用本 tick 新产生的记忆。
+    Mock 模式下跳过 Chroma 检索，仅用短期 deque 记忆。
     """
     if is_mock(config):
-        contents: list[str] = []
-        seen: set[str] = set()
-        if memories:
-            current_mems = memories.get(pc_id, [])
-            scored = sorted(
-                current_mems,
-                key=lambda m: score_memory(m.importance, m.tick, current_tick),
-                reverse=True,
-            )
-            for m in scored[:top_k]:
-                if m.content and m.content not in seen:
-                    contents.append(m.content)
-                    seen.add(m.content)
-        return contents
+        return []
 
     memory_repo = get_repo(config, "memory")
     if not memory_repo:
@@ -101,18 +84,11 @@ async def retrieve_memories(
         contents: list[str] = []
         seen: set[str] = set()
 
-        # 本 tick 新产生的记忆（尚未落盘）/ Current tick memories not yet persisted
-        if memories:
-            current_mems = memories.get(pc_id, [])
-            scored = sorted(
-                current_mems,
-                key=lambda m: score_memory(m.importance, m.tick, current_tick),
-                reverse=True,
-            )
-            for m in scored[:top_k]:
-                if m.content and m.content not in seen:
-                    contents.append(m.content)
-                    seen.add(m.content)
+        for m in retrieved:
+            c = getattr(m, "content", None)
+            if c and c not in seen:
+                contents.append(c)
+                seen.add(c)
 
         # 反思记忆 / Reflections
         if include_reflections:
@@ -124,13 +100,6 @@ async def retrieve_memories(
                 if c and c not in seen:
                     contents.append(c)
                     seen.add(c)
-
-        # 短期 + 长期记忆 / Short-term + Long-term from retrieve()
-        for m in retrieved:
-            c = getattr(m, "content", None)
-            if c and c not in seen:
-                contents.append(c)
-                seen.add(c)
 
         return contents
     except TypeError:

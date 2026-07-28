@@ -185,7 +185,7 @@ async def _generate_narration(
 
     query = f"{scene.name if scene else ''} 与 {target.name} 战斗".strip()
     memory_texts = await retrieve_memories(
-        pc.id, query, config=config, top_k=5, memories=memories, current_tick=tick
+        pc.id, query, config=config, top_k=5, current_tick=tick
     )
 
     ctx = {
