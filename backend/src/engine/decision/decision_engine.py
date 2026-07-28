@@ -60,7 +60,7 @@ async def decide(
     # 同场景 Actor / Actors in scene
     nearby_actors = [_map_identity(actors[aid]) for aid in actors]
 
-    query = f"{plot_brief} {scene.description if scene else ''}".strip()
+    query = f"{scene.name if scene else ''} 做出下一步行动决策".strip()
     memories = await retrieve_memories(pc_id, query, config=config, top_k=5)
     
     # ==== 显式提取最新反思，作为角色的核心认知 ====

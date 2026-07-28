@@ -125,7 +125,7 @@ async def _generate_interact(
         raise RuntimeError("[interact] LLM client not configured")
     obj = _find_scene_object(object_id, scene, scene_objects)
 
-    query = f"{plot_brief} {obj.name if obj else ''} {scene.description}".strip()
+    query = f"{scene.name if scene else ''} 与 {obj.name if obj else object_id} 交互".strip()
     memory_texts = await retrieve_memories(
         pc_id, query, config=config, top_k=5, memories=memories, current_tick=tick
     )

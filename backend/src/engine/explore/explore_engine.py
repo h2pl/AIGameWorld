@@ -161,7 +161,7 @@ async def _generate_explore_data(
 
     pc = _pc_identity(pc_id, pcs)
 
-    query = f"{plot_brief} {scene.description if scene else ''}".strip()
+    query = f"{scene.name if scene else ''} 探索周围环境".strip()
     memory_texts = await retrieve_memories(
         pc_id, query, config=config, top_k=5, memories=memories, current_tick=tick
     )

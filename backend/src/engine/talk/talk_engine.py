@@ -124,7 +124,7 @@ async def _generate_dialogue(
     initiator = await pc_repo.load_one(char_id) if pc_repo else None
     target = await _load_target(pc_repo, actor_repo, target_id, target_type)
 
-    query = f"{reason} {plot_brief} {scene.description if scene else ''}".strip()
+    query = f"{scene.name if scene else ''} 与 {target.name if target else target_id} 对话".strip()
     memory_texts = await retrieve_memories(
         char_id, query, config=config, top_k=5, memories=memories, current_tick=tick
     )
