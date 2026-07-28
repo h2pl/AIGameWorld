@@ -57,10 +57,12 @@ async def retrieve_memories(
 ) -> list[str]:
     """检索角色相关记忆，按综合分数排序返回内容文本.
 
-    service 层编排三种记忆来源，repo 层只提供原子方法：
-    1. 短期记忆：repo.get_short_term() — deque 窗口
-    2. 长期记忆：repo.search_long_term_vector() → repo.fetch_long_term_sqlite()
-    3. 反思记忆：repo.retrieve_reflections()
+    处理策略：
+    1. 反思记忆 — ChromaDB 语义检索，全量注入，前置
+    2. 短期记忆 — deque 窗口，全量注入，按 tick 倒序
+    3. 长期记忆 — ChromaDB 语义召回 → SQLite 补全 → 精排取 top_k
+
+    参考 Generative Agents / MemGPT：短期+反思全给，长期精选。
     """
     if is_mock(config):
         return []
@@ -70,56 +72,10 @@ async def retrieve_memories(
         return []
 
     try:
-        # 1. 短期记忆 / Short-term from deque
-        short = memory_repo.get_short_term(pc_id)
-        # 构建 semantic_scores：短期记忆无语义分
-        semantic_scores: dict[str, float] = {}
-
-        # 2. 长期记忆 / Long-term: ChromaDB 语义召回 → SQLite 补全
-        vector_results = memory_repo.search_long_term_vector(pc_id, query, top_k=top_k * 3)
-        candidate_ids = set()
-        for r in vector_results:
-            mem_id = r["meta"].get("id", "")
-            if mem_id:
-                candidate_ids.add(mem_id)
-                distance = r.get("distance", 1.0)
-                semantic_scores[mem_id] = max(0.0, 1.0 - (distance / 2.0))
-
-        long_term: list[Memory] = []
-        if candidate_ids:
-            long_term = await memory_repo.fetch_long_term_sqlite(list(candidate_ids))
-
-        # 3. 合并 + 过滤 / Merge + filter
-        def _matches(m: Memory) -> bool:
-            return (
-                (not memory_types or m.memory_type in memory_types)
-                and (not periods or m.period in periods)
-                and m.entity_type in ("pc", "actor")
-            )
-
-        seen: set[str] = set()
-        merged: list[Memory] = []
-        for m in short + long_term:
-            if m.id not in seen and _matches(m):
-                merged.append(m)
-                seen.add(m.id)
-
-        # 4. 精排 / Re-rank
-        def _score(m: Memory) -> float:
-            base = score_memory(m.importance, m.tick, current_tick)
-            if m.period == "short_term":
-                return base * 1.2
-            if m.id in semantic_scores:
-                return base + base * semantic_scores[m.id] * 1.5
-            return base
-
-        merged.sort(key=_score, reverse=True)
-        merged = merged[:top_k]
-
-        # 5. 反思记忆前置 / Reflections first (higher-level insights)
         contents: list[str] = []
         seen: set[str] = set()
 
+        # 1. 反思记忆前置 / Reflections first — 全量注入
         if include_reflections:
             reflections = await memory_repo.retrieve_reflections(
                 pc_id, query, top_k=3, current_tick=current_tick
@@ -130,10 +86,39 @@ async def retrieve_memories(
                     contents.append(c)
                     seen.add(c)
 
-        for m in merged:
+        # 2. 短期记忆 / Short-term — 全量注入，按 tick 倒序
+        short = memory_repo.get_short_term(pc_id)
+        short.sort(key=lambda m: m.tick, reverse=True)
+        for m in short:
             if m.content and m.content not in seen:
                 contents.append(m.content)
                 seen.add(m.content)
+
+        # 3. 长期记忆 / Long-term — 语义检索 + 精排，取 top_k
+        semantic_scores: dict[str, float] = {}
+        vector_results = memory_repo.search_long_term_vector(pc_id, query, top_k=top_k * 3)
+        candidate_ids = set()
+        for r in vector_results:
+            mem_id = r["meta"].get("id", "")
+            if mem_id and mem_id not in seen:
+                candidate_ids.add(mem_id)
+                distance = r.get("distance", 1.0)
+                semantic_scores[mem_id] = max(0.0, 1.0 - (distance / 2.0))
+
+        if candidate_ids:
+            long_term = await memory_repo.fetch_long_term_sqlite(list(candidate_ids))
+            # 精排：三要素评分 + 语义加成
+            long_term.sort(
+                key=lambda m: score_memory(
+                    m.importance, m.tick, current_tick,
+                    similarity=semantic_scores.get(m.id, 0.5),
+                ),
+                reverse=True,
+            )
+            for m in long_term[:top_k]:
+                if m.content and m.content not in seen:
+                    contents.append(m.content)
+                    seen.add(m.content)
 
         return contents
     except TypeError:
