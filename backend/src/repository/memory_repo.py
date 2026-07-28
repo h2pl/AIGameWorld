@@ -288,12 +288,7 @@ class MemoryRepo:
         entity_types: list[str] | None = None,
         current_tick: int = 0,
     ) -> list[Memory]:
-        """检索记忆：短期(deque) + 持久化(ChromaDB语义→SQLite补全) → 合并精排.
-
-        三层来源：
-        1. short: deque 短期窗口（最近 10 条，recency 优先）
-        2. persistent: ChromaDB 语义召回 → SQLite 补全字段 → 精排
-        """
+        """检索记忆：短期(deque) + 长期(ChromaDB语义→SQLite补全) → 合并精排."""
         short = list(self._short_queue(pc_id))
 
         # Stage 1: ChromaDB 语义召回 / Semantic recall from ChromaDB
@@ -312,14 +307,14 @@ class MemoryRepo:
                 semantic_scores[mem_id] = max(0.0, 1.0 - (distance / 2.0))
 
         # Stage 2: SQLite 补全字段 / Fetch full data from SQLite
-        persistent: list[Memory] = []
+        long_term: list[Memory] = []
         if candidate_ids and self._sqlite:
             if not self._table_ensured:
                 await self._ensure_table()
             placeholders = ",".join("?" * len(candidate_ids))
             sql = f"SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id FROM memories WHERE id IN ({placeholders})"  # noqa: S608
             rows = await self._sqlite.fetch_all(sql, tuple(candidate_ids))
-            persistent = [_memory_from_row(r) for r in rows]
+            long_term = [_memory_from_row(r) for r in rows]
 
         # 合并去重 / Merge and deduplicate
         def _matches_filters(m: Memory) -> bool:
@@ -331,7 +326,7 @@ class MemoryRepo:
 
         seen: set[str] = set()
         merged: list[Memory] = []
-        for m in short + persistent:
+        for m in short + long_term:
             if m.id not in seen and _matches_filters(m):
                 merged.append(m)
                 seen.add(m.id)
