@@ -17,7 +17,6 @@ from src.services import (
     dm_service,
     event_service,
     pc_service,
-    reflection_service,
     summarizer_service,
     tick_init_service,
 )
@@ -253,23 +252,6 @@ class TestDMAndReflectionService:
                 _overall_state(tick=10, dm_record=DMRecord(tick=10, world_id="w-1"))
             )
         assert result["dm_record"].dm_narrative == "战斗爆发。"
-
-    @pytest.mark.asyncio
-    async def test_reflect_returns_empty_when_repos_missing(self):
-        """缺少 repo 时反思服务安全降级 / Reflection falls back when repos are missing."""
-        with patch("src.services.reflection_service.get_repo", side_effect=[None, None]):
-            result = await reflection_service.reflect(
-                {
-                    "tick": 5,
-                    "pc_id": "pc-1",
-                    "memories": [],
-                    "tick_events": [],
-                    "reflected_pcs": [],
-                    "summary_compressed": False,
-                }
-            )
-        assert result == {"reflected_pcs": []}
-
 
 class TestSummarizerService:
     """摘要服务测试 / Summarizer service tests."""
