@@ -62,7 +62,7 @@ class ChromaClient:
         return self._client.get_or_create_collection(name, **kwargs)
 
     def delete_collection(self, name: str) -> None:
-        with contextlib.suppress(ValueError):
+        with contextlib.suppress(ValueError, Exception):
             self._client.delete_collection(name)
 
     # ── 增删查 ──
@@ -84,17 +84,17 @@ class ChromaClient:
             return []
         # include distances in the query to support semantic scoring later
         res = col.query(
-            query_texts=[query_text], 
-            n_results=top_k, 
+            query_texts=[query_text],
+            n_results=top_k,
             where=where,
-            include=["documents", "metadatas", "distances"]
+            include=["documents", "metadatas", "distances"],
         )
         out = []
         # Handle cases where distances might be None or empty
         distances = res.get("distances", [[]])
         if not distances:
             distances = [[]]
-            
+
         for i, (d, m) in enumerate(zip(res["documents"][0], res["metadatas"][0], strict=True)):
             dist = distances[0][i] if len(distances[0]) > i else 1.0
             out.append({"text": d, "meta": m, "distance": dist})

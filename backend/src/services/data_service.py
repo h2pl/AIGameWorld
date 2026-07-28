@@ -144,6 +144,7 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
                         period=m.period,
                         entity_type=m.entity_type,
                         world_id=m.world_id or world_id,
+                        current_tick=tick,
                     )
                     total += 1
             logger.info("[data] persisted memories count=%d tick=%s", total, tick)
