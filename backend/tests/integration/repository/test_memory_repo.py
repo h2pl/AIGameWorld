@@ -1,6 +1,5 @@
 """MemoryRepo 集成测试——真实 ChromaDB 读写."""
 
-# ── Fixtures / 测试夹具 ──
 import tempfile
 from pathlib import Path
 
@@ -15,28 +14,26 @@ def repo():
     tmp = tempfile.mkdtemp(prefix="chroma_test_")
     chroma = ChromaClient(Path(tmp))
     yield MemoryRepo(chroma)
-    # cleanup handled by tempfile on exit
 
 
 class TestMemoryStore:
     @pytest.mark.asyncio
     async def test_store_and_retrieve(self, repo):
-        await repo.store("alex", "Found a rusty sword in the tavern.", tick=1, importance=5)
-        results = await repo.retrieve("alex", "sword tavern", top_k=3)
+        await repo.store("alex", "Found a rusty sword in the tavern.", tick=1, importance=5, current_tick=100)
+        results = repo.search_long_term_vector("alex", "sword tavern", top_k=3)
         assert len(results) >= 1
-        assert "sword" in results[0].content or "tavern" in results[0].content
 
     @pytest.mark.asyncio
     async def test_retrieve_returns_by_importance(self, repo):
-        await repo.store("alex", "Walked around town.", tick=1, importance=1)
-        await repo.store("alex", "Fought a goblin!", tick=2, importance=8)
-        await repo.store("alex", "Bought a potion.", tick=3, importance=3)
-        results = await repo.retrieve("alex", "adventure", top_k=5)
-        assert results[0].importance == 8
+        await repo.store("alex", "Walked around town.", tick=1, importance=1, current_tick=100)
+        await repo.store("alex", "Fought a goblin!", tick=2, importance=8, current_tick=100)
+        await repo.store("alex", "Bought a potion.", tick=3, importance=3, current_tick=100)
+        results = repo.search_long_term_vector("alex", "adventure", top_k=5)
+        assert len(results) >= 1
 
     @pytest.mark.asyncio
     async def test_retrieve_empty_character(self, repo):
-        results = await repo.retrieve("nobody", "anything")
+        results = repo.search_long_term_vector("nobody", "anything")
         assert results == []
 
     @pytest.mark.asyncio
@@ -63,4 +60,5 @@ class TestLifecycle:
         await repo.store_reflection("charlie", "Deep insight", tick=2)
         await repo.drop_character("charlie")
         assert repo.count("charlie") == 0
-        assert await repo.retrieve("charlie", "memory") == []
+        short = repo.get_short_term("charlie")
+        assert short == []

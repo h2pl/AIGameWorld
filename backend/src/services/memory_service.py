@@ -1,13 +1,15 @@
 """Memory Service——为各引擎提供按需记忆注入 / Memory injection service for engines.
 
-三种记忆类型：
-1. 短期记忆 (Short-Term)：deque 窗口，最近发生的事
-2. 长期记忆 (Long-Term)：ChromaDB 语义检索 + SQLite 补全
-3. 反思记忆 (Reflection)：LLM 生成的抽象洞察
+三种记忆类型，service 层负责编排：
+1. 短期记忆 (Short-Term)：deque 窗口，recency 优先
+2. 长期记忆 (Long-Term)：ChromaDB 语义召回 → SQLite 补全 → 精排
+3. 反思记忆 (Reflection)：ChromaDB 语义检索
 """
 
 from langchain_core.runnables.config import RunnableConfig
 
+from ..domain import Memory
+from ..repository.memory_repo import score_memory
 from ..utils.helpers import get_repo, is_mock
 
 
@@ -15,25 +17,23 @@ async def compress_context(query: str, raw_memories: list[str], llm) -> list[str
     """如果长上下文过长，调用轻量级模型对记忆进行压缩提炼 / Compress long memory contexts."""
     if not raw_memories or not llm:
         return raw_memories
-        
-    # 如果记忆条数不多，或者总长度可控，则不压缩以节省延迟
+
     total_len = sum(len(m) for m in raw_memories)
     if len(raw_memories) <= 3 or total_len < 1000:
         return raw_memories
-        
-    # 构建压缩 Prompt
+
     prompt = f"当前情境或意图：{query}\n\n"
     prompt += "以下是从角色记忆库中检索到的相关片段：\n"
     for i, m in enumerate(raw_memories):
         prompt += f"[{i+1}] {m}\n"
     prompt += "\n请根据当前情境，将上述记忆压缩提炼成3-5条最核心的线索。过滤掉不相关的冗余细节。直接输出要点，不要任何寒暄。"
-    
+
     from langchain_core.messages import HumanMessage
-    
+
     try:
         compressed_text = await llm.call(
-            purpose="reflection",  # 复用 reflection 的 LLM 配置，通常较轻量
-            tick_messages=[HumanMessage(content=prompt)]
+            purpose="reflection",
+            tick_messages=[HumanMessage(content=prompt)],
         )
         if compressed_text:
             return [line.strip("- ") for line in compressed_text.split("\n") if line.strip()]
@@ -41,9 +41,9 @@ async def compress_context(query: str, raw_memories: list[str], llm) -> list[str
         from ..utils.logging import get_logger
         logger = get_logger(__name__)
         logger.error(f"[memory_service] Context compression failed: {e}")
-        
-    # 失败则降级返回原数据
+
     return raw_memories
+
 
 async def retrieve_memories(
     pc_id: str,
@@ -57,11 +57,10 @@ async def retrieve_memories(
 ) -> list[str]:
     """检索角色相关记忆，按综合分数排序返回内容文本.
 
-    两种来源合并：
-    1. 短期 + 长期记忆 — memory_repo.retrieve() (deque + ChromaDB 语义检索)
-    2. 反思记忆 — memory_repo.retrieve_reflections()
-
-    Mock 模式下跳过 Chroma 检索，仅用短期 deque 记忆。
+    service 层编排三种记忆来源，repo 层只提供原子方法：
+    1. 短期记忆：repo.get_short_term() — deque 窗口
+    2. 长期记忆：repo.search_long_term_vector() → repo.fetch_long_term_sqlite()
+    3. 反思记忆：repo.retrieve_reflections()
     """
     if is_mock(config):
         return []
@@ -71,35 +70,66 @@ async def retrieve_memories(
         return []
 
     try:
-        # 短期 + 长期记忆 / Short-term + Long-term
-        retrieved = await memory_repo.retrieve(
-            pc_id, query,
-            top_k=top_k,
-            memory_types=memory_types,
-            periods=periods,
-            entity_types=["pc", "actor"],
-            current_tick=current_tick,
-        )
+        # 1. 短期记忆 / Short-term from deque
+        short = memory_repo.get_short_term(pc_id)
+        # 构建 semantic_scores：短期记忆无语义分
+        semantic_scores: dict[str, float] = {}
+
+        # 2. 长期记忆 / Long-term: ChromaDB 语义召回 → SQLite 补全
+        vector_results = memory_repo.search_long_term_vector(pc_id, query, top_k=top_k * 3)
+        candidate_ids = set()
+        for r in vector_results:
+            mem_id = r["meta"].get("id", "")
+            if mem_id:
+                candidate_ids.add(mem_id)
+                distance = r.get("distance", 1.0)
+                semantic_scores[mem_id] = max(0.0, 1.0 - (distance / 2.0))
+
+        long_term: list[Memory] = []
+        if candidate_ids:
+            long_term = await memory_repo.fetch_long_term_sqlite(list(candidate_ids))
+
+        # 3. 合并 + 过滤 / Merge + filter
+        def _matches(m: Memory) -> bool:
+            return (
+                (not memory_types or m.memory_type in memory_types)
+                and (not periods or m.period in periods)
+                and m.entity_type in ("pc", "actor")
+            )
+
+        seen: set[str] = set()
+        merged: list[Memory] = []
+        for m in short + long_term:
+            if m.id not in seen and _matches(m):
+                merged.append(m)
+                seen.add(m.id)
+
+        # 4. 精排 / Re-rank
+        def _score(m: Memory) -> float:
+            base = score_memory(m.importance, m.tick, current_tick)
+            if m.period == "short_term":
+                return base * 1.2
+            if m.id in semantic_scores:
+                return base + base * semantic_scores[m.id] * 1.5
+            return base
+
+        merged.sort(key=_score, reverse=True)
+        merged = merged[:top_k]
 
         contents: list[str] = []
-        seen: set[str] = set()
+        for m in merged:
+            if m.content and m.content not in contents:
+                contents.append(m.content)
 
-        for m in retrieved:
-            c = getattr(m, "content", None)
-            if c and c not in seen:
-                contents.append(c)
-                seen.add(c)
-
-        # 反思记忆 / Reflections
+        # 5. 反思记忆 / Reflections
         if include_reflections:
             reflections = await memory_repo.retrieve_reflections(
                 pc_id, query, top_k=3, current_tick=current_tick
             )
             for m in reflections:
                 c = getattr(m, "content", None)
-                if c and c not in seen:
+                if c and c not in contents:
                     contents.append(c)
-                    seen.add(c)
 
         return contents
     except TypeError:

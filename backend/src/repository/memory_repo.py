@@ -277,77 +277,36 @@ class MemoryRepo:
 
     # ── 检索 / Retrieve ──
 
-    @traced()
-    async def retrieve(
-        self,
-        pc_id: str,
-        query: str,
-        top_k: int = 5,
-        memory_types: list[str] | None = None,
-        periods: list[str] | None = None,
-        entity_types: list[str] | None = None,
-        current_tick: int = 0,
-    ) -> list[Memory]:
-        """检索记忆：短期(deque) + 长期(ChromaDB语义→SQLite补全) → 合并精排."""
-        short = list(self._short_queue(pc_id))
+    def get_short_term(self, pc_id: str) -> list[Memory]:
+        """读取短期记忆（deque 窗口，最近 10 条）/ Read short-term memory from deque."""
+        return list(self._short_queue(pc_id))
 
-        # Stage 1: ChromaDB 语义召回 / Semantic recall from ChromaDB
+    def search_long_term_vector(
+        self, pc_id: str, query: str, top_k: int = 15
+    ) -> list[dict]:
+        """ChromaDB 语义检索长期记忆 / Semantic search long-term memory via ChromaDB.
+
+        返回 {text, meta, distance} 字典列表。
+        """
         col_name = _MEM_PREFIX.format(pc_id=pc_id)
-        results = self._chroma.query(
-            collection=col_name, query_text=query, top_k=top_k * 3
-        )
-        candidate_ids = set()
-        semantic_scores: dict[str, float] = {}
+        return self._chroma.query(collection=col_name, query_text=query, top_k=top_k)
 
-        for r in results:
-            mem_id = r["meta"].get("id", "")
-            if mem_id:
-                candidate_ids.add(mem_id)
-                distance = r.get("distance", 1.0)
-                semantic_scores[mem_id] = max(0.0, 1.0 - (distance / 2.0))
-
-        # Stage 2: SQLite 补全字段 / Fetch full data from SQLite
-        long_term: list[Memory] = []
-        if candidate_ids and self._sqlite:
-            if not self._table_ensured:
-                await self._ensure_table()
-            placeholders = ",".join("?" * len(candidate_ids))
-            sql = f"SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id FROM memories WHERE id IN ({placeholders})"  # noqa: S608
-            rows = await self._sqlite.fetch_all(sql, tuple(candidate_ids))
-            long_term = [_memory_from_row(r) for r in rows]
-
-        # 合并去重 / Merge and deduplicate
-        def _matches_filters(m: Memory) -> bool:
-            return (
-                (not memory_types or m.memory_type in memory_types)
-                and (not periods or m.period in periods)
-                and (not entity_types or m.entity_type in entity_types)
-            )
-
-        seen: set[str] = set()
-        merged: list[Memory] = []
-        for m in short + long_term:
-            if m.id not in seen and _matches_filters(m):
-                merged.append(m)
-                seen.add(m.id)
-
-        # Stage 3: 精排 / Re-rank
-        def _get_final_score(m: Memory) -> float:
-            base_score = score_memory(m.importance, m.tick, current_tick)
-            if m.period == "short_term":
-                return base_score * 1.2
-            if m.id in semantic_scores:
-                return base_score + base_score * semantic_scores[m.id] * 1.5
-            return base_score
-
-        merged.sort(key=_get_final_score, reverse=True)
-        return merged[:top_k]
+    async def fetch_long_term_sqlite(self, ids: list[str]) -> list[Memory]:
+        """从 SQLite 按 ID 批量读取长期记忆 / Fetch long-term memory by IDs from SQLite."""
+        if not ids or not self._sqlite:
+            return []
+        if not self._table_ensured:
+            await self._ensure_table()
+        placeholders = ",".join("?" * len(ids))
+        sql = f"SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id FROM memories WHERE id IN ({placeholders})"  # noqa: S608
+        rows = await self._sqlite.fetch_all(sql, tuple(ids))
+        return [_memory_from_row(r) for r in rows]
 
     @traced()
     async def retrieve_reflections(
         self, pc_id: str, query: str, top_k: int = 3, current_tick: int = 0
     ) -> list[Memory]:
-        """检索反思记忆（仅 ChromaDB 语义检索）."""
+        """检索反思记忆（仅 ChromaDB 语义检索）/ Retrieve reflection memories via ChromaDB."""
         col_name = _REFLECT_PREFIX.format(pc_id=pc_id)
         results = self._chroma.query(collection=col_name, query_text=query, top_k=top_k)
         reflections = [
