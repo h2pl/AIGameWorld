@@ -359,7 +359,11 @@ class MemoryRepo:
         def _get_final_score(m: Memory) -> float:
             base_score = score_memory(m.importance, m.tick, current_tick)
 
-            # Semantic bonus
+            # 短期记忆：recency 天然高权重，无需语义加分 / Short-term: recency is enough
+            if m.period == "short_term":
+                return base_score * 1.2
+
+            # 长期记忆：语义相关性加分 / Long-term: semantic relevance bonus
             semantic_bonus = 0.0
             if m.id in semantic_scores:
                 similarity = semantic_scores[m.id]
