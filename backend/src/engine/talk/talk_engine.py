@@ -13,7 +13,18 @@ from langchain_core.runnables.config import RunnableConfig
 
 from src.utils.tracing import traced
 
-from ...domain import Action, Actor, Decision, DMRecord, Memory, MemoryType, PlayerCharacter, Scene, SceneObject, importance_of
+from ...domain import (
+    Action,
+    Actor,
+    Decision,
+    DMRecord,
+    Memory,
+    MemoryType,
+    PlayerCharacter,
+    Scene,
+    SceneObject,
+    importance_of,
+)
 from ...repository.neo4j_repo import Neo4jRepo
 from ...schemas.llm_output import DialogueSchema
 from ...services.memory_service import retrieve_memories
@@ -81,9 +92,13 @@ async def process_talk_action(
         neo4j_repo = Neo4jRepo()
         try:
             await neo4j_repo.merge_relationship(
-                start_label="Actor", start_key="id", start_val=char_id,
-                end_label="Actor", end_key="id", end_val=target_id,
-                rel_type="TALKED_TO"
+                start_label="Actor",
+                start_key="id",
+                start_val=char_id,
+                end_label="Actor",
+                end_key="id",
+                end_val=target_id,
+                rel_type="TALKED_TO",
             )
         finally:
             await neo4j_repo.close()
@@ -125,8 +140,21 @@ async def _generate_dialogue(
     target = await _load_target(pc_repo, actor_repo, target_id, target_type)
 
     query = f"{scene.name if scene else ''} 与 {target.name if target else target_id} 对话".strip()
+    # 反思检索用叙事性情境描述 / Narrative query for reflection retrieval
+    char_name = initiator.name if initiator else char_id
+    target_name = target.name if target else target_id
+    reflection_query = (
+        f"{char_name}在{scene.name if scene else '未知场景'}，与{target_name}相遇交谈"
+    )
+    if plot_brief:
+        reflection_query += f"，{plot_brief}"
     memory_texts = await retrieve_memories(
-        char_id, query, config=config, top_k=5, current_tick=tick
+        char_id,
+        query,
+        config=config,
+        top_k=5,
+        current_tick=tick,
+        reflection_query=reflection_query,
     )
 
     ctx = {

@@ -9,7 +9,6 @@
 """
 
 from collections import deque
-from typing import Any
 from uuid import uuid4
 
 from ..domain.memory import Memory
@@ -240,13 +239,14 @@ class MemoryRepo:
         entity_type: str = "pc",
         current_tick: int = 0,
     ) -> Memory:
-        """存储反思洞察（重要性=10，仅写 ChromaDB，检索路径唯一）.
+        """存储反思洞察（重要性=10，ChromaDB + SQLite 双写）.
 
         反思记忆固定为 long_term — 反思是对过去经验的抽象总结，不应随时间降级。
         """
         mem_id = f"reflect_{pc_id}_{tick}_{uuid4().hex[:6]}"
         period = "long_term"
 
+        # 1. ChromaDB 向量写入（语义检索路径）/ ChromaDB vector write
         col_name = _REFLECT_PREFIX.format(pc_id=pc_id)
         self._chroma.add(
             collection=col_name,
@@ -254,6 +254,7 @@ class MemoryRepo:
             documents=[insight],
             metadatas=[
                 {
+                    "id": mem_id,
                     "tick": tick,
                     "importance": 10,
                     "type": "reflection",
@@ -263,6 +264,18 @@ class MemoryRepo:
                 }
             ],
         )
+
+        # 2. SQLite 结构化写入（精确查询/审计/聚合）/ SQLite structured write
+        if self._sqlite:
+            if not self._table_ensured:
+                await self._ensure_table()
+            await self._sqlite.execute(
+                "INSERT INTO memories (id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (mem_id, pc_id, insight, tick, 10, "reflection", period, entity_type, world_id),
+            )
+            await self._sqlite.commit()
+
         return Memory(
             id=mem_id,
             pc_id=pc_id,
@@ -281,9 +294,7 @@ class MemoryRepo:
         """读取短期记忆（deque 窗口，最近 10 条）/ Read short-term memory from deque."""
         return list(self._short_queue(pc_id))
 
-    def search_long_term_vector(
-        self, pc_id: str, query: str, top_k: int = 15
-    ) -> list[dict]:
+    def search_long_term_vector(self, pc_id: str, query: str, top_k: int = 15) -> list[dict]:
         """ChromaDB 语义检索长期记忆 / Semantic search long-term memory via ChromaDB.
 
         返回 {text, meta, distance} 字典列表。
@@ -304,11 +315,28 @@ class MemoryRepo:
 
     @traced()
     async def retrieve_reflections(
-        self, pc_id: str, query: str, top_k: int = 3, current_tick: int = 0
+        self,
+        pc_id: str,
+        query: str,
+        top_k: int = 3,
+        current_tick: int = 0,
+        min_tick: int | None = None,
     ) -> list[Memory]:
-        """检索反思记忆（仅 ChromaDB 语义检索）/ Retrieve reflection memories via ChromaDB."""
+        """检索反思记忆（ChromaDB 语义检索 + 可选 tick 过滤）/ Retrieve reflection memories.
+
+        Args:
+            pc_id: 角色 ID
+            query: 语义查询文本（应为当前情境描述，空字符串则退化为最近优先）
+            top_k: 返回条数
+            current_tick: 当前 tick（用于三要素评分）
+            min_tick: 仅返回 tick >= min_tick 的反思（精确过滤）
+        """
         col_name = _REFLECT_PREFIX.format(pc_id=pc_id)
-        results = self._chroma.query(collection=col_name, query_text=query, top_k=top_k)
+        # 多召回一些，过滤后再截断 / Over-fetch to compensate for post-filter
+        fetch_k = top_k * 2 if min_tick is not None else top_k
+        results = self._chroma.query(
+            collection=col_name, query_text=query or "recent", top_k=fetch_k
+        )
         reflections = [
             Memory(
                 id=r["meta"].get("id", ""),
@@ -321,11 +349,28 @@ class MemoryRepo:
             )
             for r in results
         ]
+        # tick 精确过滤 / Tick filter
+        if min_tick is not None:
+            reflections = [m for m in reflections if m.tick >= min_tick]
         reflections.sort(
             key=lambda m: score_memory(m.importance, m.tick, current_tick, similarity=1.0),
             reverse=True,
         )
         return reflections[:top_k]
+
+    async def get_last_reflection_tick(self, pc_id: str) -> int:
+        """从 SQLite 精确查询角色最近一次反思的 tick / Get last reflection tick from SQLite."""
+        if not self._sqlite:
+            return 0
+        if not self._table_ensured:
+            await self._ensure_table()
+        rows = await self._sqlite.fetch_all(
+            "SELECT MAX(tick) as last_tick FROM memories WHERE pc_id = ? AND memory_type = 'reflection'",
+            (pc_id,),
+        )
+        if rows and rows[0]["last_tick"] is not None:
+            return rows[0]["last_tick"]
+        return 0
 
     # ── 3. 关系记忆 / Semantic Memory (Phase 2) ──
     @traced()
@@ -348,8 +393,8 @@ class MemoryRepo:
             """
             INSERT INTO semantic_network (id, world_id, subject, predicate, object, confidence)
             VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(world_id, subject, predicate, object) 
-            DO UPDATE SET 
+            ON CONFLICT(world_id, subject, predicate, object)
+            DO UPDATE SET
                 confidence = excluded.confidence,
                 updated_at = datetime('now', 'localtime')
             """,

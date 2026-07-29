@@ -8,7 +8,6 @@
 
 from langchain_core.runnables.config import RunnableConfig
 
-from ..domain import Memory
 from ..repository.memory_repo import score_memory
 from ..utils.helpers import get_repo, is_mock
 
@@ -25,7 +24,7 @@ async def compress_context(query: str, raw_memories: list[str], llm) -> list[str
     prompt = f"当前情境或意图：{query}\n\n"
     prompt += "以下是从角色记忆库中检索到的相关片段：\n"
     for i, m in enumerate(raw_memories):
-        prompt += f"[{i+1}] {m}\n"
+        prompt += f"[{i + 1}] {m}\n"
     prompt += "\n请根据当前情境，将上述记忆压缩提炼成3-5条最核心的线索。过滤掉不相关的冗余细节。直接输出要点，不要任何寒暄。"
 
     from langchain_core.messages import HumanMessage
@@ -39,6 +38,7 @@ async def compress_context(query: str, raw_memories: list[str], llm) -> list[str
             return [line.strip("- ") for line in compressed_text.split("\n") if line.strip()]
     except Exception as e:
         from ..utils.logging import get_logger
+
         logger = get_logger(__name__)
         logger.error(f"[memory_service] Context compression failed: {e}")
 
@@ -54,6 +54,7 @@ async def retrieve_memories(
     periods: list[str] | None = None,
     include_reflections: bool = True,
     current_tick: int = 0,
+    reflection_query: str | None = None,
 ) -> list[str]:
     """检索角色相关记忆，按综合分数排序返回内容文本.
 
@@ -61,6 +62,12 @@ async def retrieve_memories(
     1. 反思记忆 — ChromaDB 语义检索，全量注入，前置
     2. 短期记忆 — deque 窗口，全量注入，按 tick 倒序
     3. 长期记忆 — ChromaDB 语义召回 → SQLite 补全 → 精排取 top_k
+
+    Args:
+        query: 用于长期记忆检索的 query（动作/事件描述）
+        reflection_query: 用于反思记忆检索的 query（叙事性情境描述）。
+            反思内容是角色洞察（如"正义感与冲动矛盾"），需用情境叙事而非指令性语言匹配。
+            未提供时退化为 query。
 
     参考 Generative Agents / MemGPT：短期+反思全给，长期精选。
     """
@@ -75,10 +82,11 @@ async def retrieve_memories(
         contents: list[str] = []
         seen: set[str] = set()
 
-        # 1. 反思记忆前置 / Reflections first — 全量注入
+        # 1. 反思记忆前置 / Reflections first — 用叙事性 query 检索
         if include_reflections:
+            rq = reflection_query or query
             reflections = await memory_repo.retrieve_reflections(
-                pc_id, query, top_k=3, current_tick=current_tick
+                pc_id, rq, top_k=3, current_tick=current_tick
             )
             for m in reflections:
                 c = getattr(m, "content", None)
@@ -110,7 +118,9 @@ async def retrieve_memories(
             # 精排：三要素评分 + 语义加成
             long_term.sort(
                 key=lambda m: score_memory(
-                    m.importance, m.tick, current_tick,
+                    m.importance,
+                    m.tick,
+                    current_tick,
                     similarity=semantic_scores.get(m.id, 0.5),
                 ),
                 reverse=True,

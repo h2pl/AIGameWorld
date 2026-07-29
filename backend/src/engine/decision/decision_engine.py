@@ -61,17 +61,23 @@ async def decide(
     nearby_actors = [_map_identity(actors[aid]) for aid in actors]
 
     query = f"{scene.name if scene else ''} 做出下一步行动决策".strip()
-    memories = await retrieve_memories(pc_id, query, config=config, top_k=5)
-    
-    # ==== 显式提取最新反思，作为角色的核心认知 ====
-    from ...utils.helpers import get_repo
-    memory_repo = get_repo(config, "memory")
-    core_beliefs = []
-    if memory_repo:
-        recent_reflections = await memory_repo.retrieve_reflections(pc_id, query="", top_k=2)
-        core_beliefs = [r.content for r in recent_reflections]
+    # 反思检索用叙事性情境描述，长期记忆检索用动作 query
+    reflection_query = (
+        f"{me['name']}在{scene.name if scene else '未知场景'}，{plot_brief}"
+        if plot_brief
+        else f"{me['name']}在{scene.name if scene else '未知场景'}的近期经历"
+    )
+    memories = await retrieve_memories(
+        pc_id,
+        query,
+        config=config,
+        top_k=5,
+        current_tick=tick,
+        reflection_query=reflection_query,
+    )
 
     from ...services.memory_service import compress_context
+
     if llm and len(memories) > 3:
         memories = await compress_context(query, memories, llm)
 
@@ -79,14 +85,10 @@ async def decide(
     neo4j_repo = Neo4jRepo()
     semantic_context = await neo4j_repo.get_semantic_context(pc_id, scene.id if scene else None)
     await neo4j_repo.close()
-    
+
     # 拼接到记忆里
     if semantic_context:
-        memories.insert(0, f"[关系网络常识]:\\n{semantic_context}")
-        
-    if core_beliefs:
-        beliefs_str = "\\n".join(f"- {b}" for b in core_beliefs)
-        memories.insert(0, f"[近期核心反思]:\\n{beliefs_str}")
+        memories.insert(0, f"[关系网络常识]:\n{semantic_context}")
 
     ctx = {
         "me": me,

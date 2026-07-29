@@ -164,8 +164,17 @@ async def _generate_explore_data(
     pc = _pc_identity(pc_id, pcs)
 
     query = f"{scene.name if scene else ''} 探索周围环境".strip()
+    # 反思检索用叙事性情境描述 / Narrative query for reflection retrieval
+    reflection_query = f"{pc['name']}在{scene.name if scene else '未知场景'}，观察周围的环境"
+    if plot_brief:
+        reflection_query += f"，{plot_brief}"
     memory_texts = await retrieve_memories(
-        pc_id, query, config=config, top_k=5, current_tick=tick
+        pc_id,
+        query,
+        config=config,
+        top_k=5,
+        current_tick=tick,
+        reflection_query=reflection_query,
     )
 
     ctx = {

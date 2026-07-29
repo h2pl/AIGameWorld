@@ -100,9 +100,13 @@ async def process_combat_action(
         neo4j_repo = Neo4jRepo()
         try:
             await neo4j_repo.merge_relationship(
-                start_label="Actor", start_key="id", start_val=pc_id,
-                end_label="Actor", end_key="id", end_val=target_id,
-                rel_type="ATTACKED"
+                start_label="Actor",
+                start_key="id",
+                start_val=pc_id,
+                end_label="Actor",
+                end_key="id",
+                end_val=target_id,
+                rel_type="ATTACKED",
             )
         finally:
             await neo4j_repo.close()
@@ -186,8 +190,19 @@ async def _generate_narration(
         raise RuntimeError("[combat] LLM client not configured")
 
     query = f"{scene.name if scene else ''} 与 {target.name} 战斗".strip()
+    # 反思检索用叙事性情境描述 / Narrative query for reflection retrieval
+    reflection_query = (
+        f"{pc.name}在{scene.name if scene else '未知场景'}，与{target.name}发生了冲突"
+    )
+    if plot_brief:
+        reflection_query += f"，{plot_brief}"
     memory_texts = await retrieve_memories(
-        pc.id, query, config=config, top_k=5, current_tick=tick
+        pc.id,
+        query,
+        config=config,
+        top_k=5,
+        current_tick=tick,
+        reflection_query=reflection_query,
     )
 
     ctx = {

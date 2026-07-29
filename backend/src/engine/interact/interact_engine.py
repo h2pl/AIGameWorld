@@ -13,7 +13,17 @@ from langchain_core.runnables.config import RunnableConfig
 
 from src.utils.tracing import traced
 
-from ...domain import Action, Actor, Decision, DMRecord, Memory, MemoryType, PlayerCharacter, Scene, importance_of
+from ...domain import (
+    Action,
+    Actor,
+    Decision,
+    DMRecord,
+    Memory,
+    MemoryType,
+    PlayerCharacter,
+    Scene,
+    importance_of,
+)
 from ...domain.scene_object import SceneObject
 from ...schemas.llm_output import InteractOutputSchema
 from ...services.memory_service import retrieve_memories
@@ -126,8 +136,19 @@ async def _generate_interact(
     obj = _find_scene_object(object_id, scene, scene_objects)
 
     query = f"{scene.name if scene else ''} 与 {obj.name if obj else object_id} 交互".strip()
+    # 反思检索用叙事性情境描述 / Narrative query for reflection retrieval
+    pc_name = pc.get("name", pc_id) if isinstance(pc, dict) else getattr(pc, "name", pc_id)
+    obj_name = obj.name if obj else object_id
+    reflection_query = f"{pc_name}在{scene.name if scene else '未知场景'}，注意到了{obj_name}"
+    if plot_brief:
+        reflection_query += f"，{plot_brief}"
     memory_texts = await retrieve_memories(
-        pc_id, query, config=config, top_k=5, current_tick=tick
+        pc_id,
+        query,
+        config=config,
+        top_k=5,
+        current_tick=tick,
+        reflection_query=reflection_query,
     )
 
     ctx = {

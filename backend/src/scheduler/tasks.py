@@ -5,10 +5,10 @@
 
 import asyncio
 
+from ..engine.reflection import reflection_engine
 from ..repository.memory_repo import MemoryRepo
 from ..repository.pc_repo import PcRepo
 from ..utils.logging import get_logger
-from ..engine.reflection import reflection_engine
 
 logger = get_logger(__name__)
 
@@ -43,39 +43,56 @@ class Reflector:
             current_tick = recent_mems[-1].tick
 
             # 触发条件 1: 定期反思 (比如每 50 个 tick)
-            time_to_reflect = (current_tick > 0 and current_tick % 50 == 0)
+            time_to_reflect = current_tick > 0 and current_tick % 50 == 0
 
             # 触发条件 2: 突发极高重要性事件 (>= 8)
             big_event = recent_mems[-1].importance >= 8
 
             # 触发条件 3: 累计重要度超过阈值
             cumulative = False
-            past_refs = await self._memory_repo.retrieve_reflections(pc.id, query="", top_k=1)
-            last_reflect_tick = past_refs[0].tick if past_refs else 0
+            last_reflect_tick = await self._memory_repo.get_last_reflection_tick(pc.id)
 
             if self._memory_repo._sqlite:
                 rows = await self._memory_repo._sqlite.fetch_all(
                     "SELECT SUM(importance) as total FROM memories WHERE pc_id = ? AND tick > ? AND memory_type != 'reflection'",
-                    (pc.id, last_reflect_tick)
+                    (pc.id, last_reflect_tick),
                 )
                 total_importance = rows[0]["total"] if rows and rows[0]["total"] else 0
                 if total_importance >= self._threshold:
                     cumulative = True
 
             if time_to_reflect or big_event or cumulative:
-                logger.info(f"[scheduler] Triggering reflection for PC {pc.name} (tick={current_tick})")
+                logger.info(
+                    f"[scheduler] Triggering reflection for PC {pc.name} (tick={current_tick})"
+                )
 
-                # 获取历史反思上下文
-                past_refs_full = await self._memory_repo.retrieve_reflections(pc.id, "behavior growth", top_k=3)
+                # 获取历史反思上下文（用近期记忆内容构造叙事性 query，匹配反思的语义空间）
+                # / Get past reflection context using recent memory content as narrative query
+                recent_summary = " ".join(m.content for m in recent_mems[-3:])
+                context_query = (
+                    f"{pc.name} {recent_summary}"
+                    if recent_summary
+                    else f"{pc.name}的近期经历与成长"
+                )
+                past_refs_full = await self._memory_repo.retrieve_reflections(
+                    pc.id, query=context_query, top_k=3, current_tick=current_tick
+                )
                 past_texts = [r.content for r in past_refs_full]
+
+                # 解析角色弧 JSON / Parse character arc from arc_json
+                import json as _json
+
+                arc_data = _json.loads(pc.arc_json) if pc.arc_json else {}
+                arc_stage = arc_data.get("stage", "")
+                arc_description = arc_data.get("description", "")
 
                 # 调用底层 Reflection Engine (LLM)
                 results = await reflection_engine.reflect(
                     pc_id=pc.id,
                     pc_name=pc.name,
                     pc_type="pc",
-                    arc_stage=pc.character_arc.stage if pc.character_arc else "",
-                    arc_description=pc.character_arc.description if pc.character_arc else "",
+                    arc_stage=arc_stage,
+                    arc_description=arc_description,
                     memories=recent_mems[-10:],  # 把最近的记忆发给 LLM
                     recent_reflections=past_texts,
                     tick=current_tick,
@@ -85,5 +102,9 @@ class Reflector:
                 if results:
                     insight = results[0]["insight"]
                     # 写入长期记忆 ChromaDB + SQLite
-                    await self._memory_repo.store_reflection(pc.id, insight, current_tick, self._world_id)
-                    logger.info(f"[scheduler] Reflection completed for {pc.name}: {insight[:30]}...")
+                    await self._memory_repo.store_reflection(
+                        pc.id, insight, current_tick, self._world_id
+                    )
+                    logger.info(
+                        f"[scheduler] Reflection completed for {pc.name}: {insight[:30]}..."
+                    )
