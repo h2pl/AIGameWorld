@@ -12,7 +12,6 @@ from langchain_core.runnables.config import RunnableConfig
 from src.utils.tracing import traced
 
 from ...domain import Memory
-from ...repository.neo4j_repo import Neo4jRepo
 from ...schemas.llm_output import ReflectionOutputSchema
 from ...utils.helpers import get_llm
 from ...utils.logging import get_logger
@@ -65,17 +64,18 @@ async def reflect(
         ReflectionOutputSchema,
         [{"role": "user", "content": prompt}],
     )
-    
+
     insight_text = _format_insight(pc_id, pc_name, pc_type, tick, result)
-    
-    # ==== 提取关系更新并同步至 Neo4j 图数据库 ====
-    await _sync_reflection_to_graph(pc_id, insight_text["insight"])
-    
+
     return [insight_text]
 
 
 def _format_insight(pc_id: str, pc_name: str, pc_type: str, tick: int, result) -> dict:
-    """格式化反思输出 / Format reflection output."""
+    """格式化反思输出 / Format reflection output.
+
+    PC: 弧线分析 + 性格洞察，importance=10
+    Actor: 行为模式总结，importance=5
+    """
     if pc_type == "pc":
         text = " ".join(
             filter(
@@ -99,34 +99,3 @@ def _format_insight(pc_id: str, pc_name: str, pc_type: str, tick: int, result) -
         "importance": importance,
         "tick": tick,
     }
-
-async def _sync_reflection_to_graph(pc_id: str, insight_text: str) -> None:
-    """根据反思结果，提取出可能的关系变化，同步到 Neo4j.
-    目前采用简单的关键词匹配策略，如果大模型反思中明确提到了某个人且带有信任/敌意倾向，
-    就覆写关系边。
-    """
-    # 这里是一个极其简化的硬编码示例，实际工程中最好用 LLM 提取出 (Actor, Relation) 结构化结果
-    neo4j_repo = Neo4jRepo()
-    try:
-        # 简单粗暴的正则/规则匹配，仅作概念验证 (MVP)
-        import re
-        trust_matches = re.findall(r"开始信任\s*([\w]+)", insight_text)
-        enemy_matches = re.findall(r"对\s*([\w]+)\s*感到敌意", insight_text)
-        
-        for target_name in trust_matches:
-            await neo4j_repo.merge_relationship(
-                start_label="Actor", start_key="id", start_val=pc_id,
-                end_label="Actor", end_key="name", end_val=target_name,
-                rel_type="TRUSTS"
-            )
-            
-        for target_name in enemy_matches:
-            await neo4j_repo.merge_relationship(
-                start_label="Actor", start_key="id", start_val=pc_id,
-                end_label="Actor", end_key="name", end_val=target_name,
-                rel_type="ENEMY_OF"
-            )
-    except Exception as e:
-        logger.error(f"[reflection] Sync to graph failed: {e}")
-    finally:
-        await neo4j_repo.close()

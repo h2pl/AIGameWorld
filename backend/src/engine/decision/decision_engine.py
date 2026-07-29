@@ -9,10 +9,9 @@ from langchain_core.runnables.config import RunnableConfig
 from src.utils.tracing import traced
 
 from ...domain import Actor, Decision, DMRecord, PlayerCharacter, Scene, SceneObject
-from ...repository.neo4j_repo import Neo4jRepo
 from ...schemas.llm_output import CharacterActionSchema, PCDecideSchema
 from ...services.memory_service import retrieve_memories
-from ...utils.helpers import get_llm
+from ...utils.helpers import get_llm, get_repo
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -82,13 +81,11 @@ async def decide(
         memories = await compress_context(query, memories, llm)
 
     # ==== 引入 GraphRAG 关系记忆 ====
-    neo4j_repo = Neo4jRepo()
-    semantic_context = await neo4j_repo.get_semantic_context(pc_id, scene.id if scene else None)
-    await neo4j_repo.close()
-
-    # 拼接到记忆里
-    if semantic_context:
-        memories.insert(0, f"[关系网络常识]:\n{semantic_context}")
+    neo4j_repo = get_repo(config, "neo4j")
+    if neo4j_repo:
+        semantic_context = await neo4j_repo.get_semantic_context(pc_id, scene.id if scene else None)
+        if semantic_context:
+            memories.insert(0, f"[关系网络]:\n{semantic_context}")
 
     ctx = {
         "me": me,

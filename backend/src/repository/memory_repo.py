@@ -54,7 +54,7 @@ def score_memory(
 
 
 class MemoryRepo:
-    """角色记忆存取——短期记忆(deque) + 长期记忆(SQLite+ChromaDB) + 关系记忆(SQLite表) + 反思引擎."""
+    """角色记忆存取——短期记忆(deque) + 长期记忆(SQLite+ChromaDB) + 反思记忆(ChromaDB+SQLite)."""
 
     def __init__(self, chroma: ChromaClient, sqlite=None):
         self._chroma = chroma
@@ -102,23 +102,6 @@ class MemoryRepo:
         )
         await self._sqlite.execute(
             "CREATE INDEX IF NOT EXISTS idx_memories_period ON memories(period)"
-        )
-        await self._sqlite.execute(
-            """
-            CREATE TABLE IF NOT EXISTS semantic_network (
-                id          TEXT PRIMARY KEY,
-                world_id    TEXT    NOT NULL,
-                subject     TEXT    NOT NULL,
-                predicate   TEXT    NOT NULL,
-                object      TEXT    NOT NULL,
-                confidence  REAL    NOT NULL DEFAULT 1.0,
-                updated_at  TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
-                UNIQUE(world_id, subject, predicate, object)
-            )
-            """
-        )
-        await self._sqlite.execute(
-            "CREATE INDEX IF NOT EXISTS idx_semantic_network_subject ON semantic_network(world_id, subject)"
         )
 
         await self._sqlite.commit()
@@ -371,66 +354,6 @@ class MemoryRepo:
         if rows and rows[0]["last_tick"] is not None:
             return rows[0]["last_tick"]
         return 0
-
-    # ── 3. 关系记忆 / Semantic Memory (Phase 2) ──
-    @traced()
-    async def upsert_relation(
-        self,
-        world_id: str,
-        subject: str,
-        predicate: str,
-        object_: str,
-        confidence: float = 1.0,
-    ) -> None:
-        """更新或插入一条语义关系 / Upsert a semantic relation (Triple)."""
-        if not self._sqlite:
-            return
-        if not self._table_ensured:
-            await self._ensure_table()
-
-        rel_id = f"rel_{uuid4().hex[:8]}"
-        await self._sqlite.execute(
-            """
-            INSERT INTO semantic_network (id, world_id, subject, predicate, object, confidence)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(world_id, subject, predicate, object)
-            DO UPDATE SET
-                confidence = excluded.confidence,
-                updated_at = datetime('now', 'localtime')
-            """,
-            (rel_id, world_id, subject, predicate, object_, confidence),
-        )
-        await self._sqlite.commit()
-
-    @traced()
-    async def get_relations_for(self, world_id: str, subject: str) -> list[dict]:
-        """获取某主体的所有语义关系 / Get all semantic relations for a subject."""
-        if not self._sqlite:
-            return []
-        if not self._table_ensured:
-            await self._ensure_table()
-
-        rows = await self._sqlite.fetch_all(
-            "SELECT predicate, object, confidence FROM semantic_network WHERE world_id = ? AND subject = ?",
-            (world_id, subject),
-        )
-        return [dict(r) for r in rows]
-
-    @traced()
-    async def delete_relation(
-        self, world_id: str, subject: str, predicate: str, object_: str
-    ) -> None:
-        """删除一条语义关系 / Delete a semantic relation."""
-        if not self._sqlite:
-            return
-        if not self._table_ensured:
-            await self._ensure_table()
-
-        await self._sqlite.execute(
-            "DELETE FROM semantic_network WHERE world_id = ? AND subject = ? AND predicate = ? AND object = ?",
-            (world_id, subject, predicate, object_),
-        )
-        await self._sqlite.commit()
 
     # ── 生命周期 / Lifecycle ──
 

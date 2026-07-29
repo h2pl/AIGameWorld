@@ -25,7 +25,6 @@ from ...domain import (
     SceneObject,
     importance_of,
 )
-from ...repository.neo4j_repo import Neo4jRepo
 from ...schemas.llm_output import DialogueSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm, get_repo
@@ -89,8 +88,8 @@ async def process_talk_action(
 
     # ==== 写入 GraphRAG 关系图谱 ====
     if target_id:
-        neo4j_repo = Neo4jRepo()
-        try:
+        neo4j_repo = get_repo(config, "neo4j")
+        if neo4j_repo:
             await neo4j_repo.merge_relationship(
                 start_label="Actor",
                 start_key="id",
@@ -99,9 +98,8 @@ async def process_talk_action(
                 end_key="id",
                 end_val=target_id,
                 rel_type="TALKED_TO",
+                tick=tick,
             )
-        finally:
-            await neo4j_repo.close()
 
     logger.info("[engine] %s ↔ %s : %d turns", char_id, target_id, len(turns))
     return Action(
@@ -156,6 +154,13 @@ async def _generate_dialogue(
         current_tick=tick,
         reflection_query=reflection_query,
     )
+
+    # 注入关系记忆 / Inject relationship context
+    neo4j_repo = get_repo(config, "neo4j")
+    if neo4j_repo:
+        rel_ctx = await neo4j_repo.get_semantic_context(char_id, scene.id if scene else None)
+        if rel_ctx:
+            memory_texts.insert(0, f"[关系网络]:\n{rel_ctx}")
 
     ctx = {
         "initiator": _character_ctx(char_id, initiator),

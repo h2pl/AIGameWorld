@@ -145,6 +145,7 @@ async def lifespan(app: FastAPI):
     from .repository.event_repo import TickEventRepo
     from .repository.knowledge_repo import KnowledgeRepo
     from .repository.memory_repo import MemoryRepo
+    from .repository.neo4j_repo import Neo4jRepo
     from .repository.pc_repo import PcRepo
     from .repository.scene_repo import SceneRepo
     from .repository.world_repo import WorldRepo
@@ -227,6 +228,15 @@ async def lifespan(app: FastAPI):
         "memory": memory_repo,
         "knowledge": knowledge_repo,
     }
+
+    # Neo4j 图数据库（可选，不可用时优雅降级）/ Neo4j graph DB (optional, graceful degradation)
+    neo4j_repo = Neo4jRepo()
+    if await neo4j_repo.verify_connectivity():
+        repos["neo4j"] = neo4j_repo
+    else:
+        await neo4j_repo.close()
+        logger.warning("[lifespan] Neo4j unavailable, graph memory disabled")
+
     app.state.repos = repos
 
     app.state.orchestrator = Orchestrator(

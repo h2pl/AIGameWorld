@@ -5,8 +5,7 @@
 
 from ..domain.event import TickEvent, TickEventType
 from ..graph.state import OverallState
-from ..repository.neo4j_repo import Neo4jRepo
-from ..utils.helpers import assign_spawn_positions
+from ..utils.helpers import assign_spawn_positions, get_repo
 from ..utils.logging import get_logger, trace_node
 
 logger = get_logger(__name__)
@@ -22,35 +21,32 @@ async def init_graph_db(state: OverallState, config=None) -> dict:
     if not pcs:
         return {}
 
-    try:
-        neo4j_repo = Neo4jRepo()
-        await neo4j_repo.verify_connectivity()
-    except Exception as e:
-        logger.warning("[tick_init] Neo4j unavailable, skipping graph init: %s", e)
+    neo4j_repo = get_repo(config, "neo4j")
+    if not neo4j_repo:
+        logger.warning("[tick_init] Neo4j unavailable, skipping graph init")
         return {}
 
     # 初始化 PC 节点
-    try:
-        for pc in pcs.values():
-            await neo4j_repo.merge_node(
-                label="Actor", properties={"id": pc.id, "name": pc.name, "type": "pc"}
-            )
+    for pc in pcs.values():
+        await neo4j_repo.merge_node(
+            label="Actor", properties={"id": pc.id, "name": pc.name, "type": "pc"}
+        )
 
-        # 建立主角团内部的友军关系 (PARTY_MEMBER)
-        for pc1 in pcs.values():
-            for pc2 in pcs.values():
-                if pc1.id != pc2.id:
-                    await neo4j_repo.merge_relationship(
-                        start_label="Actor",
-                        start_key="id",
-                        start_val=pc1.id,
-                        end_label="Actor",
-                        end_key="id",
-                        end_val=pc2.id,
-                        rel_type="PARTY_MEMBER",
-                    )
-    finally:
-        await neo4j_repo.close()
+    # 建立主角团内部的友军关系 (PARTY_MEMBER)
+    tick = state.get("tick", 1)
+    for pc1 in pcs.values():
+        for pc2 in pcs.values():
+            if pc1.id != pc2.id:
+                await neo4j_repo.merge_relationship(
+                    start_label="Actor",
+                    start_key="id",
+                    start_val=pc1.id,
+                    end_label="Actor",
+                    end_key="id",
+                    end_val=pc2.id,
+                    rel_type="PARTY_MEMBER",
+                    tick=tick,
+                )
     return {}
 
 

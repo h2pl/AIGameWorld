@@ -81,6 +81,7 @@ ignore = [
     # 安全误报
     "S101",         # pytest assert（测试标准范式）
     "S104",         # 0.0.0.0 bind（config 默认值，非漏洞）
+    "S107",         # 硬编码密码（本地开发默认值，非生产密钥）
     "S311",         # random.randint（DND 骰子，非密码学用途）
     "S701",         # jinja2 autoescape（本项目只渲染 LLM prompt，非 HTML）
     # 质量误报
@@ -90,6 +91,11 @@ ignore = [
     "RUF001", "RUF002", "RUF003",  # 中文全角标点（中英双语项目）
     "B008",         # FastAPI Depends 必须在参数默认值中调用
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# 工具脚本：安全警告和风格建议不适用 / Utility scripts: security & style N/A
+"scripts/**" = ["E402", "S", "SIM", "PERF", "PTH", "PL", "C4", "B", "F541", "B007"]
+"tests/**" = ["S106", "S107"]
 
 [tool.ruff.format]
 quote-style = "double"

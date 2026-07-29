@@ -26,10 +26,9 @@ from ...domain import (
     SceneObject,
     importance_of,
 )
-from ...repository.neo4j_repo import Neo4jRepo
 from ...schemas.llm_output import CombatNarrationSchema
 from ...services.memory_service import retrieve_memories
-from ...utils.helpers import dict_without, get_llm, validate_position
+from ...utils.helpers import dict_without, get_llm, get_repo, validate_position
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -97,8 +96,8 @@ async def process_combat_action(
 
     # ==== 写入 GraphRAG 关系图谱 ====
     if target_id:
-        neo4j_repo = Neo4jRepo()
-        try:
+        neo4j_repo = get_repo(config, "neo4j")
+        if neo4j_repo:
             await neo4j_repo.merge_relationship(
                 start_label="Actor",
                 start_key="id",
@@ -107,9 +106,8 @@ async def process_combat_action(
                 end_key="id",
                 end_val=target_id,
                 rel_type="ATTACKED",
+                tick=tick,
             )
-        finally:
-            await neo4j_repo.close()
 
     logger.info(
         "[combat] %s → %s : %s (defeated=%s)",
@@ -204,6 +202,13 @@ async def _generate_narration(
         current_tick=tick,
         reflection_query=reflection_query,
     )
+
+    # 注入关系记忆 / Inject relationship context
+    neo4j_repo = get_repo(config, "neo4j")
+    if neo4j_repo:
+        rel_ctx = await neo4j_repo.get_semantic_context(pc.id, scene.id if scene else None)
+        if rel_ctx:
+            memory_texts.insert(0, f"[关系网络]:\n{rel_ctx}")
 
     ctx = {
         "pc": _combatant_ctx(pc),
