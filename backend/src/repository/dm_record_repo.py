@@ -96,11 +96,22 @@ class DMRecordRepo:
     @traced()
     async def insert_summary(self, summary: StorySummary) -> None:
         """插入一条故事摘要."""
-        logger.info("[repo] insert_summary ticks=%s-%s", summary.tick_start, summary.tick_end)
+        logger.info(
+            "[repo] insert_summary ticks=%s-%s type=%s",
+            summary.tick_start,
+            summary.tick_end,
+            summary.summary_type,
+        )
         await self._db.execute(
-            """INSERT OR REPLACE INTO story_summaries (world_id, tick_start, tick_end, summary)
-               VALUES (?, ?, ?, ?)""",
-            (summary.world_id, summary.tick_start, summary.tick_end, summary.summary),
+            """INSERT OR REPLACE INTO story_summaries (world_id, tick_start, tick_end, summary, summary_type)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                summary.world_id,
+                summary.tick_start,
+                summary.tick_end,
+                summary.summary,
+                summary.summary_type,
+            ),
         )
         await self._db.commit()
 
@@ -117,19 +128,24 @@ class DMRecordRepo:
         await self._db.commit()
 
     @traced()
-    async def load_summaries(self, world_id: str) -> list[StorySummary]:
-        """按 world 加载所有摘要."""
-        rows = await self._db.fetch_all(
-            "SELECT world_id, tick_start, tick_end, summary FROM story_summaries "
-            "WHERE world_id = ? ORDER BY tick_start",
-            (world_id,),
-        )
+    async def load_summaries(
+        self, world_id: str, summary_type: str | None = None
+    ) -> list[StorySummary]:
+        """按 world 加载摘要，可按类型过滤."""
+        sql = "SELECT world_id, tick_start, tick_end, summary, summary_type FROM story_summaries WHERE world_id = ?"
+        params: list = [world_id]
+        if summary_type:
+            sql += " AND summary_type = ?"
+            params.append(summary_type)
+        sql += " ORDER BY tick_start"
+        rows = await self._db.fetch_all(sql, tuple(params))
         return [
             StorySummary(
                 world_id=r["world_id"],
                 tick_start=r["tick_start"],
                 tick_end=r["tick_end"],
                 summary=r["summary"],
+                summary_type=r.get("summary_type", "narrative"),
             )
             for r in rows
         ]

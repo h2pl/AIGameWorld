@@ -2,12 +2,12 @@
 
 职责：
 1. build_dm_context() — 分层上下文组装（远期摘要 + 近期窗口 + Token 预算）
-2. generate_dm_summary() — 每 N tick 记忆巩固（LLM 压缩）
+2. generate_dm_summary() — 每 N tick 记忆巩固（LLM 压缩，分 narrative/scene 两类）
 
 设计原则：
 - 远期摘要放开头，近期原文放结尾（对抗 Lost in the Middle）
 - Token 预算裁剪：近期窗口优先保留，剩余预算给远期摘要
-- 摘要约束：保留剧情转折+NPC+线索，丢弃环境描写+过渡叙述
+- 摘要分离：事件摘要(narrative) 与 场景摘要(scene) 独立压缩、独立注入
 """
 
 from langchain_core.runnables.config import RunnableConfig
@@ -24,71 +24,96 @@ async def build_dm_context(
     world_id: str,
     current_tick: int,
     config: RunnableConfig = None,
-) -> str:
+) -> dict:
     """组装 DM 上下文（分层优先级 + Token 预算）.
 
-    架构：
-    1. 远期摘要 (story_summaries) — 低优先级，可截断
-    2. 近期窗口 (最近 N 条 dm_records) — 中优先级，原文保留
-
-    返回拼接后的上下文文本，供 dm_create / dm_narrate 注入 prompt。
+    返回结构化 dict：
+    {
+        "narrative_summaries": str,  # 远期事件摘要
+        "scene_summaries": str,      # 远期场景摘要
+        "recent_narratives": str,    # 近期事件原文
+        "recent_scenes": str,        # 近期场景原文
+    }
     """
+    empty = {
+        "narrative_summaries": "",
+        "scene_summaries": "",
+        "recent_narratives": "",
+        "recent_scenes": "",
+    }
     if is_mock(config):
-        return ""
+        return empty
 
     dm_record_repo = get_repo(config, "dm_record")
     if not dm_record_repo:
-        return ""
+        return empty
 
     try:
-        sections: list[str] = []
+        # 1. 远期摘要（分类型）/ Distant summaries by type
+        narrative_sums = await dm_record_repo.load_summaries(world_id, summary_type="narrative")
+        scene_sums = await dm_record_repo.load_summaries(world_id, summary_type="scene")
 
-        # 1. 远期摘要 / Distant summaries (low priority, truncatable)
-        summaries = await dm_record_repo.load_summaries(world_id)
-        summary_texts = [
+        narrative_texts = [
             f"[tick {s.tick_start}-{s.tick_end}] {s.summary}"
-            for s in summaries
+            for s in narrative_sums
+            if s.tick_end < current_tick
+        ]
+        scene_texts = [
+            f"[tick {s.tick_start}-{s.tick_end}] {s.summary}"
+            for s in scene_sums
             if s.tick_end < current_tick
         ]
 
-        # 2. 近期窗口 / Recent window (medium priority, verbatim)
+        # 2. 近期窗口（分字段）/ Recent window by field
         records = await dm_record_repo.load_by_world(world_id, limit=_DM_RECENT_COUNT)
-        recent_texts: list[str] = []
+        recent_narr_lines: list[str] = []
+        recent_scene_lines: list[str] = []
         for r in records:
             if r.tick >= current_tick:
                 continue
-            parts: list[str] = []
-            if r.plot_brief:
-                parts.append(f"剧情：{r.plot_brief}")
             if r.dm_narrative:
-                parts.append(f"叙事：{r.dm_narrative}")
-            if parts:
-                recent_texts.append(f"[tick {r.tick}] " + " | ".join(parts))
+                recent_narr_lines.append(f"[tick {r.tick}] {r.dm_narrative}")
+            if r.plot_brief:
+                recent_scene_lines.append(f"[tick {r.tick}] {r.plot_brief}")
 
         # 3. Token 预算裁剪 / Budget trimming
-        recent_block = "\n".join(recent_texts)
-        summary_block = "\n".join(summary_texts)
+        recent_narr = "\n".join(recent_narr_lines)
+        recent_scene = "\n".join(recent_scene_lines)
+        summary_narr = "\n".join(narrative_texts)
+        summary_scene = "\n".join(scene_texts)
 
-        # 近期窗口优先保留，剩余预算给远期摘要
-        remaining = _DM_CONTEXT_BUDGET - len(recent_block)
-        if len(summary_block) > remaining > 0:
-            # 从最远摘要开始截断 / Trim oldest summaries first
-            summary_block = summary_block[-remaining:]
-            # 截断到第一个完整行 / Cut to first complete line
-            nl = summary_block.find("\n")
-            if nl > 0:
-                summary_block = summary_block[nl + 1 :]
+        # 近期优先保留，剩余预算给远期摘要
+        recent_total = len(recent_narr) + len(recent_scene)
+        remaining = _DM_CONTEXT_BUDGET - recent_total
+        summary_total = len(summary_narr) + len(summary_scene)
+        if summary_total > remaining > 0:
+            # 按比例截断 / Proportional trim
+            ratio = remaining / summary_total
+            summary_narr = _trim_block(summary_narr, int(len(summary_narr) * ratio))
+            summary_scene = _trim_block(summary_scene, int(len(summary_scene) * ratio))
         elif remaining <= 0:
-            summary_block = ""
+            summary_narr = ""
+            summary_scene = ""
 
-        if summary_block:
-            sections.append(f"【远期脉络】\n{summary_block}")
-        if recent_block:
-            sections.append(f"【近期事件】\n{recent_block}")
-
-        return "\n\n".join(sections)
+        return {
+            "narrative_summaries": summary_narr,
+            "scene_summaries": summary_scene,
+            "recent_narratives": recent_narr,
+            "recent_scenes": recent_scene,
+        }
     except Exception:
-        return ""
+        return empty
+
+
+def _trim_block(block: str, max_chars: int) -> str:
+    """截断文本块到指定长度，保留完整行 / Trim block to max_chars keeping complete lines."""
+    if len(block) <= max_chars:
+        return block
+    trimmed = block[-max_chars:]
+    nl = trimmed.find("\n")
+    if nl > 0:
+        trimmed = trimmed[nl + 1 :]
+    return trimmed
 
 
 async def generate_dm_summary(
@@ -99,7 +124,7 @@ async def generate_dm_summary(
     """每 N tick 生成故事摘要（巩固）/ Generate story summary every N ticks.
 
     触发条件：current_tick % _DM_SUMMARY_INTERVAL == 0
-    将过去 N 条 dm_records 压缩为 1 条 story_summary。
+    分别压缩 dm_narrative → narrative 摘要，plot_brief → scene 摘要。
     """
     if current_tick <= 0 or current_tick % _DM_SUMMARY_INTERVAL != 0:
         return
@@ -122,23 +147,22 @@ async def generate_dm_summary(
     if not records:
         return
 
-    # 构造待压缩文本 / Build source text
-    source_lines: list[str] = []
+    # 分离两类素材 / Separate source data by type
+    narrative_records: list[dict] = []
+    scene_records: list[dict] = []
     for r in records:
-        parts = []
-        if r.plot_brief:
-            parts.append(f"剧情：{r.plot_brief}")
         if r.dm_narrative:
-            parts.append(f"叙事：{r.dm_narrative}")
-        if parts:
-            source_lines.append(f"[tick {r.tick}] " + " | ".join(parts))
+            narrative_records.append({"tick": r.tick, "text": r.dm_narrative})
+        if r.plot_brief:
+            scene_records.append({"tick": r.tick, "text": r.plot_brief})
 
-    if not source_lines:
+    if not narrative_records and not scene_records:
         return
 
-    source_text = "\n".join(source_lines)
-
     # LLM 压缩 / LLM compression
+    from pathlib import Path
+
+    from jinja2 import Environment, FileSystemLoader
     from langchain_core.messages import HumanMessage
 
     from ..domain.story_summary import StorySummary
@@ -150,33 +174,45 @@ async def generate_dm_summary(
     if not llm:
         return
 
-    compress_prompt = (
-        f"以下是游戏世界 tick {tick_start} 到 {tick_end} 的剧情记录：\n\n"
-        f"{source_text}\n\n"
-        "请将上述内容压缩为一段简洁的故事摘要（150字以内）。\n"
-        "保留：剧情转折点、NPC名称与态度变化、未解决线索、队伍状态变化。\n"
-        "丢弃：环境描写、过渡性叙述、重复信息。\n"
-        "直接输出摘要文本，不要任何前缀。"
-    )
+    _prompts_root = Path(__file__).parent.parent / "prompts"
+    _env = Environment(loader=FileSystemLoader(_prompts_root), trim_blocks=True, lstrip_blocks=True)
 
-    try:
-        summary_text = await llm.call(
-            purpose="reflection",
-            tick_messages=[HumanMessage(content=compress_prompt)],
+    # 分别生成两类摘要 / Generate both summary types
+    _type_templates = {
+        "narrative": "dm/dm_summarize_narrative.jinja",
+        "scene": "dm/dm_summarize_scene.jinja",
+    }
+    for summary_type, source_records in [
+        ("narrative", narrative_records),
+        ("scene", scene_records),
+    ]:
+        if not source_records:
+            continue
+        prompt = _env.get_template(_type_templates[summary_type]).render(
+            tick_start=tick_start,
+            tick_end=tick_end,
+            records=source_records,
         )
-        if summary_text and summary_text.strip():
-            summary = StorySummary(
-                world_id=world_id,
-                tick_start=tick_start,
-                tick_end=tick_end,
-                summary=summary_text.strip(),
+        try:
+            summary_text = await llm.call(
+                purpose="reflection",
+                tick_messages=[HumanMessage(content=prompt)],
             )
-            await dm_record_repo.insert_summary(summary)
-            _logger.info(
-                "[dm_context] Generated summary tick %d-%d: %s",
-                tick_start,
-                tick_end,
-                summary_text[:50],
-            )
-    except Exception as e:
-        _logger.warning("[dm_context] Summary generation failed: %s", e)
+            if summary_text and summary_text.strip():
+                summary = StorySummary(
+                    world_id=world_id,
+                    tick_start=tick_start,
+                    tick_end=tick_end,
+                    summary=summary_text.strip(),
+                    summary_type=summary_type,
+                )
+                await dm_record_repo.insert_summary(summary)
+                _logger.info(
+                    "[dm_context] Generated %s summary tick %d-%d: %s",
+                    summary_type,
+                    tick_start,
+                    tick_end,
+                    summary_text[:50],
+                )
+        except Exception as e:
+            _logger.warning("[dm_context] %s summary generation failed: %s", summary_type, e)

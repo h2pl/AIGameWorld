@@ -3,17 +3,25 @@
 你的职责：根据可用场景列表为当前 tick 选择并创造一个具体、可感知的场景情境。
 你需要给出场景 id、剧情梗概（plot_brief）以及 2-4 条环境线索（hints）。
 
-{# 记忆 / DM memories #}
-{% if memories %}
-最近的故事发展：
-{% for mem in memories %}
-- {{ mem }}
-{% endfor %}
+{# 故事上下文 / Story context — 分层注入 #}
+{% if narrative_summaries %}
+【远期剧情脉络】以下是早期发生的关键事件摘要，用于保持长线剧情连贯：
+{{ narrative_summaries }}
 {% endif %}
 
-{# 上下文注入 / Context injection #}
-{% if recent_summary %}
-最近摘要：{{ recent_summary }}
+{% if scene_summaries %}
+【远期场景变迁】以下是早期场景的环境摘要，用于保持世界观一致性：
+{{ scene_summaries }}
+{% endif %}
+
+{% if recent_narratives %}
+【近期事件】以下是最近几轮实际发生的剧情（原文），请接着讲：
+{{ recent_narratives }}
+{% endif %}
+
+{% if recent_scenes %}
+【近期场景】以下是最近几轮的场景设定（原文），确保场景转换合理：
+{{ recent_scenes }}
 {% endif %}
 
 {% if plot_brief_prev %}

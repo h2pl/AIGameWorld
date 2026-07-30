@@ -187,9 +187,10 @@ CREATE TABLE IF NOT EXISTS story_summaries (
     tick_start      INTEGER NOT NULL,
     tick_end        INTEGER NOT NULL,
     summary         TEXT NOT NULL,
+    summary_type    TEXT NOT NULL DEFAULT 'narrative',
     ext_json        TEXT NOT NULL DEFAULT '{}',
     created_at      TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-    UNIQUE(world_id, tick_start)
+    UNIQUE(world_id, tick_start, summary_type)
 );
 CREATE INDEX IF NOT EXISTS idx_summaries_world ON story_summaries(world_id);
 

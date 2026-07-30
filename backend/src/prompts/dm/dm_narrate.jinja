@@ -3,12 +3,25 @@
 你的职责：以第三人称 DND DM 口吻，把本 tick（第 {{ tick }} 轮）中实际发生的事情讲成一个完整的小故事。
 请基于下面的完整上下文，串联场景、环境提示、角色行动，写出一段连贯、有画面感的叙事。
 
-{# 记忆 / DM memories #}
-{% if memories %}
-最近的故事发展：
-{% for mem in memories %}
-- {{ mem }}
-{% endfor %}
+{# 故事上下文 / Story context — 分层注入 #}
+{% if narrative_summaries %}
+【远期剧情脉络】早期关键事件摘要，保持长线剧情连贯：
+{{ narrative_summaries }}
+{% endif %}
+
+{% if scene_summaries %}
+【远期场景变迁】早期场景环境摘要，保持世界观一致性：
+{{ scene_summaries }}
+{% endif %}
+
+{% if recent_narratives %}
+【近期事件】最近几轮实际发生的剧情（原文），请自然衔接：
+{{ recent_narratives }}
+{% endif %}
+
+{% if recent_scenes %}
+【近期场景】最近几轮的场景设定（原文），确保环境描写连贯：
+{{ recent_scenes }}
 {% endif %}
 
 {# 上一轮叙事 / Previous tick narrative for continuity #}

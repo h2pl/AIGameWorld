@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 PURPOSE_TEMPLATES: dict[str, tuple[str | None, str]] = {
     "dm_create": ("dm/_dm_system.jinja", "dm/dm_create.jinja"),
     "dm_narrate": ("dm/_dm_system.jinja", "dm/dm_narrate.jinja"),
+    "dm_summarize_narrative": (None, "dm/dm_summarize_narrative.jinja"),
+    "dm_summarize_scene": (None, "dm/dm_summarize_scene.jinja"),
     "pc_decision": ("decide/_pc_system.jinja", "decide/pc_decide.jinja"),
     "interact": ("interact/_interact_system.jinja", "interact/interact.jinja"),
     "explore": ("explore/_explore_system.jinja", "explore/explore.jinja"),

@@ -60,9 +60,14 @@ async def dm_create(
         scenes = [_enrich_scene(s, scene_objects_by_scene.get(s.id, [])) for s in raw_scenes]
 
     # 组装 DM 上下文（远期摘要 + 近期窗口）/ Build DM context (summaries + recent)
-    dm_context = ""
+    dm_ctx = {
+        "narrative_summaries": "",
+        "scene_summaries": "",
+        "recent_narratives": "",
+        "recent_scenes": "",
+    }
     try:
-        dm_context = await build_dm_context(world_id or "", tick, config=config)
+        dm_ctx = await build_dm_context(world_id or "", tick, config=config)
     except Exception:
         logger.warning("[engine] dm_create context build failed, continuing without context")
 
@@ -85,12 +90,13 @@ async def dm_create(
     system_prompt = await _render_dm_system(config, world_id)
     prompt = _PROMPTS.get_template("dm/dm_create.jinja").render(
         scenes=scenes,
-        recent_summary="",
         plot_brief_prev=plot_brief,
         prev_narrative=prev_narrative,
-        memories=[dm_context] if dm_context else [],
+        narrative_summaries=dm_ctx["narrative_summaries"],
+        scene_summaries=dm_ctx["scene_summaries"],
+        recent_narratives=dm_ctx["recent_narratives"],
+        recent_scenes=dm_ctx["recent_scenes"],
         world_knowledge=world_knowledge,
-        pacing={},
     )
     result = await llm.call_structured(
         "dm_create",
@@ -142,9 +148,14 @@ async def dm_narrate(
         raise RuntimeError("[dm_narrate] LLM client not configured")
 
     # 组装 DM 上下文（远期摘要 + 近期窗口）
-    dm_context = ""
+    dm_ctx = {
+        "narrative_summaries": "",
+        "scene_summaries": "",
+        "recent_narratives": "",
+        "recent_scenes": "",
+    }
     try:
-        dm_context = await build_dm_context(world_id or "", tick, config=config)
+        dm_ctx = await build_dm_context(world_id or "", tick, config=config)
     except Exception:
         logger.warning("[engine] dm_narrate context build failed, continuing without context")
 
@@ -175,7 +186,10 @@ async def dm_narrate(
         events=_event_summaries(events),
         actions=actions,
         prev_narrative=prev_narrative,
-        memories=[dm_context] if dm_context else [],
+        narrative_summaries=dm_ctx["narrative_summaries"],
+        scene_summaries=dm_ctx["scene_summaries"],
+        recent_narratives=dm_ctx["recent_narratives"],
+        recent_scenes=dm_ctx["recent_scenes"],
         world_knowledge=world_knowledge,
     )
 

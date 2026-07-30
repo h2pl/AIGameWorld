@@ -1,0 +1,12 @@
+{# DM 事件摘要压缩 / DM narrative summary compression #}
+{# 输入源：dm_narrative（每 tick 所有事件的叙事总结） #}
+以下是游戏世界 tick {{ tick_start }} 到 {{ tick_end }} 的剧情叙事记录：
+
+{% for item in records %}
+[tick {{ item.tick }}] {{ item.text }}
+{% endfor %}
+
+请将上述剧情叙事压缩为一段简洁的故事摘要（150字以内）。
+保留：剧情转折点、NPC名称与态度变化、未解决线索、队伍状态变化。
+丢弃：环境描写、过渡性叙述、重复信息。
+直接输出摘要文本，不要任何前缀。
