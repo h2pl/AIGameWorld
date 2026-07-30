@@ -1,14 +1,14 @@
 """记忆仓储 / Memory Repository.
 
-基于 AI Agent 三层记忆系统核心架构：
-1. 短期记忆 (Short-Term Memory)：内存 deque（当下的意识流，滑动窗口）
-2. 长期记忆 (Long-Term Memory)：SQLite + ChromaDB 双向绑定（陈年旧事与经验，时间衰减+语义打分）
-3. 关系记忆/语义网络 (Semantic Memory)：SQLite 结构化关系表（世界观与人设，无需频繁走向量）
+基于认知科学四层记忆模型：
+1. 感知缓冲 (Perception)：当前 tick 输入，由 state 承载
+2. 情景记忆 (Episodic)：SQLite + ChromaDB 全量持久化，三要素精排检索
+3. 反思记忆 (Reflective)：ChromaDB + SQLite 双写，LLM 蒸馏洞察
+4. 语义记忆 (Semantic)：Neo4j 关系图谱
 
-对齐 Gemini 提案与 design/04-agent-layer.md §8 + 06-data-layer.md §6。
+所有记忆立即双写，无内存缓存层。
 """
 
-from collections import deque
 from uuid import uuid4
 
 from ..domain.memory import Memory
@@ -54,12 +54,11 @@ def score_memory(
 
 
 class MemoryRepo:
-    """角色记忆存取——短期记忆(deque) + 长期记忆(SQLite+ChromaDB) + 反思记忆(ChromaDB+SQLite)."""
+    """角色记忆存取——情景记忆(SQLite+ChromaDB) + 反思记忆(ChromaDB+SQLite)."""
 
     def __init__(self, chroma: ChromaClient, sqlite=None):
         self._chroma = chroma
         self._sqlite = sqlite
-        self._short_term: dict[str, deque[Memory]] = {}  # pc_id → 最近10条
         self._table_ensured = False
 
     # ── 表初始化 / Table init ──
@@ -113,26 +112,6 @@ class MemoryRepo:
         if not any(r.get("name") == column for r in rows):
             await self._sqlite.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
-    def _period_for(self, tick: int, current_tick: int) -> str:
-        """根据时间间隔决定记忆周期 / Decide memory period by time delta.
-
-        - short_term: 最近 10 tick 内
-        - medium_term: 10~50 tick 之间
-        - long_term: 超过 50 tick
-        """
-        delta = max(0, current_tick - tick)
-        if delta <= 10:
-            return "short_term"
-        elif delta <= 50:
-            return "medium_term"
-        return "long_term"
-
-    # ── 1. 短期记忆 / Short-Term Memory ──
-    def _short_queue(self, pc_id: str) -> deque[Memory]:
-        if pc_id not in self._short_term:
-            self._short_term[pc_id] = deque(maxlen=10)
-        return self._short_term[pc_id]
-
     # ── 存储 / Store ──
 
     @traced()
@@ -148,13 +127,11 @@ class MemoryRepo:
         world_id: str = "",
         current_tick: int = 0,
     ) -> Memory:
-        """存储新记忆.
+        """存储新记忆（全量持久化）.
 
-        短期记忆（delta ≤ 10 tick）：仅入 deque，不持久化。
-        中期/长期记忆（delta > 10 tick）：deque + SQLite + ChromaDB 三写。
-        period 由时间间隔自动计算，除非外部显式指定。
+        所有记忆立即双写 SQLite + ChromaDB，deque 仅作为注意力窗口缓存。
+        不再区分短期/长期——时间维度仅作为检索时的 recency 评分因子。
         """
-        resolved_period = period or self._period_for(tick, current_tick)
         mem = Memory(
             id=f"mem_{pc_id}_{tick}_{uuid4().hex[:6]}",
             pc_id=pc_id,
@@ -162,18 +139,11 @@ class MemoryRepo:
             tick=tick,
             importance=importance,
             memory_type=memory_type,
-            period=resolved_period,
+            period=period or "episodic",
             entity_type=entity_type,
             world_id=world_id,
         )
-        # 所有记忆都入短期窗口 / All memories enter short-term window
-        self._short_queue(pc_id).append(mem)
-
-        # 短期记忆不落盘 / Short-term memories stay in-memory only
-        if resolved_period == "short_term":
-            return mem
-
-        # 中/长期记忆双写 / Medium/long-term: persist to SQLite + ChromaDB
+        # 全量持久化：SQLite + ChromaDB / Persist to both stores
         if self._sqlite:
             if not self._table_ensured:
                 await self._ensure_table()
@@ -204,7 +174,6 @@ class MemoryRepo:
                     "tick": tick,
                     "importance": importance,
                     "type": memory_type,
-                    "period": resolved_period,
                     "entity_type": entity_type,
                     "world_id": world_id,
                 }
@@ -273,9 +242,19 @@ class MemoryRepo:
 
     # ── 检索 / Retrieve ──
 
-    def get_short_term(self, pc_id: str) -> list[Memory]:
-        """读取短期记忆（deque 窗口，最近 10 条）/ Read short-term memory from deque."""
-        return list(self._short_queue(pc_id))
+    async def get_recent(self, pc_id: str, limit: int = 10) -> list[Memory]:
+        """从 SQLite 读取最近 N 条记忆（按 tick 倒序）/ Recent memories from SQLite."""
+        if not self._sqlite:
+            return []
+        if not self._table_ensured:
+            await self._ensure_table()
+        rows = await self._sqlite.fetch_all(
+            "SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id "
+            "FROM memories WHERE pc_id = ? AND memory_type != 'reflection' "
+            "ORDER BY tick DESC, rowid DESC LIMIT ?",
+            (pc_id, limit),
+        )
+        return [_memory_from_row(r) for r in rows]
 
     def search_long_term_vector(self, pc_id: str, query: str, top_k: int = 15) -> list[dict]:
         """ChromaDB 语义检索长期记忆 / Semantic search long-term memory via ChromaDB.
@@ -360,7 +339,6 @@ class MemoryRepo:
     @traced()
     async def drop_character(self, pc_id: str) -> None:
         """删除角色所有记忆."""
-        self._short_term.pop(pc_id, None)
         for prefix in [_MEM_PREFIX, _REFLECT_PREFIX]:
             self._chroma.delete_collection(prefix.format(pc_id=pc_id))
         if self._sqlite:
@@ -369,19 +347,24 @@ class MemoryRepo:
             await self._sqlite.execute("DELETE FROM memories WHERE pc_id = ?", (pc_id,))
             await self._sqlite.commit()
 
-    def importance_should_reflect(
+    async def importance_should_reflect(
         self,
         pc_id: str,
         threshold: int = 100,
+        since_tick: int = 0,
     ) -> bool:
-        """检查重要性累计是否超阈值."""
-        recent = list(self._short_queue(pc_id))
-        total = sum(m.importance for m in recent)
+        """检查自上次反思以来重要性累计是否超阈值."""
+        if not self._sqlite:
+            return False
+        if not self._table_ensured:
+            await self._ensure_table()
+        rows = await self._sqlite.fetch_all(
+            "SELECT COALESCE(SUM(importance), 0) as total FROM memories "
+            "WHERE pc_id = ? AND tick > ? AND memory_type != 'reflection'",
+            (pc_id, since_tick),
+        )
+        total = rows[0]["total"] if rows else 0
         return total >= threshold
-
-    def count(self, pc_id: str) -> int:
-        """返回某角色的工作记忆数."""
-        return len(self._short_queue(pc_id))
 
 
 def _memory_from_row(row: dict) -> Memory:

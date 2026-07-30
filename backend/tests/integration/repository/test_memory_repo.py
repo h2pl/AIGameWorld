@@ -19,7 +19,9 @@ def repo():
 class TestMemoryStore:
     @pytest.mark.asyncio
     async def test_store_and_retrieve(self, repo):
-        await repo.store("alex", "Found a rusty sword in the tavern.", tick=1, importance=5, current_tick=100)
+        await repo.store(
+            "alex", "Found a rusty sword in the tavern.", tick=1, importance=5, current_tick=100
+        )
         results = repo.search_long_term_vector("alex", "sword tavern", top_k=3)
         assert len(results) >= 1
 
@@ -37,10 +39,11 @@ class TestMemoryStore:
         assert results == []
 
     @pytest.mark.asyncio
-    async def test_short_term_max_10_with_chroma(self, repo):
+    async def test_store_multiple_and_search(self, repo):
         for i in range(15):
             await repo.store("bob", f"Memory number {i}", tick=i, importance=3)
-        assert repo.count("bob") == 10
+        results = repo.search_long_term_vector("bob", "Memory number", top_k=5)
+        assert len(results) >= 1
 
 
 class TestReflection:
@@ -59,6 +62,5 @@ class TestLifecycle:
         await repo.store("charlie", "Important memory", tick=1, importance=9)
         await repo.store_reflection("charlie", "Deep insight", tick=2)
         await repo.drop_character("charlie")
-        assert repo.count("charlie") == 0
-        short = repo.get_short_term("charlie")
-        assert short == []
+        results = repo.search_long_term_vector("charlie", "Important", top_k=5)
+        assert results == []

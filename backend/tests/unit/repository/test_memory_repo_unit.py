@@ -12,43 +12,30 @@ class TestMemoryRepoUnit:
     """Mock ChromaClient 的 MemoryRepo 单元测试."""
 
     @pytest.mark.asyncio
-    async def test_store_short_term(self):
+    async def test_store_returns_memory(self):
         repo = MemoryRepo(Mock())
         mem = await repo.store("alex", "Found a rusty sword.", tick=1, importance=5)
         assert mem.pc_id == "alex"
         assert mem.importance == 5
-        assert repo.count("alex") == 1
+        assert mem.content == "Found a rusty sword."
 
     @pytest.mark.asyncio
-    async def test_short_term_max_10(self):
-        repo = MemoryRepo(Mock())
-        for i in range(15):
-            await repo.store("alex", f"Memory {i}", tick=i)
-        assert repo.count("alex") == 10
+    async def test_store_calls_chroma(self):
+        chroma = Mock()
+        repo = MemoryRepo(chroma)
+        await repo.store("alex", "test", tick=1)
+        chroma.add.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_importance_should_reflect(self):
+    async def test_get_recent_no_sqlite(self):
         repo = MemoryRepo(Mock())
-        await repo.store("alex", "Big fight!", tick=0, importance=50)
-        await repo.store("alex", "Another fight!", tick=1, importance=60)
-        assert repo.importance_should_reflect("alex", threshold=100)
+        result = await repo.get_recent("alex")
+        assert result == []
 
     @pytest.mark.asyncio
-    async def test_importance_should_not_reflect(self):
+    async def test_importance_should_reflect_no_sqlite(self):
         repo = MemoryRepo(Mock())
-        await repo.store("alex", "Walked around.", tick=0, importance=2)
-        assert not repo.importance_should_reflect("alex", threshold=100)
-
-    @pytest.mark.asyncio
-    async def test_drop_character_clears(self):
-        repo = MemoryRepo(Mock())
-        await repo.store("alex", "test", tick=0)
-        await repo.drop_character("alex")
-        assert repo.count("alex") == 0
-
-    def test_count_unknown_character(self):
-        repo = MemoryRepo(Mock())
-        assert repo.count("nobody") == 0
+        assert not await repo.importance_should_reflect("alex", threshold=100)
 
 
 class TestImportanceOf:

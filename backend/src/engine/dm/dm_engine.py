@@ -25,7 +25,7 @@ from ...domain import (
     World,
 )
 from ...schemas.llm_output import DMNarrativeSchema, DMOutput
-from ...services.memory_service import retrieve_dm_records
+from ...services.context_service import build_dm_context
 from ...utils.helpers import get_llm, get_repo
 from ...utils.logging import get_logger
 
@@ -59,13 +59,12 @@ async def dm_create(
             scene_objects_by_scene.setdefault(scene_obj.scene_id, []).append(scene_obj)
         scenes = [_enrich_scene(s, scene_objects_by_scene.get(s.id, [])) for s in raw_scenes]
 
-    # 检索 DM 记忆（复用 dm_records）/ Retrieve DM memories from dm_records
-    memories: list[str] = []
+    # 组装 DM 上下文（远期摘要 + 近期窗口）/ Build DM context (summaries + recent)
+    dm_context = ""
     try:
-        mems = await retrieve_dm_records(world_id or "", config=config, top_k=5, before_tick=tick)
-        memories = list(mems) if mems else []
+        dm_context = await build_dm_context(world_id or "", tick, config=config)
     except Exception:
-        logger.warning("[engine] dm_create memory retrieval failed, continuing without memories")
+        logger.warning("[engine] dm_create context build failed, continuing without context")
 
     # 检索 World Pack 知识 / Retrieve World Pack knowledge
     world_knowledge = ""
@@ -89,7 +88,7 @@ async def dm_create(
         recent_summary="",
         plot_brief_prev=plot_brief,
         prev_narrative=prev_narrative,
-        memories=memories,
+        memories=[dm_context] if dm_context else [],
         world_knowledge=world_knowledge,
         pacing={},
     )
@@ -142,13 +141,12 @@ async def dm_narrate(
     if llm is None:
         raise RuntimeError("[dm_narrate] LLM client not configured")
 
-    # 检索 DM 记忆（复用 dm_records）
-    dm_memories: list[str] = []
+    # 组装 DM 上下文（远期摘要 + 近期窗口）
+    dm_context = ""
     try:
-        mems = await retrieve_dm_records(world_id or "", config=config, top_k=3, before_tick=tick)
-        dm_memories = list(mems) if mems else []
+        dm_context = await build_dm_context(world_id or "", tick, config=config)
     except Exception:
-        logger.warning("[engine] dm_narrate memory retrieval failed, continuing without memories")
+        logger.warning("[engine] dm_narrate context build failed, continuing without context")
 
     # 检索 World Pack 知识 / Retrieve World Pack knowledge
     world_knowledge = ""
@@ -177,7 +175,7 @@ async def dm_narrate(
         events=_event_summaries(events),
         actions=actions,
         prev_narrative=prev_narrative,
-        memories=dm_memories,
+        memories=[dm_context] if dm_context else [],
         world_knowledge=world_knowledge,
     )
 

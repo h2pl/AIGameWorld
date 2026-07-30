@@ -1,4 +1,4 @@
-"""Memory 组件测试——短期 deque + 长期 ChromaDB 协作."""
+"""Memory 组件测试——SQLite + ChromaDB 双写协作."""
 
 import tempfile
 from pathlib import Path
@@ -17,16 +17,12 @@ def repo():
 
 
 @pytest.mark.asyncio
-async def test_short_and_long_term_merged(repo):
-    """短期(deque)和长期(ChromaDB)合并去重."""
+async def test_store_and_vector_search(repo):
+    """存储后 ChromaDB 可检索."""
     await repo.store("test_merge", "Short term only", tick=1, importance=3)
     await repo.store("test_merge", "Also in chroma", tick=2, importance=6)
-    short = repo.get_short_term("test_merge")
     long_results = repo.search_long_term_vector("test_merge", "term chroma", top_k=5)
-    ids = [r["meta"].get("id") for r in long_results if r["meta"].get("id")]
-    long = await repo.fetch_long_term_sqlite(ids) if ids else []
-    merged = short + long
-    assert len(merged) >= 1
+    assert len(long_results) >= 1
 
 
 @pytest.mark.asyncio
@@ -34,12 +30,12 @@ async def test_multi_character_isolation(repo):
     """多个角色的记忆互不干扰."""
     await repo.store("alex_iso", "Alex memory", tick=1)
     await repo.store("maya_iso", "Maya memory", tick=1)
-    alex_short = repo.get_short_term("alex_iso")
-    maya_short = repo.get_short_term("maya_iso")
-    assert len(alex_short) >= 1
-    assert len(maya_short) >= 1
-    assert "Alex" in alex_short[0].content
-    assert "Maya" in maya_short[0].content
+    alex_vec = repo.search_long_term_vector("alex_iso", "Alex", top_k=5)
+    maya_vec = repo.search_long_term_vector("maya_iso", "Maya", top_k=5)
+    assert len(alex_vec) >= 1
+    assert len(maya_vec) >= 1
+    assert "Alex" in alex_vec[0]["text"]
+    assert "Maya" in maya_vec[0]["text"]
 
 
 @pytest.mark.asyncio

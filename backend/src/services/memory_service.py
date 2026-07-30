@@ -1,9 +1,9 @@
 """Memory Service——为各引擎提供按需记忆注入 / Memory injection service for engines.
 
-三种记忆类型，service 层负责编排：
-1. 短期记忆 (Short-Term)：deque 窗口，recency 优先
-2. 长期记忆 (Long-Term)：ChromaDB 语义召回 → SQLite 补全 → 精排
-3. 反思记忆 (Reflection)：ChromaDB 语义检索
+记忆检索编排：
+1. 反思记忆 (Reflection)：ChromaDB 语义检索，前置注入
+2. 最近记忆 (Recent)：SQLite 最近 10 条，时序注入
+3. 情景记忆 (Episodic)：ChromaDB 语义召回 → SQLite 补全 → 三要素精排
 """
 
 from langchain_core.runnables.config import RunnableConfig
@@ -50,26 +50,21 @@ async def retrieve_memories(
     query: str,
     config: RunnableConfig = None,
     top_k: int = 5,
-    memory_types: list[str] | None = None,
-    periods: list[str] | None = None,
     include_reflections: bool = True,
     current_tick: int = 0,
     reflection_query: str | None = None,
 ) -> list[str]:
     """检索角色相关记忆，按综合分数排序返回内容文本.
 
-    处理策略：
-    1. 反思记忆 — ChromaDB 语义检索，全量注入，前置
-    2. 短期记忆 — deque 窗口，全量注入，按 tick 倒序
-    3. 长期记忆 — ChromaDB 语义召回 → SQLite 补全 → 精排取 top_k
+    检索策略：
+    1. 反思记忆 — ChromaDB 语义检索，前置注入
+    2. 注意力窗口 — deque 最近 10 条，全量注入
+    3. 情景记忆 — ChromaDB 语义召回 → SQLite 补全 → 三要素精排取 top_k
 
     Args:
-        query: 用于长期记忆检索的 query（动作/事件描述）
-        reflection_query: 用于反思记忆检索的 query（叙事性情境描述）。
-            反思内容是角色洞察（如"正义感与冲动矛盾"），需用情境叙事而非指令性语言匹配。
+        query: 用于情景记忆检索的 query（动作/事件描述）
+        reflection_query: 用于反思记忆检索的叙事性情境描述。
             未提供时退化为 query。
-
-    参考 Generative Agents / MemGPT：短期+反思全给，长期精选。
     """
     if is_mock(config):
         return []
@@ -94,15 +89,14 @@ async def retrieve_memories(
                     contents.append(c)
                     seen.add(c)
 
-        # 2. 短期记忆 / Short-term — 全量注入，按 tick 倒序
-        short = memory_repo.get_short_term(pc_id)
-        short.sort(key=lambda m: m.tick, reverse=True)
-        for m in short:
+        # 2. 最近记忆 / Recent memories — SQLite 最近 10 条，按 tick 倒序
+        recent = await memory_repo.get_recent(pc_id, limit=10)
+        for m in recent:
             if m.content and m.content not in seen:
                 contents.append(m.content)
                 seen.add(m.content)
 
-        # 3. 长期记忆 / Long-term — 语义检索 + 精排，取 top_k
+        # 3. 情景记忆 / Episodic — 语义检索 + 三要素精排，取 top_k
         semantic_scores: dict[str, float] = {}
         vector_results = memory_repo.search_long_term_vector(pc_id, query, top_k=top_k * 3)
         candidate_ids = set()

@@ -17,7 +17,7 @@ def _mock_config(llm=None):
     memory_repo.retrieve = AsyncMock(return_value=[])
     memory_repo.store = AsyncMock(return_value=None)
     memory_repo.retrieve_reflections = AsyncMock(return_value=[])
-    memory_repo.get_short_term = lambda pc_id: []  # sync method
+    memory_repo.get_recent = AsyncMock(return_value=[])  # async method
     memory_repo.search_long_term_vector = lambda *a, **kw: []  # sync method
     memory_repo.fetch_long_term_sqlite = AsyncMock(return_value=[])
     cfg = {"configurable": {"repos": {"memory": memory_repo}}}
