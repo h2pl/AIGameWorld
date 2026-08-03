@@ -81,7 +81,9 @@ class MemoryRepo:
                 period      TEXT    NOT NULL DEFAULT 'medium_term',
                 entity_type TEXT    NOT NULL DEFAULT 'pc',
                 world_id    TEXT    NOT NULL DEFAULT '',
-                created_at  TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
+                ext_json    TEXT    NOT NULL DEFAULT '{}',
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+                updated_at  TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
             )
             """
         )
@@ -90,6 +92,10 @@ class MemoryRepo:
             "memories", "period", "TEXT NOT NULL DEFAULT 'medium_term'"
         )
         await self._add_column_if_missing("memories", "entity_type", "TEXT NOT NULL DEFAULT 'pc'")
+        await self._add_column_if_missing("memories", "ext_json", "TEXT NOT NULL DEFAULT '{}'")
+        await self._add_column_if_missing(
+            "memories", "updated_at", "TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))"
+        )
         await self._sqlite.execute(
             "CREATE INDEX IF NOT EXISTS idx_memories_pc_tick ON memories(pc_id, tick)"
         )
@@ -125,6 +131,7 @@ class MemoryRepo:
         period: str = "",
         entity_type: str = "pc",
         world_id: str = "",
+        ext_json: str = "{}",
         current_tick: int = 0,
     ) -> Memory:
         """存储新记忆（全量持久化）.
@@ -142,14 +149,15 @@ class MemoryRepo:
             period=period or "episodic",
             entity_type=entity_type,
             world_id=world_id,
+            ext_json=ext_json,
         )
         # 全量持久化：SQLite + ChromaDB / Persist to both stores
         if self._sqlite:
             if not self._table_ensured:
                 await self._ensure_table()
             await self._sqlite.execute(
-                "INSERT INTO memories (id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO memories (id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id, ext_json, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
                 (
                     mem.id,
                     mem.pc_id,
@@ -160,6 +168,7 @@ class MemoryRepo:
                     mem.period,
                     mem.entity_type,
                     mem.world_id,
+                    mem.ext_json,
                 ),
             )
             await self._sqlite.commit()
@@ -189,6 +198,7 @@ class MemoryRepo:
         tick: int,
         world_id: str = "",
         entity_type: str = "pc",
+        ext_json: str = "{}",
         current_tick: int = 0,
     ) -> Memory:
         """存储反思洞察（重要性=10，ChromaDB + SQLite 双写）.
@@ -222,9 +232,20 @@ class MemoryRepo:
             if not self._table_ensured:
                 await self._ensure_table()
             await self._sqlite.execute(
-                "INSERT INTO memories (id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (mem_id, pc_id, insight, tick, 10, "reflection", period, entity_type, world_id),
+                "INSERT INTO memories (id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id, ext_json, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
+                (
+                    mem_id,
+                    pc_id,
+                    insight,
+                    tick,
+                    10,
+                    "reflection",
+                    period,
+                    entity_type,
+                    world_id,
+                    ext_json,
+                ),
             )
             await self._sqlite.commit()
 
@@ -238,6 +259,7 @@ class MemoryRepo:
             period=period,
             entity_type=entity_type,
             world_id=world_id,
+            ext_json=ext_json,
         )
 
     # ── 检索 / Retrieve ──
@@ -249,7 +271,7 @@ class MemoryRepo:
         if not self._table_ensured:
             await self._ensure_table()
         rows = await self._sqlite.fetch_all(
-            "SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id "
+            "SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id, ext_json "
             "FROM memories WHERE pc_id = ? AND memory_type != 'reflection' "
             "ORDER BY tick DESC, rowid DESC LIMIT ?",
             (pc_id, limit),
@@ -271,7 +293,7 @@ class MemoryRepo:
         if not self._table_ensured:
             await self._ensure_table()
         placeholders = ",".join("?" * len(ids))
-        sql = f"SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id FROM memories WHERE id IN ({placeholders})"  # noqa: S608
+        sql = f"SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id, ext_json FROM memories WHERE id IN ({placeholders})"  # noqa: S608
         rows = await self._sqlite.fetch_all(sql, tuple(ids))
         return [_memory_from_row(r) for r in rows]
 
@@ -378,4 +400,5 @@ def _memory_from_row(row: dict) -> Memory:
         period=row.get("period", "medium_term"),
         entity_type=row.get("entity_type", "pc"),
         world_id=row.get("world_id", ""),
+        ext_json=row.get("ext_json", "{}") or "{}",
     )

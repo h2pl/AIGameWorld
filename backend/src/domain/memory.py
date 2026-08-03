@@ -48,6 +48,7 @@ class Memory(BaseModel):
     period: str = MemoryPeriod.MEDIUM_TERM.value
     entity_type: str = EntityType.PC.value
     world_id: str = ""
+    ext_json: str = "{}"
 
 
 def importance_of(memory_type: str) -> int:

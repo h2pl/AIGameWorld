@@ -205,7 +205,9 @@ CREATE TABLE IF NOT EXISTS memories (
     importance      INTEGER NOT NULL DEFAULT 2,
     memory_type     TEXT    NOT NULL DEFAULT 'observation',
     world_id        TEXT    NOT NULL DEFAULT '',
-    created_at      TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
+    ext_json        TEXT    NOT NULL DEFAULT '{}',
+    created_at      TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at      TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_memories_pc_tick ON memories(pc_id, tick);
 CREATE INDEX IF NOT EXISTS idx_memories_world ON memories(world_id);
