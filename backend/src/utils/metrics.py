@@ -90,6 +90,7 @@ class MetricsCollector:
         await self._sqlite.execute(
             """
             CREATE TABLE IF NOT EXISTS tick_metrics (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
                 tick              INTEGER NOT NULL,
                 world_id          TEXT    NOT NULL,
                 latency_ms        REAL    NOT NULL DEFAULT 0,
@@ -100,7 +101,7 @@ class MetricsCollector:
                 estimated_cost_usd REAL   NOT NULL DEFAULT 0,
                 model             TEXT    NOT NULL DEFAULT '',
                 created_at        TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
-                PRIMARY KEY (tick, world_id)
+                UNIQUE(tick, world_id)
             )
             """
         )
