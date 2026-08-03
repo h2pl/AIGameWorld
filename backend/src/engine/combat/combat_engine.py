@@ -123,7 +123,6 @@ async def process_combat_action(
         target_type=target_type,
         waypoints=waypoints,
         narration=narration,
-        combat_log=[],
         winner="party" if target_defeated else None,
         target_defeated=target_defeated,
         result=result_text,

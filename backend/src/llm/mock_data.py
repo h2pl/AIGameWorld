@@ -204,11 +204,6 @@ DATASET_TAVERN: MockDataset = {
             "insight": "这些事件之间似乎有某种联系。",
         },
     ],
-    "summarize": [
-        {"summary": "冒险者抵达酒馆，从老板娘 Greta 口中得知北方森林有危险，镇上悬赏调查。"},
-        {"summary": "冒险者与铁匠交谈，得知曾有伤员带着奇怪爪痕回来，此事不简单。"},
-        {"summary": "多方打听后，冒险者拼凑出真相：北方废弃神殿有超自然力量，镇上已有数人失踪。"},
-    ],
     "pc_decision": [
         {
             "action": {
@@ -485,11 +480,6 @@ DATASET_DESERT: MockDataset = {
             "insight": "金字塔是封印蛇神的场所，打破封印可能会释放它。",
         },
     ],
-    "summarize": [
-        {"summary": "冒险者进入沙漠，发现了古王国时期的遗迹和一座可疑的金字塔。"},
-        {"summary": "沙漠中发现了巨大脚印和烧焦的骆驼骸骨，传说的沙龙可能真实存在。"},
-        {"summary": "冒险者破译了石柱上的古文字，决定深入金字塔探索蛇神的秘密。"},
-    ],
     "pc_decision": [
         {
             "action": {
@@ -666,11 +656,6 @@ DATASET_COMBAT: MockDataset = {
             "behavior_summary": "艰难地击退了食人魔的攻击，收集了地精仆从提供的情报。",
             "insight": "食人魔通常不会主动袭击，背后可能有人在操纵。",
         },
-    ],
-    "summarize": [
-        {"summary": "冒险者在森林中遭遇地精伏击，成功击退对手。"},
-        {"summary": "林间营地遇到兽人斥候，经过激烈战斗后突围。"},
-        {"summary": "一头食人魔袭击了冒险者，战斗中击败了它和它的地精仆从。"},
     ],
     "explore": [
         {
@@ -861,9 +846,6 @@ DATASET_AZURE_TOWN: MockDataset = {
             "insight": "哨塔的异常火光和黑玫瑰可能有关联——有人在掩盖什么。",
         },
     ],
-    "summarize": [
-        {"summary": "蔚蓝镇的冒险者发现了被篡改的路牌和花店老妇人的秘密，哨塔的悬赏还没解开。"},
-    ],
     "pc_decision": [
         {
             "action": {
@@ -1018,9 +1000,6 @@ DATASET_TABA_TOWN: MockDataset = {
             "insight": "地底的巨型生物正在向镇子方向移动——它的掘进路线是一条直线，目标似乎是钟楼。",
         },
     ],
-    "summarize": [
-        {"summary": "塔巴镇的冒险者发现镇子地下有巨型蠕虫在活动，钟楼成了它的目标。"},
-    ],
     "pc_decision": [
         {
             "action": {
@@ -1174,9 +1153,6 @@ DATASET_TUNNEL: MockDataset = {
             "behavior_summary": "在隧道中发现了矮人王国留下的铁镐和石碑，碑上的符文发光但触碰不了。",
             "insight": "这座洞穴曾经是矮人的矿场，蜘蛛入侵后矮人撤退了——但留下了某种力量的守护。",
         },
-    ],
-    "summarize": [
-        {"summary": "冒险者进入蜘蛛隧道，发现了矮人遗迹和发光的符文石碑。"},
     ],
     "pc_decision": [
         {
@@ -1340,9 +1316,6 @@ DATASET_CATHEDRAL: MockDataset = {
             "insight": "教堂是封印，不是建筑。每当水源衰减，封印就会减弱——我们来的正是时候。",
         },
     ],
-    "summarize": [
-        {"summary": "冒险者涉水探索被淹没的古老教堂，发现这里其实是一座封印——压着某种深海之物。"},
-    ],
     "pc_decision": [
         {
             "action": {
@@ -1402,7 +1375,7 @@ DEFAULT_DATASET = "tavern"  # 默认数据集
 
 
 # ═══════════════════════════════════════════════════════════════
-# 通用池（跨数据集的 talk / actor_decision / reflection / summarize）
+# 通用池（跨数据集的 talk / actor_decision / reflection）
 # ═══════════════════════════════════════════════════════════════
 # 跨数据集共享池 / Cross-dataset shared pool — aggregates all dataset keys
 _POOL: dict[str, list[dict]] = {}

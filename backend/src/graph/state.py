@@ -1,6 +1,6 @@
 """OverallState + 子图 State 定义 / Root + subgraph state definitions."""
 
-from typing import Any, TypedDict
+from typing import TypedDict
 
 from ..domain import (
     Action,
@@ -53,33 +53,13 @@ class OverallState(TypedDict, total=False):
     pcs_snapshot: dict[str, dict]  # tick_init 截屏的 PC 数据（flush_events 构建 scene_setup 用）
 
 
-class PcSubState(TypedDict):
-    """角色子图状态 / Character subgraph state.
-
-    scene / scene_objects 仅做初始化写入，tick 内不更新。
-    获取 PC 数据请用 pcs，获取 Actor 数据请用 actors。
-    """
-
-    tick: int
-    plot_brief: str
-    scene: Scene
-    scene_objects: list[SceneObject]
-    actions: list[Action]
-    pc_decisions: list[Decision]
-
-
-class PcAgentState(TypedDict):
-    """单角色代理状态 / Single character agent state."""
-
-    pc_id: str
-    pc_type: str
-    plot_brief: str
-    tick: int
-    pc_decisions: list[Decision]
-
-
 class ReflectionSubState(TypedDict):
-    """反思子图状态 / Reflection subgraph state."""
+    """反思子图状态 / Reflection subgraph state.
+
+    注意：当前主图所有子图（load_data / tick_init / pc）均直接编译
+    OverallState，未使用独立子图状态类。本类型保留供未来的反思子图
+    或 scheduler 反思任务复用，请勿在已接入节点外随意新增子图状态。
+    """
 
     tick: int
     pc_id: str
@@ -87,12 +67,3 @@ class ReflectionSubState(TypedDict):
     tick_events: list[TickEvent]
     reflected_pcs: list[str]
     summary_compressed: bool
-
-
-class EngineSubState(TypedDict, total=False):
-    """引擎适配状态 / Engine adapter state."""
-
-    round: int
-    participants: list[Any]
-    quests: list[Any]
-    event_log: list[Any]

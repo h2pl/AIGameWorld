@@ -17,7 +17,6 @@ from src.services import (
     dm_service,
     event_service,
     pc_service,
-    summarizer_service,
     tick_init_service,
 )
 
@@ -252,38 +251,6 @@ class TestDMAndReflectionService:
                 _overall_state(tick=10, dm_record=DMRecord(tick=10, world_id="w-1"))
             )
         assert result["dm_record"].dm_narrative == "战斗爆发。"
-
-class TestSummarizerService:
-    """摘要服务测试 / Summarizer service tests."""
-
-    @pytest.mark.asyncio
-    async def test_summarize_without_llm_not_compressed(self):
-        """没有 LLM 时不压缩 / Without an LLM, not compressed."""
-        result = await summarizer_service.summarize({"tick_events": [{"type": "e"}]})
-        assert result["summary_compressed"] is False
-
-    @pytest.mark.asyncio
-    async def test_summarize_without_events_not_compressed(self):
-        """没有事件时不压缩 / Without events, not compressed."""
-        llm = AsyncMock()
-        config = {"configurable": {"llm": llm}}
-        result = await summarizer_service.summarize({"tick_events": []}, config)
-        assert result["summary_compressed"] is False
-        llm.call_structured.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_summarize_with_llm_compresses(self):
-        """有 LLM + 事件时压缩成功 / With LLM + events, compression succeeds."""
-        from src.schemas.llm_output import SummaryOutputSchema
-
-        llm = AsyncMock()
-        llm.call_structured = AsyncMock(
-            return_value=SummaryOutputSchema(summary="酒馆里发生了冲突。")
-        )
-        config = {"configurable": {"llm": llm}}
-        result = await summarizer_service.summarize({"tick_events": [{"type": "pc_talk"}]}, config)
-        assert result["summary_compressed"] is True
-        assert result["summary_text"] == "酒馆里发生了冲突。"
 
 
 class TestEventService:

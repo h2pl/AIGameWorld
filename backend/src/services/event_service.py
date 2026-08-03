@@ -94,7 +94,6 @@ def _action_events(state: OverallState) -> list[TickEvent]:
         if event_type == TickEventType.PC_COMBAT:
             payload["waypoints"] = action.waypoints
             payload["narration"] = action.narration
-            payload["combat_log"] = action.combat_log
             payload["winner"] = action.winner
             payload["target_defeated"] = action.target_defeated
             payload["result"] = action.result

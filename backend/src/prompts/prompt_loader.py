@@ -41,7 +41,6 @@ PURPOSE_TEMPLATES: dict[str, tuple[str | None, str]] = {
     "talk": ("talk/_dialogue_system.jinja", "talk/dialogue.jinja"),
     "reflect_pc": ("reflection/_reflect_system.jinja", "reflection/reflect_pc.jinja"),
     "reflect_actor": ("reflection/_reflect_system.jinja", "reflection/reflect_actor.jinja"),
-    "summarize": (None, "reflection/summarize.jinja"),
     "object_spawn": ("spawn/_object_spawn_system.jinja", "spawn/object_spawn.jinja"),
     "actor_spawn": ("spawn/_actor_spawn_system.jinja", "spawn/actor_spawn.jinja"),
     "tilemap_interpret": ("tilemap/_interpret_system.jinja", "tilemap/interpret.jinja"),

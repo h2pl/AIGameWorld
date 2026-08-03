@@ -1,7 +1,7 @@
 """Graph State 测试 / Graph State tests."""
 
 from src.domain import Memory, Scene
-from src.graph.state import OverallState, PcSubState, ReflectionSubState
+from src.graph.state import OverallState, ReflectionSubState
 
 # ══ OverallState 测试 / Main state tests ══
 
@@ -23,26 +23,6 @@ class TestOverallState:
             "actors": {},
         }
         assert s.get("tick") == 0
-
-
-# ══ PcSubState 测试 ══
-
-
-class TestPcSubState:
-    """角色子图状态测试 / Character subgraph state tests."""
-
-    def test_character_substate(self):
-        """角色子状态构造 / Character subgraph state construction."""
-        s: PcSubState = {
-            "tick": 1,
-            "plot_brief": "test",
-            "scene": Scene(id=""),
-            "scene_objects": [],
-            "actions": [],
-            "pc_decisions": [],
-        }
-        assert s["tick"] == 1
-        assert s["plot_brief"] == "test"
 
 
 # ══ ReflectionSubState 测试 ══

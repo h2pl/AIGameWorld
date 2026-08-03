@@ -11,8 +11,8 @@ from src.graph.subgraphs.tick_init_subgraph import tick_init_subgraph
 from src.services import data_service
 
 
-class TestCharacterSubgraph:
-    """角色子图测试 / Character subgraph tests."""
+class TestPcSubgraph:
+    """角色子图测试 / PC subgraph tests."""
 
     @pytest.mark.asyncio
     async def test_pc_subgraph_runs_decide_act_chain(self):

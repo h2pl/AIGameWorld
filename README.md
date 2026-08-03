@@ -6,7 +6,7 @@
 
 ## 核心特性
 
-- **LangGraph 状态图编排** — 7 节点顺序流水线：dm_create → load_data → tick_init → pc_subgraph → flush_events → dm_narrate → persist_tick，3 个子图独立编译实现模块化拆分
+- **LangGraph 状态图编排** — 8 节点顺序流水线：dm_create → load_data → tick_init → pc_subgraph → flush_events → dm_narrate → emit_narrative_event → persist_tick，3 个子图独立编译实现模块化拆分
 - **Multi-Agent 协作** — DM Agent 负责情境创建与叙事生成，多个 PC Agent 各自运行决策-行动两阶段（decide → act），支持探索、对话、交互、战斗 4 种行动引擎
 - **事件回放系统** — 后端 Tick 事件写入 DB，前端 HTTP 轮询拉取后按类型分发，驱动 Phaser.js 场景渲染与动画播放（地图切换、精灵移动、气泡对话、战斗特效），支持 1x~4x 倍速播放与页面刷新状态恢复
 - **三层记忆架构** — 短期记忆（内存 deque，仅存不持久化）、长期记忆（ChromaDB 语义检索 + SQLite 补全，三要素精排）、反思记忆（LLM 生成高层次洞察，ChromaDB 独立集合），Scheduler 异步 Reflector 按定期/突发事件/累计阈值触发反思
@@ -64,28 +64,28 @@ AIGameWorld/
 │   │   ├── config.py             # 配置加载器（YAML + Pydantic）
 │   │   ├── graph/                # LangGraph 编排（主图 + 3 子图）
 │   │   │   ├── graph.py              # 主 Tick 流水线
-│   │   │   ├── state.py              # OverallState / PcSubState
+│   │   │   ├── state.py              # OverallState
 │   │   │   └── subgraphs/            # load_data / tick_init / pc 子图
-│   │   ├── engine/               # 行动引擎（8 个子引擎）
+│   │   ├── engine/               # 行动引擎（7 个子引擎）
 │   │   │   ├── dm/                   # DM 情境创建 + 叙事
 │   │   │   ├── decision/             # PC/Actor 决策引擎
 │   │   │   ├── talk/                 # 对话引擎
 │   │   │   ├── explore/              # 探索引擎
-│   │   │   ├── interact/             # 交互引擎
+│   │   │   ├── interact/              # 交互引擎
 │   │   │   ├── combat/               # 战斗引擎
-│   │   │   ├── reflection/           # 反思引擎
-│   │   │   └── quest/                # 任务引擎
-│   │   ├── services/             # 服务层（9 个文件）
+│   │   │   └── reflection/           # 反思引擎
+│   │   ├── services/             # 服务层（7 个文件）
 │   │   │   ├── dm_service.py         # DM 服务
 │   │   │   ├── pc_service.py         # PC 决策/行动服务
 │   │   │   ├── memory_service.py     # 记忆检索编排
 │   │   │   ├── data_service.py       # 数据持久化
 │   │   │   ├── event_service.py      # 事件构造
+│   │   │   ├── context_service.py     # DM 上下文管理（摘要/检索注入）
 │   │   │   └── tick_init_service.py  # Tick 初始化
 │   │   ├── repository/           # 数据访问层（11 个 Repo）
 │   │   │   ├── memory_repo.py        # 记忆存取（短期+长期+反思）
 │   │   │   ├── knowledge_repo.py     # World Pack 知识库
-│   │   │   ├── neo4j_repo.py         # Neo4j 图数据库
+│   │   │   ├── neo4j_repo.py         # Neo4j 图数据库（可选，缺失时降级跳过）
 │   │   │   └── ...                   # pc/actor/scene/item/event/world/dm_record
 │   │   ├── storage/              # 存储层
 │   │   │   ├── chroma_client.py      # ChromaDB 向量存储（BGE-M3）
@@ -196,7 +196,7 @@ cd frontend && npx playwright test
 
 ## 技术栈
 
-**后端**：Python 3.12 / FastAPI / LangGraph / LangChain / ChromaDB 1.5 / SQLite / Neo4j / Pydantic / uv
+**后端**：Python 3.12 / FastAPI / LangGraph / LangChain / ChromaDB 1.5 / SQLite / Pydantic / uv（Neo4j 可选，缺失时 GraphRAG 关系网络优雅降级，不影响主流程）
 
 **前端**：TypeScript / Phaser 3 / Vite / Playwright
 

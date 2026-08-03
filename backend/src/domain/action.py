@@ -31,7 +31,6 @@ class Action(DomainModel):
     success: bool = False
 
     # combat 相关 / combat-specific
-    combat_log: list[dict] = []
     winner: str | None = None
     target_defeated: bool = False
     result: str = ""
