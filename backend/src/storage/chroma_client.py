@@ -1,6 +1,7 @@
 """ChromaClient — 纯 ChromaDB 裸操作，零业务知识."""
 
 import contextlib
+import os
 from pathlib import Path
 from typing import Any
 
@@ -19,19 +20,47 @@ def _bge_m3_ef() -> Any:
     - 支持多语言（中英日韩等 100+ 语言）
     - 支持多粒度（dense + sparse + colbert）
     - 在 MTEB/BEIR 中文排行榜名列前茅
+
+    加载策略：优先从本地 HF 缓存加载（离线友好，避免联网超时）；
+    若本地无缓存则回退到联网下载。
     """
     try:
         from chromadb.utils import embedding_functions
 
+        model_name = _resolve_bge_m3_model_name()
         ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="BAAI/bge-m3",
-            # 正常情况下自动下载；离线环境需预先放置到 cache
+            model_name=model_name,
         )
-        logger.info("[chroma] BGE-M3 embedding function created")
+        logger.info("[chroma] BGE-M3 embedding function created (model=%s)", model_name)
         return ef
     except Exception as e:
         logger.warning("[chroma] BGE-M3 unavailable (%s), falling back to default", e)
         return None
+
+
+def _resolve_bge_m3_model_name() -> str:
+    """解析 BGE-M3 模型名 / Resolve BGE-M3 model name.
+
+    优先返回本地 HF 缓存中 BAAI/bge-m3 的 snapshot 绝对路径，
+    使离线环境下 sentence-transformers 无需联网解析 revision 即可加载。
+    兼容新旧两种 HF 缓存目录结构：
+      - 新版：hub/models--BAAI--bge-m3/snapshots/<rev>/
+      - 旧版：hub/models/BAAI--bge-m3/snapshots/<rev>/
+    若均不存在则返回标准模型名（触发联网下载）。
+    """
+    hf_home = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface"))
+    candidates = [
+        hf_home / "hub" / "models--BAAI--bge-m3" / "snapshots",
+        hf_home / "hub" / "models" / "BAAI--bge-m3" / "snapshots",
+    ]
+    for base in candidates:
+        if base.exists():
+            snapshots = [p for p in base.iterdir() if p.is_dir()]
+            if snapshots:
+                # 取最新修改的 snapshot（通常即 main/master）
+                latest = max(snapshots, key=lambda p: p.stat().st_mtime)
+                return str(latest)
+    return "BAAI/bge-m3"
 
 
 class ChromaClient:
