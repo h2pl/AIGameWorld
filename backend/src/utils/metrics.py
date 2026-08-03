@@ -101,6 +101,7 @@ class MetricsCollector:
                 estimated_cost_usd REAL   NOT NULL DEFAULT 0,
                 model             TEXT    NOT NULL DEFAULT '',
                 created_at        TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+                updated_at        TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
                 UNIQUE(tick, world_id)
             )
             """
@@ -155,8 +156,8 @@ class MetricsCollector:
             await self._sqlite.execute(
                 "INSERT OR REPLACE INTO tick_metrics "
                 "(tick, world_id, latency_ms, llm_calls, tokens_in, tokens_out, "
-                "events_count, estimated_cost_usd, model) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "events_count, estimated_cost_usd, model, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
                 (
                     m.tick,
                     m.world_id,

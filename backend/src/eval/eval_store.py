@@ -74,7 +74,8 @@ class EvalStore:
                 reason     TEXT    DEFAULT '',
                 improvement TEXT    DEFAULT '',
                 l1_checks  TEXT    DEFAULT '{}',
-                created_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
+                created_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+                updated_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
             )
             """
         )
@@ -96,8 +97,8 @@ class EvalStore:
         import json as _json
 
         await self._sqlite.execute(
-            "INSERT INTO eval_results (dataset, case_id, dimension, score, reason, improvement, l1_checks) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO eval_results (dataset, case_id, dimension, score, reason, improvement, l1_checks, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
             (
                 result.dataset,
                 result.case_id,
