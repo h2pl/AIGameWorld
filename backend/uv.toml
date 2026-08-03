@@ -1,0 +1,3 @@
+# uv 项目级配置
+# cache 与 .venv 跨文件系统，硬链接不支持，回退复制并消除该警告
+link-mode = "copy"

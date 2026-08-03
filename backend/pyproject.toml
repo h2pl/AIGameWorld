@@ -21,7 +21,7 @@ dependencies = [
     "aiosqlite>=0.22",              # 异步 SQLite / Async SQLite
     "chromadb>=1.5",                # 向量记忆存储 / Vector memory
     "sentence-transformers>=5.6",   # BGE-M3 嵌入模型 / BGE-M3 embedding (Chinese semantic retrieval)
-    "tokenizers>=0.22.0,<=0.23.0",  # 锁定兼容版本，避免 sentence-transformers import 失败
+    "tokenizers==0.22.2",  # 精确锁定（依赖树允许且真实存在），避免范围锁导致的版本漂移与双版本 dist-info 冲突
     "jinja2>=3.1",                  # Prompt 模板引擎 / Prompt templates
     "pyyaml>=6.0",                  # Pack YAML 解析 / Pack YAML parsing
     "langfuse>=4.12",               # LLM 可观测性 / LLM observability

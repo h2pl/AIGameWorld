@@ -88,7 +88,23 @@ class ChromaClient:
         kwargs: dict[str, Any] = {}
         if self._ef:
             kwargs["embedding_function"] = self._ef
-        return self._client.get_or_create_collection(name, **kwargs)
+        try:
+            return self._client.get_or_create_collection(name, **kwargs)
+        except ValueError as e:
+            # 已存在的集合是用旧嵌入函数（默认 all-MiniLM，384 维）建的，
+            # 现在用 BGE-M3（1024 维）打开会触发 embedding function 冲突。
+            # 做一次性的维度迁移：删旧集合、用当前 ef 重建（空集合）。
+            # 之后该集合的 ef 配置会被持久化，后续启动不再冲突。
+            msg = str(e).lower()
+            if "embedding function" in msg or "conflict" in msg:
+                logger.warning(
+                    "[chroma] collection %s embedding conflict, migrating to current ef (drops old vectors)",
+                    name,
+                )
+                with contextlib.suppress(Exception):
+                    self._client.delete_collection(name)
+                return self._client.get_or_create_collection(name, **kwargs)
+            raise
 
     def delete_collection(self, name: str) -> None:
         with contextlib.suppress(ValueError, Exception):
