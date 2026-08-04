@@ -1,6 +1,7 @@
 """LLM Schema 单元测试 / LLM Schema unit tests.
 
-验证 DMOutput（hints/plot_brief/scene_id）和 DMNarrativeSchema（narrative）Pydantic 模型.
+验证 DMOutput（hints/plot_brief，不含 scene_id——场景由 world_init/party 确定性裁决）
+和 DMNarrativeSchema（narrative）Pydantic 模型.
 """
 
 from src.schemas.llm_output import DMNarrativeSchema, DMOutput
@@ -11,15 +12,12 @@ class TestLLMOutputSchemas:
         out = DMOutput(plot_brief="test")
         assert out.plot_brief == "test"
         assert out.hints == []
-        assert out.scene_id == ""
 
-    def test_dm_output_with_scene(self):
+    def test_dm_output_with_hints(self):
         out = DMOutput(
             plot_brief="The party enters the forest.",
-            scene_id="forest_01",
             hints=["环境提示"],
         )
-        assert out.scene_id == "forest_01"
         assert len(out.hints) == 1
 
     def test_dm_narrative_schema(self):
@@ -33,7 +31,7 @@ class TestLLMOutputSchemas:
     def test_dm_output_json_schema(self):
         schema = DMOutput.model_json_schema()
         assert "plot_brief" in schema["properties"]
-        assert "scene_id" in schema["properties"]
+        assert "scene_id" not in schema["properties"]
         assert "hints" in schema["properties"]
 
 

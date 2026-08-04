@@ -98,7 +98,7 @@ async def mock_repos(tmp_path):
     }
 
     # Seed 测试数据 / Seed test data
-    await repos["world"].create(World(id="test", name="Test World"))
+    await repos["world"].create(World(id="test", name="Test World", starting_scene_id="tavern"))
     await repos["scene"].save_scene(
         Scene(
             id="tavern",
