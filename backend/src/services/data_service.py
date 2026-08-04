@@ -30,8 +30,8 @@ async def load_world(state: OverallState, config=None) -> dict:
     world = await world_repo.get(world_id) if world_repo else None
     if not world:
         return {}
-    # current_scene_id 是 world 的持久化状态（world_init 写入 / party.decide_scene 更新），
-    # 作为每个 tick 讨论与场景加载的权威起点
+    # current_scene_id 从 world.current_scene_id 恢复进 state（该字段仅作备用记录，
+    # 真正驱动场景的是 party.decide_scene 在 state 内流转的结果，由 persist_tick 在末尾镜像写回）
     return {"world": world, "current_scene_id": world.current_scene_id}
 
 
@@ -39,8 +39,8 @@ async def load_world(state: OverallState, config=None) -> dict:
 async def load_scene(state: OverallState, config=None) -> dict:
     """从 DB 读取当前场景 Scene 领域模型 / Load scene from DB.
 
-    场景来源：current_scene_id 由 world 持久化（world_init 写入 world.starting_scene_id、
-    party.decide_scene 每 tick 裁决后更新），load_world 从 world 恢复进 state。
+    场景来源：current_scene_id 由 load_world 从 world.current_scene_id 恢复进 state（备用记录），
+    后续每 tick 由 party.decide_scene 在 state 内流转，persist_tick 末尾再镜像写回 world。
     world_init 由 status 守卫保证在首个 tick 前已执行，因此 current_scene_id 必有值，
     这是确定性路径，不做「fallback to first scene」之类的错误路径兜底。
     """
@@ -144,7 +144,18 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
                 await actor_repo.save(actor)
             logger.info("[data] persisted actors count=%d tick=%s", len(actors), tick)
 
-    # 5. 统一落盘本 tick 产生的新记忆 / Persist new memories created this tick
+    # 5. 顺带把当前主场景记到 world.current_scene_id（备用，非权威来源；
+    #    真正驱动每 tick 场景的是 state.current_scene_id，由 party.decide_scene 在 state 内流转）
+    current_scene_id = state.get("current_scene_id", "")
+    if world_id and current_scene_id:
+        world_repo = get_repo(config, "world")
+        if world_repo:
+            await world_repo.set_current_scene_id(world_id, current_scene_id)
+            logger.info(
+                "[data] mirrored current_scene_id=%s to world tick=%s", current_scene_id, tick
+            )
+
+    # 6. 统一落盘本 tick 产生的新记忆 / Persist new memories created this tick
     # Mock 模式下跳过 Chroma/SQLite 持久化，避免 embedding 写入拖慢 E2E
     memories: dict[str, list[Memory]] = state.get("memories", {})
     if memories and not is_mock(config):

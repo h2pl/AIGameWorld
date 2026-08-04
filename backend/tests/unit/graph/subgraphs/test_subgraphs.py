@@ -75,7 +75,7 @@ class TestLoadDataSubgraph:
         scene_repo = AsyncMock()
         scene_repo.get_scene = AsyncMock(return_value=scene)
         config = {"configurable": {"repos": {"scene": scene_repo}}}
-        # current_scene_id 由 world_init / party.decide_scene 持久化，dm_record 不再携带场景
+        # current_scene_id 由 world_init 持久化、party.decide_scene 裁决后由 persist_tick 落库，dm_record 不再携带场景
         state = {
             "tick": 1,
             "current_scene_id": "scene-1",

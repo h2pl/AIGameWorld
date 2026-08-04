@@ -2,7 +2,8 @@
 
 只加载 world + pcs 两个与场景无关的基础状态；场景相关加载（load_scene /
 load_actors / load_scene_objects）在主图公共 Phase 进行，因为它们依赖
-party.decide_scene 裁决后持久化到 world 的 current_scene_id。
+world.current_scene_id 只是备用记录：load_world 从它恢复进 state，party.decide_scene 每 tick 在 state 内流转，
+persist_tick 末尾统一镜像写回（全部持久化都在最后一步）。
 
 节点顺序：
   load_world → load_pcs

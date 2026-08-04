@@ -119,13 +119,20 @@ def build_tick_graph() -> StateGraph:
     graph.add_edge("tick_init.assign_positions", "tick_init.dm_create_event")
     graph.add_edge("tick_init.dm_create_event", "tick_init.scene_setup_snapshot")
 
-    # ── 进入 PC 决策主链路 ──
-    graph.add_edge("tick_init.scene_setup_snapshot", "pc_subgraph")
-    graph.add_edge("pc_subgraph", "event_service.flush_events")
-    graph.add_edge("event_service.flush_events", "dm_service.dm_narrate")
-    graph.add_edge("dm_service.dm_narrate", "event_service.emit_narrative_event")
-    graph.add_edge("event_service.emit_narrative_event", "data_service.camp_all")
-    graph.add_edge("data_service.camp_all", "data_service.persist_tick")
-    graph.add_edge("data_service.persist_tick", END)
+    # ── 进入 PC 决策主链路（只改 state）──
+    graph.add_edge("tick_init.scene_setup_snapshot", "pc_subgraph")  # 快照就绪，进入 PC 决策+行动
+    graph.add_edge("pc_subgraph", "event_service.flush_events")  # PC 行动产出行事事件
+    graph.add_edge("event_service.flush_events", "dm_service.dm_narrate")  # 事件就绪，DM 据此叙事
+    graph.add_edge(
+        "dm_service.dm_narrate", "event_service.emit_narrative_event"
+    )  # 叙事文本就绪，产出 DM_NARRATIVE 事件
+    graph.add_edge(
+        "event_service.emit_narrative_event", "data_service.camp_all"
+    )  # 叙事事件就绪，夜晚回营
+    # 回营后由 persist_tick 统一落库（dm_records / events / pcs / actors / current_scene_id(备用镜像) / memories）
+    graph.add_edge(
+        "data_service.camp_all", "data_service.persist_tick"
+    )  # 全部 state 就绪，统一落库
+    graph.add_edge("data_service.persist_tick", END)  # 落库完成，tick 结束
 
     return graph

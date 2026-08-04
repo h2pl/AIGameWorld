@@ -25,7 +25,7 @@ class OverallState(TypedDict, total=False):
     - tick / world_id          — tick 序号 + world 标识（入口传入）
     - world                    — World 领域模型（load_data 从 DB 加载）
     - dm_record                — DM 产出记录（dm_create 写入 plot_brief + hints，不含场景选择）
-    - scene                    — 当前场景（current_scene_id 由 world_init 写入、party.decide_scene 每 tick 裁决并持久化到 world；load_scene 按该 id 加载领域模型）
+    - scene                    — 当前场景（current_scene_id 由 party.decide_scene 每 tick 在 state 内裁决流转，persist_tick 末尾镜像写回 world.current_scene_id 备用；load_scene 按该 id 加载领域模型）
     - scene_objects            — 当前场景物体列表（load_data 加载）
     - pcs / actors             — 运行时实体 map，tick 内权威数据源（load_data 加载）
     - pc_decisions / actions   — PC 决策 + 行动（pc_subgraph 产出）
@@ -39,7 +39,7 @@ class OverallState(TypedDict, total=False):
 
     dm_record: DMRecord | None  # DM 产出记录（dm_create 写入 plot_brief + hints）/ DM output record
 
-    current_scene_id: str  # 当前主场景：world_init 写入 world.current_scene_id，party.decide_scene 每 tick 裁决并持久化；load_world 从 world 恢复
+    current_scene_id: str  # 当前主场景：party.decide_scene 每 tick 在 state 内流转；world.current_scene_id 仅作备用记录，由 persist_tick 末尾镜像写回，load_world 从 world 恢复
 
     scene: Scene  # 场景领域模型 / scene domain model
     scene_objects: list[SceneObject]  # 场景物体列表 / scene object list

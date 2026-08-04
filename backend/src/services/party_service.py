@@ -91,7 +91,7 @@ async def party_discuss(state: OverallState, config: RunnableConfig = None) -> d
     """集体讨论：始终走 LLM，只产出多人对话（信息交流），不决定场景去留.
 
     - 所有 tick 都执行，current_scene_id 由上游保证非空（world_init 在首个 tick 前写入
-      world.current_scene_id，party.decide_scene 每 tick 裁决后落盘）。
+      world.current_scene_id；后续每 tick 的裁决结果在 persist_tick 末尾统一落库）。
     - LLM 生成每个 PC 轮流发言的对话（纯交流）；讨论结果不影响场景切换，
       场景决策交由 party_decide_scene 节点独立裁决。
     - 讨论节点只写 PARTY_DISCUSS 事件（target=current, switched=False），不更新 current_scene_id。
@@ -129,7 +129,8 @@ async def party_decide_scene(state: OverallState, config: RunnableConfig = None)
     """集体决策：由 LLM 裁决本 tick 是否切换主场景（与讨论是两个独立节点）.
 
     - 读取 current_scene_id + 可用场景列表，LLM 输出目标场景 id + 理由。
-    - 决策结果写入 PARTY_DECIDE 事件，并更新 current_scene_id（所有 PC 的 scene_id 统一同步）。
+    - 决策结果写入 PARTY_DECIDE 事件，并写入 state 的 current_scene_id（所有 PC 的 scene_id 统一同步）；
+      落库由 persist_tick 在 tick 末尾统一完成。
     - 无可切换场景（场景数<=1）或 LLM 不可用（非 mock 缺失配置）时，沿用当前场景，
       不产出切场景事件（保持 switched=False）。
     """
@@ -168,23 +169,13 @@ async def party_decide_scene(state: OverallState, config: RunnableConfig = None)
                 )
                 target = current
 
-    # 决策结果持久化到 world.current_scene_id（跨 tick 恢复的权威来源）
-    await _persist_current_scene(config, world_id, target)
-
+    # 仅把裁决结果写入 state（current_scene_id + 各 PC.scene_id），
+    # 落库统一由 data_service.persist_tick 在 tick 末尾完成
     applied = _apply_scene(target, pcs, available)
     applied["tick_events"] = _emit_party_decide_event(
         state, current=current, target=target, reason=reason
     )
     return applied
-
-
-async def _persist_current_scene(config, world_id: str, scene_id: str) -> None:
-    """把当前主场景持久化到 world.current_scene_id / Persist current main scene to world."""
-    if not world_id or not scene_id:
-        return
-    world_repo = get_repo(config, "world")
-    if world_repo:
-        await world_repo.set_current_scene_id(world_id, scene_id)
 
 
 async def _llm_discuss(llm, tick, world_id, pcs, current, available, config=None) -> list:
