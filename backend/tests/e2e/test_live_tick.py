@@ -6,28 +6,79 @@
 
 import asyncio
 import time
+from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from src.config import load_config
 from src.domain.world import World
-from src.repository.world_repo import WorldRepo
+from src.llm.llm_client import LLMClient
+from src.orchestrator import Orchestrator
+from src.repository import (
+    ActorRepo,
+    DMRecordRepo,
+    MemoryRepo,
+    PcRepo,
+    SceneRepo,
+    TickEventRepo,
+    WorldRepo,
+)
 from src.server import app
+from src.storage.chroma_client import ChromaClient
 from src.storage.sqlite_client import SQLiteClient
+from src.utils.metrics import MetricsCollector
 
 
 @pytest.fixture
 async def client():
-    """真实 SQLite + 真实 App / Real SQLite + real app."""
+    """真实 SQLite + 真实 LLM + 完整 Orchestrator + 真实 App / Real SQLite + real LLM + full app."""
+    cfg = load_config(str(Path(__file__).parent.parent.parent.parent / "config.e2e.yaml"))
     db = SQLiteClient("data/world_db.db")
     app.state.db = db
     await db.connect()
     await db.init_schema()
+
+    # 向量 + 记忆 / Vector + memory
+    chroma = ChromaClient("data/chroma_e2e")
+    memory_repo = MemoryRepo(chroma=chroma, sqlite=db)
+    await memory_repo.initialize()
+
+    # 指标收集器 / Metrics collector
+    model_name = getattr(cfg.llm, "dm_create", None)
+    model_name = model_name.model if model_name else "default"
+    metrics_collector = MetricsCollector(sqlite=db, model=model_name)
+    await metrics_collector.initialize()
+
+    llm = LLMClient(cfg)
+    llm._metrics_collector = metrics_collector
+
+    repos = {
+        "world": WorldRepo(db),
+        "char": PcRepo(db),
+        "actor": ActorRepo(db),
+        "scene": SceneRepo(db),
+        "memory": memory_repo,
+        "event": TickEventRepo(db),
+        "dm_record": DMRecordRepo(db),
+    }
+    orch = Orchestrator(repos=repos, llm=llm, metrics_collector=metrics_collector)
+
+    app.state.db = db
+    app.state.repos = repos
+    app.state.orchestrator = orch
+    app.state.metrics_collector = metrics_collector
+
+    # 幂等：先清理可能残留的旧记录，再创建 / Idempotent setup
+    await WorldRepo(db).delete("e2e_live")
     await WorldRepo(db).create(World(id="e2e_live", name="E2E 真实测试"))
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
+    await WorldRepo(db).delete("e2e_live")
+    app.state.orchestrator = None
+    app.state.repos = None
     if getattr(app.state, "db", None):
         await app.state.db.close()
         app.state.db = None
