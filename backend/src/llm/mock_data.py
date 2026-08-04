@@ -204,6 +204,30 @@ DATASET_TAVERN: MockDataset = {
             "insight": "这些事件之间似乎有某种联系。",
         },
     ],
+    "party_discuss": [
+        {
+            "dialogue": [
+                {
+                    "speaker_id": "cleric",
+                    "text": "今天酒馆的客人比往常少，北边的林子怕是真有什么东西。",
+                },
+                {
+                    "speaker_id": "merchant",
+                    "text": "我那支商队宁可绕远路也不走夜路，悬赏令上的赏金高得离谱。",
+                },
+                {
+                    "speaker_id": "fighter",
+                    "text": "不管是什么，总得有人去查清。先养精蓄锐，明天再议。",
+                },
+            ],
+        },
+    ],
+    "party_decide": [
+        {
+            "target_scene_id": "village_elderwood",
+            "reason": "当前仍有线索可挖，且众人疲惫，决定留在酒馆休整。",
+        },
+    ],
     "pc_decision": [
         {
             "action": {

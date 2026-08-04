@@ -4,9 +4,7 @@
 Service 负责 State↔Request 适配，Engine 负责业务逻辑 + 从 config 取 repos 调用 Repository。
 """
 
-import json
 from pathlib import Path
-from types import SimpleNamespace
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -43,21 +41,14 @@ async def dm_create(
     prev_narrative: str = "",
     config: RunnableConfig = None,
 ) -> DMRecord:
-    """Phase 1: DM 创造情境 / DM creates situation."""
+    """Phase 1: DM 创造情境 / DM creates situation.
+
+    场景由 world_init（world.starting_scene_id）与 party.decide_scene 确定性决定，
+    dm_create 不再让 LLM 选择场景，只基于当前场景创造 plot_brief + hints。
+    """
     llm = get_llm(config)
     if llm is None:
         raise RuntimeError("[dm_create] LLM client not configured")
-
-    scene_repo = get_repo(config, "scene")
-    scenes: list[SimpleNamespace] = []
-    scene_objects_by_scene: dict[str, list[SceneObject]] = {}
-    if scene_repo and world_id:
-        raw_scenes = await scene_repo.list_scenes(world_id)
-        all_objects = await scene_repo.list_objects_by_world(world_id)
-        for obj in all_objects:
-            scene_obj = SceneObject(**obj)
-            scene_objects_by_scene.setdefault(scene_obj.scene_id, []).append(scene_obj)
-        scenes = [_enrich_scene(s, scene_objects_by_scene.get(s.id, [])) for s in raw_scenes]
 
     # 组装 DM 上下文（远期摘要 + 近期窗口）/ Build DM context (summaries + recent)
     dm_ctx = {
@@ -89,7 +80,6 @@ async def dm_create(
     logger.info("[engine] dm_create tick=%s world=%s", tick, world_id or "-")
     system_prompt = await _render_dm_system(config, world_id)
     prompt = _PROMPTS.get_template("dm/dm_create.jinja").render(
-        scenes=scenes,
         plot_brief_prev=plot_brief,
         prev_narrative=prev_narrative,
         narrative_summaries=dm_ctx["narrative_summaries"],
@@ -106,23 +96,11 @@ async def dm_create(
     if len(result.hints) > 4:
         result.hints = result.hints[:4]
 
-    # 校验 LLM 返回的 scene_id 是否在可用场景列表中 / Validate scene_id exists
-    valid_scene_ids = {s.id for s in scenes}
-    if valid_scene_ids and result.scene_id not in valid_scene_ids:
-        fallback = scenes[0].id
-        logger.warning(
-            "[engine] dm_create returned invalid scene_id=%s, falling back to %s",
-            result.scene_id,
-            fallback,
-        )
-        result.scene_id = fallback
-
     return DMRecord(
         world_id=world_id,
         tick=tick,
         plot_brief=result.plot_brief,
         hints=result.hints,
-        scene_id=result.scene_id,
         ext=result.model_dump(),
     )
 
@@ -293,26 +271,3 @@ async def _render_dm_system(config: RunnableConfig | None, world_id: str) -> str
         if world_repo:
             world = await world_repo.get(world_id)
     return _PROMPTS.get_template("dm/_dm_system.jinja").render(world=world)
-
-
-def _enrich_scene(scene: Scene, objects: list[SceneObject]) -> SimpleNamespace:
-    """解析 ext_json 并补充场景物体信息 / Parse ext_json and attach scene objects."""
-    ext: dict = {}
-    if isinstance(scene.ext_json, str) and scene.ext_json.strip():
-        try:
-            ext = json.loads(scene.ext_json)
-        except json.JSONDecodeError:
-            ext = {}
-    return SimpleNamespace(
-        id=scene.id,
-        name=scene.name,
-        type=scene.type,
-        description=scene.description,
-        spawn_x=scene.spawn_x,
-        spawn_y=scene.spawn_y,
-        map_width=scene.map_width,
-        map_height=scene.map_height,
-        tilemap_summary=scene.tilemap_summary,
-        environment=ext.get("environment", {}),
-        objects=objects,
-    )

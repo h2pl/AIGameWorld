@@ -1,58 +1,29 @@
-"""Tick Init Service: tick 初始化时的业务逻辑，不含 DB 读写。
+"""Tick Init Service: 每个 tick 都执行一次的初始化逻辑 / Per-tick initialization.
 
-负责 PC 出生点坐标分配 + 构建 tick 初始事件（dm_create → scene_setup）。
+语义边界（与 world_init / party 区分）：
+  - world_init_service  ：整个世界只执行一次的初始化（世界/场景确定、Neo4j 节点），
+                          由 orchestrator.run_tick 在每 tick 入口前调用 ensure_world_initialized
+                          幂等完成，完全在 tick 主图之外，不属于任何一个 tick 内部。
+  - party_service       ：每个 tick 都执行的团体协同（集体讨论、集体决策切场景）
+  - tick_init_service   ：每个 tick 都执行的纯初始化，不依赖团体决策结果：
+      * assign_pc_positions      —— PC 出生点坐标分配
+      * build_dm_create_event    —— 构造本 tick 首个事件（DM_CREATE）
+      * save_scene_setup_snapshot —— 截屏 scene/pcs/actors/scene_objects，供 flush_events 构建 scene_setup
+
+注意：本模块不再包含 world_init 或 party（团体决策）逻辑。
 """
 
 from ..domain.event import TickEvent, TickEventType
 from ..graph.state import OverallState
-from ..utils.helpers import assign_spawn_positions, get_repo
+from ..utils.helpers import assign_spawn_positions
 from ..utils.logging import get_logger, trace_node
 
 logger = get_logger(__name__)
 
 
-@trace_node("tick_init.init_graph_db")
-async def init_graph_db(state: OverallState, config=None) -> dict:
-    """初始化图数据库（仅在 tick=1 时执行）."""
-    if state.get("tick", 0) != 1:
-        return {}
-
-    pcs = state.get("pcs", {})
-    if not pcs:
-        return {}
-
-    neo4j_repo = get_repo(config, "neo4j")
-    if not neo4j_repo:
-        logger.warning("[tick_init] Neo4j unavailable, skipping graph init")
-        return {}
-
-    # 初始化 PC 节点
-    for pc in pcs.values():
-        await neo4j_repo.merge_node(
-            label="Actor", properties={"id": pc.id, "name": pc.name, "type": "pc"}
-        )
-
-    # 建立主角团内部的友军关系 (PARTY_MEMBER)
-    tick = state.get("tick", 1)
-    for pc1 in pcs.values():
-        for pc2 in pcs.values():
-            if pc1.id != pc2.id:
-                await neo4j_repo.merge_relationship(
-                    start_label="Actor",
-                    start_key="id",
-                    start_val=pc1.id,
-                    end_label="Actor",
-                    end_key="id",
-                    end_val=pc2.id,
-                    rel_type="PARTY_MEMBER",
-                    tick=tick,
-                )
-    return {}
-
-
 @trace_node("tick_init.assign_positions")
 async def assign_pc_positions(state: OverallState, config=None) -> dict:
-    """为未设置坐标的 PC 分配到场景出生点附近."""
+    """为未设置坐标的 PC 分配到场景出生点附近 / Per-tick: assign PC spawn positions."""
     scene = state.get("scene")
     if scene is None:
         return {}
@@ -80,11 +51,12 @@ async def assign_pc_positions(state: OverallState, config=None) -> dict:
 
 @trace_node("tick_init.dm_create_event")
 async def build_dm_create_event(state: OverallState, config=None) -> dict:
-    """构建 dm_create 事件——tick 的第一个事件."""
-    dm = state.get("dm_record")
-    if dm is None:
-        return {}
-    scene_id = dm.scene_id
+    """构建场景设定事件——tick 的第一个事件（场景由 world_init / party.decide_scene 决定，不再依赖 DM）.
+
+    payload 携带 current_scene_id；plot_brief/hints 由后续 dm_service.dm_create 引擎产出，
+    此处 DM_CREATE 事件只携带场景 id（空壳），供前端在建场时定位场景。
+    """
+    scene_id = state.get("current_scene_id", "")
     if not scene_id:
         return {}
     event = TickEvent(
@@ -93,8 +65,8 @@ async def build_dm_create_event(state: OverallState, config=None) -> dict:
         world_id=state.get("world_id", ""),
         payload={
             "scene_id": scene_id,
-            "plot_brief": dm.plot_brief if dm else "",
-            "hints": dm.hints if dm else [],
+            "plot_brief": "",
+            "hints": [],
         },
     )
     prev = list(state.get("tick_events", []))
@@ -103,7 +75,7 @@ async def build_dm_create_event(state: OverallState, config=None) -> dict:
 
 @trace_node("tick_init.scene_setup_snapshot")
 async def save_scene_setup_snapshot(state: OverallState, config=None) -> dict:
-    """截屏 scene/pcs/actors/scene_objects，供 flush_events 构建 scene_setup."""
+    """截屏 scene/pcs/actors/scene_objects，供 flush_events 构建 scene_setup / Per-tick snapshot."""
     scene = state.get("scene")
     if scene is None:
         return {}

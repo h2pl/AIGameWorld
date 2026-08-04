@@ -11,6 +11,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from src.graph import checkpoints
 from src.graph.graph import OverallState, build_tick_graph
+from src.services import world_init_service
 from src.utils.graph_callbacks import TickGraphCallback
 from src.utils.logging import get_logger, log_phase
 
@@ -49,67 +50,70 @@ class Orchestrator:
                 logger.error("[orchestrator] world repo not found")
                 raise RuntimeError("world repo not found")
 
+            # world 初始化守卫：status != ready 时执行一次 world_init（幂等），
+            # 已完成则直接跳过。放在递增 data_tick 之前，初始化不消耗 tick。
+            config = self._make_config(world_id, 0)
+            await world_init_service.ensure_world_initialized(world_id, config)
+
             tick = await world_repo.increment_data_tick(world_id)
 
-            initial_state: OverallState = {"tick": tick, "world_id": world_id}
+        initial_state: OverallState = {"tick": tick, "world_id": world_id}
 
-            config = self._make_config(world_id, tick)
-            callbacks = [
-                TickGraphCallback(tick=tick, world_id=world_id, metrics_collector=self._metrics)
-            ]
+        config = self._make_config(world_id, tick)
+        callbacks = [
+            TickGraphCallback(tick=tick, world_id=world_id, metrics_collector=self._metrics)
+        ]
 
-            # Langfuse 追踪（官方推荐方式）/ Langfuse tracing (official recommended pattern)
-            # 文档：https://langfuse.com/docs/observability/features/sessions
-            # start_as_current_observation 创建 root span → propagate_attributes 设置
-            # session_id/user_id/tags → CallbackHandler 自动挂到 root span 下
-            # / start_as_current_observation creates root span → propagate_attributes sets
-            # session_id/user_id/tags → CallbackHandler auto-attaches under root span
-            from src.utils.tracing import create_langfuse_handler
+        # Langfuse 追踪（官方推荐方式）/ Langfuse tracing (official recommended pattern)
+        # 文档：https://langfuse.com/docs/observability/features/sessions
+        # start_as_current_observation 创建 root span → propagate_attributes 设置
+        # session_id/user_id/tags → CallbackHandler 自动挂到 root span 下
+        # / start_as_current_observation creates root span → propagate_attributes sets
+        # session_id/user_id/tags → CallbackHandler auto-attaches under root span
+        from src.utils.tracing import create_langfuse_handler
 
-            langfuse_handler = create_langfuse_handler(tick, world_id)
+        langfuse_handler = create_langfuse_handler(tick, world_id)
+        if langfuse_handler:
+            callbacks.append(langfuse_handler)
+        config["callbacks"] = callbacks
+
+        # 指标收集：开始追踪 / Metrics: start tracking
+        if self._metrics:
+            self._metrics.start_tick(world_id, tick)
+
+        # 设置 LLM 客户端的 world_id 上下文，供 token 指标收集 / Set world_id context for LLM token metrics
+        if self._llm and hasattr(self._llm, "set_context"):
+            self._llm.set_context(world_id)
+
+        t_start = time.monotonic()
+        try:
             if langfuse_handler:
-                callbacks.append(langfuse_handler)
-            config["callbacks"] = callbacks
+                # 官方推荐：start_as_current_observation + propagate_attributes
+                from langfuse import get_client, propagate_attributes
 
-            # 指标收集：开始追踪 / Metrics: start tracking
-            if self._metrics:
-                self._metrics.start_tick(world_id, tick)
-
-            # 设置 LLM 客户端的 world_id 上下文，供 token 指标收集 / Set world_id context for LLM token metrics
-            if self._llm and hasattr(self._llm, "set_context"):
-                self._llm.set_context(world_id)
-
-            t_start = time.monotonic()
-            try:
-                if langfuse_handler:
-                    # 官方推荐：start_as_current_observation + propagate_attributes
-                    from langfuse import get_client, propagate_attributes
-
-                    langfuse = get_client()
-                    trace_name = f"{world_id}__tick_{tick}"
-                    with (
-                        langfuse.start_as_current_observation(as_type="span", name="run_tick"),
-                        propagate_attributes(
-                            trace_name=trace_name,
-                            tags=[f"world:{world_id}", f"tick:{tick}"],
-                        ),
-                    ):
-                        result: dict[str, Any] | Any = await self._app.ainvoke(
-                            initial_state, config
-                        )
-                else:
+                langfuse = get_client()
+                trace_name = f"{world_id}__tick_{tick}"
+                with (
+                    langfuse.start_as_current_observation(as_type="span", name="run_tick"),
+                    propagate_attributes(
+                        trace_name=trace_name,
+                        tags=[f"world:{world_id}", f"tick:{tick}"],
+                    ),
+                ):
                     result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
-            except Exception as e:
-                if self._metrics:
-                    self._metrics.record_error(world_id, str(e))
-                raise
-            log_phase("tick", tick, elapsed=time.monotonic() - t_start)
-
-            # 指标收集：结束追踪 / Metrics: finish tracking
+            else:
+                result: dict[str, Any] | Any = await self._app.ainvoke(initial_state, config)
+        except Exception as e:
             if self._metrics:
-                await self._metrics.finish_tick(world_id)
+                self._metrics.record_error(world_id, str(e))
+            raise
+        log_phase("tick", tick, elapsed=time.monotonic() - t_start)
 
-            return {"tick": result["tick"]}
+        # 指标收集：结束追踪 / Metrics: finish tracking
+        if self._metrics:
+            await self._metrics.finish_tick(world_id)
+
+        return {"tick": result["tick"]}
 
     def _make_config(self, world_id: str, tick: int) -> dict:
         """构造 LangGraph 执行配置 / Build LangGraph run config."""
@@ -194,8 +198,12 @@ class Orchestrator:
         logger.info(f"[orchestrator] Rewound world {world_id} to tick {target_tick}")
 
     async def reset(self, world_id: str) -> None:
-        """重置 world：清零 tick + 清理事件/DM记录/摘要 + 重置角色坐标 + 清空 checkpoint."""
-        # 1. 清零 tick / Reset ticks to 0
+        """重置 world：清零 tick + 清理事件/DM记录/摘要 + 重置角色坐标 + 清空 checkpoint.
+
+        reset_tick 会将 world.status 置回 'init'、清空 current_scene_id，
+        因此下一个 tick 入口的 ensure_world_initialized 会重新执行 world_init。
+        """
+        # 1. 清零 tick / Reset ticks to 0（status 置回 init、清空 current_scene_id，下次 tick 重新 world_init）
         world_repo = self._repos.get("world")
         if not world_repo:
             logger.error("[orchestrator] world repo not found")

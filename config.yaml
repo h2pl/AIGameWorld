@@ -77,9 +77,13 @@ llm_purposes:
     temperature: 0.5
     timeout: 15
     retries: 1
-  # === 场景生成 / Scene generation ===
+  party_discuss:
+    temperature: 0.8
+    timeout: 15
     retries: 1
-    retries: 1
+  party_decide:
+    temperature: 0.6
+    timeout: 15
     retries: 1
 
 # === 数据库 / Database ===

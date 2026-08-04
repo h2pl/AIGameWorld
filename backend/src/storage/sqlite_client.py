@@ -38,6 +38,9 @@ class SQLiteClient:
         await self._db.executescript(schema)
         await self._db.commit()
         await self._migrate_drop_map_key()
+        await self._migrate_world_starting_scene()
+        await self._migrate_world_status()
+        await self._migrate_world_current_scene()
         logger.info("[storage] schema initialized")
 
     async def _migrate_drop_map_key(self) -> None:
@@ -75,6 +78,42 @@ class SQLiteClient:
             raise
         finally:
             await self.execute("PRAGMA foreign_keys=ON")
+
+    async def _migrate_world_starting_scene(self) -> None:
+        """为已存在的 worlds 表补加 starting_scene_id 列 / Add starting_scene_id to worlds."""
+        rows = await self.fetch_all("PRAGMA table_info(worlds)")
+        if any(r.get("name") == "starting_scene_id" for r in rows):
+            return
+        logger.info("[storage] migrating: adding worlds.starting_scene_id")
+        await self.execute(
+            "ALTER TABLE worlds ADD COLUMN starting_scene_id TEXT NOT NULL DEFAULT ''"
+        )
+        await self.commit()
+
+    async def _migrate_world_status(self) -> None:
+        """为已存在的 worlds 表补加 status 列 / Add status to worlds.
+
+        旧库缺 status 列意味着「从未初始化过」，默认置 'init'（非 'ready'），
+        让 ensure_world_initialized 守卫在下次 tick 入口重新执行 world_init，
+        把 current_scene_id 写进库——否则若默认 'ready' 会跳过初始化、current_scene_id 永空。
+        """
+        rows = await self.fetch_all("PRAGMA table_info(worlds)")
+        if any(r.get("name") == "status" for r in rows):
+            return
+        logger.info("[storage] migrating: adding worlds.status")
+        await self.execute("ALTER TABLE worlds ADD COLUMN status TEXT NOT NULL DEFAULT 'init'")
+        await self.commit()
+
+    async def _migrate_world_current_scene(self) -> None:
+        """为已存在的 worlds 表补加 current_scene_id 列 / Add current_scene_id to worlds."""
+        rows = await self.fetch_all("PRAGMA table_info(worlds)")
+        if any(r.get("name") == "current_scene_id" for r in rows):
+            return
+        logger.info("[storage] migrating: adding worlds.current_scene_id")
+        await self.execute(
+            "ALTER TABLE worlds ADD COLUMN current_scene_id TEXT NOT NULL DEFAULT ''"
+        )
+        await self.commit()
 
     @property
     def db(self) -> aiosqlite.Connection:

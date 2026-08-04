@@ -94,7 +94,7 @@ async def decide(
         "memories": memories,
         "scene": scene
         or {
-            "id": scene.id if scene else (dm_record.scene_id if dm_record else ""),
+            "id": "",
             "name": "",
             "type": "",
             "description": "",

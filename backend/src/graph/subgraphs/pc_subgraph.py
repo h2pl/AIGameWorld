@@ -3,8 +3,8 @@
 只做 Graph 编排 / Graph orchestration only:
   pc_service.decide → pc_service.act → END
 
-场景信息已由 tick_init_service 提前从 DB 读取并注入 state（不需要单独节点）/
-Scene info is read from DB and injected into state upfront by tick_init_service (no separate node needed).
+场景信息已由 world_init / party / tick_init 提前准备并注入 state（不需要单独节点）/
+Scene info is read from DB and injected into state upfront by world_init / party / tick_init (no separate node needed).
 """
 
 from langgraph.graph import END, StateGraph

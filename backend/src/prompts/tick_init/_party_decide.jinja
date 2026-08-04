@@ -1,0 +1,17 @@
+{# 集体决策 user prompt / Party decision user prompt #}
+当前 tick：{{ tick }}
+当前所在场景：{{ current }}
+
+可用场景列表（只能从中选择目标）：
+{{ scenes }}
+
+团队成员及其目标：
+{{ pcs }}
+
+基于团队刚才的讨论与各位成员的长期目标（long_term_goal），裁决本回合的**主场景去向**：留在当前场景，还是移动到世界中的另一个地点。
+
+请按以下 JSON 输出，不要输出其他内容：
+{
+  "target_scene_id": "若决定留在当前场景则填 \"{{ current }}\"，否则填目标场景 id",
+  "reason": "决策理由（1-2 句简体中文）"
+}

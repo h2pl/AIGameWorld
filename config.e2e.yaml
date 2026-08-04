@@ -78,6 +78,14 @@ llm_purposes:
     temperature: 0.8
     timeout: 15
     retries: 1
+  party_discuss:
+    temperature: 0.8
+    timeout: 15
+    retries: 1
+  party_decide:
+    temperature: 0.6
+    timeout: 15
+    retries: 1
 
 database:
   chroma_path: "data/chroma_e2e/"

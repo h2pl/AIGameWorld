@@ -56,6 +56,8 @@ class LLMConfig(BaseModel):
     explore: LLMModelConfig  # 探索路径与发现 / Explore path and discovery
     combat: LLMModelConfig  # 战斗旁白 / Combat narration
     reflection: LLMModelConfig  # 反思洞察（强模型）/ Reflection insight
+    party_discuss: LLMModelConfig  # 集体讨论（对话生成）/ Party discussion dialogue
+    party_decide: LLMModelConfig  # 集体决策（场景切换裁决）/ Party scene-switch decision
 
     @property
     def reflection_engine(self) -> LLMModelConfig:

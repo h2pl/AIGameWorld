@@ -1,0 +1,15 @@
+{# 集体讨论 user prompt / Party discussion user prompt #}
+当前 tick：{{ tick }}
+当前所在场景：{{ current }}
+
+团队成员及其目标：
+{{ pcs }}
+
+请撰写一段围坐篝火的多人讨论（dialogue，每个 PC 轮流发言，2-4 轮），让成员们交流各自的见闻、想法与顾虑。只产出对话，不要在此决定团队下一步去哪个场景。
+
+严格按以下 JSON 输出，不要输出其他内容：
+{
+  "dialogue": [
+    {"speaker_id": "...", "text": "..."}
+  ]
+}

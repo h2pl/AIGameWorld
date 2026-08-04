@@ -312,23 +312,20 @@ class TestEventService:
 
     @pytest.mark.asyncio
     async def test_build_dm_create_event(self):
-        """tick_init 构建 dm_create 事件 / tick_init builds dm_create event."""
+        """tick_init 构建 dm_create 事件 / tick_init builds dm_create event.
+
+        场景来源已改为 current_scene_id（由团体决策写入），不再依赖 dm_record。
+        """
         state = _overall_state(
             tick=0,
-            scene_id="scene-1",
-            dm_record=DMRecord(
-                tick=0,
-                world_id="w-1",
-                scene_id="scene-1",
-                plot_brief="酒馆冲突一触即发。",
-                hints=["注意角落里的陌生人"],
-            ),
+            current_scene_id="scene-1",
             actions=[],
         )
         result = await tick_init_service.build_dm_create_event(state)
         events = result.get("tick_events", [])
         assert len(events) == 1
         assert events[0].type.value == "dm_create"
+        assert events[0].payload["scene_id"] == "scene-1"
 
     @pytest.mark.asyncio
     async def test_flush_events_builds_pc_decision_events(self):

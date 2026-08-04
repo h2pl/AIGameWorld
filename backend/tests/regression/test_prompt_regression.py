@@ -39,34 +39,37 @@ class TestDMSystemPrompt:
 
 
 class TestDMCreatePrompt:
-    """dm_create.jinja 结构验证 / dm_create.jinja structure validation."""
+    """dm_create.jinja 结构验证 / dm_create.jinja structure validation.
+
+    dm_create 不再让 LLM 选择场景（场景由 world_init / party.decide_scene 确定性决定），
+    只基于当前场景创造 plot_brief + hints。
+    """
 
     def test_renders_with_empty_context(self):
         """空上下文不崩溃 / Renders with empty context."""
         rendered = _PROMPTS.get_template("dm/dm_create.jinja").render(
-            recent_summary="",
             plot_brief_prev="",
-            pacing={},
+            prev_narrative="",
         )
         assert len(rendered) > 0
+        # 不应再要求 LLM 选场景 / no longer asks LLM to choose a scene
+        assert "scene_id" not in rendered
 
     def test_renders_with_previous_plot(self):
         """有上一步剧情时注入 / Injects previous plot when present."""
         rendered = _PROMPTS.get_template("dm/dm_create.jinja").render(
-            recent_summary="",
             plot_brief_prev="雾气弥漫的森林",
-            pacing={},
+            prev_narrative="",
         )
         assert "雾气弥漫的森林" in rendered
 
-    def test_output_schema_contains_scene_id(self):
-        """输出 schema 含 scene_id 字段."""
+    def test_output_schema_has_no_scene_id(self):
+        """输出 schema 不再含 scene_id 字段（场景由确定性路径决定）."""
         rendered = _PROMPTS.get_template("dm/dm_create.jinja").render(
-            recent_summary="",
             plot_brief_prev="",
-            pacing={},
+            prev_narrative="",
         )
-        assert '"scene_id"' in rendered
+        assert '"scene_id"' not in rendered
 
 
 class TestDMNarratePrompt:

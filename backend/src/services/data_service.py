@@ -11,8 +11,9 @@ from langchain_core.runnables.config import RunnableConfig
 
 from ..domain import Memory
 from ..domain.dm_record import DMRecord
+from ..domain.event import TickEvent, TickEventType
 from ..graph.state import OverallState
-from ..utils.helpers import get_repo, is_mock
+from ..utils.helpers import assign_spawn_positions, get_repo, is_mock
 from ..utils.logging import get_logger, trace_node
 
 logger = get_logger(__name__)
@@ -23,21 +24,38 @@ logger = get_logger(__name__)
 
 @trace_node("data.load_world")
 async def load_world(state: OverallState, config=None) -> dict:
-    """从 DB 读取 World 领域模型 / Load world from DB."""
+    """从 DB 读取 World 领域模型，并恢复当前主场景 current_scene_id / Load world + current scene."""
     world_id = state.get("world_id", "")
     world_repo = get_repo(config, "world")
     world = await world_repo.get(world_id) if world_repo else None
-    return {"world": world} if world else {}
+    if not world:
+        return {}
+    # current_scene_id 是 world 的持久化状态（world_init 写入 / party.decide_scene 更新），
+    # 作为每个 tick 讨论与场景加载的权威起点
+    return {"world": world, "current_scene_id": world.current_scene_id}
 
 
 @trace_node("data.load_scene")
 async def load_scene(state: OverallState, config=None) -> dict:
-    """从 DB 读取当前场景 Scene 领域模型 / Load scene from DB（使用 dm_record.scene_id，此时 scene 还未加载）."""
-    dm = state.get("dm_record")
-    scene_id = dm.scene_id if dm else ""
+    """从 DB 读取当前场景 Scene 领域模型 / Load scene from DB.
+
+    场景来源：current_scene_id 由 world 持久化（world_init 写入 world.starting_scene_id、
+    party.decide_scene 每 tick 裁决后更新），load_world 从 world 恢复进 state。
+    world_init 由 status 守卫保证在首个 tick 前已执行，因此 current_scene_id 必有值，
+    这是确定性路径，不做「fallback to first scene」之类的错误路径兜底。
+    """
+    scene_id = state.get("current_scene_id", "")
+    if not scene_id:
+        raise ValueError(
+            "[data] current_scene_id is empty — world_init was not run (status guard broken)"
+        )
+
     scene_repo = get_repo(config, "scene")
-    scene = await scene_repo.get_scene(scene_id) if scene_repo else None
-    return {"scene": scene}
+    if not scene_repo:
+        return {"scene": None, "current_scene_id": scene_id}
+
+    scene = await scene_repo.get_scene(scene_id)
+    return {"scene": scene, "current_scene_id": scene_id}
 
 
 @trace_node("data.load_actors")
@@ -150,3 +168,46 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
             logger.info("[data] persisted memories count=%d tick=%s", total, tick)
 
     return {}
+
+
+@trace_node("data.camp_all")
+async def camp_all(state: OverallState, config=None) -> dict:
+    """tick 末尾：夜晚降临，所有 PC 回到当前场景出生点（营地）休息.
+
+    重置每位 PC 坐标到场景 spawn 附近，产出 PARTY_CAMP 事件（携带 PC 新坐标），
+    供前端把 sprite 移回出生点并播放旁白。坐标修改直接作用于 pcs 领域模型，
+    由 persist_tick 落盘，作为下一 tick 的起点。
+    """
+    scene = state.get("scene")
+    pcs = state.get("pcs", {})
+    actors = state.get("actors", {})
+    if not pcs or scene is None:
+        return {}
+
+    # 重置所有 PC 到出生点 / Reset all PCs to spawn
+    pc_list = list(pcs.values())
+    assign_spawn_positions(pc_list, scene, actors)
+    for pc in pc_list:
+        pcs[pc.id] = pc
+
+    camp_event = TickEvent(
+        type=TickEventType.PARTY_CAMP,
+        tick=state.get("tick", 0),
+        world_id=state.get("world_id", ""),
+        payload={
+            "scene_id": scene.id,
+            "scene_name": getattr(scene, "name", ""),
+            "pcs": [
+                {
+                    "pc_id": pc.id,
+                    "pc_name": pc.name,
+                    "position_x": pc.position_x,
+                    "position_y": pc.position_y,
+                }
+                for pc in pc_list
+            ],
+            "narration": "夜幕降临，冒险者们回到营地，围坐在篝火旁休整，为明日的旅程养精蓄锐。",
+        },
+    )
+    prev = list(state.get("tick_events", []))
+    return {"pcs": pcs, "tick_events": [*prev, camp_event]}

@@ -4,17 +4,55 @@ from pydantic import BaseModel, Field
 
 
 class DMOutput(BaseModel):
-    """DM 创造情境输出。per §5.4."""
+    """DM 创造情境输出。per §5.4.
+
+    注意：场景由 world_init（world.starting_scene_id）与 party.decide_scene 确定性决定，
+    dm_create 不再让 LLM 选择场景，只基于当前场景创造 plot_brief + hints。
+    """
 
     hints: list[str] = Field(default_factory=list, description="环境提示信息")
     plot_brief: str = Field(description="本步剧情梗概（2-3句）")
-    scene_id: str = ""
 
 
 class DMNarrativeSchema(BaseModel):
     """DM 叙事输出。per §5.4."""
 
     narrative: str = Field(description="故事文本（3-5句，第三人称 DND DM 口吻）")
+
+
+class PartyDecisionSchema(BaseModel):
+    """团体决策输出：本 tick 是否切换主场景 / Party decision on main scene switch."""
+
+    target_scene_id: str = Field(
+        default="",
+        description="决定前往的场景 id；若决定留在当前场景则填当前场景 id",
+    )
+    reason: str = Field(default="", description="决策理由（1-2句）")
+
+
+class PartyDiscussTurnSchema(BaseModel):
+    """集体讨论中的单轮发言 / A single turn in the party discussion."""
+
+    speaker_id: str = Field(description="发言者 PC id，必须精确匹配给定 id")
+    text: str = Field(description="该 PC 的发言（简体中文，1-2句）")
+
+
+class PartyDiscussionSchema(BaseModel):
+    """集体讨论输出：全员聚集在出生点讨论，产出多轮对话 + 场景决策.
+
+    - dialogue：每个 PC 轮流发言（2-4 轮，覆盖主要成员）
+    - decision：讨论后决定本 tick 主场景（留在本场景或前往其他场景）
+    """
+
+    dialogue: list[PartyDiscussTurnSchema] = Field(
+        default_factory=list,
+        description="按顺序排列的讨论发言，每个 PC 轮流发言",
+    )
+    target_scene_id: str = Field(
+        default="",
+        description="决定前往的场景 id；若决定留在当前场景则填当前场景 id",
+    )
+    reason: str = Field(default="", description="决策理由（1-2句简体中文）")
 
 
 # === Phase 3: 角色决策 / Character Decision ===

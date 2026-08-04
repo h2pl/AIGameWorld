@@ -17,6 +17,9 @@ import { NarrativeHandler } from "../managers/event_handler/NarrativeHandler";
 import { InteractHandler } from "../managers/event_handler/InteractHandler";
 import { CombatHandler } from "../managers/event_handler/CombatHandler";
 import { DecisionHandler } from "../managers/event_handler/DecisionHandler";
+import { PartyDiscussHandler } from "../managers/event_handler/PartyDiscussHandler";
+import { PartyDecideHandler } from "../managers/event_handler/PartyDecideHandler";
+import { PartyCampHandler } from "../managers/event_handler/PartyCampHandler";
 import {
   SceneSetupHandler,
   type SceneSetupData,
@@ -51,6 +54,9 @@ export class GameScene extends Phaser.Scene {
   private combatHandler!: CombatHandler;
   private decisionHandler!: DecisionHandler;
   private sceneSetupHandler!: SceneSetupHandler;
+  private partyDiscussHandler!: PartyDiscussHandler;
+  private partyDecideHandler!: PartyDecideHandler;
+  private partyCampHandler!: PartyCampHandler;
 
   constructor() {
     super({ key: "Game" });
@@ -191,6 +197,23 @@ export class GameScene extends Phaser.Scene {
     );
     this.decisionHandler = new DecisionHandler(getSprite, follow);
     this.sceneSetupHandler = new SceneSetupHandler((d) => this.ensureScene(d));
+    const getAnySprite = (): any => {
+      const it = this.pcManager?.sprites.values().next();
+      return it && !it.done ? it.value : undefined;
+    };
+    this.partyDiscussHandler = new PartyDiscussHandler(
+      getSprite,
+      getAnySprite,
+      () => this.movementManager,
+      follow
+    );
+    this.partyDecideHandler = new PartyDecideHandler(getAnySprite);
+    this.partyCampHandler = new PartyCampHandler(
+      getSprite,
+      getAnySprite,
+      () => this.movementManager,
+      follow
+    );
   }
 
   /** 注册事件类型映射 / Register event type → handler */
@@ -203,6 +226,9 @@ export class GameScene extends Phaser.Scene {
     this.eventManager.register("pc_interact", (ev) => this.interactHandler.handle(ev));
     this.eventManager.register("pc_combat", (ev) => this.combatHandler.handle(ev));
     this.eventManager.register("dm_narrative", (ev) => this.narrativeHandler.handle(ev));
+    this.eventManager.register("party_discuss", (ev) => this.partyDiscussHandler.handle(ev));
+    this.eventManager.register("party_decide", (ev) => this.partyDecideHandler.handle(ev));
+    this.eventManager.register("party_camp", (ev) => this.partyCampHandler.handle(ev));
     this.eventManager.register("dm_create", (ev) => this._handleDmCreate(ev));
   }
 

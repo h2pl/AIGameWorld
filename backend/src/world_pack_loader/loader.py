@@ -60,6 +60,7 @@ class WorldLoader:
 
         # ── 创建 world / Create world ──
         meta = data["meta"]
+        starting_scene = meta.get("starting_scene", "scene_1")
         await self._world_repo.create(
             World(
                 id=world_id,
@@ -68,6 +69,7 @@ class WorldLoader:
                 version=meta.get("version", "1.0.0"),
                 rule_set=meta.get("rule_set", "dnd_5e_srd"),
                 author=meta.get("author", ""),
+                starting_scene_id=starting_scene,
             )
         )
 

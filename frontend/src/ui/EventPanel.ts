@@ -12,6 +12,9 @@ const EVENT_ICONS: Record<string, string> = {
   dm_create: "🎲",
   dm_narrative: "📖",
   scene_setup: "🗺️",
+  party_discuss: "🔥",
+  party_decide: "⚖️",
+  party_camp: "⛺",
   scene_objects: "📦",
   character_move: "🚶",
   pc_decision: "🧠",
@@ -135,6 +138,9 @@ function _readableType(t: string): string {
     dm_create: "DM 创建情境",
     dm_narrative: "DM 叙事",
     scene_setup: "场景设置",
+    party_discuss: "集体讨论",
+    party_decide: "集体决策",
+    party_camp: "夜晚回营",
     scene_objects: "场景物体",
     character_move: "角色移动",
     pc_decision: "角色决策",
@@ -209,6 +215,19 @@ function _formatPayload(ev: EventData): string {
     }
     case "character_move":
       return `【${pcName}】移动`;
+    case "party_discuss": {
+      const dialogue = (p.dialogue ?? []) as Array<{ speaker_id: string; text: string }>;
+      const lines = dialogue.map((d) => d.text).join(" / ");
+      return lines ? `集体讨论: ${lines}` : "集体讨论";
+    }
+    case "party_decide": {
+      const decision = p.switched
+        ? `→ 决定前往新地点（${String(p.target_scene_id || "")}）${p.reason ? "：" + String(p.reason) : ""}`
+        : `→ 决定留在原地${p.reason ? "：" + String(p.reason) : ""}`;
+      return `集体决策 ${decision}`;
+    }
+    case "party_camp":
+      return String(p.narration || "夜幕降临，冒险者们回到营地休整。");
     default:
       return `[${_readableType(ev.type)}]`;
   }
