@@ -1,0 +1,115 @@
+# AIGameWorld E2E 测试配置 / E2E test configuration
+# 启用 mock LLM + mock 数据，使用独立 DB，避免污染开发数据
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+world:
+  default_pack: "forgotten_realms"
+
+runtime:
+  llm_mock: true
+  data_mode: mock
+  db_name: "data/e2e.db"
+  mock_dataset: "tavern"
+
+llm_provider: "deepseek"
+
+llm_providers:
+  zen-proxy:
+    model: "deepseek-v4-flash-free"
+    base_url: "http://localhost:6446/v1"
+    api_key_env: ""
+    client_backend: "requests"
+  glm:
+    model: "glm-5.1"
+    base_url: "https://open.bigmodel.cn/api/paas/v4"
+    api_key_env: "GLM_API_KEY"
+    client_backend: "langchain"
+  deepseek:
+    model: "deepseek-chat"
+    base_url: "https://api.deepseek.com/v1"
+    api_key_env: "DEEPSEEK_API_KEY"
+    client_backend: "langchain"
+
+llm_purposes:
+  dm_create:
+    temperature: 0.9
+    timeout: 20
+    retries: 1
+  dm_narrate:
+    temperature: 0.8
+    timeout: 30
+    retries: 1
+  pc_decision:
+    temperature: 0.7
+    timeout: 10
+    retries: 1
+  actor_decision:
+    temperature: 0.7
+    timeout: 8
+    retries: 1
+  talk:
+    temperature: 0.8
+    timeout: 15
+    retries: 1
+  interact:
+    temperature: 0.7
+    timeout: 10
+    retries: 1
+  explore:
+    temperature: 0.8
+    timeout: 15
+    retries: 1
+  combat:
+    temperature: 0.8
+    timeout: 15
+    retries: 1
+  reflection:
+    temperature: 0.5
+    timeout: 15
+    retries: 1
+  spawn_actors:
+    temperature: 0.8
+    timeout: 15
+    retries: 1
+  spawn_objects:
+    temperature: 0.8
+    timeout: 15
+    retries: 1
+
+database:
+  chroma_path: "data/chroma_e2e/"
+
+auto_run:
+  default_interval: 2000
+  reflection_interval: 5
+
+logging:
+  level: "INFO"
+  json_format: false
+  rotation:
+    when: "H"
+    interval: 1
+    utc: true
+    backup_count: 0
+  console:
+    api: true
+    orchestrator: true
+    graph: true
+    service: true
+    engine: true
+    repo: true
+    storage: true
+    llm: true
+    scheduler: true
+    utils: true
+    loader: true
+    viewer: true
+    performance: false
+
+observability:
+  langfuse:
+    enabled: false
+    tracing_environment: "development"

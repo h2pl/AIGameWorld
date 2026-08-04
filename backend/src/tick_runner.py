@@ -1,0 +1,143 @@
+"""Tick 执行管理器 / Tick execution managers.
+
+持续循环和一次性批量任务的全局单例，供 api 层路由使用.
+"""
+
+import asyncio
+
+from src.utils.logging import get_logger
+
+logger = get_logger(__name__)
+
+# data_tick 允许领先 display_tick 的最大 tick 数 / Max ticks data_tick may lead display_tick
+MAX_AHEAD_TICKS = 3
+
+
+async def _throttle_tick(world_id: str, orch) -> None:
+    """当 data_tick 领先 display_tick 达到上限时等待 / Wait if data_tick is too far ahead."""
+    world_repo = orch._repos.get("world")
+    if world_repo is None:
+        return
+    for _ in range(120):  # 最多等 120 秒，防止死循环 / Max 120s to avoid infinite loop
+        data_tick = await world_repo.get_data_tick(world_id)
+        display_tick = await world_repo.get_display_tick(world_id)
+        if data_tick - display_tick < MAX_AHEAD_TICKS:
+            return
+        # 如果没有正在运行的 loop 或 batch，说明已被 reset/cancel，直接退出 / Exit if no active task
+        if not loop_manager.is_running(world_id) and not batch_runner.is_running(world_id):
+            return
+        logger.info(
+            "[throttle] %s data_tick=%d display_tick=%d; waiting for display to catch up",
+            world_id,
+            data_tick,
+            display_tick,
+        )
+        await asyncio.sleep(1)
+    logger.warning("[throttle] %s timed out after 120s", world_id)
+
+
+class TickLoopManager:
+    """持续 Tick 循环管理器."""
+
+    def __init__(self):
+        self.running_worlds: dict[str, bool] = {}
+        self.tasks: dict[str, asyncio.Task] = {}
+        self.loop_ids: dict[str, int] = {}
+
+    async def _loop(self, world_id: str, orch, loop_id: int):
+        logger.info(f"[loop] Started continuous tick loop for world {world_id} (id: {loop_id})")
+        while self.running_worlds.get(world_id, False) and self.loop_ids.get(world_id) == loop_id:
+            try:
+                await _throttle_tick(world_id, orch)
+                await orch.run_tick(world_id)
+                await asyncio.sleep(0.5)  # Prevent CPU hogging
+            except asyncio.CancelledError:
+                logger.info(f"[loop] Tick loop for {world_id} was cancelled")
+                break
+            except Exception as e:
+                logger.error(f"[loop] Error in tick loop for {world_id}: {e}")
+                self.running_worlds[world_id] = False
+                break
+        logger.info(f"[loop] Stopped continuous tick loop for world {world_id} (id: {loop_id})")
+
+    def start(self, world_id: str, orch):
+        if self.running_worlds.get(world_id):
+            return
+        self.running_worlds[world_id] = True
+        loop_id = self.loop_ids.get(world_id, 0) + 1
+        self.loop_ids[world_id] = loop_id
+        self.tasks[world_id] = asyncio.create_task(self._loop(world_id, orch, loop_id))
+
+    def stop(self, world_id: str):
+        self.running_worlds[world_id] = False
+        # 立即停止当前 tick，防止 reset 后继续生成数据 / Cancel immediately to avoid extra ticks after reset
+        task = self.tasks.get(world_id)
+        if task is not None and not task.done():
+            task.cancel()
+
+    def is_running(self, world_id: str) -> bool:
+        """task 真正结束才算停止 / Consider stopped only when task is done."""
+        task = self.tasks.get(world_id)
+        return task is not None and not task.done()
+
+
+class TickBatchRunner:
+    """一次性 N-tick 任务管理器."""
+
+    def __init__(self):
+        self._tasks: dict[str, asyncio.Task] = {}
+        self._targets: dict[str, int] = {}
+        self._completed: dict[str, int] = {}
+
+    async def _run(self, world_id: str, orch, n: int):
+        logger.info(f"[batch] Started {n} ticks for world {world_id}")
+        completed = 0
+        try:
+            for _ in range(n):
+                task = self._tasks.get(world_id)
+                if task and task.cancelled():
+                    break
+                await _throttle_tick(world_id, orch)
+                await orch.run_tick(world_id)
+                completed += 1
+        except asyncio.CancelledError:
+            logger.info(f"[batch] Cancelled for world {world_id} after {completed} ticks")
+        except Exception as e:
+            logger.error(f"[batch] Error in world {world_id}: {e}")
+        finally:
+            self._completed[world_id] = completed
+            self._tasks.pop(world_id, None)
+            self._targets.pop(world_id, None)
+            logger.info(f"[batch] Finished world {world_id}: {completed}/{n} ticks")
+
+    def start(self, world_id: str, orch, n: int):
+        """启动一次性 N-tick 任务（不阻塞，前端主动拉取）."""
+        if n <= 0:
+            raise ValueError("n must be positive")
+        existing = self._tasks.get(world_id)
+        if existing is not None and not existing.done():
+            raise RuntimeError(f"Batch already running for {world_id}")
+        self._targets[world_id] = n
+        self._tasks[world_id] = asyncio.create_task(self._run(world_id, orch, n))
+
+    def cancel(self, world_id: str) -> bool:
+        """取消正在运行的 batch 任务 / Cancel running batch task."""
+        task = self._tasks.get(world_id)
+        if task is not None and not task.done():
+            task.cancel()
+            return True
+        return False
+
+    def is_running(self, world_id: str) -> bool:
+        task = self._tasks.get(world_id)
+        return task is not None and not task.done()
+
+    def get_target(self, world_id: str) -> int | None:
+        return self._targets.get(world_id)
+
+    def get_completed(self, world_id: str) -> int | None:
+        return self._completed.get(world_id)
+
+
+loop_manager = TickLoopManager()
+batch_runner = TickBatchRunner()

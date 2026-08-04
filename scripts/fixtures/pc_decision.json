@@ -1,0 +1,74 @@
+{
+  "_comment": "pc_decision 评估 fixture / Evaluation fixture for pc_decision purpose",
+  "me": {
+    "id": "pc_warrior",
+    "name": "艾尔",
+    "role": "战士",
+    "race": "人类",
+    "status": "active",
+    "personality": "勇敢",
+    "disposition": "neutral"
+  },
+  "plot_brief": "黄昏时分，十字路口的商队已离去，远处山丘上有微弱火光",
+  "hints": [
+    "岔路左侧的石碑上刻着褪色的路标",
+    "商队留下的车辙在泥地上形成两条深沟",
+    "远处山丘上有一点若隐若现的火光"
+  ],
+  "memories": [
+    "酒馆老板说北边近来有商队失踪",
+    "守卫提到夜间有可疑黑影"
+  ],
+  "scene": {
+    "id": "crossroad",
+    "name": "十字路口",
+    "type": "outdoor",
+    "description": "三岔路口，路边立着被青苔覆盖的路碑",
+    "tilemap_summary": ""
+  },
+  "scene_objects": [
+    {
+      "id": "signpost",
+      "name": "路碑",
+      "object_type": "landmark",
+      "interactable": true
+    },
+    {
+      "id": "wagon_wreck",
+      "name": "翻倒的货车",
+      "object_type": "debris",
+      "interactable": true
+    }
+  ],
+  "nearby_pcs": [
+    {
+      "id": "pc_cleric",
+      "name": "莉娜",
+      "role": "牧师",
+      "race": "精灵",
+      "status": "active",
+      "personality": "谨慎",
+      "disposition": "neutral"
+    }
+  ],
+  "nearby_actors": [
+    {
+      "id": "npc_guard",
+      "name": "守卫鲍勃",
+      "role": "守卫",
+      "race": "人类",
+      "status": "active",
+      "personality": "谨慎",
+      "disposition": "neutral"
+    },
+    {
+      "id": "goblin_scout",
+      "name": "地精斥候",
+      "role": "斥候",
+      "race": "地精",
+      "status": "active",
+      "personality": "狡猾",
+      "disposition": "hostile"
+    }
+  ]
+}

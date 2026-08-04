@@ -1,0 +1,8 @@
+items:
+  - id: "rusty_key"
+    name: "Rusty Key"
+    item_type: "key"
+    rarity: "uncommon"
+    weight: 0.1
+    value: 0
+    data: {opens: "cellar_door_01"}

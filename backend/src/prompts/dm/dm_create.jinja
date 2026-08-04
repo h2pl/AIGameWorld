@@ -1,0 +1,114 @@
+{# Phase 1: DM 创造情境 / DM creates the scene #}
+
+你的职责：根据可用场景列表为当前 tick 选择并创造一个具体、可感知的场景情境。
+你需要给出场景 id、剧情梗概（plot_brief）以及 2-4 条环境线索（hints）。
+
+{# 故事上下文 / Story context — 分层注入 #}
+{% if narrative_summaries %}
+【远期剧情脉络】以下是早期发生的关键事件摘要，用于保持长线剧情连贯：
+{{ narrative_summaries }}
+{% endif %}
+
+{% if scene_summaries %}
+【远期场景变迁】以下是早期场景的环境摘要，用于保持世界观一致性：
+{{ scene_summaries }}
+{% endif %}
+
+{% if recent_narratives %}
+【近期事件】以下是最近几轮实际发生的剧情（原文），请接着讲：
+{{ recent_narratives }}
+{% endif %}
+
+{% if recent_scenes %}
+【近期场景】以下是最近几轮的场景设定（原文），确保场景转换合理：
+{{ recent_scenes }}
+{% endif %}
+
+{% if plot_brief_prev %}
+上一步剧情：{{ plot_brief_prev }}
+{% endif %}
+
+{% if prev_narrative %}
+上轮叙事：{{ prev_narrative }}
+{% endif %}
+
+{# 世界观知识 / World Pack knowledge #}
+{% if world_knowledge %}
+相关知识：
+{{ world_knowledge }}
+{% endif %}
+
+{# 场景列表 / Available scenes #}
+{% if scenes %}
+可用场景列表（请从以下 id 中精确选择当前场景）：
+{% for s in scenes %}
+- {{ s.id }}：{{ s.name }}（{{ s.type }}）
+  描述：{{ s.description or "无" }}
+  地图尺寸：{{ s.map_width }} × {{ s.map_height }}
+  出生点：({{ s.spawn_x }}, {{ s.spawn_y }})
+  {% if s.environment %}
+  环境：{% if s.environment.weather %}天气 {{ s.environment.weather }}{% endif %}{% if s.environment.time_of_day %} / 时间 {{ s.environment.time_of_day }}{% endif %}
+  {% endif %}
+
+  {% if s.objects %}
+  场景物体：
+  {% for obj in s.objects %}
+    · {{ obj.name }}（{{ obj.object_type }}）@({{ obj.position_x }}, {{ obj.position_y }})
+  {% endfor %}
+  {% endif %}
+{% endfor %}
+{% endif %}
+
+{# 输出约束 / Output spec #}
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）。
+
+字段约束：
+- hints（string[]）：2-4 条环境提示。必须是当前场景中玩家可以直接感知到的信息，比如视觉、听觉、气味、温度等。
+  必须使用简体中文。好的示例：
+  - "地上有血迹通向左边走廊"
+  - "右边房间传来低语"
+  - "北门被重锁封死"
+  - "祭坛上的刻文在月光下泛着冷光"
+- plot_brief（string）：2-3 句场景设置。描述角色行动"之前"现场发生了什么，营造具体画面，不要写角色已做的事。
+  必须使用简体中文。
+- scene_id（string）：当前场景 id。必须从上方场景列表中精确选择一个 id，不得编造。
+
+输出格式：
+{
+  "hints": ["...", "..."],
+  "plot_brief": "...",
+  "scene_id": "tavern"
+}
+
+示例 1（酒馆傍晚，氛围低沉，多 NPC 在场）：
+{
+  "hints": [
+    "铁匠铺的烟囱冒着最后几缕炊烟，空气中残留着木炭和铁锈的味道",
+    "吧台后的老板娘不时瞟向角落里独自喝酒的雇佣兵，神情紧张",
+    "窗外传来几声狗吠，随后被一声短促的金属碰撞打断"
+  ],
+  "plot_brief": "黄昏时分，酒馆里稀稀拉拉坐了几桌客人。铁匠刚放下酒杯准备离开，雇佣兵独自坐在角落擦拭着一把短剑。老板娘在吧台后对账，账本旁的烛台火苗不安地跳动着。",
+  "scene_id": "tavern_01"
+}
+
+示例 2（神殿废墟，月夜探索，建筑残骸氛围）：
+{
+  "hints": [
+    "断裂的石柱之间传来低沉的嗡鸣，像是某种古老机关的齿轮还在运转",
+    "地面的石板上零星分布着干涸的暗红色痕迹，一直延伸到东边的半塌拱门",
+    "正厅的屋顶坍了一半，月光从破洞倾泻而下，照亮了祭坛底座上某种爬行动物留下的黏液"
+  ],
+  "plot_brief": "月光穿过塌陷的屋顶洒在布满青苔的祭坛上，四周的石壁上刻满了褪色的浮雕——描绘着祭司向一条巨蛇献祭的场景。空气中弥漫着潮湿的石板和某种腐植质的味道，远处隐约有滴水声。",
+  "scene_id": "temple_ruins"
+}
+
+示例 3（十字路口黄昏，多出口与过客，暗示分支路线）：
+{
+  "hints": [
+    "岔路左侧的石碑上刻着褪色的路标：'Elderwood 向西十里'，字母被苔藓遮住了一半",
+    "商队留下的车辙在泥地上形成两条深深的沟，积水映着天边最后一抹橙光",
+    "一棵歪脖子老松的枝丫上挂着一串褪色的祈愿绳结，被风吹得沙沙作响"
+  ],
+  "plot_brief": "暮色笼罩着三岔路口，路边立着一块被青苔覆盖的路碑。一辆翻倒的货车歪在路旁，车厢已被洗劫一空，只剩几块碎木板和散落的陶罐碎片。远处的山丘上有一点若隐若现的火光，像是营火或是某种警告信号。",
+  "scene_id": "crossroad"
+}

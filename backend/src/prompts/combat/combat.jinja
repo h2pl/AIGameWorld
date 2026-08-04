@@ -1,0 +1,55 @@
+{# Phase 4d: 战斗旁白上下文 / Combat narration context #}
+剧情情境：{{ plot_brief }}
+
+{% if hints %}
+环境提示：
+{% for hint in hints %}
+- {{ hint }}
+{% endfor %}
+{% endif %}
+
+当前场景：{{ scene.name or scene.id }}（{{ scene.type }}）
+{{ scene.description or "无" }}
+
+攻击者：{{ pc.name }}（id: {{ pc.id }}，{{ pc.role }}{% if pc.race %}，{{ pc.race }}{% endif %}）
+- 生命：{{ pc.hp }} / {{ pc.max_hp }}，护甲：{{ pc.ac }}，命中加值：{{ pc.attack_bonus }}，伤害骰：{{ pc.damage_dice }}
+- 力量：{{ pc.strength }}，敏捷：{{ pc.dexterity }}
+
+目标：{{ target.name }}（id: {{ target.id }}，{{ target.role }}{% if target.race %}，{{ target.race }}{% endif %}）
+- 生命：{{ target.hp }} / {{ target.max_hp }}，护甲：{{ target.ac }}，命中加值：{{ target.attack_bonus }}，伤害骰：{{ target.damage_dice }}
+- 力量：{{ target.strength }}，敏捷：{{ target.dexterity }}
+
+{% if memories %}
+相关记忆：
+{% for mem in memories %}
+- {{ mem }}
+{% endfor %}
+{% endif %}
+
+请根据双方实力和当前情境，直接生成战斗交锋描述与结果。
+
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
+{
+  "narration": "<2-3句中文战斗旁白>",
+  "target_defeated": <true 或 false>,
+  "result": "<一句话总结战斗结果>"
+}
+
+示例 1（击败）：
+{
+  "narration": "战士怒吼一声，长剑划出一道弧线劈向地精的短刀。金属碰撞的火花中，地精踉跄后退，肩膀被划开一道血口。它低吼着想反击，但战士的第二击已经劈落——正中锁骨。",
+  "target_defeated": true,
+  "result": "地精倒在血泊中，短刀滑落在地，再无声息。"
+}
+示例 2（未分胜负）：
+{
+  "narration": "盗贼的匕首如蛇般刺向守卫的肋骨，但对方经验老到，侧身用盾牌格挡了这一击。两人在狭窄的走廊里互相试探，刀刃与盾牌碰撞的火星照亮了墙面古老的壁画。",
+  "target_defeated": false,
+  "result": "双方仍在对峙，谁也不敢先露出破绽。"
+}
+示例 3（法师远程法术击败）：
+{
+  "narration": "法师抬起法杖，一道冰蓝色的射线从杖尖射出，精准地击中食人魔的胸口。冰霜从伤口迅速蔓延，食人魔的动作越来越慢，最终被冻结在原地，粗壮的手臂还保持着挥击的姿势。",
+  "target_defeated": true,
+  "result": "食人魔被冰霜彻底冻结，变成了广场中央一尊骇人的冰雕。"
+}

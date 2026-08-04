@@ -1,0 +1,44 @@
+{# 动态 Actor 生成 prompt / Dynamic actor generation prompt #}
+当前剧情情境：{{ plot_brief }}
+
+{% if hints %}
+DM 提示：
+{% for hint in hints %}
+- {{ hint }}
+{% endfor %}
+{% endif %}
+
+{# 场景上下文 / Scene context #}
+场景：{{ scene.name | default("未知场景") }}（{{ scene.type | default("") }}）
+{{ scene.description | default("") }}
+地图尺寸：{{ map_width }} x {{ map_height }}
+出生点：({{ spawn_x }}, {{ spawn_y }})
+
+{% if existing_actors %}
+已有 NPC：
+{% for actor in existing_actors %}
+- {{ actor.name }} ({{ actor.role | default("") }}): {{ actor.position_x }}, {{ actor.position_y }}
+{% endfor %}
+{% endif %}
+
+请为上述场景生成 2-5 个合理的 NPC，使其符合场景氛围和当前剧情。
+每个 NPC 的坐标不要与其他已有 NPC 重叠，尽量分布在场景内有意义的位置。
+
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
+{
+  "actors": [
+    {
+      "id": "actor_xxx",
+      "name": "名字",
+      "role": "身份",
+      "race": "race",
+      "disposition": "neutral",
+      "status": "active",
+      "personality": "简短性格",
+      "position_x": 0,
+      "position_y": 0,
+      "attributes_json": "{\"strength\":10,\"dexterity\":10,\"constitution\":10,\"intelligence\":10,\"wisdom\":10,\"charisma\":10}",
+      "combat_json": "{\"hp\":10,\"max_hp\":10,\"ac\":10,\"attack_bonus\":0,\"damage_dice\":\"1d6\"}"
+    }
+  ]
+}

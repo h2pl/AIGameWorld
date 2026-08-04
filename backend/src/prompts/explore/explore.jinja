@@ -1,0 +1,64 @@
+{# 探索 prompt — 每次一个探索行动，一条探索记录 / Single explore action per prompt #}
+{# 当前剧情注入 / Current plot injection #}
+当前剧情情境：{{ plot_brief }}
+
+{# DM 环境提示 / DM environmental hints #}
+{% if hints %}
+DM 提示：
+{% for hint in hints %}
+- {{ hint }}
+{% endfor %}
+{% endif %}
+
+{# PC 记忆 / PC memories #}
+{% if memories %}
+你记得：
+{% for mem in memories %}
+- {{ mem }}
+{% endfor %}
+{% endif %}
+
+{# 场景上下文 / Scene context #}
+当前场景：{{ scene.name | default("未知场景") }}（{{ scene.type | default("") }}）
+{{ scene.description or "无" }}
+地图尺寸：{{ map_width }} x {{ map_height }}
+
+{% if scene_objects %}
+场景物体：
+{% for obj in scene_objects %}
+- {{ obj.name }} ({{ obj.position_x | default(0) }}, {{ obj.position_y | default(0) }}): {{ obj.object_type }}
+{% endfor %}
+{% endif %}
+
+{{ pc.name }} 当前位于 ({{ start_x }}, {{ start_y }})，决定探索前方未知区域。
+
+生成要求：
+1. 选择一个与当前位置距离 3-10 格的目的地坐标（end_x, end_y）。
+2. 如果附近有地标或场景物体，目的地应靠近某个有趣的位置。
+3. 撰写一条 1-2 句的第三人称旁白（explore_record），描述到达后发现了什么。
+
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
+{
+  "end_x": <整数>,
+  "end_y": <整数>,
+  "explore_record": "<1-2句中文旁白>"
+}
+
+示例 1（战士发现遗迹残骸）：
+{
+  "end_x": 15,
+  "end_y": 22,
+  "explore_record": "碎石堆中露出一截锈蚀的剑柄，剑身早已断裂，但护手上嵌着一颗黯淡的红宝石。旁边的墙壁上有人用炭笔匆忙写下几个字：'不要相信井里的声音'。"
+}
+示例 2（盗贼发现隐藏补给）：
+{
+  "end_x": 8,
+  "end_y": 30,
+  "explore_record": "灌木丛深处藏着一个破旧的背包，里面的干粮已经发霉，但夹层里有一小瓶治疗药水和一个绣着家族纹章的钱袋——看来某位冒险者仓促离开时落下了。"
+}
+示例 3（法师感知魔法异常）：
+{
+  "end_x": 20,
+  "end_y": 10,
+  "explore_record": "空气中弥漫着微弱的奥术残留，指间的符文戒指微微发烫。一株枯萎的老橡树干上嵌着几片水晶碎片，地面上散落着被烧焦的藤蔓，显然不久前有人在这里施放过火球术。"
+}

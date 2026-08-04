@@ -1,57 +1,142 @@
+# AIGameWorld 后端项目配置 / Backend Project Config (PEP 621)
+# 依赖版本锁定在 04-tech-stack.md 中说明 / Versions documented in 04-tech-stack.md
+
 [project]
-name = "simgameworld-backend"
+name = "AIGameWorld-backend"
 version = "0.1.0"
-description = "SimGameWorld backend - DM-driven DND world simulation"
-requires-python = ">=3.14"
+description = "AIGameWorld backend - DM-driven DND world simulation"
+requires-python = ">=3.12"
+
+# === 运行时依赖 / Runtime Dependencies ===
 dependencies = [
-    "fastapi>=0.138",
-    "uvicorn[standard]>=0.49",
-    "langgraph>=1.2",
-    "langchain>=1.3",
-    "langchain-openai>=1.3",
-    "langchain-anthropic>=0.3",
-    "pydantic>=2.13",
-    "pydantic-settings>=2.14",
-    "aiosqlite>=0.22",
-    "chromadb>=1.5",
-    "jinja2>=3.1",
-    "pyyaml>=6.0",
-    "langfuse>=4.12",
+    "fastapi>=0.138",               # REST + WebSocket 网关 / API gateway
+    "uvicorn[standard]>=0.49",      # ASGI 服务器 / ASGI server
+    "langgraph>=1.2",               # 7 Phase StateGraph 编排 / Graph orchestration
+    "langchain>=1.3",               # LLM 调用抽象层 / LLM abstraction
+    "langchain-openai>=1.3",        # DeepSeek 接入（OpenAI 兼容）/ DeepSeek via OpenAI compat
+    "langchain-anthropic>=0.3",     # Claude 备用模型 / Fallback LLM
+    "langsmith>=0.9.8",             # 评估器管理 + workspace 级评估器 / Workspace-level evaluators
+    "pydantic>=2.13",               # 强类型数据模型 / Strong type validation
+    "pydantic-settings>=2.14",      # 配置管理 / Config management
+    "aiosqlite>=0.22",              # 异步 SQLite / Async SQLite
+    "chromadb>=1.5",                # 向量记忆存储 / Vector memory
+    "sentence-transformers>=5.6",   # BGE-M3 嵌入模型 / BGE-M3 embedding (Chinese semantic retrieval)
+    "tokenizers==0.22.2",  # 精确锁定（依赖树允许且真实存在），避免范围锁导致的版本漂移与双版本 dist-info 冲突
+    "jinja2>=3.1",                  # Prompt 模板引擎 / Prompt templates
+    "pyyaml>=6.0",                  # Pack YAML 解析 / Pack YAML parsing
+    "langfuse>=4.12",               # LLM 可观测性 / LLM observability
+    "python-json-logger>=4.1.0",
+    "pandas>=3.0.3",
+    "neo4j>=5.21.0",                # 图数据库驱动 / Neo4j Graph Database driver
 ]
 
+# === 开发依赖 / Dev Dependencies ===
 [dependency-groups]
 dev = [
-    "ruff>=0.15",
-    "pytest>=9.1",
-    "pytest-asyncio>=1.4",
-    "pytest-cov>=7.1",
-    "mypy>=2.1",
-    "httpx>=0.28.1",
-]
-production = [
-    "langchain-mcp-adapters>=0.3",
+    "ruff>=0.15",                   # Lint + Format / Lint and format
+    "pytest>=9.1",                  # 测试框架 / Test framework
+    "pytest-asyncio>=1.4",          # 异步测试支持 / Async test support
+    "pytest-cov>=7.1",              # 覆盖率 / Coverage
+    "mypy>=2.1",                    # 类型检查 / Type checking
+    "httpx>=0.28.1",                # HTTP 测试客户端 / HTTP test client
+    "pyright>=1.1.411",
+    "deepeval>=2.0",                # LLM 评估框架 / LLM evaluation framework
 ]
 
+# === 生产扩展 / Production Extensions ===
+production = [
+    "langchain-mcp-adapters>=0.3",  # MCP 协议接入（远期）/ MCP protocol (future)
+]
+
+# === 可选依赖组（需 C++ 编译环境）/ Optional dependency groups (needs C++ compiler) ===
+[project.optional-dependencies]
+rag-eval = [
+    "ragas>=0.4",                   # RAG 评估 / RAG evaluation（需 scikit-network C++ 编译）
+]
+
+# === Ruff Lint 配置 / Ruff Lint Config ===
 [tool.ruff]
-target-version = "py314"
+target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+select = [
+    # 基础（必须）
+    "E", "W",       # pycodestyle 风格 / style
+    "F",            # Pyflakes 逻辑错误（引用未定义变量等）/ logic errors
+    "I",            # isort import 排序 / import ordering
+    "UP",           # pyupgrade 语法升级 / syntax upgrades
+    "B",            # flake8-bugbear Bug 防御 / bug prevention
+    "SIM",          # flake8-simplify 简化建议 / simplification
+    # 安全 — 本项目有 LLM prompt/DB/密钥 / our project has LLM+DB+secrets
+    "S",            # bandit 安全扫描 / security scan
+    # 质量提升 — 防常见反模式 / prevent common anti-patterns
+    "PERF",         # 性能反模式 / performance anti-patterns
+    "PIE",          # 无用代码 / unnecessary code
+    "PTH",          # pathlib 一致使用 / consistent pathlib usage
+    "PL",           # Pylint 深度分析 / deep static analysis (0 误报)
+    "C4",           # 推导复杂度 / comprehension complexity (2 处可修)
+]
+ignore = [
+    # 风格
+    "E501",         # 行长度（种子数据/LLM 输出无法合理断行）
+    # 安全误报
+    "S101",         # pytest assert（测试标准范式）
+    "S104",         # 0.0.0.0 bind（config 默认值，非漏洞）
+    "S107",         # 硬编码密码（本地开发默认值，非生产密钥）
+    "S311",         # random.randint（DND 骰子，非密码学用途）
+    "S701",         # jinja2 autoescape（本项目只渲染 LLM prompt，非 HTML）
+    # 质量误报
+    "PLC0415",      # import 不在顶部（按需延迟导入，避免循环依赖）
+    "PLR0911", "PLR0912", "PLR0913", "PLR0915",  # 复杂度（Phase 3 小步任务）
+    "PLR2004",      # 魔法数字（测试/种子数据中的字面量是必要可读性）
+    "RUF001", "RUF002", "RUF003",  # 中文全角标点（中英双语项目）
+    "B008",         # FastAPI Depends 必须在参数默认值中调用
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 工具脚本：安全警告和风格建议不适用 / Utility scripts: security & style N/A
+"scripts/**" = ["E402", "S", "SIM", "PERF", "PTH", "PL", "C4", "B", "F541", "B007"]
+"tests/**" = ["S106", "S107"]
 
 [tool.ruff.format]
 quote-style = "double"
 
+# === Mypy 类型检查配置 / Mypy Type Check Config ===
 [tool.mypy]
-python_version = "3.14"
-strict = true
+python_version = "3.12"
+strict = true                        # 严格模式 / Strict mode
 warn_return_any = true
 warn_unused_configs = true
 
+# === Pytest 配置 / Pytest Config ===
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
-addopts = "-v --tb=short"
+asyncio_mode = "auto"               # 自动异步模式 / Auto async mode
+testpaths = ["tests"]               # 测试目录 / Test directory
+addopts = "-v --tb=short --ignore=tests/e2e"  # 详细输出 + 短回溯 + 默认跳过 e2e / Verbose + short traceback + skip e2e by default
+markers = [
+    "e2e: end-to-end tests using real HTTP + DB",
+    "slow: tests requiring real LLM or long runtime",
+]
 
+# === 覆盖率配置 / Coverage Config ===
 [tool.coverage.run]
 source = ["src"]
+
+# Pyright 配置已统一到项目根 pyrightconfig.json
+
+# === 开发工具 / Dev Tools ===
+[tool.uv]
+package = true
+
+# === CLI 脚本入口 / CLI Script Entry Points ===
+[project.scripts]
+aw = "src.cli:main"
+
+# === 构建系统 / Build System ===
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

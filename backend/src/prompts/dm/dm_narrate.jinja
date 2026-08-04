@@ -1,0 +1,142 @@
+{# Phase 6: DM 叙事渲染 / DM narrates the tick #}
+
+你的职责：以第三人称 DND DM 口吻，把本 tick（第 {{ tick }} 轮）中实际发生的事情讲成一个完整的小故事。
+请基于下面的完整上下文，串联场景、环境提示、角色行动，写出一段连贯、有画面感的叙事。
+
+{# 故事上下文 / Story context — 分层注入 #}
+{% if narrative_summaries %}
+【远期剧情脉络】早期关键事件摘要，保持长线剧情连贯：
+{{ narrative_summaries }}
+{% endif %}
+
+{% if scene_summaries %}
+【远期场景变迁】早期场景环境摘要，保持世界观一致性：
+{{ scene_summaries }}
+{% endif %}
+
+{% if recent_narratives %}
+【近期事件】最近几轮实际发生的剧情（原文），请自然衔接：
+{{ recent_narratives }}
+{% endif %}
+
+{% if recent_scenes %}
+【近期场景】最近几轮的场景设定（原文），确保环境描写连贯：
+{{ recent_scenes }}
+{% endif %}
+
+{# 上一轮叙事 / Previous tick narrative for continuity #}
+{% if prev_narrative %}
+上一轮叙事：{{ prev_narrative }}
+{% endif %}
+
+{# 世界观知识 / World Pack knowledge #}
+{% if world_knowledge %}
+相关知识：
+{{ world_knowledge }}
+{% endif %}
+
+{# 当前场景 / Current scene #}
+{% if scene %}
+场景：{{ scene.name or scene.id }}（{{ scene.type }}）
+描述：{{ scene.description or "无" }}
+地图尺寸：{{ scene.map_width | default(40) }} × {{ scene.map_height | default(40) }}
+出生点：({{ scene.spawn_x | default(0) }}, {{ scene.spawn_y | default(0) }})
+{% endif %}
+
+{# 场景物体 / Scene objects #}
+{% if scene_objects %}
+场景中的物体：
+{% for obj in scene_objects %}
+- {{ obj.name }}（{{ obj.object_type }}）@({{ obj.position_x }}, {{ obj.position_y }}){% if obj.interactable %} 可交互{% endif %}
+{% endfor %}
+{% endif %}
+
+{# 角色位置 / Character positions #}
+{% if pcs %}
+主角团位置：
+{% for pc in pcs %}
+- {{ pc.name }} @({{ pc.position_x }}, {{ pc.position_y }}){% if pc.role %} | {{ pc.role }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if actors %}
+在场配角：
+{% for actor in actors %}
+- {{ actor.name }} @({{ actor.position_x }}, {{ actor.position_y }}){% if actor.role %} | {{ actor.role }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{# 剧情与提示 / Plot and hints #}
+剧情梗概：{{ plot_brief or "无" }}
+
+{% if hints %}
+环境提示：
+{% for h in hints %}
+- {{ h }}
+{% endfor %}
+{% endif %}
+
+{# 本 tick 动作详情 / Action details #}
+{% if actions %}
+本 tick 发生的行动（按执行顺序）：
+{% for action in actions %}
+- 第 {{ action.order }} 步：{{ action.pc_id }} 执行 {{ action.action_type }}
+  目标：{{ action.target_id }}（{{ action.target_type }}）
+  {% if action.action_type == "talk" and action.turns %}
+  对话内容：
+    {% for turn in action.turns %}
+    · {{ turn.speaker_id }}：{{ turn.text }}
+    {% endfor %}
+  {% elif action.action_type == "explore" %}
+  探索记录：{{ action.explore_record or "无" }}
+  {% if action.waypoints %}
+  路径：({{ action.waypoints[0]["x"] }}, {{ action.waypoints[0]["y"] }}) → ({{ action.waypoints[-1]["x"] }}, {{ action.waypoints[-1]["y"] }})
+  {% endif %}
+  {% elif action.action_type == "interact" %}
+  交互结果：{{ "成功" if action.success else "失败" }} — {{ action.narration or "无" }}
+  {% elif action.action_type == "combat" %}
+  战斗结果：{{ action.result or "无" }}
+  {% endif %}
+{% endfor %}
+{% elif events %}
+本 tick 事件摘要：
+{% for ev in events %}
+- {{ ev }}
+{% endfor %}
+{% else %}
+本 tick 暂无角色行动。
+{% endif %}
+
+{# 叙事要求 / Narration requirements #}
+要求：
+- 必须是第三人称 DND DM 口吻，使用简体中文。
+- 5-8 句，必须串联"场景上下文（plot_brief + hints + 场景描述）→ 本 tick 所有行动（谁做了什么、与谁互动、结果如何）→ 氛围收束"，讲一个完整的小故事。
+- 如果有上一轮叙事，必须自然衔接，保持故事线连贯。
+- 不允许脱离本 tick 行动写无关的氛围描写；如果本 tick 没有角色行动，只写一句场景过渡。
+- 自然融入环境提示和感官细节（视觉/听觉/嗅觉/触觉至少一种），但细节必须服务于对行动的叙述。
+- 不要罗列坐标或数据，把它们转化为场景描写。
+- 结尾留一个钩子或悬念，不要把话说满。
+
+{# 输出约束 / Output spec #}
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）。
+字段约束：
+- narrative（string）：5-8 句中文叙事文本。必须使用简体中文。
+
+输出格式：
+{
+  "narrative": "..."
+}
+
+示例 1（双人对话情报 + 一人探索发现——串联场景上下文与全部行动）：
+{
+  "narrative": "黄昏最后一抹光沉入山脊，酒馆里只剩下铁匠、一个沉默的旅人，和吧台后正对账的老板娘。铁匠把空杯子往吧台上一放，低声说昨晚从地窖方向听到了某种刮擦声，不像风也不像老鼠。牧师闻言踱到吧台前，压低声音向老板娘追问细节——老板娘犹豫了一下，合上账本，告诉他北边的废弃哨塔最近夜里有不寻常的火光，村民都绕着走。与此同时，在角落擦了一晚上匕首的战士早已按捺不住，推开后门独自走进夜雾，朝西南边那片碎石堆摸去。他蹲下拨开碎砖时，指尖碰到一截冰凉的金属——一柄断裂的长剑，护手上嵌着一颗褪色的红宝石。更让他脊背发凉的是，旁边墙上有人用炭笔匆忙写下三个字：'别进去'。远处铁匠铺的风箱忽然停了，连犬吠都消失了，整条街陷入一种令人窒息的安静。"
+}
+
+示例 2（一人打听情报 + 一人祭坛交互失败——场景氛围融合行动结果）：
+{
+  "narrative": "十字路口的薄雾仍未散去，告示板上的羊皮纸被夜露打得字迹模糊。旅人蹲在路碑旁擦拭长剑，刀刃映出天边最后一抹暗橙色的光。盗贼蹭到铁匠铺前，一边打量墙上锈迹斑斑的剑盾，一边漫不经心地说起昨夜听到的那阵怪声——铁匠闻言缓缓放下铁锤，沉默片刻后压低声音告诉他，那不是风声，更像是某种沉重的呼吸。两人的低声交谈被一声沉闷的爆裂打断：广场中央，法师正将双手按在祭坛的符文上低声吟诵，企图唤醒石板下沉睡的力量。然而刻纹骤然迸发出灼目的红光，一股焦灼的硫磺气味当空炸开，法师被弹退数步，法袍边缘冒出青烟。铁匠铺的炉火同时猛地窜高了数尺，吊在房梁下的铁链叮当作响——像是整个广场都被某种看不见的力量攥住了。"
+}
+
+示例 3（一人激战 + 一人潜行 + 一人观望——战斗交织探索与等待，渲染全貌）：
+{
+  "narrative": "石塔的钟声刚敲过九下，沉闷的回音还悬在暮色里，桥头的局面却已骤然绷紧。战士拔出长剑大步迎向守在桥墩旁的地精斥候，第一记劈斩被地精侧身闪过，刀刃削掉了桥墩上一块松动的砖角。金属撞击的火星溅在桥面的积水里嗤嗤作响，焦灼的铁锈味混着雾霭弥漫开来。借着战斗吸引了所有目光，盗贼如猫一般贴着墙壁摸向东北角，在灌木丛深处摸到一只散发着霉味的旧背包——干粮已腐，但夹层中静静躺着一小瓶泛着微弱蓝光的治疗药水，瓶盖上刻着一枚褪色的家族纹章。牧师自始至终没有移动，他靠在一棵歪脖子老松后，双眼死死盯着战场上两人的攻防节奏，右手指尖已聚起一粒温热的金色光点——他在等一个可以一击定乾坤的瞬间。这时石塔的钟声又响了，比刚才更沉、更长，像是什么事情就要开始了。"
+}

@@ -1,0 +1,16 @@
+world:
+  name: "Forgotten Realms"
+  type: "fantasy"
+
+regions:
+  - id: "north_border"
+    name: "North Border"
+    terrain: "Dense forest, hills, rivers"
+    climate: "Cold, long winters"
+
+settlements:
+  - id: "village_elderwood"
+    name: "Elderwood Village"
+    region: "north_border"
+    population: 200
+    economy: "Lumber and iron mining"

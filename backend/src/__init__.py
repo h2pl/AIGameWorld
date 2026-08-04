@@ -1,1 +1,1 @@
-"""SimGameWorld backend package."""
+"""AIGameWorld backend package."""

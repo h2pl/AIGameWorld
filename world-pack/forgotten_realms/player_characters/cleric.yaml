@@ -1,0 +1,35 @@
+- id: "cleric"
+  name: "Cleric"
+  role: "cleric"
+  race: "elf"
+  attributes:
+    str: 12
+    dex: 10
+    con: 14
+    int: 12
+    wis: 18
+    cha: 14
+  combat:
+    hp: 28
+    max_hp: 28
+    ac: 14
+    initiative: 0
+    attack_bonus: 4
+    damage_bonus: 1
+  character_arc:
+    growth_line: "From doubting believer to beacon of hope"
+    inner_conflict: "Faith in gods vs faith in people"
+    destiny: "Heal the spiritual wounds of the realm"
+  values:
+    - "Mercy above vengeance"
+    - "Every life is sacred"
+  long_term_goal: "Restore an ancient temple lost to darkness"
+  personality: "Compassionate, patient, occasionally preachy"
+  equipment:
+    weapon: "mace"
+    armor: "leather_armor"
+    off_hand: "shield"
+  inventory:
+    - {item: "health_potion", qty: 3}
+    - {item: "gold", qty: 20}
+  allowed_actions: ["move", "talk", "attack", "interact", "wait"]

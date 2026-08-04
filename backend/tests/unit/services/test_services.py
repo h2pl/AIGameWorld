@@ -1,0 +1,430 @@
+"""Services 测试——对齐当前 graph/service/engine 结构。"""
+
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from src.domain import (
+    Action,
+    Decision,
+    DMRecord,
+    Scene,
+    SceneObject,
+    SceneObjectType,
+)
+from src.domain.player_character import PlayerCharacter
+from src.services import (
+    dm_service,
+    event_service,
+    pc_service,
+    tick_init_service,
+)
+
+
+def _overall_state(**overrides):
+    """构造当前 OverallState 最小输入 / Build minimal OverallState input."""
+    return {
+        "tick": 0,
+        "world_id": "world-1",
+        "scene": Scene(id="scene-1"),
+        "scene_objects": [],
+        "actions": [],
+        "dm_record": None,
+        "pc_decisions": [],
+        "pcs": {},
+        "actors": {},
+        "memories": {},
+        **overrides,
+    }
+
+
+def _pc_repo_config(pcs: list, object_ids: list[str] | None = None) -> dict:
+    """构造带 pc_repo/scene_repo 的 config / Build config with char/scene repo mocks."""
+    object_ids = object_ids or []
+    pc_repo = AsyncMock()
+    pc_repo.load_all = AsyncMock(return_value=pcs)
+    pc_repo.load_one = AsyncMock(return_value=None)
+    scene_repo = AsyncMock()
+    scene_repo.get_scene = AsyncMock(return_value=None)
+    scene_repo.get_object_ids = AsyncMock(return_value=object_ids)
+    scene_objects = {
+        oid: SceneObject(
+            id=oid,
+            name=oid,
+            object_type=SceneObjectType.DECORATION,
+            interactable=True,
+            position_x=1,
+            position_y=1,
+            interact_data={},
+        )
+        for oid in object_ids
+    }
+    scene_repo.load_all = AsyncMock(return_value=scene_objects)
+    return {"configurable": {"repos": {"char": pc_repo, "scene": scene_repo}}}
+
+
+class TestCharacterService:
+    """角色服务测试 / Character service tests."""
+
+    @pytest.mark.asyncio
+    async def test_decide_returns_empty_when_no_pcs_in_scene(self):
+        """没有 PC 时直接返回空 / Decide returns empty when there are no PCs in the scene."""
+        result = await pc_service.decide(_overall_state())
+        assert result == {"pc_decisions": []}
+
+    @pytest.mark.asyncio
+    async def test_decide_delegates_each_pc_to_decision_engine(self):
+        """decide 逐个把场景内的 PC 交给 decision_engine / decide delegates each PC in the scene to decision_engine."""
+        scene = Scene(id="scene-1")
+        scene_objects = [
+            SceneObject(id="obj-1", name="Obj", object_type=SceneObjectType.DECORATION)
+        ]
+        pcs = {"pc-1": PlayerCharacter(id="pc-1", name="Alex", role="fighter")}
+        decision = Decision(pc_id="pc-1", type="talk", description="先交涉")
+        with patch.object(
+            pc_service.decision_engine,
+            "decide",
+            AsyncMock(return_value=decision),
+        ) as mock_decide:
+            result = await pc_service.decide(
+                _overall_state(
+                    tick=3,
+                    scene=scene,
+                    scene_objects=scene_objects,
+                    pcs=pcs,
+                )
+            )
+        mock_decide.assert_awaited_once()
+        assert mock_decide.call_args.kwargs["pc_id"] == "pc-1"
+        assert mock_decide.call_args.kwargs["tick"] == 3
+        assert mock_decide.call_args.kwargs["scene"] == scene
+        assert mock_decide.call_args.kwargs["scene_objects"] == scene_objects
+        assert mock_decide.call_args.kwargs["pcs"] == pcs
+        assert mock_decide.call_args.kwargs["actors"] == {}
+        assert mock_decide.call_args.kwargs["dm_record"] is None
+        assert result == {"pc_decisions": [decision]}
+
+    @pytest.mark.asyncio
+    async def test_act_dispatches_talk_and_interact(self):
+        """行动阶段逐条动作分发到 talk/interact/combat engine / Act dispatches each action to all engines."""
+        decision = Decision(pc_id="pc-1", type="talk")
+        state = _overall_state(
+            tick=2,
+            pc_decisions=[decision],
+        )
+        with (
+            patch.object(
+                pc_service.talk_engine,
+                "process_talk_action",
+                AsyncMock(return_value=None),
+            ) as mock_talk,
+            patch.object(
+                pc_service.interact_engine,
+                "process_interact_action",
+                AsyncMock(return_value=None),
+            ) as mock_interact,
+            patch.object(
+                pc_service.combat_engine,
+                "process_combat_action",
+                AsyncMock(return_value=None),
+            ) as mock_combat,
+            patch.object(
+                pc_service.explore_engine,
+                "process_explore_action",
+                AsyncMock(return_value=None),
+            ),
+        ):
+            result = await pc_service.act(state)
+        mock_talk.assert_awaited_once_with(
+            decision=decision,
+            tick=2,
+            scene=Scene(id="scene-1"),
+            scene_objects=[],
+            pcs={},
+            actors={},
+            dm_record=None,
+            memories={},
+            config=None,
+        )
+        mock_interact.assert_awaited_once_with(
+            decision=decision,
+            tick=2,
+            scene=Scene(id="scene-1"),
+            scene_objects=[],
+            pcs={},
+            actors={},
+            dm_record=None,
+            memories={},
+            config=None,
+        )
+        mock_combat.assert_awaited_once_with(
+            decision=decision,
+            tick=2,
+            scene=Scene(id="scene-1"),
+            scene_objects=[],
+            pcs={},
+            actors={},
+            dm_record=None,
+            memories={},
+            config=None,
+        )
+        assert result == {"actions": []}
+
+    @pytest.mark.asyncio
+    async def test_act_formats_action_result_uniformly(self):
+        """把命中的 engine 结果格式化成 {order, action_type, target_id, target_type, ...} /
+        Format the matching engine's result into {order, action_type, target_id, target_type, ...}."""
+        decision = Decision(pc_id="pc-1", type="talk", target_id="pc-2", target_type="pc")
+        talk_action = Action(
+            pc_id="pc-1",
+            action_type="talk",
+            target_id="pc-2",
+            target_type="pc",
+            participants=["pc-1", "pc-2"],
+            turns=[],
+        )
+        state = _overall_state(pc_decisions=[decision])
+        with (
+            patch.object(
+                pc_service.talk_engine,
+                "process_talk_action",
+                AsyncMock(return_value=talk_action),
+            ),
+            patch.object(
+                pc_service.interact_engine,
+                "process_interact_action",
+                AsyncMock(return_value=None),
+            ),
+            patch.object(
+                pc_service.combat_engine,
+                "process_combat_action",
+                AsyncMock(return_value=None),
+            ),
+            patch.object(
+                pc_service.explore_engine,
+                "process_explore_action",
+                AsyncMock(return_value=None),
+            ),
+        ):
+            result = await pc_service.act(state)
+        assert result == {
+            "actions": [
+                Action(
+                    order=0,
+                    pc_id="pc-1",
+                    action_type="talk",
+                    target_id="pc-2",
+                    target_type="pc",
+                    participants=["pc-1", "pc-2"],
+                    turns=[],
+                )
+            ]
+        }
+
+
+class TestSceneAndMessageService:
+    """场景服务测试 / Scene service tests."""
+
+
+class TestDMAndReflectionService:
+    """DM 与反思服务测试 / DM and reflection service tests."""
+
+    @pytest.mark.asyncio
+    async def test_dm_create_maps_engine_response(self):
+        """DM create 映射 engine 响应 / DM create maps engine response."""
+        engine_result = DMRecord(
+            tick=4, world_id="w-1", hints=["去酒馆"], plot_brief="今晚有冲突", scene_id="tavern"
+        )
+        with patch.object(dm_service.dm_engine, "dm_create", AsyncMock(return_value=engine_result)):
+            result = await dm_service.dm_create(_overall_state(tick=4, world_id="w-1"))
+        dm_rec = result["dm_record"]
+        assert isinstance(dm_rec, DMRecord)
+        assert dm_rec.hints == ["去酒馆"]
+        assert dm_rec.plot_brief == "今晚有冲突"
+        assert dm_rec.ext == {}
+
+    @pytest.mark.asyncio
+    async def test_dm_narrate_returns_narrative(self):
+        """DM narrate 返回叙事文本 / DM narrate returns narrative text."""
+        with patch.object(dm_service.dm_engine, "dm_narrate", AsyncMock(return_value="战斗爆发。")):
+            result = await dm_service.dm_narrate(
+                _overall_state(tick=10, dm_record=DMRecord(tick=10, world_id="w-1"))
+            )
+        assert result["dm_record"].dm_narrative == "战斗爆发。"
+
+
+class TestEventService:
+    """事件服务测试 / Event service tests."""
+
+    @pytest.mark.asyncio
+    async def test_flush_events_persists_events_then_marks_ready(self):
+        """先落盘事件，再把消息标记为可消费 / Persist events first, then mark the message ready."""
+        event_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo}}}
+        state = _overall_state(
+            tick=3,
+            scene_id="",
+            actions=[
+                Action(
+                    order=0,
+                    pc_id="pc-1",
+                    action_type="talk",
+                    target_id="pc-2",
+                    target_type="pc",
+                    participants=["pc-1", "pc-2"],
+                    turns=[{"speaker_id": "pc-1", "text": "你好。"}],
+                )
+            ],
+        )
+        result = event_service.flush_events(state, config)
+        events = result.get("tick_events", [])
+        assert len(events) > 0
+
+    @pytest.mark.asyncio
+    async def test_flush_events_marks_ready_even_without_pending_events(self):
+        """没有待落盘事件也要标记消息可消费（如纯叙事 tick）/
+        Mark the message ready even with no pending events (e.g. narrative-only ticks)."""
+        event_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo}}}
+        state = _overall_state(tick=4, scene_id="", scene=Scene(id=""), actions=[])
+        result = event_service.flush_events(state, config)
+        events = result.get("tick_events", [])
+        assert events == []
+
+    @pytest.mark.asyncio
+    async def test_save_scene_setup_snapshot(self):
+        """tick_init 截屏 scene/pcs/actors 供 flush_events 构建 scene_setup / tick_init saves snapshot for scene_setup."""
+        state = _overall_state(
+            tick=1,
+            scene=Scene(id="scene-1", name="Tavern"),
+            scene_objects=[
+                SceneObject(id="obj-1", name="Chest", object_type=SceneObjectType.CONTAINER)
+            ],
+            pcs={"pc-1": PlayerCharacter(id="pc-1", name="Alex")},
+            actors={},
+            actions=[],
+        )
+        result = await tick_init_service.save_scene_setup_snapshot(state)
+        snapshot = result.get("pcs_snapshot", {})
+        assert snapshot["scene"]["id"] == "scene-1"
+        assert "pc-1" in snapshot["pcs"]
+        assert len(snapshot["scene_objects"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_build_dm_create_event(self):
+        """tick_init 构建 dm_create 事件 / tick_init builds dm_create event."""
+        state = _overall_state(
+            tick=0,
+            scene_id="scene-1",
+            dm_record=DMRecord(
+                tick=0,
+                world_id="w-1",
+                scene_id="scene-1",
+                plot_brief="酒馆冲突一触即发。",
+                hints=["注意角落里的陌生人"],
+            ),
+            actions=[],
+        )
+        result = await tick_init_service.build_dm_create_event(state)
+        events = result.get("tick_events", [])
+        assert len(events) == 1
+        assert events[0].type.value == "dm_create"
+
+    @pytest.mark.asyncio
+    async def test_flush_events_builds_pc_decision_events(self):
+        """从 pc_decisions 构造 pc_decision 事件 / Build pc_decision events from pc_decisions."""
+        event_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo}}}
+        state = _overall_state(
+            tick=2,
+            scene_id="",
+            pcs={"pc-1": PlayerCharacter(id="pc-1", name="Alex")},
+            pc_decisions=[
+                Decision(
+                    pc_id="pc-1",
+                    type="talk",
+                    target_id="npc-1",
+                    target_type="actor",
+                    thought="我想找 NPC 打听消息。",
+                    description="先交谈收集情报。",
+                )
+            ],
+            actions=[],
+        )
+        result = event_service.flush_events(state, config)
+        events = result.get("tick_events", [])
+        decision_events = [e for e in events if e.type.value == "pc_decision"]
+        assert len(decision_events) == 1
+        assert decision_events[0].payload["pc_id"] == "pc-1"
+        assert decision_events[0].payload["thought"] == "我想找 NPC 打听消息。"
+
+    @pytest.mark.asyncio
+    async def test_flush_events_drops_unknown_kinds(self):
+        """未在已知 action 类型内的原始结果（如未结算的 character_combat）不落盘 /
+        Raw results outside known action types (e.g. unresolved character_combat) are dropped."""
+        event_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo}}}
+        state = _overall_state(
+            tick=1,
+            scene_id="",
+            scene=Scene(id=""),
+            actions=[
+                Action(
+                    order=0,
+                    pc_id="pc-1",
+                    action_type="character_combat",
+                    target_id="npc-1",
+                    target_type="actor",
+                )
+            ],
+        )
+        result = event_service.flush_events(state, config)
+        events = result.get("tick_events", [])
+        assert events == []
+
+    @pytest.mark.asyncio
+    async def test_flush_events_does_not_include_narrative(self):
+        """flush_events 不处理 narrative，narrative 由 emit_narrative_event 追加 /
+        flush_events ignores narrative; emit_narrative_event appends it."""
+        event_repo = AsyncMock()
+        config = {"configurable": {"repos": {"event": event_repo}}}
+        state = _overall_state(
+            tick=2,
+            scene_id="",
+            scene=Scene(id=""),
+            actions=[],
+            narrative="夜幕降临，酒馆里灯火通明。",
+        )
+        result = event_service.flush_events(state, config)
+        events = result.get("tick_events", [])
+        assert events == []
+
+    @pytest.mark.asyncio
+    async def test_emit_narrative_event_appends_dm_narrative(self):
+        """emit_narrative_event 把 state.narrative 追加为 dm_narrative 事件 /
+        emit_narrative_event converts state.narrative into a dm_narrative event."""
+        state = _overall_state(
+            tick=2,
+            scene_id="",
+            actions=[],
+            dm_record=DMRecord(tick=2, world_id="w-1", dm_narrative="夜幕降临，酒馆里灯火通明。"),
+        )
+        result = event_service.emit_narrative_event(state)
+        events = result.get("tick_events", [])
+        assert len(events) == 1
+        assert events[0].type.value == "dm_narrative"
+        assert events[0].payload["text"] == "夜幕降临，酒馆里灯火通明。"
+
+    @pytest.mark.asyncio
+    async def test_emit_narrative_event_skips_empty_narrative(self):
+        """narrative 为空时不追加 dm_narrative 事件 /
+        Empty narrative does not create a dm_narrative event."""
+        state = _overall_state(
+            tick=2,
+            scene_id="",
+            actions=[],
+            narrative="",
+        )
+        result = event_service.emit_narrative_event(state)
+        events = result.get("tick_events", [])
+        assert events == []

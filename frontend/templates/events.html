@@ -1,0 +1,47 @@
+<!-- Events 列表页 / Events listing page — 展示所有 tick events 时间线 / Show all tick events timeline -->
+<!-- Jinja2 模板 / Jinja2 template — 循环渲染 events 卡片 / Loop render event cards -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Events — AIGameWorld</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+.back { display: inline-block; color: #64748b; text-decoration: none; padding: 1rem 1.5rem; font-size: .85rem; }
+.back:hover { color: #a855f7; }
+header { padding: 0 1.5rem 1rem; border-bottom: 1px solid #334155; }
+header h1 { font-size: 1.4rem; color: #22c55e; }
+table { width: 100%; max-width: 960px; margin: 1rem auto; border-collapse: collapse; font-size: .85rem; }
+th { text-align: left; padding: .6rem .75rem; background: #1e293b; color: #64748b; font-weight: 600; border-bottom: 2px solid #334155; white-space: nowrap; }
+td { padding: .5rem .75rem; border-bottom: 1px solid #1e293b; vertical-align: top; }
+td.narrative { color: #94a3b8; max-width: 400px; white-space: pre-wrap; line-height: 1.5; }
+tr:hover td { background: #1e293b; }
+.empty { color: #64748b; padding: 2rem; text-align: center; }
+</style>
+</head>
+<body>
+<a href="/view" class="back">← Back</a>
+<header><h1>All Events (event_log 表)</h1></header>
+{% if events %}
+<table>
+  <thead>
+    <tr><th>id</th><th>tick</th><th>type</th><th>source</th><th>target</th><th>narrative</th></tr>
+  </thead>
+  <tbody>
+  {% for e in events %}
+  <tr>
+    <td>{{ e.id }}</td>
+    <td>{{ e.tick }}</td>
+    <td>{{ e.type }}</td>
+    <td>{{ e.source }}</td>
+    <td>{{ e.target }}</td>
+    <td class="narrative">{{ e.narrative }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<div class="empty">No events</div>{% endif %}
+</body>
+</html>

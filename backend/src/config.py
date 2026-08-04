@@ -1,85 +1,245 @@
-"""Configuration loader - YAML to Pydantic Settings."""
+"""配置加载器——YAML → Pydantic Settings / Configuration loader — YAML to Pydantic Settings."""
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
+# 自动加载项目根目录 .env
+load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
 
 class ProviderConfig(BaseModel):
-    type: str  # "deepseek" | "anthropic"
+    """LLM 提供商配置 / LLM provider configuration."""
+
+    type: str  # "deepseek" | "anthropic" | "openai"
     base_url: str | None = None
+    api_key_env: str = "DEEPSEEK_API_KEY"  # 从哪个环境变量读取 API key
 
 
 class ProvidersConfig(BaseModel):
+    """多提供商配置（主+降级）/ Multi-provider config (primary + fallback)."""
+
     primary: ProviderConfig
     fallback: ProviderConfig | None = None
 
 
 class LLMModelConfig(BaseModel):
-    model: str
-    fallback_model: str | None = None
-    temperature: float
-    timeout: int
-    retries: int
+    """单 LLM 用途的模型配置 / Single LLM purpose model config."""
+
+    model: str  # 模型名 / Model name
+    base_url: str | None = None  # 覆盖 provider base_url（ZenProxy/GLM等）/ Override base_url
+    client_backend: str = (
+        "langchain"  # 客户端后端：langchain(ChatOpenAI) | requests(RequestsChatModel)
+    )
+    fallback_model: str | None = None  # 降级模型 / Fallback model
+    temperature: float  # 温度 / Temperature
+    timeout: int  # 超时（秒）/ Timeout in seconds
+    retries: int  # 重试次数 / Retry count
 
 
 class LLMConfig(BaseModel):
+    """完整的 LLM 配置 / Full LLM configuration."""
+
     providers: ProvidersConfig
-    dm_create: LLMModelConfig
-    dm_narrate: LLMModelConfig
-    pc_decision: LLMModelConfig
-    actor_decision: LLMModelConfig
-    reflection: LLMModelConfig
+    dm_create: LLMModelConfig  # Phase 1: 创造情境（强模型）/ Create situation
+    dm_narrate: LLMModelConfig  # Phase 6: 叙事渲染（中模型）/ Narrate
+    pc_decision: LLMModelConfig  # PC 深层决策（中模型）/ PC deep decision
+    actor_decision: LLMModelConfig  # Actor 浅层决策（快模型）/ Actor shallow decision
+    talk: LLMModelConfig  # 对话生成（结构化）/ Dialogue generation
+    interact: LLMModelConfig  # 场景物体交互 / Scene object interaction
+    explore: LLMModelConfig  # 探索路径与发现 / Explore path and discovery
+    combat: LLMModelConfig  # 战斗旁白 / Combat narration
+    reflection: LLMModelConfig  # 反思洞察（强模型）/ Reflection insight
+
+    @property
+    def reflection_engine(self) -> LLMModelConfig:
+        """兼容旧字段名 / Compatibility alias for legacy field name."""
+        return self.reflection
 
 
 class DatabaseConfig(BaseModel):
-    sqlite_path: str = "data/world.db"
+    """数据库配置 / Database configuration."""
+
     chroma_path: str = "data/chroma/"
+    embedding_model: str = "default"  # 嵌入模型：bge-m3（推荐）/ default（ChromaDB 内置）
 
 
 class ServerConfig(BaseModel):
+    """服务器配置 / Server configuration."""
+
     host: str = "0.0.0.0"
     port: int = 8000
 
 
 class WorldConfig(BaseModel):
-    default_pack: str = "forgotten_realms"
+    """世界配置 / World configuration."""
+
+    default_pack: str = "forgotten_realms"  # 默认加载的 Pack
+
+
+class RuntimeConfig(BaseModel):
+    """运行时配置 / Runtime configuration.
+
+    这些字段描述后端当前以何种模式运行，与 world 业务配置相互独立、同时生效。
+    """
+
+    llm_mock: bool = True  # LLM 是否走 mock / Whether LLM returns mock data
+    data_mode: str = "mock"  # 数据模式：mock|real / Data mode: mock or real
+    db_name: str = "data/test.db"  # 实际使用的 SQLite DB 路径 / Active SQLite DB path
+    mock_dataset: str = "tavern"  # mock 数据集 / Mock dataset name
 
 
 class AutoRunConfig(BaseModel):
-    default_interval: int = 2000
+    """自动运行配置 / Auto-run configuration."""
+
+    default_interval: int = 2000  # 毫秒 / milliseconds
+    reflection_interval: int = 5  # 每 N ticks 触发一次反思
 
 
 class LangfuseConfig(BaseModel):
+    """Langfuse 可观测性配置 / Langfuse observability config."""
+
     enabled: bool = False
     tracing_environment: str = "development"
 
 
+class LangSmithConfig(BaseModel):
+    """LangSmith 开发期追踪配置 / LangSmith dev-time tracing config."""
+
+    enabled: bool = False
+    project: str = "aigameworld"
+
+
 class ObservabilityConfig(BaseModel):
+    """可观测性配置 / Observability configuration."""
+
+    langsmith: LangSmithConfig = LangSmithConfig()
     langfuse: LangfuseConfig = LangfuseConfig()
 
 
+class ConsoleLoggingConfig(BaseModel):
+    """控制台日志开关 / Console logging toggles."""
+
+    main: bool = True
+    api: bool = True
+    orchestrator: bool = True
+    graph: bool = True
+    service: bool = True
+    engine: bool = True
+    repo: bool = True
+    storage: bool = True
+    performance: bool = True
+    llm: bool = True
+    scheduler: bool = True
+    utils: bool = True
+    loader: bool = True
+    viewer: bool = True
+
+
+class RotationConfig(BaseModel):
+    """日志文件轮转配置 / Log file rotation configuration.
+
+    按日期创建子目录，再在目录内按时间片切分文件。
+    Creates date-based subdirectories and splits files by time window inside.
+    """
+
+    when: str = "H"  # 时间单位：S/M/H/D/MIDNIGHT / Unit: S/M/H/D/MIDNIGHT
+    interval: int = 1  # 每 N 个 when 单位切换一次 / Rotate every N units
+    utc: bool = True  # true=UTC false=本地时间 / true=UTC false=local time
+    backup_count: int = 0  # 保留最近 N 个时间片；0=保留全部 / Keep last N slices; 0=keep all
+
+
+class LoggingConfig(BaseModel):
+    """日志配置 / Logging configuration."""
+
+    level: str = "INFO"  # DEBUG / INFO / WARNING / ERROR
+    json_format: bool = True
+    rotation: RotationConfig = RotationConfig()
+    console: ConsoleLoggingConfig = ConsoleLoggingConfig()
+
+
 class Config(BaseSettings):
+    """全局配置根 / Global config root."""
+
     server: ServerConfig = ServerConfig()
     world: WorldConfig = WorldConfig()
     llm: LLMConfig
+    runtime: RuntimeConfig = RuntimeConfig()
     database: DatabaseConfig = DatabaseConfig()
     auto_run: AutoRunConfig = AutoRunConfig()
+    logging: LoggingConfig = LoggingConfig()
     observability: ObservabilityConfig = ObservabilityConfig()
+
+    # 兼容访问器：大量旧代码通过 cfg.llm_mock / cfg.data_mode 等读取
+    # / Compatibility aliases for legacy flat access
+    @property
+    def llm_mock(self) -> bool:
+        return self.runtime.llm_mock
+
+    @property
+    def data_mode(self) -> str:
+        return self.runtime.data_mode
+
+    @property
+    def db_name(self) -> str:
+        return self.runtime.db_name
+
+    @property
+    def mock_dataset(self) -> str:
+        return self.runtime.mock_dataset
 
     @classmethod
     def from_yaml(cls, path: str = "config.yaml") -> Config:
+        """从 config.yaml 加载配置，provider + purposes 分离合并."""
         config_path = Path(path)
         if not config_path.exists():
             raise FileNotFoundError(f"Config file not found: {path}")
-        with open(config_path, encoding="utf-8") as f:
+        with config_path.open(encoding="utf-8") as f:
             data = yaml.safe_load(f)
+
+        # 兼容旧版平铺配置：把顶层运行时字段收集到 runtime 节点
+        # / Migrate legacy flat runtime fields into runtime block
+        legacy_runtime = {}
+        for key in ("llm_mock", "data_mode", "db_name", "mock_dataset"):
+            if key in data:
+                legacy_runtime[key] = data.pop(key)
+        if legacy_runtime:
+            data.setdefault("runtime", {}).update(legacy_runtime)
+
+        # 选择 provider（环境变量 LLM_PROVIDER > yaml llm_provider）
+        providers = data.pop("llm_providers", None)
+        purposes = data.pop("llm_purposes", None)
+        yaml_provider = data.pop("llm_provider", None)
+        if providers and purposes:
+            provider_name = os.environ.get("LLM_PROVIDER") or yaml_provider
+            if not provider_name or provider_name not in providers:
+                available = ", ".join(providers.keys())
+                raise ValueError(
+                    f"LLM provider '{provider_name}' not found. Available: {available}"
+                )
+            provider = providers[provider_name]
+            backend = provider.pop("client_backend", "langchain")
+            default_model = provider.pop("model", None)
+            # 组装 llm：provider 的 client_backend + model 注入每个 purpose
+            merged = {}
+            for name, pur in purposes.items():
+                merged[name] = {**pur, "client_backend": backend}
+                if default_model and "model" not in pur:
+                    merged[name]["model"] = default_model
+            data["llm"] = {
+                "providers": {"primary": {"type": "openai", **provider}},
+                **merged,
+            }
+            print(f"[Config] LLM provider: {provider_name}")
         return cls(**data)
 
 
 def load_config(path: str = "config.yaml") -> Config:
+    """加载配置的便捷函数 / Convenience function to load config."""
     return Config.from_yaml(path)

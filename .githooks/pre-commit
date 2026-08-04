@@ -1,0 +1,48 @@
+#!/bin/bash
+# AIGameWorld Pre-commit Hook — 仅检查变更文件 / Only check changed files
+set -e
+
+echo "=== Pre-commit: 密钥检查 / Secret Check ==="
+uv run python .githooks/no-secrets.py || { echo "FAIL: 疑似密钥泄露 / Potential secret leak"; exit 1; }
+
+echo "=== Pre-commit: 注释检查 / Comment Check ==="
+uv run python .githooks/check-comments.py || { echo "FAIL: 注释不足 / Insufficient comments"; exit 1; }
+
+# 获取后端变更文件（去掉 backend/ 前缀 / strip backend/ prefix）
+backend_files=$(git diff --cached --name-only --diff-filter=ACM | grep "^backend/" | grep "\.py$" | sed 's|^backend/||' || true)
+
+if [ -n "$backend_files" ]; then
+    echo "=== Pre-commit: Ruff Lint ==="
+    (cd backend && uv run ruff check $backend_files) || { echo "FAIL: Python Lint"; exit 1; }
+
+    echo "=== Pre-commit: Ruff Format ==="
+    (cd backend && uv run ruff format --check $backend_files) || { echo "FAIL: Python Format"; exit 1; }
+
+    echo "=== Pre-commit: Pyright ==="
+    (cd backend && uv run pyright $backend_files) || { echo "FAIL: Pyright Type Check"; exit 1; }
+else
+    echo "=== Pre-commit: Ruff Lint === (no backend changes, skip)"
+    echo "=== Pre-commit: Ruff Format === (no backend changes, skip)"
+    echo "=== Pre-commit: Pyright === (no backend changes, skip)"
+fi
+
+# 获取前端变更文件（去掉 frontend/ 前缀 / strip frontend/ prefix）
+frontend_files=$(git diff --cached --name-only --diff-filter=ACM | grep "^frontend/" | grep "\.ts$" | sed 's|^frontend/||' || true)
+
+if [ -n "$frontend_files" ]; then
+    echo "=== Pre-commit: Frontend TypeScript ==="
+    (cd frontend && npx tsc --noEmit) || { echo "FAIL: Frontend TypeScript"; exit 1; }
+
+    echo "=== Pre-commit: Frontend ESLint ==="
+    (cd frontend && npx eslint $frontend_files) || { echo "FAIL: Frontend ESLint"; exit 1; }
+
+    echo "=== Pre-commit: Frontend Prettier ==="
+    (cd frontend && npx prettier --check $frontend_files) || { echo "FAIL: Frontend Prettier"; exit 1; }
+else
+    echo "=== Pre-commit: Frontend TypeScript === (no frontend changes, skip)"
+    echo "=== Pre-commit: Frontend ESLint === (no frontend changes, skip)"
+    echo "=== Pre-commit: Frontend Prettier === (no frontend changes, skip)"
+fi
+
+echo ""
+echo "OK: 所有检查通过 / All checks passed"

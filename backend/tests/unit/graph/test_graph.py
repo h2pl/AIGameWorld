@@ -1,0 +1,28 @@
+"""TickGraph 主图测试——对齐当前主图结构。"""
+
+from langgraph.checkpoint.memory import MemorySaver
+
+from src.domain import Scene
+from src.graph.graph import build_tick_graph
+
+
+def _graph_input(**overrides):
+    return {
+        "tick": 5,
+        "world_id": "world-1",
+        "scene": Scene(id=""),
+        "scene_objects": [],
+        "actions": [],
+        "dm_record": None,
+        "pc_decisions": [],
+        **overrides,
+    }
+
+
+def test_build_graph_returns_state_graph():
+    assert build_tick_graph() is not None
+
+
+def test_graph_can_compile():
+    app = build_tick_graph().compile(checkpointer=MemorySaver())
+    assert app is not None

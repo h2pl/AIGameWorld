@@ -1,0 +1,44 @@
+# DM 叙事连贯性评估数据集 / DM Narrative coherence evaluation dataset
+# 评估维度：叙事衔接、情节逻辑、角色一致性
+
+- id: narr_coh_001
+  description: "连续 tick 叙事衔接"
+  tick_pair: [1, 2]
+  tick_1_context:
+    scene: "酒馆"
+    narrative: "艾瑞克在酒馆听到关于北方废墟中隐藏宝物的传闻，决定前往探索。米娅对此表示谨慎，建议先收集更多信息。"
+    events:
+      - "艾瑞克决定探索废墟"
+      - "米娅建议收集信息"
+  tick_2_context:
+    scene: "酒馆"
+    narrative: ""
+  expected_elements:
+    - "tick 2 叙事应自然衔接 tick 1 的决策"
+    - "艾瑞克应继续其探索计划或开始准备"
+    - "米娅的态度应保持谨慎"
+  scoring_criteria:
+    narrative_coherence: 5    # 叙事连贯性 1-5
+    character_consistency: 4  # 角色一致性 1-5
+    plot_logic: 4             # 情节逻辑 1-5
+
+- id: narr_coh_002
+  description: "战斗后叙事衔接"
+  tick_pair: [3, 4]
+  tick_1_context:
+    scene: "森林"
+    narrative: "艾瑞克与地精战斗并获胜，但受了轻伤。米娅为他简单治疗。"
+    events:
+      - "艾瑞克与地精战斗"
+      - "米娅施放治疗"
+  tick_2_context:
+    scene: "森林"
+    narrative: ""
+  expected_elements:
+    - "叙事应提及战斗后果（受伤状态）"
+    - "角色应讨论下一步行动"
+    - "不应忽略战斗结果直接跳跃"
+  scoring_criteria:
+    narrative_coherence: 5
+    character_consistency: 5
+    plot_logic: 4

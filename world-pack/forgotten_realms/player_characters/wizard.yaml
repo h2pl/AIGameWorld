@@ -1,0 +1,33 @@
+- id: "wizard"
+  name: "Wizard"
+  role: "wizard"
+  race: "elf"
+  attributes:
+    str: 8
+    dex: 12
+    con: 12
+    int: 18
+    wis: 14
+    cha: 10
+  combat:
+    hp: 22
+    max_hp: 22
+    ac: 12
+    initiative: 1
+    attack_bonus: 4
+    damage_bonus: 4
+  character_arc:
+    growth_line: "From arrogant scholar to wise protector"
+    inner_conflict: "Knowledge vs wisdom"
+    destiny: "Unlock the secrets of a forgotten magical origin"
+  values:
+    - "Knowledge must be shared"
+    - "Power tempered by wisdom"
+  long_term_goal: "Recover a lost artifact from an ancient ruin"
+  personality: "Curious, analytical, slightly condescending"
+  equipment:
+    weapon: "staff"
+  inventory:
+    - {item: "health_potion", qty: 2}
+    - {item: "gold", qty: 25}
+  allowed_actions: ["move", "talk", "attack", "interact", "wait"]

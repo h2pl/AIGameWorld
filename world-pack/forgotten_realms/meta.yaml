@@ -1,0 +1,66 @@
+id: "forgotten_realms"
+name: "Forgotten Realms"
+description: "A DND-style fantasy world"
+version: "1.0.0"
+rule_set: "dnd_5e_srd"
+
+files:
+  lore:
+    - "lore/geography.yaml"
+    - "lore/factions.yaml"
+  scenes:
+    - "scenes/village_elderwood.yaml"
+  player_characters:
+    - "player_characters/fighter.yaml"
+    - "player_characters/rogue.yaml"
+    - "player_characters/cleric.yaml"
+    - "player_characters/wizard.yaml"
+  actors:
+    - "actors/blacksmith.yaml"
+    - "actors/guard.yaml"
+    - "actors/merchant.yaml"
+  items:
+    - "items/weapons.yaml"
+    - "items/armor.yaml"
+    - "items/potions.yaml"
+    - "items/keys.yaml"
+  scene_objects:
+    - "scene_objects/chests.yaml"
+    - "scene_objects/doors.yaml"
+  story_setup: "story_setup.yaml"
+
+sprites:
+  frame_size: 48
+  directions: 4
+  frames_per_direction: 4
+
+starting_scene: "village_elderwood"
+
+starting_pcs:
+  - template: "fighter"
+    name: "Kael"
+  - template: "rogue"
+    name: "Zeph"
+  - template: "cleric"
+    name: "Elara"
+  - template: "wizard"
+    name: "Mira"
+
+starting_actors:
+  - template: "blacksmith"
+    count: 1
+    name_override: "Garret"
+  - template: "guard"
+    count: 2
+    name_override: ["Borin", "Dane"]
+  - template: "merchant"
+    count: 1
+    name_override: "Selia"
+
+starting_scene_objects:
+  - template: "chest_wooden"
+    scene: "village_elderwood"
+    position: {x: 5, y: 3}
+  - template: "door_cellar"
+    scene: "village_elderwood"
+    position: {x: 10, y: 0}

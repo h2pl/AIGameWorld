@@ -1,0 +1,13 @@
+# 场景对象：宝箱 / Scene Objects: Chests
+objects:
+  - id: "chest_wooden"            # 唯一标识 / unique id
+    name: "Wooden Chest"          # 木制宝箱 / wooden chest
+    object_type: "container"      # 可打开容器 / openable container
+    scene_id: "village_elderwood" # 所属场景 / parent scene
+    interactable: true            # 可交互 / interactable
+    interact_data:
+      locked: false               # 未上锁 / unlocked
+      lock_dc: 0                  # 开锁难度（0=无需检定） / lock DC (0=no check)
+      items:                      # 内含物品 / contained items
+        - {item_id: "gold", qty: 20}                # 金币 ×20 / gold coins
+        - {item_id: "health_potion", qty: 1}         # 治疗药水 / health potion

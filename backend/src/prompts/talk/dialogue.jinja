@@ -1,0 +1,70 @@
+{# 双人对话——每 tick 变化的任务内容 / Per-call task content #}
+当前剧情情境：{{ plot_brief }}
+
+{# DM 环境提示 / DM environmental hints #}
+{% if hints %}
+DM 提示：
+{% for hint in hints %}
+- {{ hint }}
+{% endfor %}
+{% endif %}
+
+{# 角色记忆 / Character memories #}
+{% if memories %}
+你记得：
+{% for mem in memories %}
+- {{ mem }}
+{% endfor %}
+{% endif %}
+
+当前场景：{{ scene.name }}（{{ scene.type }}）
+{{ scene.description }}
+
+对话缘由（发起者的动机）：{{ reason }}
+
+{# === 生成要求——轮数/收尾等任务相关约束 / Generation requirements: turn count, natural ending, etc. #}
+生成要求：
+1. 双方台词交替出现，从发起者（{{ initiator.id }}）开始，最多 10 轮。
+2. 对话要自然收尾（达成共识、道别、或话题自然结束），不要生硬截断在半句话。
+3. 如果对话缘由不足以支撑对话，可以让对方礼貌回应后自然结束，不要编造无关内容。
+
+{# === 输出约束 / Output spec === #}
+严格按以下 JSON 结构输出，不要输出任何其他内容（不要 markdown 代码块标记）：
+
+{
+  "turns": [
+    {"speaker_id": "{{ initiator.id }}", "text": "..."},
+    {"speaker_id": "{{ target.id }}", "text": "..."}
+  ]
+}
+
+示例 1（盗贼向商人打听消息，简短收尾）：
+{
+  "turns": [
+    {"speaker_id": "rogue_01", "text": "老板，最近镇上有没有来过什么生面孔？"},
+    {"speaker_id": "merchant_01", "text": "生面孔？倒是有几个冒险者上周路过，买了干粮就往北边走了。"},
+    {"speaker_id": "rogue_01", "text": "北边？那边不是有座废弃的哨塔吗？"},
+    {"speaker_id": "merchant_01", "text": "是啊，听说最近哨塔周围晚上有奇怪的火光，我可不敢靠近。"},
+    {"speaker_id": "rogue_01", "text": "多谢，我去看看。这些铜板请收下。"},
+    {"speaker_id": "merchant_01", "text": "小心点，年轻人。天黑前最好回来。"}
+  ]
+}
+示例 2（战士与守卫交涉通行，协商成功）：
+{
+  "turns": [
+    {"speaker_id": "fighter_01", "text": "守卫先生，我们是受村长委托去哨塔调查的，能让我们通过吗？"},
+    {"speaker_id": "guard_gate", "text": "村长的委托？他没有通知我。有没有凭证？"},
+    {"speaker_id": "fighter_01", "text": "这是他签字的调查令，你看看。"},
+    {"speaker_id": "guard_gate", "text": "嗯……印章没错。好吧，过去吧，但天黑前必须回来，桥头封门后我不会再开。"},
+    {"speaker_id": "fighter_01", "text": "明白了，多谢通融。"}
+  ]
+}
+示例 3（牧师安慰受伤的村民，简短关怀）：
+{
+  "turns": [
+    {"speaker_id": "cleric_01", "text": "你的腿伤还在流血，让我用治疗术处理一下。"},
+    {"speaker_id": "villager_hurt", "text": "谢谢你……那个怪物冲进来的时候我以为自己死定了。"},
+    {"speaker_id": "cleric_01", "text": "别怕，已经安全了。告诉我，怪物往哪个方向跑了？"},
+    {"speaker_id": "villager_hurt", "text": "地窖……它撞开地窖的门钻进去了。你们一定要小心，洞里很深……"}
+  ]
+}

@@ -1,7 +1,6 @@
-"""SimGameWorld storage layer."""
+"""AIGameWorld storage layer — 裸 DB / 向量存储，不涉及业务."""
 
-from .sqlite_store import WorldStateStore
-from .chroma_store import ChromaManager
-from .checkpoint_store import CheckpointStore
+from .chroma_client import ChromaClient
+from .sqlite_client import SQLiteClient
 
-__all__ = ["WorldStateStore", "ChromaManager", "CheckpointStore"]
+__all__ = ["ChromaClient", "SQLiteClient"]

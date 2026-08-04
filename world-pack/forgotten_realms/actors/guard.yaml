@@ -1,0 +1,26 @@
+- id: "guard"
+  name: "Guard"
+  role: "guard"
+  race: "human"
+  attributes:
+    str: 14
+    dex: 12
+    con: 14
+    int: 10
+    wis: 10
+    cha: 10
+  combat:
+    hp: 25
+    max_hp: 25
+    ac: 16
+    attack_bonus: 4
+    damage_bonus: 2
+  personality: "Dutiful, alert, protective of villagers"
+  functions: ["ally"]
+  function_data: {}
+  equipment:
+    weapon: "longsword"
+    armor: "chain_mail"
+    off_hand: "shield"
+  inventory: []
+  allowed_actions: ["move", "talk", "attack", "wait"]

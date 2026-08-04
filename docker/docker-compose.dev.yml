@@ -1,3 +1,7 @@
+# AIGameWorld 开发环境 / Development Environment
+# 启动：docker compose -f docker/docker-compose.dev.yml up -d
+# 源码目录挂载为卷，支持热重载 / Source dirs mounted as volumes for hot reload
+
 services:
   backend:
     build:
@@ -6,10 +10,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ../backend:/app
-      - ../worlds:/app/worlds
-      - ../data:/app/data
-    env_file: ../.env
+      - ../backend:/app                 # 后端源码热加载 / Backend hot reload
+      - ../worlds:/app/worlds           # Pack 数据 / Pack data
+      - ../data:/app/data               # SQLite + ChromaDB 数据 / Persistent data
+    env_file: ../.env                   # 环境变量（含 API Key）/ Environment (incl. API key)
     environment:
       - PYTHONPATH=/app
 
@@ -20,7 +24,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ../frontend:/app
-      - /app/node_modules
+      - ../frontend:/app                # 前端源码热加载 / Frontend hot reload
+      - /app/node_modules               # 隔离 node_modules / Isolate node_modules
     depends_on:
       - backend

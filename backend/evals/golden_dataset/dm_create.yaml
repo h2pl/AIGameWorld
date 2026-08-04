@@ -1,0 +1,41 @@
+# DM 创建情境评估数据集 / DM Create evaluation golden dataset
+# 评估维度：情境合理性、世界观一致性、角色引入
+
+- id: dm_create_001
+  description: "酒馆场景初始情境"
+  scene_id: "tavern"
+  context:
+    scene_description: "一家热闹的路边酒馆，炉火旁坐着几位冒险者"
+    pcs:
+      - name: "艾瑞克"
+        role: "战士"
+        personality: "勇敢、直率"
+      - name: "米娅"
+        role: "法师"
+        personality: "好奇、谨慎"
+  expected_elements:
+    - "应提及酒馆环境描写"
+    - "应为至少一个角色设定行动目标"
+    - "不应出现与酒馆无关的场景元素"
+  scoring_criteria:
+    scene_richness: 5       # 场景丰富度 1-5
+    character_relevance: 4  # 角色相关性 1-5
+    world_consistency: 5    # 世界观一致性 1-5
+
+- id: dm_create_002
+  description: "森林探索情境"
+  scene_id: "forest"
+  context:
+    scene_description: "幽暗的古老森林，树木遮天蔽日"
+    pcs:
+      - name: "艾瑞克"
+        role: "战士"
+        personality: "勇敢、直率"
+  expected_elements:
+    - "应描述森林环境"
+    - "应设置探索目标或悬念"
+    - "不应出现城市元素"
+  scoring_criteria:
+    scene_richness: 4
+    character_relevance: 3
+    world_consistency: 5

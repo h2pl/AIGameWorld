@@ -1,0 +1,66 @@
+<!-- DB Index 首页 / DB Index page — Pack 选择器 + 全局入口 / Pack selector + global entry points -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIGameWorld — DB World Viewer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+header { background: #1e293b; padding: 2rem; border-bottom: 2px solid #334155; text-align: center; }
+header h1 { font-size: 1.5rem; color: #a855f7; margin-bottom: .5rem; }
+header p { color: #94a3b8; font-size: .9rem; }
+.section { max-width: 960px; margin: 0 auto; padding: 1.5rem 1rem 0; }
+.section-title { font-size: 1.05rem; color: #64748b; margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 1px solid #1e293b; }
+.container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.card { background: #1e293b; border-radius: 8px; padding: 1.25rem; border: 1px solid #334155; transition: .2s; }
+.card:hover { border-color: #a855f7; transform: translateY(-2px); }
+.card a { color: #a855f7; text-decoration: none; font-size: 1.1rem; font-weight: 600; }
+.card.global { border-color: #22c55e; }
+.card.global a { color: #22c55e; }
+.card .desc { color: #94a3b8; font-size: .85rem; margin-top: .5rem; }
+.card .meta { color: #64748b; font-size: .75rem; margin-top: .75rem; }
+.error { text-align: center; padding: 2rem; color: #ef4444; }
+.refresh { text-align: center; margin: 1rem; padding-bottom: 2rem; }
+.refresh a { color: #64748b; }
+</style>
+</head>
+<body>
+<header><h1>AIGameWorld DB Viewer</h1><p>SQLite Runtime Data Browser</p></header>
+
+{% if db_error %}
+<div class="section"><div class="error">{{ db_error }}</div></div>
+{% else %}
+
+<!-- Pack 入口 -->
+<div class="section">
+  <div class="section-title">📦 Packs ({{ packs|length }})</div>
+  <div class="container">
+  {% for p in packs %}
+  <div class="card">
+    <a href="/view/pack/{{ p.id }}">{{ p.name }}</a>
+    <div class="desc">{{ p.desc or '' }}</div>
+    <div class="meta">{{ p.total }} entities · {{ p.version }} · {{ p.id }}</div>
+  </div>
+  {% endfor %}
+  {% if not packs %}
+  <div style="color:#64748b;padding:1rem">No pack data — 请先 aw import 导入 world pack</div>
+  {% endif %}
+  </div>
+</div>
+
+<!-- 全局数据入口 -->
+<div class="section">
+  <div class="section-title">🌐 Global Data (Pack-independent)</div>
+  <div class="container">
+    <div class="card global"><a href="/view/global/events">All Events</a><div class="meta">EventRepo · event_log 表</div></div>
+    <div class="card global"><a href="/view/global/narratives">Narrative Log</a><div class="meta">narratives 表</div></div>
+    <div class="card global"><a href="/view/global/meta">World Meta</a><div class="meta">world_pack 表</div></div>
+  </div>
+</div>
+
+{% endif %}
+<div class="refresh"><a href="/view">Refresh</a></div>
+</body>
+</html>

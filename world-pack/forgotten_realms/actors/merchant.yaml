@@ -1,0 +1,30 @@
+- id: "merchant"
+  name: "Merchant"
+  role: "merchant"
+  race: "human"
+  attributes:
+    str: 8
+    dex: 10
+    con: 10
+    int: 14
+    wis: 12
+    cha: 16
+  combat:
+    hp: 18
+    max_hp: 18
+    ac: 10
+    attack_bonus: 2
+    damage_bonus: 0
+  personality: "Friendly, shrewd, good at reading people"
+  functions: ["merchant", "dialogue"]
+  function_data:
+    merchant:
+      gold: 300
+      buyback_ratio: 0.5
+    dialogue:
+      dialogue_tree: "merchant_dialogue.yaml"
+  equipment: null
+  inventory:
+    - {item: "health_potion", qty: 3}
+    - {item: "gold", qty: 100}
+  allowed_actions: ["move", "talk", "trade", "wait"]

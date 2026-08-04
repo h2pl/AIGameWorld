@@ -7,6 +7,7 @@ venv/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+.coverage
 htmlcov/
 *.egg-info/
 
@@ -16,9 +17,20 @@ dist/
 .vite/
 
 # Runtime data
-data/
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
+*.log
+backend/data/chroma/
+frontend/test-results/
+frontend/tests/e2e/.backend.pid
+frontend/e2e-result.json
+frontend/e2e*.txt
+frontend/*-e2e.txt
+frontend/final-e2e*.txt
+frontend/full-e2e*.txt
+frontend/uc*-result*.txt
 
 # Environment
 .env

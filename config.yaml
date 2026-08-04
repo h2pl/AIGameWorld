@@ -1,58 +1,136 @@
+# AIGameWorld 主配置文件 / Main configuration file
+# 切换 LLM Provider：设置环境变量 LLM_PROVIDER=glm|deepseek|zen-proxy，或改 llm_provider 字段
+
+# === 服务器 / Server ===
 server:
   host: "0.0.0.0"
   port: 8000
 
+# === 世界 / World ===
 world:
   default_pack: "forgotten_realms"
 
-llm:
-  providers:
-    primary:
-      type: "deepseek"
-      base_url: "https://api.deepseek.com/v1"
-    fallback:
-      type: "anthropic"
+# === 运行时配置 / Runtime configuration ===
+# 这些字段描述后端以何种模式运行，与 world 业务配置相互独立、同时生效
+runtime:
+  llm_mock: false              # LLM 是否走 mock / Whether LLM returns mock data
+  data_mode: mock             # 数据模式：mock|real；mock 模式下启动时自动注入 mock 数据 / Data mode: mock or real
+  db_name: "data/dev.db"      # 指定使用的 SQLite DB 路径 / Active SQLite DB path
+  mock_dataset: "tavern"      # mock 数据集 / Mock dataset name
+
+# === LLM Provider 配置（只管"连到哪"）===
+llm_provider: "deepseek"             # 默认 provider，环境变量 LLM_PROVIDER 可覆盖
+
+llm_providers:
+  zen-proxy:
+    model: "deepseek-v4-flash-free"       # 默认模型，切 provider 自动换
+    base_url: "http://localhost:6446/v1"
+    api_key_env: ""                       # Zen Proxy 不需要 API key
+    client_backend: "requests"
+  glm:
+    model: "glm-5.1"
+    base_url: "https://open.bigmodel.cn/api/paas/v4"
+    api_key_env: "GLM_API_KEY"
+    client_backend: "langchain"
+  deepseek:
+    model: "deepseek-chat"
+    base_url: "https://api.deepseek.com/v1"
+    api_key_env: "DEEPSEEK_API_KEY"
+    client_backend: "langchain"
+
+# === LLM Purpose 配置（只管"怎么调"，只写一份，不随 provider 切换而改动）===
+# model 从 provider 继承，不需要在这里写
+llm_purposes:
   dm_create:
-    model: "deepseek-reasoner"
-    fallback_model: "claude-sonnet-4-20250514"
     temperature: 0.9
-    timeout: 15
+    timeout: 20
     retries: 1
   dm_narrate:
-    model: "deepseek-chat"
-    fallback_model: "claude-sonnet-4-20250514"
     temperature: 0.8
-    timeout: 10
+    timeout: 30
     retries: 1
   pc_decision:
-    model: "deepseek-chat"
-    fallback_model: "claude-sonnet-4-20250514"
     temperature: 0.7
     timeout: 10
     retries: 1
   actor_decision:
-    model: "deepseek-chat"
-    fallback_model: "claude-haiku-4-20250514"
     temperature: 0.7
     timeout: 8
     retries: 1
+  talk:
+    temperature: 0.8
+    timeout: 15
+    retries: 1
+  interact:
+    temperature: 0.7
+    timeout: 10
+    retries: 1
+  explore:
+    temperature: 0.8
+    timeout: 15
+    retries: 1
+  combat:
+    temperature: 0.8
+    timeout: 15
+    retries: 1
   reflection:
-    model: "deepseek-reasoner"
-    fallback_model: "claude-sonnet-4-20250514"
     temperature: 0.5
     timeout: 15
     retries: 1
+  # === 场景生成 / Scene generation ===
+    retries: 1
+    retries: 1
+    retries: 1
 
+# === 数据库 / Database ===
 database:
-  sqlite_path: "data/world.db"
   chroma_path: "data/chroma/"
+  embedding_model: "bge-m3"           # 嵌入模型：bge-m3（推荐）/ default（ChromaDB 内置）
 
+# === 自动运行 / Auto Run ===
 auto_run:
   default_interval: 2000
+  reflection_interval: 5
 
+# === 日志 / Logging ===
+logging:
+  level: "INFO"                     # DEBUG / INFO / WARNING / ERROR
+  json_format: true                 # true=JSON输出 false=文本输出
+  rotation:
+    when: "H"                       # 按小时切分：S/M/H/D/MIDNIGHT
+    interval: 1                     # 每 N 个 when 单位切一次
+    utc: true                       # true=UTC，false=本地时间
+    backup_count: 0                 # 保留最近 N 个时间片；0=保留全部
+  console:                          # 控制台输出开关（true=开启）
+    # 主流程
+    api: true                       #   FastAPI 请求
+    orchestrator: true              #   编排器
+    graph: true                     #   Graph 节点
+    service: true                   #   业务服务层
+    engine: true                    #   引擎层
+    repo: true                      #   数据仓储层
+    storage: true                   #   存储层
+
+    # 额外
+    llm: true                       #   LLM 调用
+    scheduler: true                 #   定时任务
+    utils: true                     #   工具模块
+    loader: true                    #   World Pack 加载
+    viewer: true                    #   DB 查看器
+
+    # 性能
+    performance: false               #   node 耗时 + tick 总耗时
+
+# === 可观测性 / Observability ===
 observability:
+  # LangSmith：开发期调试 + Prompt实验 + 评估回归
+  # 通过环境变量与 LangGraph 原生集成，无需手动创建 handler
+  langsmith:
+    enabled: true                     # 已启用 / Enabled（API key 在 .env 文件中）
+    project: "aigameworld"            # LangSmith 项目名
+  # Langfuse：生产期监控 + Token成本 + 延迟告警
   langfuse:
-    enabled: true
-    # 环境变量配置：LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_BASE_URL
-    # 自托管：base_url 指向 docker-compose 部署的 Langfuse Server
+    enabled: true                     # 已启用 / Enabled（Cloud SaaS，keys 在 .env 文件中）
     tracing_environment: "development"
+    sampling_rate: 1.0               # 开发环境全量采样 / Full sampling in dev
+    cost_tracking: true              # Token 成本追踪 / Token cost tracking

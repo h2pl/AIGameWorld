@@ -1,0 +1,22 @@
+story_arcs:
+  - id: "arc_bandit_threat"
+    type: "main"
+    title: "Bandit Threat"
+    stage: "setup"
+    main_cast: ["Kael", "Zeph", "Elara", "Mira"]
+    supporting_actors: ["Garret", "Borin"]
+    status: "setup"
+
+story_hooks:
+  - id: "hook_wolf_howls"
+    planted_tick: 0
+    description: "Distant wolf howls echo through the forest"
+    intended_payoff: "A wolf pack threatens the village"
+    urgency: 5
+    status: "planted"
+  - id: "hook_stranger"
+    planted_tick: 0
+    description: "A mysterious traveler passes through the village"
+    intended_payoff: "The traveler brings news of the outside world"
+    urgency: 10
+    status: "planted"
