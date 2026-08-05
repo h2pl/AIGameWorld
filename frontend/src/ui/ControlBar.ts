@@ -11,6 +11,8 @@ export interface ControlBarCallbacks {
   onPause: () => Promise<void>;
   onResume: () => Promise<void>;
   onReset: () => Promise<void>;
+  /** 退出到世界选择页 / Exit to world selection page */
+  onExit: () => void;
   getTickCount: () => number;
 }
 
@@ -23,6 +25,7 @@ export class ControlBar extends Panel {
   private btnPause!: HTMLButtonElement;
   private btnResume!: HTMLButtonElement;
   private btnReset!: HTMLButtonElement;
+  private btnExit!: HTMLButtonElement;
   private callbacks: ControlBarCallbacks | null = null;
 
   constructor() {
@@ -98,10 +101,13 @@ export class ControlBar extends Panel {
     this.btnResume.dataset.testid = "btn-resume";
     this.btnReset = this._btn("⏹ 重置", "#e74c3c");
     this.btnReset.dataset.testid = "btn-reset";
+    this.btnExit = this._btn("✕ 退出", "#7f8c8d");
+    this.btnExit.dataset.testid = "btn-exit";
     bar.appendChild(this.btnStart);
     bar.appendChild(this.btnPause);
     bar.appendChild(this.btnResume);
     bar.appendChild(this.btnReset);
+    bar.appendChild(this.btnExit);
     bar.appendChild(this._sep());
 
     // 倍速按钮 / Speed buttons
@@ -136,6 +142,7 @@ export class ControlBar extends Panel {
     this.btnPause.onclick = () => this._handlePause();
     this.btnResume.onclick = () => this._handleResume();
     this.btnReset.onclick = () => this._handleReset();
+    this.btnExit.onclick = () => this.callbacks?.onExit();
 
     window.addEventListener("tick-waiting", ((ev: CustomEvent) => {
       const { waiting, message } = (ev.detail || {}) as { waiting?: boolean; message?: string };

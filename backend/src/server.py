@@ -124,12 +124,14 @@ async def lifespan(app: FastAPI):
         cfg.logging.rotation.when,
     )
     # ── DB ──
-    db_path = cfg.db_name
+    # mock 模式连 mock 专用 DB（与真实数据 dev.db 隔离）；real 模式连 db_name /
+    # Mock mode uses mock-only DB (isolated from real data dev.db); real mode uses db_name.
+    db_path = cfg.active_db_name
     db = SQLiteClient(db_path)
     app.state.db = db
     await db.connect()
     await db.init_schema()
-    logger.info("[lifespan] db=%s ready", db_path)
+    logger.info("[lifespan] db=%s ready (data_mode=%s)", db_path, cfg.data_mode)
 
     # mock 模式下注入 mock 数据 / Seed mock data if in mock mode
     if cfg.data_mode == "mock":

@@ -15,7 +15,8 @@ world:
 runtime:
   llm_mock: false              # LLM 是否走 mock / Whether LLM returns mock data
   data_mode: mock             # 数据模式：mock|real；mock 模式下启动时自动注入 mock 数据 / Data mode: mock or real
-  db_name: "data/dev.db"      # 指定使用的 SQLite DB 路径 / Active SQLite DB path
+  db_name: "data/dev.db"      # 真实数据 SQLite DB 路径（gen_scene 导入场景的目标）/ Real-data SQLite DB path
+  mock_db_name: "data/mock.db"  # mock 专用 DB（隔离真实数据，mock 模式优先用此）/ Mock-only DB path
   mock_dataset: "tavern"      # mock 数据集 / Mock dataset name
 
 # === LLM Provider 配置（只管"连到哪"）===

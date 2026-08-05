@@ -25,6 +25,7 @@ from ...domain import (
     importance_of,
 )
 from ...domain.scene_object import SceneObject
+from ...engine.identity import map_identity
 from ...schemas.llm_output import InteractOutputSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import dict_without, get_llm, get_repo, validate_position
@@ -214,13 +215,8 @@ def _find_scene_object(
 
 
 def _pc_identity(pc: PlayerCharacter) -> dict:
-    """读取 PC 身份 / Read PC identity."""
-    return {
-        "id": pc.id,
-        "name": pc.name,
-        "role": pc.role,
-        "personality": pc.personality,
-    }
+    """读取 PC 身份（含背景）/ Read PC identity (with background)."""
+    return map_identity(pc)
 
 
 def _store_interact_memory(

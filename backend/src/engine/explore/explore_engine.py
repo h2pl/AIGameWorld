@@ -26,6 +26,7 @@ from ...domain import (
     SceneObject,
     importance_of,
 )
+from ...engine.identity import map_identity
 from ...schemas.llm_output import ExploreOutputSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import dict_without, get_llm, validate_position
@@ -242,10 +243,7 @@ def _store_explore_memory(
 def _pc_identity(pc_id: str, pcs: dict[str, PlayerCharacter] | None) -> dict:
     pc = (pcs or {}).get(pc_id)
     if pc is None:
-        return {"id": pc_id, "name": pc_id, "role": "", "personality": ""}
-    return {
-        "id": pc_id,
-        "name": pc.name,
-        "role": pc.role,
-        "personality": pc.personality,
-    }
+        return map_identity(None)
+    ident = map_identity(pc)
+    ident["id"] = pc_id
+    return ident

@@ -1,4 +1,5 @@
 {# Phase 3: PC 深层决策——每 tick 变化的世界状态 / Per-tick world state #}
+{% from "_common/character.jinja" import render_character_compact %}
 当前剧情情境：{{ plot_brief }}
 
 {# DM 环境提示 / DM environmental hints #}
@@ -33,7 +34,7 @@ DM 提示：
 {% if nearby_pcs %}
 附近的玩家角色（PC，target_id 请使用括号内的 id）：
 {% for c in nearby_pcs %}
-- {{ c.name }}（id: {{ c.id }}，{{ c.role }}{% if c.race %}，{{ c.race }}{% endif %}，状态：{{ c.status }}）
+- {{ render_character_compact(c) }}
 {% endfor %}
 {% endif %}
 
@@ -43,13 +44,13 @@ DM 提示：
 {% if other_actors %}
 附近的 NPC（target_id 请使用括号内的 id）：
 {% for c in other_actors %}
-- {{ c.name }}（id: {{ c.id }}，{{ c.role }}{% if c.race %}，{{ c.race }}{% endif %}，状态：{{ c.status }}{% if c.personality %}，性格：{{ c.personality }}{% endif %}）
+- {{ render_character_compact(c) }}
 {% endfor %}
 {% endif %}
 {% if hostile_actors %}
 附近的敌人（target_id 请使用括号内的 id；如需应对可选择 action_type=combat）：
 {% for c in hostile_actors %}
-- {{ c.name }}（id: {{ c.id }}，{{ c.role }}{% if c.race %}，{{ c.race }}{% endif %}，状态：{{ c.status }}）
+- {{ render_character_compact(c) }}
 {% endfor %}
 {% endif %}
 

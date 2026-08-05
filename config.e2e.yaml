@@ -12,6 +12,7 @@ runtime:
   llm_mock: true
   data_mode: mock
   db_name: "data/e2e.db"
+  mock_db_name: "data/e2e.db"
   mock_dataset: "tavern"
 
 llm_provider: "deepseek"

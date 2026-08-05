@@ -1,8 +1,8 @@
 /** E2E 测试公共工具 / Shared E2E test helpers. */
 import { expect, type Page } from "@playwright/test";
 
-/** 测试用 world_id / World ID used in all E2E tests */
-export const WORLD_ID = "mock_world";
+/** 测试用 world_id（仙剑世界）/ World ID used in all E2E tests (xianjian world) */
+export const WORLD_ID = "xianjian";
 
 /** UI 选择器常量 / CSS selector constants for E2E test targets */
 export const SELECTORS = {
@@ -157,7 +157,9 @@ export async function getTestSeamState(page: Page): Promise<Record<string, unkno
 
 /** beforeEach 标准流程：重置 → 刷新 → 4x 倍速 */
 export async function resetAndPrepare(page: Page): Promise<void> {
-  await page.goto("/");
+  // 直接带 ?world= 进入主画面（入口页需选择 world，E2E 固定 xianjian）/
+  // Enter main screen with ?world= (entry page requires world selection)
+  await page.goto("/?world=xianjian");
   await page.waitForSelector(SELECTORS.backendOverlay, {
     state: "detached",
     timeout: 60000,

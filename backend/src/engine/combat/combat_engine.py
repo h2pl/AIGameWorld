@@ -26,6 +26,7 @@ from ...domain import (
     SceneObject,
     importance_of,
 )
+from ...engine.identity import map_identity
 from ...schemas.llm_output import CombatNarrationSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import dict_without, get_llm, get_repo, validate_position
@@ -229,25 +230,24 @@ async def _generate_narration(
 
 
 def _combatant_ctx(char: PlayerCharacter | Actor | None) -> dict:
-    """组装战斗角色上下文 / Build combatant context for prompt."""
+    """组装战斗角色上下文（含背景）/ Build combatant context for prompt (with background)."""
     if char is None:
-        return {"id": "", "name": "", "role": "", "race": ""}
+        return map_identity(None)
     combat = _parse_json_field(getattr(char, "combat_json", "{}"))
     attrs = _parse_json_field(getattr(char, "attributes_json", "{}"))
-    return {
-        "id": char.id,
-        "name": char.name,
-        "role": getattr(char, "role", ""),
-        "race": getattr(char, "race", None) or "",
-        "status": getattr(char, "status", "active"),
-        "hp": combat.get("hp", 10),
-        "max_hp": combat.get("max_hp", combat.get("hp", 10)),
-        "ac": combat.get("ac", 10),
-        "attack_bonus": combat.get("attack_bonus", 0),
-        "damage_dice": combat.get("damage_dice", "1d6"),
-        "dexterity": attrs.get("dexterity", attrs.get("dex", 10)),
-        "strength": attrs.get("strength", attrs.get("str", 10)),
-    }
+    ident = map_identity(char)
+    ident.update(
+        {
+            "hp": combat.get("hp", 10),
+            "max_hp": combat.get("max_hp", combat.get("hp", 10)),
+            "ac": combat.get("ac", 10),
+            "attack_bonus": combat.get("attack_bonus", 0),
+            "damage_dice": combat.get("damage_dice", "1d6"),
+            "dexterity": attrs.get("dexterity", attrs.get("dex", 10)),
+            "strength": attrs.get("strength", attrs.get("str", 10)),
+        }
+    )
+    return ident
 
 
 def _defeat(char: PlayerCharacter | Actor) -> None:

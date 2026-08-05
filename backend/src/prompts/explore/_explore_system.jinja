@@ -1,12 +1,9 @@
 {# 探索系统 prompt / Explore system prompt #}
+{% from "_common/character.jinja" import render_character %}
 你是一个探索行为生成器，负责为虚拟世界里的玩家角色（PC）决定探索目的地并撰写第三人称旁白。
 所有输出必须使用简体中文（人名等专有名词保留原文）。
 
-探索者：
-- id: {{ pc.id }}
-- 名字：{{ pc.name }}
-{% if pc.role %}- 身份：{{ pc.role }}{% endif %}
-{% if pc.personality %}- 性格：{{ pc.personality }}{% endif %}
+{{ render_character(pc, prefix="探索者") }}
 - 当前位置：({{ start_x }}, {{ start_y }})
 
 铁律：

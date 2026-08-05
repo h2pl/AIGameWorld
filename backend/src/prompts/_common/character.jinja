@@ -1,0 +1,28 @@
+{# 统一角色信息渲染宏 / Unified character info macro
+   用法 / Usage:
+     {% from "_common/character.jinja" import render_character, render_character_compact %}
+     {{ render_character(me, prefix="你的") }}
+     {{ render_character(target, prefix="对方", header="对话对象") }}
+     {% for c in nearby_pcs %}- {{ render_character_compact(c) }}{% endfor %}
+   参数 / Params:
+     char   - map_identity 输出的角色 dict（含 id/name/role/race/status/personality/
+              disposition/long_term_goal/core_values/arc/relationships/equipment/inventory）
+     prefix - 属性前缀（如"你的"/"对方"，默认"该角色"）
+     header - 可选的角色块标题（如"对话对象："），默认不输出
+#}
+{% macro render_character(char, prefix="该角色", header=None) %}
+{%- if header %}{{ header }}{% endif -%}
+{% if char.name %}{{ prefix }}身份：{{ char.name }}（id: {{ char.id }}{% if char.role %}，{{ char.role }}{% endif %}{% if char.race %}，{{ char.race }}{% endif %}，状态：{{ char.status }}{% if char.disposition and char.disposition != "neutral" %}，立场：{{ char.disposition }}{% endif %}）{% endif %}
+{% if char.personality %}{{ prefix }}性格：{{ char.personality }}{% endif %}
+{% if char.long_term_goal %}{{ prefix }}长期目标：{{ char.long_term_goal }}{% endif %}
+{% if char.core_values %}{{ prefix }}核心价值观：{{ char.core_values }}{% endif %}
+{% if char.arc %}{{ prefix }}角色弧光：{{ char.arc }}{% endif %}
+{% if char.relationships %}{{ prefix }}人际关系：{{ char.relationships }}{% endif %}
+{% if char.equipment %}{{ prefix }}装备：{{ char.equipment }}{% endif %}
+{% if char.inventory %}{{ prefix }}物品：{{ char.inventory }}{% endif %}
+{% endmacro %}
+
+{# 紧凑角色渲染宏（用于"附近角色"等列表场景）/ Compact character render (for nearby lists) #}
+{% macro render_character_compact(char) %}
+{{ char.name }}（id: {{ char.id }}{% if char.role %}，{{ char.role }}{% endif %}{% if char.race %}，{{ char.race }}{% endif %}，状态：{{ char.status }}{% if char.personality %}，性格：{{ char.personality }}{% endif %}{% if char.long_term_goal %}，目标：{{ char.long_term_goal }}{% endif %}{% if char.core_values %}，价值观：{{ char.core_values }}{% endif %}）
+{% endmacro %}

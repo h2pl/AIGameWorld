@@ -41,8 +41,20 @@ export interface CharacterData {
   attributes: AttributesData;
   combat: CombatData | null;
   personality: string;
-  /** PC 特有 / PC only */
-  character_arc?: CharacterArcData;
+  /** Actor 立场 / Actor disposition */
+  disposition?: string;
+  /** PC 特有 / PC only（可能是字符串或 {stage,description} 对象） */
+  character_arc?: CharacterArcData | string;
+  /** 长期目标 / Long-term goal */
+  long_term_goal?: string;
+  /** 核心价值观 / Core values */
+  core_values?: string[];
+  /** 人际关系 / Relationships */
+  relationships?: Record<string, string>;
+  /** 装备 / Equipment */
+  equipment?: Record<string, string>;
+  /** 背包 / Inventory */
+  inventory?: Array<{ item: string; qty: number }>;
   /** Actor 特有 / Actor only */
   functions?: string[];
   /** true=PC, false=Actor */
@@ -150,8 +162,27 @@ export interface InitialWorldState {
   /** @deprecated 请使用 runtime.db_name / Use runtime.db_name instead */
   db_name: string;
   runtime: RuntimeConfig;
+  /** 起始场景 id / World starting scene id */
+  starting_scene_id?: string;
+  /** 起始场景完整数据（首次进入主画面直接渲染，不经事件） / Starting scene data for direct initial render */
+  starting_scene?: SceneData | null;
   scenes: SceneData[];
   pcs?: CharacterData[];
   actors?: CharacterData[];
   scene_objects?: SceneObjectData[];
+}
+
+/** 世界列表项（入口页选择用） / World list item (for entry page selection) */
+export interface WorldListItem {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  rule_set: string;
+  author: string;
+  starting_scene_id: string;
+  current_scene_id: string;
+  status: string;
+  data_tick: number;
+  display_tick: number;
 }

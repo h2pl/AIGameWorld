@@ -25,6 +25,7 @@ from ...domain import (
     SceneObject,
     importance_of,
 )
+from ...engine.identity import map_identity
 from ...schemas.llm_output import DialogueSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm, get_repo
@@ -196,15 +197,10 @@ async def _load_target(pc_repo, actor_repo, target_id: str, target_type: str):
 
 
 def _character_ctx(char_id: str, char) -> dict:
-    """组装角色 prompt 上下文 / Build character prompt context."""
+    """组装角色 prompt 上下文（含背景）/ Build character prompt context (with background)."""
     if not char:
-        return {"id": char_id, "name": char_id, "role": "", "personality": ""}
-    return {
-        "id": char.id,
-        "name": char.name,
-        "role": getattr(char, "role", ""),
-        "personality": getattr(char, "personality", ""),
-    }
+        return map_identity(None)
+    return map_identity(char)
 
 
 def _normalize_speaker_ids(turns: list[dict], char_id: str, target_id: str) -> list[dict]:

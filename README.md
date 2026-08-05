@@ -41,7 +41,7 @@ npm install
 npm run dev  # 默认 http://localhost:3000
 ```
 
-浏览器访问 `http://localhost:3000/?pack=mock_world`
+浏览器访问 `http://localhost:3000/?world=mock_world`
 
 ### Docker（可选）
 

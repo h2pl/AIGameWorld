@@ -23,11 +23,16 @@ class PcRepo:
         await self._db.execute(
             """INSERT INTO player_characters (id, name, role, race, status, scene_id,
             position_x, position_y, attributes_json, combat_json, arc_json,
-            values_json, equipment_json, inventory_json, relationships_json, world_id, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+            values_json, personality, long_term_goal,
+            equipment_json, inventory_json, relationships_json, world_id, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
             ON CONFLICT(id) DO UPDATE SET
             status=excluded.status, scene_id=excluded.scene_id,
             position_x=excluded.position_x, position_y=excluded.position_y,
+            personality=excluded.personality, long_term_goal=excluded.long_term_goal,
+            values_json=excluded.values_json, arc_json=excluded.arc_json,
+            relationships_json=excluded.relationships_json,
+            equipment_json=excluded.equipment_json, inventory_json=excluded.inventory_json,
             world_id=excluded.world_id, updated_at=datetime('now', 'localtime')""",
             (
                 pc.id,
@@ -42,6 +47,8 @@ class PcRepo:
                 pc.combat_json,
                 pc.arc_json,
                 pc.values_json,
+                pc.personality,
+                pc.long_term_goal,
                 pc.equipment_json,
                 pc.inventory_json,
                 pc.relationships_json,

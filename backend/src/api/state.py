@@ -37,7 +37,14 @@ def _char_from_row(r: dict, is_pc: bool, pos_offset: int) -> dict:
         "attributes": json.loads(r["attributes_json"]),
         "combat": json.loads(cj) if cj else None,
         "personality": r.get("personality", ""),
-        "arc": json.loads(r.get("arc_json", "{}")) if is_pc else None,
+        "disposition": r.get("disposition", "neutral"),
+        "character_arc": json.loads(r.get("arc_json", "{}")) if is_pc else None,
+        # PC 背景 / PC background
+        "long_term_goal": r.get("long_term_goal", "") if is_pc else None,
+        "core_values": json.loads(r.get("values_json", "[]")) if is_pc else [],
+        "relationships": json.loads(r.get("relationships_json", "{}")) if is_pc else {},
+        "equipment": json.loads(r.get("equipment_json", "{}")) if is_pc else {},
+        "inventory": json.loads(r.get("inventory_json", "[]")) if is_pc else [],
         "functions": json.loads(r.get("functions_json", "[]")) if not is_pc else None,
         "is_pc": is_pc,
     }
@@ -73,7 +80,7 @@ async def rewind_world(world_id: str, req: RewindRequest, orchestrator=Depends(g
 
 
 @router.get("/{world_id}/state")
-async def get_pack_state(world_id: str, request: Request, db=Depends(get_db)):
+async def get_world_state(world_id: str, request: Request, db=Depends(get_db)):
     """获取世界初始状态（场景、角色、物品、物体）/ Get initial world state."""
     try:
         scene_repo = SceneRepo(db)
@@ -84,6 +91,16 @@ async def get_pack_state(world_id: str, request: Request, db=Depends(get_db)):
 
         # 场景 / Scenes
         scenes = await scene_repo.list_scenes(world_id)
+
+        # starting 场景：world.starting_scene_id 对应的场景（首次进入主画面直接渲染用）/
+        # Starting scene for direct initial render (no event needed on first entry)
+        world = await world_repo.get(world_id)
+        starting_scene_id = world.starting_scene_id if world else ""
+        starting_scene = None
+        if starting_scene_id:
+            starting_scene = next(
+                (s.model_dump() for s in scenes if s.id == starting_scene_id), None
+            )
 
         # PC / Player characters
         pcs = [
@@ -110,7 +127,8 @@ async def get_pack_state(world_id: str, request: Request, db=Depends(get_db)):
         cfg = load_config(_config_path)
         llm_mock = cfg.llm_mock
         data_mode = cfg.data_mode
-        db_name = Path(cfg.db_name).name
+        # 返回实际使用的 DB 名（mock 模式为 mock 专用 DB，real 模式为真实 DB）/ Active DB name
+        db_name = Path(cfg.active_db_name).name
 
         return {
             "world_id": world_id,
@@ -121,6 +139,8 @@ async def get_pack_state(world_id: str, request: Request, db=Depends(get_db)):
             "data_mode": data_mode,
             "db_name": db_name,
             "runtime": {"llm_mock": llm_mock, "data_mode": data_mode, "db_name": db_name},
+            "starting_scene_id": starting_scene_id,
+            "starting_scene": starting_scene,
             "scenes": scenes,
             "pcs": pcs,
             "actors": actors,

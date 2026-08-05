@@ -1,6 +1,6 @@
 /** 角色信息面板 / Character Info Panel — 点击角色展示属性 + 战斗 + 角色弧 */
 import { Panel } from "./Panel";
-import type { CharacterData } from "../types";
+import type { CharacterArcData, CharacterData } from "../types";
 
 const ATTR_LABELS: Record<string, string> = {
   strength: "💪 力量",
@@ -69,17 +69,52 @@ export class CharacterPanel extends Panel {
         </div>`
       : `<div class="section">⚔️ 无战斗数据 / No combat data</div>`;
 
-    const arcHtml = ch.character_arc
+    // 角色弧：兼容字符串或 {stage,description} 对象 / Arc: string or {stage,description}
+    let arcText = "";
+    if (ch.character_arc) {
+      if (typeof ch.character_arc === "string") arcText = ch.character_arc as unknown as string;
+      else {
+        const arcObj = ch.character_arc as CharacterArcData;
+        arcText = `[${arcObj.stage || ""}] ${arcObj.description || ""}`.trim();
+      }
+    }
+    const arcHtml = arcText
       ? `<div class="section">
            <div class="section-title">📖 角色弧 / Arc</div>
-           <span class="arc-stage">[${ch.character_arc.stage}]</span>
-           ${ch.character_arc.description}
+           ${arcText}
          </div>`
+      : "";
+
+    // 背景信息 / Background info (PC)
+    const bgHtml = ch.is_pc
+      ? `
+      ${ch.long_term_goal ? `<div class="section"><div class="section-title">🎯 长期目标 / Goal</div>${ch.long_term_goal}</div>` : ""}
+      ${ch.core_values?.length ? `<div class="section"><div class="section-title">💎 价值观 / Values</div>${ch.core_values.join("、")}</div>` : ""}
+      ${
+        Object.keys(ch.relationships || {}).length
+          ? `<div class="section"><div class="section-title">🤝 人际关系 / Relationships</div>${Object.entries(
+              ch.relationships || {}
+            )
+              .map(([k, v]) => `${k}：${v}`)
+              .join("、")}</div>`
+          : ""
+      }
+      ${
+        Object.keys(ch.equipment || {}).length
+          ? `<div class="section"><div class="section-title">🛡️ 装备 / Equipment</div>${Object.entries(
+              ch.equipment || {}
+            )
+              .map(([k, v]) => `${k}: ${v}`)
+              .join("、")}</div>`
+          : ""
+      }
+      ${ch.inventory?.length ? `<div class="section"><div class="section-title">🎒 物品 / Inventory</div>${ch.inventory.map((i) => `${i.item} ×${i.qty}`).join("、")}</div>` : ""}`
       : "";
 
     this.contentEl.innerHTML = `
       <div class="char-name">${ch.is_pc ? "🟡" : "⚪"} ${ch.name} (${ch.role})</div>
-      <div class="char-meta">种族: ${ch.race || "未知"}　|　性格: ${ch.personality || "—"}</div>
+      <div class="char-meta">种族: ${ch.race || "未知"}　|　性格: ${ch.personality || "—"}${ch.disposition ? `　|　立场: ${ch.disposition}` : ""}</div>
+      ${bgHtml}
       <div class="section">
         <div class="section-title">📊 属性 / Attributes</div>
         <div class="attr-row">${attrRows}</div>

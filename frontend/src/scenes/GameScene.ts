@@ -79,7 +79,10 @@ export class GameScene extends Phaser.Scene {
     this._onPlayResumed = () => this.tweens.resumeAll();
     window.addEventListener("play-paused", this._onPlayPaused);
     window.addEventListener("play-resumed", this._onPlayResumed);
-    // tick=0 时不应构建场景，等待 scene_setup 事件驱动 / Don't build scene at tick=0, wait for scene_setup event
+    // 首次进入（display_tick<=0）：直接用 starting 场景渲染，不经事件触发 /
+    // First entry (display_tick<=0): render starting scene directly, no event needed.
+    this._initStartingScene();
+    // tick>0 时热重载恢复 / Recover from hot-reload when display_tick>0
     this._recoverFromReload();
     this._initTestSeam();
   }
@@ -244,6 +247,43 @@ export class GameScene extends Phaser.Scene {
   private async _handleDmCreate(_ev: EventData): Promise<void> {
     // DMCreationPanel 用 50ms setTimeout + CSS fade-in，等待 1s 确保显示完毕
     await new Promise((r) => setTimeout(r, 1000));
+  }
+
+  /** 首次进入直接渲染 starting 场景（不经事件）/ Render starting scene directly on first entry */
+  private _initStartingScene(): void {
+    const displayTick = this.game.registry.get("displayTick") as number;
+    // 已有历史 tick 时交给 _recoverFromReload / Let _recoverFromReload handle existing ticks
+    if (displayTick > 0) return;
+    const world = this.game.registry.get("initialWorldState") as any;
+    const starting = world?.starting_scene;
+    if (!starting) return;
+
+    // 从场景 ext_json 解析地图元数据 / Parse map metadata from scene ext_json
+    let extJson: Record<string, any> = {};
+    try {
+      extJson = starting.ext_json ? JSON.parse(starting.ext_json) : {};
+    } catch (e) {
+      log.error(`bad starting_scene.ext_json:`, e);
+    }
+
+    log.info(`initial starting scene=${starting.id}`);
+    const sceneId = String(starting.id || "");
+    const sceneName = String(starting.name || "");
+    // 初始只渲染场景地图 + 场景物体，不渲染角色——角色由后续 scene_setup 事件驱动渲染 /
+    // Initial render: scene map + objects only. Characters are rendered by subsequent scene_setup events.
+    const sceneObjects = (world?.scene_objects || []).filter(
+      (o: any) => String(o.scene_id) === sceneId
+    );
+    // 不设置 current_scene_id：使第一个 scene_setup 事件不会因同场景短路，从而走完整构建（含角色）/
+    // Leave current_scene_id unset so the first scene_setup event rebuilds the scene WITH characters.
+    void this.ensureScene({
+      sceneId,
+      sceneName,
+      extJson,
+      pcs: [],
+      actors: [],
+      sceneObjects,
+    });
   }
 
   /** 热重载恢复 / Recover from hot-reload */

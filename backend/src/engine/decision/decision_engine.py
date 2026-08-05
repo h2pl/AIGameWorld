@@ -9,6 +9,7 @@ from langchain_core.runnables.config import RunnableConfig
 from src.utils.tracing import traced
 
 from ...domain import Actor, Decision, DMRecord, PlayerCharacter, Scene, SceneObject
+from ...engine.identity import map_identity
 from ...schemas.llm_output import CharacterActionSchema, PCDecideSchema
 from ...services.memory_service import retrieve_memories
 from ...utils.helpers import get_llm, get_repo
@@ -136,26 +137,8 @@ def _fallback_decision(pc_id: str) -> Decision:
 
 
 def _map_identity(char: PlayerCharacter | Actor | None) -> dict:
-    """从领域模型读取角色身份 / Read character identity from domain model."""
-    if char is None:
-        return {
-            "id": "",
-            "name": "",
-            "role": "",
-            "race": "",
-            "status": "active",
-            "personality": "",
-            "disposition": "neutral",
-        }
-    return {
-        "id": char.id,
-        "name": char.name,
-        "role": getattr(char, "role", ""),
-        "race": getattr(char, "race", None) or "",
-        "status": getattr(char, "status", "active"),
-        "personality": getattr(char, "personality", ""),
-        "disposition": getattr(char, "disposition", "neutral"),
-    }
+    """从领域模型读取角色身份与背景 / Read character identity + background from domain model."""
+    return map_identity(char)
 
 
 def _validate(

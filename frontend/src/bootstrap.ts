@@ -87,9 +87,11 @@ export async function bootstrap(): Promise<{ world: InitialWorldState }> {
   overlay.remove();
 
   const params = new URLSearchParams(window.location.search);
-  const worldId = params.get("pack") || "mock_world";
+  // 通过 world id 查询（入口页选择后写入 URL 的 world 参数）/
+  // Query by world id (entry page writes world id into URL after selection)
+  const worldId = params.get("world") || "mock_world";
 
-  // 读取 URL 参数 / Read URL pack param
+  // 读取 URL 参数 / Read URL param
   let world: InitialWorldState | null = null;
   if (ok) world = await loadWorldState(worldId);
   // 后端不可用时的降级数据 / Fallback world when backend is unavailable

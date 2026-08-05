@@ -15,11 +15,19 @@ import { MockConfigPanel } from "./ui/MockConfigPanel";
 import { MetricsPanel } from "./ui/MetricsPanel";
 import { ControlBar } from "./ui/ControlBar";
 import "./ui/styles.css";
+import { showWorldSelectionIfNeeded } from "./EntryScreen";
 import { createLogger } from "./utils/logger";
 const log = createLogger("Main");
 
 async function main(): Promise<void> {
   log.info(`=== START ===`);
+
+  // ── 0. 入口选择：无 ?world= 时展示世界选择页并等待选择 ──
+  // 选择后会带 ?world=<id> reload，此调用在 URL 无 world 时阻塞（页面 reload），不返回。
+  const hasWorld = new URLSearchParams(window.location.search).has("world");
+  if (!hasWorld) {
+    await showWorldSelectionIfNeeded();
+  }
 
   // ── 1. Bootstrap ──
   const { world } = await bootstrap();
@@ -102,6 +110,13 @@ async function main(): Promise<void> {
       worldStore.clear();
       game.events.emit("scene-reset");
       window.dispatchEvent(new CustomEvent("tick-start", { detail: { tick: 0 } }));
+    },
+    onExit: () => {
+      // 退出到世界选择页：清空当前世界状态，跳到无 ?world= 的根路径，重新进入入口页 /
+      // Exit to world selection: clear state and navigate to root (re-triggers entry page)
+      player.stop();
+      worldStore.clear();
+      window.location.href = window.location.origin + window.location.pathname;
     },
   });
 

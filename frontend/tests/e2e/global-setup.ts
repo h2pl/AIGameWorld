@@ -41,7 +41,7 @@ async function waitForBackend(): Promise<void> {
 
 async function waitForWorldReady(): Promise<void> {
   const start = Date.now();
-  const stateUrl = `http://localhost:${BACKEND_PORT}/api/world/mock_world/state`;
+  const stateUrl = `http://localhost:${BACKEND_PORT}/api/world/xianjian/state`;
   while (Date.now() - start < SETUP_TIMEOUT_MS) {
     try {
       const res = await fetch(stateUrl);
@@ -54,7 +54,7 @@ async function waitForWorldReady(): Promise<void> {
     }
     await new Promise((r) => setTimeout(r, 500));
   }
-  throw new Error("世界 mock_world 未在 120s 内准备就绪 / World mock_world did not become ready");
+  throw new Error("世界 xianjian 未在 120s 内准备就绪 / World xianjian did not become ready");
 }
 
 export default async function globalSetup(): Promise<void> {

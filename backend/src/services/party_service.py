@@ -16,6 +16,7 @@ from langchain_core.runnables.config import RunnableConfig
 
 from ..domain.event import TickEvent, TickEventType
 from ..domain.scene import Scene
+from ..engine.identity import map_identity
 from ..graph.state import OverallState
 from ..schemas.llm_output import PartyDecisionSchema, PartyDiscussionSchema
 from ..utils.helpers import get_llm, get_repo, is_mock
@@ -178,6 +179,24 @@ async def party_decide_scene(state: OverallState, config: RunnableConfig = None)
     return applied
 
 
+def _build_pc_lines(pcs: dict) -> list[str]:
+    """构建团队成员的背景行（含长期目标/价值观/性格）/ Build party member background lines."""
+    lines = []
+    for pc in pcs.values():
+        ident = map_identity(pc)
+        parts = [f"- {ident['name']}（id={ident['id']}）"]
+        if ident["role"]:
+            parts.append(f"身份={ident['role']}")
+        if ident["long_term_goal"]:
+            parts.append(f"长期目标={ident['long_term_goal']}")
+        if ident["core_values"]:
+            parts.append(f"价值观={ident['core_values']}")
+        if ident["personality"]:
+            parts.append(f"性格={ident['personality']}")
+        lines.append("，".join(parts))
+    return lines
+
+
 async def _llm_discuss(llm, tick, world_id, pcs, current, available, config=None) -> list:
     """LLM 集体讨论：只生成多人对话 / LLM party discussion — dialogue only."""
     from pathlib import Path
@@ -187,10 +206,7 @@ async def _llm_discuss(llm, tick, world_id, pcs, current, available, config=None
     _ROOT = Path(__file__).parent.parent / "prompts"
     _ENV = Environment(loader=FileSystemLoader(_ROOT))
 
-    pc_lines = []
-    for pc in pcs.values():
-        goal = getattr(pc, "long_term_goal", "") or "（无明确目标）"
-        pc_lines.append(f"- {pc.name}（id={pc.id}）：长期目标={goal}")
+    pc_lines = _build_pc_lines(pcs)
     scene_lines = [f"- {s.id}：{s.name}（{s.type}）" for s in available]
 
     system = _ENV.get_template("party/_party_system.jinja").render()
@@ -221,10 +237,7 @@ async def _llm_decide_scene(llm, tick, world_id, pcs, current, available, config
     _ROOT = Path(__file__).parent.parent / "prompts"
     _ENV = Environment(loader=FileSystemLoader(_ROOT))
 
-    pc_lines = []
-    for pc in pcs.values():
-        goal = getattr(pc, "long_term_goal", "") or "（无明确目标）"
-        pc_lines.append(f"- {pc.name}（id={pc.id}）：长期目标={goal}")
+    pc_lines = _build_pc_lines(pcs)
     scene_lines = [f"- {s.id}：{s.name}（{s.type}）" for s in available]
 
     system = _ENV.get_template("party/_party_system.jinja").render()

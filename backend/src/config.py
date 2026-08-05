@@ -93,7 +93,10 @@ class RuntimeConfig(BaseModel):
 
     llm_mock: bool = True  # LLM 是否走 mock / Whether LLM returns mock data
     data_mode: str = "mock"  # 数据模式：mock|real / Data mode: mock or real
-    db_name: str = "data/test.db"  # 实际使用的 SQLite DB 路径 / Active SQLite DB path
+    db_name: str = (
+        "data/test.db"  # 真实数据 SQLite DB 路径（gen_scene 导入目标）/ Real-data SQLite DB path
+    )
+    mock_db_name: str = ""  # mock 专用 DB 路径（mock 模式优先用此，隔离真实数据）；空则回退 db_name / Mock-only DB path; empty falls back to db_name
     mock_dataset: str = "tavern"  # mock 数据集 / Mock dataset name
 
 
@@ -190,6 +193,14 @@ class Config(BaseSettings):
 
     @property
     def db_name(self) -> str:
+        return self.runtime.db_name
+
+    @property
+    def active_db_name(self) -> str:
+        """实际使用的 DB 路径：mock 模式用 mock_db_name（若配置），否则用 db_name /
+        Active DB path: mock mode uses mock_db_name (if set), otherwise db_name."""
+        if self.runtime.data_mode == "mock" and self.runtime.mock_db_name:
+            return self.runtime.mock_db_name
         return self.runtime.db_name
 
     @property

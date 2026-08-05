@@ -32,13 +32,14 @@ test.describe("basic tick flow", () => {
     expect(state.display_tick).toBe(0);
     expect(state.pcs.length).toBeGreaterThan(0);
 
-    // 验证 Phaser test seam 已就绪 / Verify Phaser test seam ready
+    // 验证 Phaser test seam 已就绪：初始只渲染场景地图（从 db），不渲染角色（角色由 scene_setup 事件驱动）/
+    // Verify Phaser test seam: initial renders scene map only (from db), no characters (characters come via scene_setup events).
     await expect
       .poll(() => getTestSeamState(page))
       .toEqual(
         expect.objectContaining({
           scene: "Game",
-          sceneBuilt: false,
+          sceneBuilt: true,
           pcCount: 0,
           displayTick: 0,
           worldId: WORLD_ID,
@@ -115,12 +116,12 @@ test.describe("basic tick flow", () => {
     const eventsRes = await fetchBackendEvents(page, 0, 10);
     expect(eventsRes.events).toHaveLength(0);
 
-    // 验证 Phaser test seam 已重置 / Verify reset destroyed scene
+    // 验证 Phaser test seam 已重置：场景地图重新渲染（从 db），角色由事件驱动 / Verify reset re-renders scene map (from db), characters via events
     await expect
       .poll(() => getTestSeamState(page))
       .toEqual(
         expect.objectContaining({
-          sceneBuilt: false,
+          sceneBuilt: true,
           pcCount: 0,
           displayTick: 0,
         })

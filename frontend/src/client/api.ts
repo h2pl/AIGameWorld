@@ -46,6 +46,13 @@ interface LoopStatus {
   batch_running: boolean;
 }
 
+/** GET /api/world — 列出所有世界（入口页选择用）/ List all worlds for entry page */
+export async function fetchWorlds(baseUrl: string): Promise<any[]> {
+  const resp = await fetchWithTrace(`${baseUrl}/api/world`);
+  if (!resp.ok) throw new Error(`worlds ${resp.status}`);
+  return (await resp.json()) as any[];
+}
+
 /** GET /api/world/{id}/events?since_tick=... */
 export async function fetchEvents(
   baseUrl: string,
