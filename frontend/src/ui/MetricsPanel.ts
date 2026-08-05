@@ -7,8 +7,6 @@ import { Panel } from "./Panel";
 import { fetchMetricsSummary, type MetricsSummary } from "../client/api";
 import { worldStore } from "../state/WorldStore";
 
-const WORLD_ID = "mock_world";
-
 export class MetricsPanel extends Panel {
   private summaryEl!: HTMLDivElement;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -91,7 +89,9 @@ export class MetricsPanel extends Panel {
   async refresh(): Promise<void> {
     try {
       const baseUrl = "";
-      const summary = await fetchMetricsSummary(baseUrl, WORLD_ID, 100);
+      // 使用真实 world_id（worldStore 在 main.ts 启动时写入）；未就绪时回退 mock_world / Use real world_id from store.
+      const worldId = worldStore.getState().world_id || "mock_world";
+      const summary = await fetchMetricsSummary(baseUrl, worldId, 100);
       this._render(summary);
     } catch {
       this.summaryEl.textContent = "获取失败";

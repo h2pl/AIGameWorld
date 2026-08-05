@@ -28,7 +28,10 @@ data.load_scene_objects
 tick_init.assign_positions       [node]     每个 tick：PC 出生点分配
  |
  v
-tick_init.dm_create_event        [node]     每个 tick：构建 DM_CREATE 首事件
+dm_service.dm_create             [node]     每个 tick：DM 创造情境（产出 dm_record：plot_brief + hints）
+ |
+ v
+tick_init.dm_create_event        [node]     每个 tick：构建 DM_CREATE 首事件（从 dm_record 填充真实内容）
  |
  v
 tick_init.scene_setup_snapshot   [node]     每个 tick：截屏供 flush_events 构建 scene_setup
@@ -40,7 +43,7 @@ pc_subgraph                      [subgraph] 角色决策+行动
 event_service.flush_events       [node]     PC 决策/行动事件构造
  |
  v
-dm_service.dm_narrate            [node]     DM 叙事
+dm_service.dm_narrate            [node]     DM 叙事（dm_record 已由 dm_create 产出）
  |
  v
 event_service.emit_narrative_event [node]   叙事 → DM_NARRATIVE 事件
@@ -95,6 +98,7 @@ def build_tick_graph() -> StateGraph:
     graph.add_node("data.load_actors", data_service.load_actors)
     graph.add_node("data.load_scene_objects", data_service.load_scene_objects)
     graph.add_node("tick_init.assign_positions", tick_init_service.assign_pc_positions)
+    graph.add_node("dm_service.dm_create", dm_service.dm_create)
     graph.add_node("tick_init.dm_create_event", tick_init_service.build_dm_create_event)
     graph.add_node("tick_init.scene_setup_snapshot", tick_init_service.save_scene_setup_snapshot)
 
@@ -116,7 +120,8 @@ def build_tick_graph() -> StateGraph:
     graph.add_edge("data.load_scene", "data.load_actors")
     graph.add_edge("data.load_actors", "data.load_scene_objects")
     graph.add_edge("data.load_scene_objects", "tick_init.assign_positions")
-    graph.add_edge("tick_init.assign_positions", "tick_init.dm_create_event")
+    graph.add_edge("tick_init.assign_positions", "dm_service.dm_create")
+    graph.add_edge("dm_service.dm_create", "tick_init.dm_create_event")
     graph.add_edge("tick_init.dm_create_event", "tick_init.scene_setup_snapshot")
 
     # ── 进入 PC 决策主链路（只改 state）──

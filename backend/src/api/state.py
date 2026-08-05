@@ -16,6 +16,10 @@ from src.repository.pc_repo import PcRepo
 from src.repository.scene_repo import SceneRepo
 from src.repository.world_repo import WorldRepo
 
+# config.yaml 位于项目根目录；用 __file__ 定位，避免依赖进程 cwd
+_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+_config_path = os.environ.get("AIGW_CONFIG", str(_PROJECT_ROOT / "config.yaml"))
+
 router = APIRouter(prefix="/api/world", tags=["state"])
 
 
@@ -102,7 +106,10 @@ async def get_pack_state(world_id: str, request: Request, db=Depends(get_db)):
         data_tick = await world_repo.get_data_tick(world_id)
         display_tick = await world_repo.get_display_tick(world_id)
 
-        cfg = load_config(os.environ.get("AIGW_CONFIG", "../config.yaml"))
+        # 运行时配置（LLM 模式 / 数据模式 / DB 名）/ Runtime config
+        cfg = load_config(_config_path)
+        llm_mock = cfg.llm_mock
+        data_mode = cfg.data_mode
         db_name = Path(cfg.db_name).name
 
         return {
@@ -110,10 +117,10 @@ async def get_pack_state(world_id: str, request: Request, db=Depends(get_db)):
             "trace_id": getattr(request.state, "trace_id", ""),
             "data_tick": data_tick,
             "display_tick": display_tick,
-            "llm_mock": cfg.llm_mock,
-            "data_mode": cfg.data_mode,
+            "llm_mock": llm_mock,
+            "data_mode": data_mode,
             "db_name": db_name,
-            "runtime": {"llm_mock": cfg.llm_mock, "data_mode": cfg.data_mode, "db_name": db_name},
+            "runtime": {"llm_mock": llm_mock, "data_mode": data_mode, "db_name": db_name},
             "scenes": scenes,
             "pcs": pcs,
             "actors": actors,

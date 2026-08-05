@@ -9,7 +9,12 @@ from ..utils.logging import trace_node
 
 @trace_node("dm.create")
 async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
-    """Phase 1: DM 创造情境 / DM creates the situation."""
+    """Phase 1: DM 创造情境 / DM creates the situation.
+
+    dm_create 引擎产出本 tick 的 plot_brief + hints（存入 dm_record）。
+    场景由 world_init / party.decide_scene 确定，当前场景 scene_id 直接写入
+    dm_record.scene_id，供 build_dm_create_event 与 persist_tick 使用。
+    """
     tick = state.get("tick", 0)
     world_id = state.get("world_id", "")
     prev_dm = state.get("dm_record")
@@ -20,6 +25,8 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
         world_id=world_id,
         config=config,
     )
+    # 回填当前主场景到 dm_record，供事件构造与落库 / Backfill scene_id for event + persistence
+    dm_record.scene_id = state.get("current_scene_id", "")
     return {"dm_record": dm_record}
 
 
@@ -27,9 +34,9 @@ async def dm_create(state: OverallState, config: RunnableConfig = None) -> dict:
 async def dm_narrate(state: OverallState, config: RunnableConfig = None) -> dict:
     """Phase 6: DM 叙事——产出 narrative 写入 dm_record.
 
-    主图当前只接 dm_narrate 节点；dm_create 引擎（dm_service.dm_create）尚未接入主链路，
-    因此本 tick 的 dm_record 通常为 None，dm_narrate 在 dm_record 为 None 时直接返回
-    （不调用 engine、不产出叙事）。
+    dm_create 引擎（dm_service.dm_create）已接入主链路，位于 dm_create_event 之前，
+    本 tick 的 dm_record 由 dm_create 保证有值（plot_brief + hints），dm_narrate
+    据此产出叙事。dm_record 缺失（mock 异常等防御路径）时直接返回，不产出叙事。
     """
     dm = state.get("dm_record")
     if dm is None:

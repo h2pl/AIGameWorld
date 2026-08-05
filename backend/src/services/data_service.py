@@ -111,12 +111,18 @@ async def persist_tick(state: OverallState, config: RunnableConfig = None) -> di
     world_id = state.get("world_id", "")
 
     # 1. 写 dm_records / Write DM record
+    # plot_brief + hints 由 dm_create 阶段写入；dm_narrative 由 dm_narrate 阶段写入，
+    # 两阶段分别用 save_plot_brief / update_narrative 落库（幂等，tick 内可连续调用）。
     dm_record = state.get("dm_record")
     if isinstance(dm_record, DMRecord) and world_id:
         record_repo = get_repo(config, "dm_record")
         if record_repo:
             await record_repo.save_plot_brief(dm_record)
-            logger.info("[data] wrote dm_record tick=%s", tick)
+            if dm_record.dm_narrative:
+                await record_repo.update_narrative(dm_record)
+            logger.info(
+                "[data] wrote dm_record tick=%s narrative_len=%d", tick, len(dm_record.dm_narrative)
+            )
 
     # 2. 写事件到 tick_events / Write events to tick_events
     events: list = state.get("tick_events", [])

@@ -6,11 +6,20 @@ import type { InitialWorldState } from "./types";
 import { createLogger } from "./utils/logger";
 const log = createLogger("Bootstrap");
 
+/**
+ * 后端就绪等待超时 / Backend readiness timeout.
+ *
+ * 后端启动需加载 BGE-M3 嵌入模型 + 重建 Chroma 集合（首次约 60s），
+ * 若前端提前超时降级，会显示 LLM/DB unknown。故超时设 180s，
+ * 确保前端真正等后端「完全就绪」后再加载世界状态。
+ */
+const BACKEND_READY_TIMEOUT_MS = 180_000;
+
 /** 轮询后端健康检查 / Poll backend health until ready */
 export async function waitForBackend(
   statusEl?: HTMLElement,
   pollMs = 800,
-  timeoutMs = 60000
+  timeoutMs = BACKEND_READY_TIMEOUT_MS
 ): Promise<boolean> {
   const url = `${CONFIG.API.base}${CONFIG.API.health}`;
   const start = Date.now();
@@ -65,7 +74,16 @@ export async function bootstrap(): Promise<{ world: InitialWorldState }> {
     "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#1a1a2e;color:#ffd700;z-index:9999;font-size:18px;font-family:Segoe UI,sans-serif;";
   overlay.textContent = "等待后端就绪...";
   document.body.appendChild(overlay);
-  const ok = await waitForBackend(overlay);
+
+  // 前端必须等后端「完全就绪」再启动，避免 LLM/DB 显示 unknown。
+  // 长时间轮询（不因单次超时降级），直到后端健康检查通过。
+  let ok = await waitForBackend(overlay);
+  if (!ok) {
+    // 后端加载过慢时保持等待，不立即降级为 unknown / Keep waiting, don't degrade to unknown.
+    overlay.textContent = "后端仍在启动中，继续等待...";
+    log.warn(`first waitForBackend timeout, keep waiting`);
+    ok = await waitForBackend(overlay, 1500, 300_000);
+  }
   overlay.remove();
 
   const params = new URLSearchParams(window.location.search);

@@ -76,38 +76,9 @@ class MetricsCollector:
         self._model = model
         self._current: dict[str, TickMetrics] = {}  # world_id → TickMetrics
         self._recent: list[TickMetrics] = []
-        self._table_ensured = False
 
     async def initialize(self) -> None:
-        """初始化数据库表 / Initialize database table."""
-        if self._sqlite and not self._table_ensured:
-            await self._ensure_table()
-
-    async def _ensure_table(self) -> None:
-        """创建 tick_metrics 表 / Create tick_metrics table."""
-        if not self._sqlite:
-            return
-        await self._sqlite.execute(
-            """
-            CREATE TABLE IF NOT EXISTS tick_metrics (
-                id                INTEGER PRIMARY KEY AUTOINCREMENT,
-                tick              INTEGER NOT NULL,
-                world_id          TEXT    NOT NULL,
-                latency_ms        REAL    NOT NULL DEFAULT 0,
-                llm_calls         INTEGER NOT NULL DEFAULT 0,
-                tokens_in         INTEGER NOT NULL DEFAULT 0,
-                tokens_out        INTEGER NOT NULL DEFAULT 0,
-                events_count      INTEGER NOT NULL DEFAULT 0,
-                estimated_cost_usd REAL   NOT NULL DEFAULT 0,
-                model             TEXT    NOT NULL DEFAULT '',
-                created_at        TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
-                updated_at        TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
-                UNIQUE(tick, world_id)
-            )
-            """
-        )
-        await self._sqlite.commit()
-        self._table_ensured = True
+        """保持与生命周期调用的接口兼容（表结构由 schema.sql 统一创建）."""
 
     def start_tick(self, world_id: str, tick: int) -> None:
         """开始追踪 tick / Start tracking tick."""
@@ -151,8 +122,6 @@ class MetricsCollector:
 
         # 持久化到 SQLite / Persist to SQLite
         if self._sqlite:
-            if not self._table_ensured:
-                await self._ensure_table()
             await self._sqlite.execute(
                 "INSERT OR REPLACE INTO tick_metrics "
                 "(tick, world_id, latency_ms, llm_calls, tokens_in, tokens_out, "

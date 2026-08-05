@@ -208,6 +208,8 @@ CREATE TABLE IF NOT EXISTS memories (
     tick            INTEGER NOT NULL DEFAULT 0,
     importance      INTEGER NOT NULL DEFAULT 2,
     memory_type     TEXT    NOT NULL DEFAULT 'observation',
+    period          TEXT    NOT NULL DEFAULT 'medium_term',
+    entity_type     TEXT    NOT NULL DEFAULT 'pc',
     world_id        TEXT    NOT NULL DEFAULT '',
     ext_json        TEXT    NOT NULL DEFAULT '{}',
     created_at      TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
@@ -215,3 +217,43 @@ CREATE TABLE IF NOT EXISTS memories (
 );
 CREATE INDEX IF NOT EXISTS idx_memories_pc_tick ON memories(pc_id, tick);
 CREATE INDEX IF NOT EXISTS idx_memories_world ON memories(world_id);
+CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(memory_type);
+CREATE INDEX IF NOT EXISTS idx_memories_period ON memories(period);
+
+-- ============================================================
+--  tick_metrics: tick 运行指标 / Tick runtime metrics
+-- ============================================================
+CREATE TABLE IF NOT EXISTS tick_metrics (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    tick              INTEGER NOT NULL,
+    world_id          TEXT    NOT NULL,
+    latency_ms        REAL    NOT NULL DEFAULT 0,
+    llm_calls         INTEGER NOT NULL DEFAULT 0,
+    tokens_in         INTEGER NOT NULL DEFAULT 0,
+    tokens_out        INTEGER NOT NULL DEFAULT 0,
+    events_count      INTEGER NOT NULL DEFAULT 0,
+    estimated_cost_usd REAL   NOT NULL DEFAULT 0,
+    model             TEXT    NOT NULL DEFAULT '',
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at        TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    UNIQUE(tick, world_id)
+);
+CREATE INDEX IF NOT EXISTS idx_tick_metrics_world ON tick_metrics(world_id);
+
+-- ============================================================
+--  eval_results: 评估结果 / Evaluation results
+-- ============================================================
+CREATE TABLE IF NOT EXISTS eval_results (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    dataset    TEXT    NOT NULL,
+    case_id    TEXT    NOT NULL,
+    dimension  TEXT    NOT NULL,
+    score      REAL    NOT NULL,
+    reason     TEXT    DEFAULT '',
+    improvement TEXT    DEFAULT '',
+    l1_checks  TEXT    DEFAULT '{}',
+    created_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_eval_dataset ON eval_results(dataset);
+CREATE INDEX IF NOT EXISTS idx_eval_dimension ON eval_results(dimension);

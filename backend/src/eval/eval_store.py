@@ -53,47 +53,14 @@ class EvalStore:
 
     def __init__(self, sqlite=None):
         self._sqlite = sqlite
-        self._table_ensured = False
 
     async def initialize(self) -> None:
-        """初始化数据库表 / Initialize database table."""
-        if self._sqlite and not self._table_ensured:
-            await self._ensure_table()
-
-    async def _ensure_table(self) -> None:
-        if not self._sqlite:
-            return
-        await self._sqlite.execute(
-            """
-            CREATE TABLE IF NOT EXISTS eval_results (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                dataset    TEXT    NOT NULL,
-                case_id    TEXT    NOT NULL,
-                dimension  TEXT    NOT NULL,
-                score      REAL    NOT NULL,
-                reason     TEXT    DEFAULT '',
-                improvement TEXT    DEFAULT '',
-                l1_checks  TEXT    DEFAULT '{}',
-                created_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
-                updated_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
-            )
-            """
-        )
-        await self._sqlite.execute(
-            "CREATE INDEX IF NOT EXISTS idx_eval_dataset ON eval_results(dataset)"
-        )
-        await self._sqlite.execute(
-            "CREATE INDEX IF NOT EXISTS idx_eval_dimension ON eval_results(dimension)"
-        )
-        await self._sqlite.commit()
-        self._table_ensured = True
+        """保持与生命周期调用的接口兼容（表结构由 schema.sql 统一创建）."""
 
     async def save(self, result: EvalResult) -> None:
         """保存评估结果 / Save evaluation result."""
         if not self._sqlite:
             return
-        if not self._table_ensured:
-            await self._ensure_table()
         import json as _json
 
         await self._sqlite.execute(
@@ -117,8 +84,6 @@ class EvalStore:
         """获取最近 N 条评估结果 / Get recent N evaluation results."""
         if not self._sqlite:
             return []
-        if not self._table_ensured:
-            await self._ensure_table()
         where_parts = []
         params: list[Any] = []
         if dataset:
@@ -138,8 +103,6 @@ class EvalStore:
         """获取评分趋势 / Get score trend."""
         if not self._sqlite:
             return []
-        if not self._table_ensured:
-            await self._ensure_table()
         where_clause = "WHERE dimension = ?" if dimension else ""
         params: list[Any] = [dimension] if dimension else []
         rows = await self._sqlite.fetch_all(

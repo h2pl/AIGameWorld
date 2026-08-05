@@ -51,22 +51,27 @@ async def assign_pc_positions(state: OverallState, config=None) -> dict:
 
 @trace_node("tick_init.dm_create_event")
 async def build_dm_create_event(state: OverallState, config=None) -> dict:
-    """构建场景设定事件——tick 的第一个事件（场景由 world_init / party.decide_scene 决定，不再依赖 DM）.
+    """构建场景设定事件——tick 的第一个事件.
 
-    payload 携带 current_scene_id；plot_brief/hints 由后续 dm_service.dm_create 引擎产出，
-    此处 DM_CREATE 事件只携带场景 id（空壳），供前端在建场时定位场景。
+    场景由 world_init / party.decide_scene 决定；plot_brief + hints 由上游
+    dm_service.dm_create 节点产出并写入 dm_record，此处读取并填充到 DM_CREATE 事件，
+    供前端 DMCreationPanel 展示创造情境。dm_record 缺失（如 mock 链路异常）时降级为空壳。
     """
     scene_id = state.get("current_scene_id", "")
     if not scene_id:
         return {}
+    # 从 dm_record 读取真实 plot_brief + hints / Read real content from dm_record
+    dm_record = state.get("dm_record")
+    plot_brief = getattr(dm_record, "plot_brief", "") or ""
+    hints = getattr(dm_record, "hints", None) or []
     event = TickEvent(
         type=TickEventType.DM_CREATE,
         tick=state.get("tick", 0),
         world_id=state.get("world_id", ""),
         payload={
             "scene_id": scene_id,
-            "plot_brief": "",
-            "hints": [],
+            "plot_brief": plot_brief,
+            "hints": list(hints),
         },
     )
     prev = list(state.get("tick_events", []))

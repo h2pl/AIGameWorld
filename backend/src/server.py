@@ -39,7 +39,9 @@ logger = get_logger(__name__)
 try:
     from .config import load_config
 
-    _config_path = os.environ.get("AIGW_CONFIG", "../config.yaml")
+    # config.yaml 位于项目根目录；用 __file__ 定位，避免依赖进程 cwd
+    _PROJECT_ROOT = Path(__file__).parent.parent.parent
+    _config_path = os.environ.get("AIGW_CONFIG", str(_PROJECT_ROOT / "config.yaml"))
     _pre_cfg = load_config(_config_path)
     configure_format(_pre_cfg.logging.json_format)
     # 不在模块级 setup_logging，避免与 uvicorn handler 冲突
@@ -104,7 +106,9 @@ async def lifespan(app: FastAPI):
     """应用生命周期：初始化日志、DB、mock 数据、编排器."""
     from .config import load_config
 
-    cfg = _pre_cfg or load_config(os.environ.get("AIGW_CONFIG", "../config.yaml"))
+    cfg = _pre_cfg or load_config(os.environ.get("AIGW_CONFIG", str(_PROJECT_ROOT / "config.yaml")))
+    # 把 config 存入 app.state，供路由直接复用（避免各接口重复 load_config 解析相对路径）
+    app.state.cfg = cfg
 
     # ── 日志：在 uvicorn 启动后完全接管，避免 handler 冲突 / Take over logging after uvicorn startup ──
     setup_logging(

@@ -23,6 +23,7 @@ dist/
 *.db-wal
 *.log
 backend/data/chroma/
+backend/data/chroma_e2e/
 frontend/test-results/
 frontend/tests/e2e/.backend.pid
 frontend/e2e-result.json

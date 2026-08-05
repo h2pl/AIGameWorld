@@ -83,6 +83,9 @@ async def seed_mock_data(db: Any, world_id: str = MOCK_WORLD_ID) -> None:
 
 async def _seed_world(world_repo: WorldRepo, world_id: str) -> None:
     """灌入 world 记录 / Seed world record."""
+    # starting_scene_id 必须在生成 world 时定好（非空），否则 world_init 会因
+    # "world_pack import is broken" 直接 raise，导致 current_scene_id 永空、tick 无法推进。
+    # 取 legacy scenes 中的 village_elderwood 作为起始场景。
     await world_repo.create(
         World(
             id=world_id,
@@ -91,6 +94,7 @@ async def _seed_world(world_repo: WorldRepo, world_id: str) -> None:
             version="1.0.0",
             rule_set="dnd_5e_srd",
             author="AIGameWorld",
+            starting_scene_id="village_elderwood",
             data_tick=0,
             display_tick=0,
         )

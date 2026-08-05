@@ -59,66 +59,13 @@ class MemoryRepo:
     def __init__(self, chroma: ChromaClient, sqlite=None):
         self._chroma = chroma
         self._sqlite = sqlite
-        self._table_ensured = False
 
-    # ── 表初始化 / Table init ──
+    # ── 初始化 / Init ──
+    # 表结构由 storage/schema.sql 在 SQLiteClient.init_schema() 中统一创建，
+    # repo 层不再持有 DDL / Schema is owned by storage/schema.sql via init_schema()
     @traced()
     async def initialize(self) -> None:
-        """异步初始化 SQLite 表（如提供 sqlite）."""
-        if self._sqlite and not self._table_ensured:
-            await self._ensure_table()
-
-    async def _ensure_table(self) -> None:
-        await self._sqlite.execute(
-            """
-            CREATE TABLE IF NOT EXISTS memories (
-                id          TEXT PRIMARY KEY,
-                pc_id       TEXT    NOT NULL,
-                content     TEXT    NOT NULL,
-                tick        INTEGER NOT NULL DEFAULT 0,
-                importance  INTEGER NOT NULL DEFAULT 2,
-                memory_type TEXT    NOT NULL DEFAULT 'observation',
-                period      TEXT    NOT NULL DEFAULT 'medium_term',
-                entity_type TEXT    NOT NULL DEFAULT 'pc',
-                world_id    TEXT    NOT NULL DEFAULT '',
-                ext_json    TEXT    NOT NULL DEFAULT '{}',
-                created_at  TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
-                updated_at  TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
-            )
-            """
-        )
-        # 兼容旧表：动态添加新列 / Migrate old tables
-        await self._add_column_if_missing(
-            "memories", "period", "TEXT NOT NULL DEFAULT 'medium_term'"
-        )
-        await self._add_column_if_missing("memories", "entity_type", "TEXT NOT NULL DEFAULT 'pc'")
-        await self._add_column_if_missing("memories", "ext_json", "TEXT NOT NULL DEFAULT '{}'")
-        await self._add_column_if_missing(
-            "memories", "updated_at", "TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))"
-        )
-        await self._sqlite.execute(
-            "CREATE INDEX IF NOT EXISTS idx_memories_pc_tick ON memories(pc_id, tick)"
-        )
-        await self._sqlite.execute(
-            "CREATE INDEX IF NOT EXISTS idx_memories_world ON memories(world_id)"
-        )
-        await self._sqlite.execute(
-            "CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(memory_type)"
-        )
-        await self._sqlite.execute(
-            "CREATE INDEX IF NOT EXISTS idx_memories_period ON memories(period)"
-        )
-
-        await self._sqlite.commit()
-        self._table_ensured = True
-
-    async def _add_column_if_missing(self, table: str, column: str, definition: str) -> None:
-        """如果列不存在则添加 / Add column if it does not exist."""
-        rows = await self._sqlite.fetch_all(f"PRAGMA table_info({table})")
-        if not any(r.get("name") == column for r in rows):
-            await self._sqlite.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
-
-    # ── 存储 / Store ──
+        """保持与 server.py 生命周期调用的接口兼容（无 DDL 操作）."""
 
     @traced()
     async def store(
@@ -153,8 +100,6 @@ class MemoryRepo:
         )
         # 全量持久化：SQLite + ChromaDB / Persist to both stores
         if self._sqlite:
-            if not self._table_ensured:
-                await self._ensure_table()
             await self._sqlite.execute(
                 "INSERT INTO memories (id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id, ext_json, updated_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
@@ -229,8 +174,6 @@ class MemoryRepo:
 
         # 2. SQLite 结构化写入（精确查询/审计/聚合）/ SQLite structured write
         if self._sqlite:
-            if not self._table_ensured:
-                await self._ensure_table()
             await self._sqlite.execute(
                 "INSERT INTO memories (id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id, ext_json, updated_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
@@ -268,8 +211,6 @@ class MemoryRepo:
         """从 SQLite 读取最近 N 条记忆（按 tick 倒序）/ Recent memories from SQLite."""
         if not self._sqlite:
             return []
-        if not self._table_ensured:
-            await self._ensure_table()
         rows = await self._sqlite.fetch_all(
             "SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id, ext_json "
             "FROM memories WHERE pc_id = ? AND memory_type != 'reflection' "
@@ -290,8 +231,6 @@ class MemoryRepo:
         """从 SQLite 按 ID 批量读取长期记忆 / Fetch long-term memory by IDs from SQLite."""
         if not ids or not self._sqlite:
             return []
-        if not self._table_ensured:
-            await self._ensure_table()
         placeholders = ",".join("?" * len(ids))
         sql = f"SELECT id, pc_id, content, tick, importance, memory_type, period, entity_type, world_id, ext_json FROM memories WHERE id IN ({placeholders})"  # noqa: S608
         rows = await self._sqlite.fetch_all(sql, tuple(ids))
@@ -346,8 +285,6 @@ class MemoryRepo:
         """从 SQLite 精确查询角色最近一次反思的 tick / Get last reflection tick from SQLite."""
         if not self._sqlite:
             return 0
-        if not self._table_ensured:
-            await self._ensure_table()
         rows = await self._sqlite.fetch_all(
             "SELECT MAX(tick) as last_tick FROM memories WHERE pc_id = ? AND memory_type = 'reflection'",
             (pc_id,),
@@ -364,8 +301,6 @@ class MemoryRepo:
         for prefix in [_MEM_PREFIX, _REFLECT_PREFIX]:
             self._chroma.delete_collection(prefix.format(pc_id=pc_id))
         if self._sqlite:
-            if not self._table_ensured:
-                await self._ensure_table()
             await self._sqlite.execute("DELETE FROM memories WHERE pc_id = ?", (pc_id,))
             await self._sqlite.commit()
 
@@ -378,8 +313,6 @@ class MemoryRepo:
         """检查自上次反思以来重要性累计是否超阈值."""
         if not self._sqlite:
             return False
-        if not self._table_ensured:
-            await self._ensure_table()
         rows = await self._sqlite.fetch_all(
             "SELECT COALESCE(SUM(importance), 0) as total FROM memories "
             "WHERE pc_id = ? AND tick > ? AND memory_type != 'reflection'",

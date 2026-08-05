@@ -184,7 +184,7 @@ async def _llm_discuss(llm, tick, world_id, pcs, current, available, config=None
 
     from jinja2 import Environment, FileSystemLoader
 
-    _ROOT = Path(__file__).parent.parent.parent / "prompts"
+    _ROOT = Path(__file__).parent.parent / "prompts"
     _ENV = Environment(loader=FileSystemLoader(_ROOT))
 
     pc_lines = []
@@ -193,8 +193,8 @@ async def _llm_discuss(llm, tick, world_id, pcs, current, available, config=None
         pc_lines.append(f"- {pc.name}（id={pc.id}）：长期目标={goal}")
     scene_lines = [f"- {s.id}：{s.name}（{s.type}）" for s in available]
 
-    system = _ENV.get_template("tick_init/_party_system.jinja").render()
-    prompt = _ENV.get_template("tick_init/_party_discussion.jinja").render(
+    system = _ENV.get_template("party/_party_system.jinja").render()
+    prompt = _ENV.get_template("party/party_discussion.jinja").render(
         tick=tick,
         current=current,
         pcs="\n".join(pc_lines),
@@ -218,7 +218,7 @@ async def _llm_decide_scene(llm, tick, world_id, pcs, current, available, config
 
     from jinja2 import Environment, FileSystemLoader
 
-    _ROOT = Path(__file__).parent.parent.parent / "prompts"
+    _ROOT = Path(__file__).parent.parent / "prompts"
     _ENV = Environment(loader=FileSystemLoader(_ROOT))
 
     pc_lines = []
@@ -227,8 +227,8 @@ async def _llm_decide_scene(llm, tick, world_id, pcs, current, available, config
         pc_lines.append(f"- {pc.name}（id={pc.id}）：长期目标={goal}")
     scene_lines = [f"- {s.id}：{s.name}（{s.type}）" for s in available]
 
-    system = _ENV.get_template("tick_init/_party_system.jinja").render()
-    prompt = _ENV.get_template("tick_init/_party_decide.jinja").render(
+    system = _ENV.get_template("party/_party_system.jinja").render()
+    prompt = _ENV.get_template("party/party_decide.jinja").render(
         tick=tick,
         current=current,
         pcs="\n".join(pc_lines),

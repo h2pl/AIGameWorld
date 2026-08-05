@@ -18,14 +18,16 @@ setup: ## 首次安装所有依赖 / Install all dependencies (first-time only)
 
 dev: ## 启动前后端（Ctrl+C 停止同时关闭）/ Start backend + frontend
 	command -v deactivate >/dev/null 2>&1 && deactivate; \
-	cd backend && UV_NEXT_TRAMPOLINE=1 uv run python -m uvicorn src.server:app --reload --reload-dir src --reload-exclude 'data' --reload-exclude '*.db' --port 8000 & \
+	cd backend && UV_NEXT_TRAMPOLINE=1 uv run python -m uvicorn src.server:app --port 8000 & \
 	trap 'kill %1 2>/dev/null' EXIT; \
-	echo "Waiting for backend..."; \
-	for i in 1 2 3 4 5 6 7 8 9 10; do \
-		curl -s http://127.0.0.1:8000/health > /dev/null 2>&1 && break; \
-		sleep 1; \
+	echo "Waiting for backend fully ready (BGE-M3 + Chroma first load ~60s)..."; \
+	ready=0; \
+	for i in $$(seq 1 180); do \
+		if curl -s http://127.0.0.1:8000/health > /dev/null 2>&1; then ready=1; break; fi; \
+		printf "."; sleep 1; \
 	done; \
-	echo "Backend ready. Starting frontend..."; \
+	if [ "$$ready" = "1" ]; then echo "\nBackend ready. Starting frontend..."; \
+	else echo "\nBackend not ready after 180s, still starting frontend."; fi; \
 	cd "$(CURDIR)/frontend" && npm run dev
 
 backend-dev: ## 仅启动后端 / Start backend only

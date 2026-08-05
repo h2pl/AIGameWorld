@@ -101,3 +101,44 @@ class TestDMNarratePrompt:
             events=[],
         )
         assert "感官" in rendered
+
+
+class TestPartyTemplates:
+    """party/ 下的集体讨论/决策模板回归 / Party (party/) template regression.
+
+    验证 _party_system / party_discussion / party_decide 三个模板：
+    1. 文件存在且能被加载（路径错误会抛 TemplateNotFound——曾因 party_service 路径
+       多算一层 parent 导致 backend/prompts 而非 backend/src/prompts）
+    2. 变量齐全时可正常渲染
+    """
+
+    def test_party_system_template_loads_and_renders(self):
+        """_party_system.jinja 存在且可渲染 / _party_system.jinja loads and renders."""
+        rendered = _PROMPTS.get_template("party/_party_system.jinja").render()
+        assert len(rendered) > 0
+        assert "讨论" in rendered
+
+    def test_party_discussion_template_renders_with_vars(self):
+        """_party_discussion.jinja 渲染需要 tick/current/pcs / Requires tick/current/pcs."""
+        rendered = _PROMPTS.get_template("party/party_discussion.jinja").render(
+            tick=3,
+            current="village_elderwood",
+            pcs="- Hero（id=pc-1）：长期目标=守护村庄",
+        )
+        assert "当前 tick：3" in rendered  # 变量被正确渲染
+        assert "village_elderwood" in rendered
+        assert "Hero" in rendered
+        assert '"dialogue"' in rendered  # 要求 JSON dialogue 输出
+
+    def test_party_decide_template_renders_with_vars(self):
+        """_party_decide.jinja 渲染需要 tick/current/scenes/pcs."""
+        rendered = _PROMPTS.get_template("party/party_decide.jinja").render(
+            tick=3,
+            current="village_elderwood",
+            scenes="- village_elderwood：Elderwood Village\n- desert：Desert",
+            pcs="- Hero（id=pc-1）：长期目标=守护村庄",
+        )
+        assert "village_elderwood" in rendered
+        assert "desert" in rendered
+        assert "Hero" in rendered
+        assert "target_scene_id" in rendered  # 要求 JSON 决策输出
