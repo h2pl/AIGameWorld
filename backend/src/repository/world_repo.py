@@ -14,10 +14,19 @@ class WorldRepo:
 
     @traced()
     async def create(self, w: World) -> None:
+        # 使用 ON CONFLICT DO UPDATE 而非 INSERT OR REPLACE：
+        # 在 aiosqlite 默认 deferred 事务下，OR REPLACE 遇主键冲突会直接报
+        # UNIQUE constraint failed，无法幂等覆盖。ON CONFLICT 可正确更新。
         await self._db.execute(
             "INSERT INTO worlds (id, name, description, version, rule_set, author, "
             "starting_scene_id, current_scene_id, status, data_tick, display_tick, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime')) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "name=excluded.name, description=excluded.description, version=excluded.version, "
+            "rule_set=excluded.rule_set, author=excluded.author, "
+            "starting_scene_id=excluded.starting_scene_id, current_scene_id=excluded.current_scene_id, "
+            "status=excluded.status, data_tick=excluded.data_tick, display_tick=excluded.display_tick, "
+            "updated_at=datetime('now', 'localtime')",
             (
                 w.id,
                 w.name,

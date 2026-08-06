@@ -29,6 +29,7 @@ from src.api.state import router as state_router
 from src.api.tick import router as tick_router
 from src.api.view import router as view_router
 from src.api.world import router as world_router
+from src.api.world_create import router as world_create_router
 from src.api.world_eval import router as world_eval_router
 from src.storage.sqlite_client import SQLiteClient
 from src.utils.logging import configure_format, get_logger, setup_logging
@@ -268,6 +269,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 # ── 注册 API 路由 / Register API routers ──
 app.include_router(world_router)
+app.include_router(world_create_router)
 app.include_router(tick_router)
 app.include_router(events_router)
 app.include_router(reset_router)

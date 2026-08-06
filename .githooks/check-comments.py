@@ -39,6 +39,7 @@ SKIP_FILES = {
     "package.json",
     ".prettierrc",
     "tuxemon-town.json",
+    "world_def.json",  # World pack 数据快照（starraft），seed 脚本 json.loads 读取，无法写注释 / data snapshot, consumed by seed script
     "mock_data.py",  # LLM mock 数据集，以自然语言样本为主 / LLM mock dataset, mostly natural language samples
     "config.e2e.yaml",  # E2E 测试配置 / E2E test config
 }

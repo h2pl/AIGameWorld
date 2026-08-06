@@ -21,6 +21,7 @@ dist/
 *.db-journal
 *.db-shm
 *.db-wal
+*.db.bak
 *.log
 backend/data/chroma/
 backend/data/chroma_e2e/
