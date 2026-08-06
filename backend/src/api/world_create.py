@@ -4,6 +4,8 @@
 一次性写入所有表。Skill 根据用户主题生成数据后调用此接口落库。
 """
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -19,6 +21,70 @@ from src.utils.logging import get_logger, log_api
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/world", tags=["world-create"])
+
+
+def _sanitize_json_field(val, default):
+    """把关心的 *_json 字段规范化为合法 JSON 字符串，确保落库内容可被 json.loads 解析。
+
+    skill（world-builder）由 LLM 生成 world 定义，LLM 可能产出不合法的 JSON 字符串
+    （缺引号、未闭合、单引号键等）。此处做写入侧兜底：解析失败则回退默认空值，
+    避免脏数据入库后 /state 等读取路径 json.loads 崩溃。
+    """
+    if val is None:
+        return json.dumps(default, ensure_ascii=False)
+    if isinstance(val, (dict, list)):
+        return json.dumps(val, ensure_ascii=False)
+    if not isinstance(val, str):
+        return json.dumps(default, ensure_ascii=False)
+    try:
+        parsed = json.loads(val)
+    except (json.JSONDecodeError, TypeError):
+        logger.warning("[world_create] JSON 字段非法，回退默认值: %r", val[:80])
+        return json.dumps(default, ensure_ascii=False)
+    # 解析成功但类型与默认不符（如默认 {} 却得到 list）也归一并回退，保持一致
+    if isinstance(default, dict) and not isinstance(parsed, dict):
+        return json.dumps(default, ensure_ascii=False)
+    if isinstance(default, list) and not isinstance(parsed, list):
+        return json.dumps(default, ensure_ascii=False)
+    return json.dumps(parsed, ensure_ascii=False)
+
+
+def _sanitize_entity(entity, json_fields: dict[str, object]) -> None:
+    """就地规范化实体的 *_json 字段 / Sanitize *_json fields of an entity in place."""
+    for field, default in json_fields.items():
+        if hasattr(entity, field):
+            setattr(entity, field, _sanitize_json_field(getattr(entity, field), default))
+
+
+# 各实体 *_json 字段与其默认空值 / *_json fields and their safe defaults
+_SCENE_JSON_FIELDS = {
+    "ext_json": {},
+    "tilemap_summary": {},
+}
+_PC_JSON_FIELDS = {
+    "attributes_json": {},
+    "combat_json": {},
+    "arc_json": {},
+    "values_json": [],
+    "relationships_json": {},
+    "equipment_json": {},
+    "inventory_json": [],
+}
+_ACTOR_JSON_FIELDS = {
+    "attributes_json": {},
+    "combat_json": {},
+    "functions_json": [],
+    "function_data_json": {},
+    "inventory_json": [],
+    "relationships_json": {},
+}
+_ITEM_JSON_FIELDS = {
+    "data": {},
+}
+_OBJ_JSON_FIELDS = {
+    "interact_data": {},
+    "ext_json": {},
+}
 
 
 class WorldCreateRequest(BaseModel):
@@ -42,6 +108,19 @@ async def world_create(req: WorldCreateRequest, db=Depends(get_db)):
     world_id = req.world.id
 
     try:
+        # 写入前规范化所有 *_json 字段：skill（LLM 生成）可能产出不合法 JSON 字符串，
+        # 在此兜底为合法 JSON，避免脏数据入库后读取路径崩溃。
+        for sc in req.scenes:
+            _sanitize_entity(sc, _SCENE_JSON_FIELDS)
+        for pc in req.pcs:
+            _sanitize_entity(pc, _PC_JSON_FIELDS)
+        for actor in req.actors:
+            _sanitize_entity(actor, _ACTOR_JSON_FIELDS)
+        for item in req.items:
+            _sanitize_entity(item, _ITEM_JSON_FIELDS)
+        for obj in req.scene_objects:
+            _sanitize_entity(obj, _OBJ_JSON_FIELDS)
+
         # 1. 写 world / Write world
         world_repo = WorldRepo(db)
         await world_repo.create(req.world)

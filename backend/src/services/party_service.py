@@ -19,7 +19,7 @@ from ..domain.scene import Scene
 from ..engine.identity import map_identity
 from ..graph.state import OverallState
 from ..schemas.llm_output import PartyDecisionSchema, PartyDiscussionSchema
-from ..utils.helpers import get_llm, get_repo, is_mock
+from ..utils.helpers import assign_spawn_positions, get_llm, get_repo, is_mock
 from ..utils.logging import get_logger, trace_node
 
 logger = get_logger(__name__)
@@ -78,12 +78,22 @@ def _emit_party_decide_event(
     return [*list(state.get("tick_events", [])), event]
 
 
-def _apply_scene(target: str, pcs: dict, available: list[Scene]) -> dict:
-    """把目标场景应用到 PC（统一 scene_id；坐标由 tick_init.assign_positions 后续分配）."""
+def _apply_scene(
+    target: str, pcs: dict, available: list[Scene], actors: dict | None = None
+) -> dict:
+    """把目标场景应用到 PC：统一 scene_id 并把所有 PC 分配到该场景出生点附近。
+
+    坐标分配与 scene_id 同步在此处完成，而不是依赖下游用 scene_id 反推是否切换——
+    否则 party 已把 scene_id 提前刷成当前场景，下游判断会恒为 False、老家坐标从不重置。
+    出生点本身就在地图范围内，因此分配后坐标必然合法、不会越界。
+    """
     if not target:
         return {"current_scene_id": ""}
+    scene = next((s for s in available if s.id == target), None)
     for pc in pcs.values():
         pc.scene_id = target
+    if scene is not None:
+        assign_spawn_positions(list(pcs.values()), scene, actors)
     return {"current_scene_id": target, "pcs": pcs}
 
 
@@ -99,6 +109,7 @@ async def party_discuss(state: OverallState, config: RunnableConfig = None) -> d
     """
     world_id = state.get("world_id", "")
     pcs = state.get("pcs", {})
+    actors = state.get("actors", {})
 
     available = await _list_available_scenes(config, world_id)
     # current_scene_id 由 world_init / party.decide_scene 确定性保证非空；
@@ -120,7 +131,7 @@ async def party_discuss(state: OverallState, config: RunnableConfig = None) -> d
         mock = get_mock("party_discuss", state.get("mock_dataset", ""))
         dialogue = mock.get("dialogue", [])
 
-    applied = _apply_scene(target, pcs, available)
+    applied = _apply_scene(target, pcs, available, actors)
     applied["tick_events"] = _emit_party_discuss_event(state, current=current, dialogue=dialogue)
     return applied
 
@@ -137,6 +148,7 @@ async def party_decide_scene(state: OverallState, config: RunnableConfig = None)
     """
     world_id = state.get("world_id", "")
     pcs = state.get("pcs", {})
+    actors = state.get("actors", {})
 
     available = await _list_available_scenes(config, world_id)
     valid_ids = {s.id for s in available}
@@ -172,7 +184,7 @@ async def party_decide_scene(state: OverallState, config: RunnableConfig = None)
 
     # 仅把裁决结果写入 state（current_scene_id + 各 PC.scene_id），
     # 落库统一由 data_service.persist_tick 在 tick 末尾完成
-    applied = _apply_scene(target, pcs, available)
+    applied = _apply_scene(target, pcs, available, actors)
     applied["tick_events"] = _emit_party_decide_event(
         state, current=current, target=target, reason=reason
     )

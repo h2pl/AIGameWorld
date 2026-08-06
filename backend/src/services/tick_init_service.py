@@ -34,11 +34,10 @@ async def assign_pc_positions(state: OverallState, config=None) -> dict:
     if not pcs or not scene_id:
         return {"pcs": pcs}
 
-    unset = [
-        pc
-        for pc in pcs.values()
-        if (pc.position_x == 0 and pc.position_y == 0) or pc.scene_id != scene_id
-    ]
+    # 只为坐标未初始化（DB 缺坐标，标记为 (0,0)）的 PC 分配出生点。
+    # 场景切换导致的坐标重分配已由 party._apply_scene 在切换时完成（直接分配到
+    # 新场景出生点附近，出生点本就在地图内，不会出现越界），此处无需重复处理。
+    unset = [pc for pc in pcs.values() if pc.position_x == 0 and pc.position_y == 0]
     if not unset:
         return {"pcs": pcs}
 

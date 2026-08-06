@@ -15,12 +15,32 @@ from src.repository.item_repo import ItemRepo
 from src.repository.pc_repo import PcRepo
 from src.repository.scene_repo import SceneRepo
 from src.repository.world_repo import WorldRepo
+from src.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 # config.yaml 位于项目根目录；用 __file__ 定位，避免依赖进程 cwd
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 _config_path = os.environ.get("AIGW_CONFIG", str(_PROJECT_ROOT / "config.yaml"))
 
 router = APIRouter(prefix="/api/world", tags=["state"])
+
+
+def _safe_json(val, default):
+    """容错 JSON 解析：脏数据（非法 JSON / None / 空串）回退默认值，避免单条记录拖垮整个 /state。
+
+    starraft 等手工种子数据可能出现格式错误的 JSON 字段（如未闭合、非法键），
+    此处不让 json.loads 抛异常，而是记录警告并回退。
+    """
+    if val is None or val == "":
+        return default
+    if isinstance(val, (dict, list)):
+        return val
+    try:
+        return json.loads(val)
+    except (json.JSONDecodeError, TypeError):
+        logger.warning("[world_state] 字段 JSON 解析失败，回退默认值: %r", str(val)[:80])
+        return default
 
 
 def _char_from_row(r: dict, is_pc: bool, pos_offset: int) -> dict:
@@ -34,18 +54,18 @@ def _char_from_row(r: dict, is_pc: bool, pos_offset: int) -> dict:
         "scene_id": r["scene_id"],
         "position_x": r.get("position_x", pos_offset),
         "position_y": r.get("position_y", 5 + pos_offset % 10),
-        "attributes": json.loads(r["attributes_json"]),
-        "combat": json.loads(cj) if cj else None,
+        "attributes": _safe_json(r.get("attributes_json"), {}),
+        "combat": _safe_json(cj, None) if cj else None,
         "personality": r.get("personality", ""),
         "disposition": r.get("disposition", "neutral"),
-        "character_arc": json.loads(r.get("arc_json", "{}")) if is_pc else None,
+        "character_arc": _safe_json(r.get("arc_json"), {}) if is_pc else None,
         # PC 背景 / PC background
         "long_term_goal": r.get("long_term_goal", "") if is_pc else None,
-        "core_values": json.loads(r.get("values_json", "[]")) if is_pc else [],
-        "relationships": json.loads(r.get("relationships_json", "{}")) if is_pc else {},
-        "equipment": json.loads(r.get("equipment_json", "{}")) if is_pc else {},
-        "inventory": json.loads(r.get("inventory_json", "[]")) if is_pc else [],
-        "functions": json.loads(r.get("functions_json", "[]")) if not is_pc else None,
+        "core_values": _safe_json(r.get("values_json"), []) if is_pc else [],
+        "relationships": _safe_json(r.get("relationships_json"), {}) if is_pc else {},
+        "equipment": _safe_json(r.get("equipment_json"), {}) if is_pc else {},
+        "inventory": _safe_json(r.get("inventory_json"), []) if is_pc else [],
+        "functions": _safe_json(r.get("functions_json"), []) if not is_pc else None,
         "is_pc": is_pc,
     }
 
@@ -148,4 +168,5 @@ async def get_world_state(world_id: str, request: Request, db=Depends(get_db)):
             "scene_objects": scene_objects,
         }
     except Exception as exc:
+        logger.exception("[world_state] failed for %s", world_id)
         raise HTTPException(status_code=503, detail="DB unavailable") from exc
