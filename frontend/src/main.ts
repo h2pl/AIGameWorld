@@ -60,7 +60,13 @@ async function main(): Promise<void> {
     pixelArt: true,
     roundPixels: true,
     physics: { default: "arcade", arcade: { gravity: { x: 0, y: 0 }, debug: false } },
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    // RESIZE：画布跟随窗口真实像素（含 DPR），不再整体拉伸，避免文字/地图被放大糊化
+    scale: {
+      mode: Phaser.Scale.RESIZE,
+      autoCenter: Phaser.Scale.NO_CENTER,
+      width: CONFIG.CANVAS.width,
+      height: CONFIG.CANVAS.height,
+    },
     scene: [Boot, GameScene],
   });
   game.registry.set("eventManager", eventManager);

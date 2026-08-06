@@ -73,6 +73,8 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
         color: isThought ? THOUGHT_TEXT : isNarration ? NAR_TEXT : TEXT_COLOR,
         wordWrap: { width: MAX_WIDTH - PADDING_X * 2, useAdvancedWrap: true },
         align: "center",
+        // 按设备像素比光栅化文本，高分屏下字体不糊 / rasterize at DPR for crisp text
+        resolution: Math.max(2, window.devicePixelRatio || 1),
       })
       .setOrigin(0.5, 1);
 

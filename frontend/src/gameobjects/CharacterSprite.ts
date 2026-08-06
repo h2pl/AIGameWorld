@@ -46,6 +46,7 @@ export class CharacterSprite {
         color: "#fff",
         backgroundColor: "rgba(0,0,0,0.6)",
         padding: { x: 2, y: 1 },
+        resolution: Math.max(2, window.devicePixelRatio || 1),
       })
       .setOrigin(0.5, 0)
       .setDepth(30);

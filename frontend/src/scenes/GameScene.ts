@@ -1,7 +1,6 @@
 /** 主游戏场景 / Main Game Scene — 纯编排，所有数据从事件来 */
 import Phaser from "phaser";
 import { worldStore } from "../state/WorldStore";
-import { CONFIG } from "../config";
 import { DEPTH, TILEMAP } from "../constants";
 import { gridToWorld } from "../utils/tile";
 import { makeCharTexture, makeObjectTexture } from "../utils/textures";
@@ -46,6 +45,8 @@ export class GameScene extends Phaser.Scene {
   private _onPlayPaused!: () => void;
   private _onPlayResumed!: () => void;
   private _cameraZoom = 1.0;
+  private _mapW = 0;
+  private _mapH = 0;
 
   private exploreHandler!: ExploreHandler;
   private talkHandler!: TalkHandler;
@@ -85,6 +86,22 @@ export class GameScene extends Phaser.Scene {
     // tick>0 时热重载恢复 / Recover from hot-reload when display_tick>0
     this._recoverFromReload();
     this._initTestSeam();
+
+    // 窗口尺寸变化（RESIZE 模式）时重算相机缩放与滚动，保持不同分辨率下视觉一致 /
+    // Recompute camera on resize so zoom adapts to the new viewport
+    this.scale.on("resize", this._onResize, this);
+    this.events.once("shutdown", () => this.scale.off("resize", this._onResize, this));
+  }
+
+  /** 窗口尺寸变化回调 / Handle viewport resize */
+  private _onResize(): void {
+    if (!this.sceneBuilt || !this.sceneData) return;
+    if (this._mapW <= 0 || this._mapH <= 0) return;
+    const rawZoom = Math.min(this.scale.width / this._mapW, this.scale.height / this._mapH);
+    this._cameraZoom = Math.max(1.0, Math.min(rawZoom, 2.5));
+    this.cameras.main.setZoom(this._cameraZoom);
+    const { cx, cy } = this.pcManager.calcCameraCenter(this._cameraZoom);
+    this.cameras.main.centerOn(cx, cy);
   }
 
   /** 初始化浏览器测试 seam / Init browser test seam for E2E */
@@ -318,19 +335,16 @@ export class GameScene extends Phaser.Scene {
 
     try {
       const { mapW, mapH } = this.mapManager.build(data.sceneId, data.extJson);
+      this._mapW = mapW;
+      this._mapH = mapH;
       // 动态缩放：小地图拉近距离，所有地图视觉大小一致 / Dynamic zoom: small maps get closer camera
-      const canvas = CONFIG.CANVAS;
-      const rawZoom = Math.min(canvas.width / mapW, canvas.height / mapH);
+      // 用实际画布像素（RESIZE 模式跟随窗口，不再被 FIT 拉伸）
+      const vw = this.scale.width;
+      const vh = this.scale.height;
+      const rawZoom = Math.min(vw / mapW, vh / mapH);
       this._cameraZoom = Math.max(1.0, Math.min(rawZoom, 2.5));
       this.cameras.main.setZoom(this._cameraZoom);
-      log.info(
-        `camera zoom=%.2f (map=%dx%d canvas=%dx%d)`,
-        this._cameraZoom,
-        mapW,
-        mapH,
-        canvas.width,
-        canvas.height
-      );
+      log.info(`camera zoom=%.2f (map=%dx%d canvas=%dx%d)`, this._cameraZoom, mapW, mapH, vw, vh);
 
       this._buildTerrain(data.sceneObjects);
       this._buildCharacters(data.pcs, data.actors);
@@ -379,13 +393,10 @@ export class GameScene extends Phaser.Scene {
     this.pcManager.createAll(pcs);
     if (actors.length) this.actorManager.createAll(actors);
     log.info(`buildChars: pcs=${pcs.length} actors=${actors.length}`);
-    // 相机滚动仅基于 PC / Camera scroll based on PCs only (visible area = canvas / zoom)
-    const { sx, sy } = this.pcManager.calcCameraScroll(
-      CONFIG.CANVAS.width / this._cameraZoom,
-      CONFIG.CANVAS.height / this._cameraZoom
-    );
-    this.cameras.main.scrollX = sx;
-    this.cameras.main.scrollY = sy;
+    // 相机居中于 PC 群中心：结合 setBounds，小地图时 Phaser 自动整体居中，大地图跟随 PC /
+    // Center on PC group; with bounds set, small maps auto-center, big maps follow PCs
+    const { cx, cy } = this.pcManager.calcCameraCenter(this._cameraZoom);
+    this.cameras.main.centerOn(cx, cy);
   }
 
   /** 点击选角 / Click-to-select character */
@@ -432,7 +443,7 @@ export class GameScene extends Phaser.Scene {
     this.terrainObjects = [];
     this.hud.destroy();
     this.talkHandler?.clear();
-    this.cameras.main.setBounds(0, 0, CONFIG.CANVAS.width, CONFIG.CANVAS.height);
+    this.cameras.main.setBounds(0, 0, this.scale.width, this.scale.height);
     this.cameras.main.setZoom(1.0);
     this._cameraZoom = 1.0;
     this.cameras.main.scrollX = 0;

@@ -17,8 +17,9 @@ setup: ## 首次安装所有依赖 / Install all dependencies (first-time only)
 ##@ 开发 / Development
 
 dev: ## 启动前后端（Ctrl+C 停止同时关闭）/ Start backend + frontend
+	find backend -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; true
 	command -v deactivate >/dev/null 2>&1 && deactivate; \
-	cd backend && UV_NEXT_TRAMPOLINE=1 uv run python -m uvicorn src.server:app --port 8000 & \
+	cd backend && UV_NEXT_TRAMPOLINE=1 uv run python -m uvicorn src.server:app --port 8000 --reload --reload-dir src --reload-exclude 'data' --reload-exclude '*.db' & \
 	trap 'kill %1 2>/dev/null' EXIT; \
 	echo "Waiting for backend fully ready (BGE-M3 + Chroma first load ~60s)..."; \
 	ready=0; \
@@ -31,6 +32,7 @@ dev: ## 启动前后端（Ctrl+C 停止同时关闭）/ Start backend + frontend
 	cd "$(CURDIR)/frontend" && npm run dev
 
 backend-dev: ## 仅启动后端 / Start backend only
+	find backend -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; true
 	command -v deactivate >/dev/null 2>&1 && deactivate; \
 	cd backend && UV_NEXT_TRAMPOLINE=1 uv run python -m uvicorn src.server:app --reload --reload-dir src --reload-exclude 'data' --reload-exclude '*.db' --port 8000
 

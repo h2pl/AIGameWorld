@@ -1,7 +1,6 @@
 // -- file start -- / file start
 /** 游戏 HUD / Game HUD — 场景名 + 等待提示 */
 import Phaser from "phaser";
-import { CONFIG } from "../config";
 import { DEPTH } from "../constants";
 
 export class GameHUD {
@@ -20,6 +19,7 @@ export class GameHUD {
         fontStyle: "bold",
         backgroundColor: "rgba(0,0,0,0.6)",
         padding: { x: 5, y: 2 },
+        resolution: Math.max(2, window.devicePixelRatio || 1),
       })
       .setScrollFactor(0)
       .setDepth(DEPTH.HUD);
@@ -28,10 +28,11 @@ export class GameHUD {
   /** 显示等待文本 / Show waiting text */
   showWaiting(text: string): void {
     this.waitingText = this.scene.add
-      .text(CONFIG.CANVAS.width / 2, CONFIG.CANVAS.height / 2, text, {
+      .text(this.scene.scale.width / 2, this.scene.scale.height / 2, text, {
         fontFamily: "Segoe UI, sans-serif",
         fontSize: "18px",
         color: "#ffd700",
+        resolution: Math.max(2, window.devicePixelRatio || 1),
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
