@@ -508,3 +508,111 @@
     opacity: 0.55;
   }
 }
+
+/* ===== 游戏内 DOM 文本 — 与面板一致的矢量字体（FIT 放大 canvas 不失真）/
+   In-game DOM text — same vector font as panels, crisp under FIT upscaling ===== */
+
+/* HUD 覆盖层（场景名 + 等待提示）固定屏幕，不随相机滚动 */
+.game-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 500;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+.game-hud-scene {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffd700;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.game-hud-waiting {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  color: #ffd700;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+/* 角色名字标签（跟随角色，DOM 渲染）/
+   Character name tag (follows character, DOM-rendered) */
+.char-name-tag {
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 10px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* 对话泡泡（DOM，跟随角色头顶）/
+   Dialogue bubble (DOM, above character) */
+.dialogue-bubble {
+  position: relative;
+  max-width: 260px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+  background: #fff8e7;
+  border: 2px solid #5d4037;
+  color: #1a1a1a;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 向下小箭头 / downward arrow */
+.dialogue-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #5d4037;
+}
+
+.dialogue-bubble--narration {
+  background: #1a1a2e;
+  border-color: #16213e;
+  color: #c8d6e5;
+}
+.dialogue-bubble--narration::after {
+  border-top-color: #16213e;
+}
+
+.dialogue-bubble--thought {
+  background: #fff9c4;
+  border-color: #fbc02d;
+  border-style: dashed;
+  color: #5d4037;
+}
+.dialogue-bubble--thought::after {
+  border-top-color: #fbc02d;
+}
+
+.dialogue-bubble__text {
+  margin: 0;
+}

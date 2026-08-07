@@ -11,7 +11,7 @@ export class CharacterSprite {
   readonly data: CharacterData;
   private scene: Phaser.Scene;
   private sprite: Phaser.GameObjects.Sprite; // 主精灵 / Main sprite
-  private nameTag: Phaser.GameObjects.Text; // 名字标签 / Name label
+  private nameTag: Phaser.GameObjects.DOMElement; // 名字标签(DOM,矢量清晰) / Name label (DOM)
   private hpBar: Phaser.GameObjects.Graphics; // 血条 / HP bar
   private ring: Phaser.GameObjects.Graphics | null = null; // PC 金环 / Gold ring
   private bubble: DialogueBubble | null = null; // 当前对话泡泡 / Current dialogue bubble
@@ -38,19 +38,13 @@ export class CharacterSprite {
       this.ring.strokeCircle(wx, wy, tileSize * 0.35);
     }
 
-    // 名字 / Name
-    this.nameTag = scene.add
-      .text(wx, wy + tileSize * 0.4, data.name, {
-        fontFamily: "Segoe UI, sans-serif",
-        fontSize: "10px",
-        color: "#fff",
-        backgroundColor: "rgba(0,0,0,0.6)",
-        padding: { x: 2, y: 1 },
-      })
-      .setOrigin(0.5, 0)
-      .setDepth(30);
-    // 文本清晰度由全局 antialias 保证（参考本地 Phaser 官方模板，无需 resolution/filter 补丁）/
-    // Font crispness comes from global antialias; no resolution/filter hacks needed.
+    // 名字（DOM 渲染，矢量清晰，与面板一致；FIT 放大 canvas 不影响 DOM 文本）/
+    // Name as DOM so it stays crisp under FIT upscaling (unlike canvas Text).
+    const nameEl = document.createElement("div");
+    nameEl.className = "char-name-tag";
+    nameEl.textContent = data.name;
+    this.nameTag = scene.add.dom(wx, wy + tileSize * 0.4, nameEl) as Phaser.GameObjects.DOMElement;
+    this.nameTag.setOrigin(0.5, 0).setDepth(30);
 
     // 血条 / HP
     this.hpBar = scene.add.graphics().setDepth(30);

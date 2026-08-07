@@ -53,24 +53,26 @@ async function main(): Promise<void> {
   );
   const game = new Phaser.Game({
     type: Phaser.AUTO,
+    parent: "app", // 显式挂载点（index.html 的 #app）；Phaser DOM 容器创建依赖 parent
     width: CONFIG.CANVAS.width,
     height: CONFIG.CANVAS.height,
     autoFocus: true,
     backgroundColor: CONFIG.COLOR.background,
-    // 参考本地权威 Phaser 项目（SkyOffice / phaser-rpg / reldens）全部用 pixelArt:true 保持地图像素硬边，
-    // 而 SkyOffice（唯一与我们场景完全对应：角色头顶名字+对话泡泡）用 Scale.RESIZE 让画布 1:1 跟随窗口，
-    // 文本按真实像素光栅化、天然清晰，无需任何 resolution 补丁。
-    // FIT 会把 960 基准画布放大到窗口，是文本发糊的根因，故改用 RESIZE。
-    pixelArt: true,
+    // 不开 pixelArt：pixelArt 会强制关闭抗锯齿(antialias:false)，FIT 放大画布时文本边缘发糊。
+    // 改用全局 antialias:true 保证文本清晰；地图像素硬边由 MapManager 单独 setFilter(NEAREST) 保证
+    // （不依赖 pixelArt 关闭抗锯齿）。本地参考 SkyOffice 用 pixelArt+RESIZE(1:1 不放大故文本清晰)；
+    // 我们用 FIT(画布被放大)，故必须开 antialias 才能保文本清晰。
+    antialias: true,
     roundPixels: false,
     physics: { default: "arcade", arcade: { gravity: { x: 0, y: 0 }, debug: false } },
-    // RESIZE：画布尺寸 = 窗口尺寸，1:1 无放大，文本/地图均清晰；GameScene 监听 resize 重算相机
+    // FIT：固定比例等比铺满窗口并居中（letterbox）/ Fixed-ratio fit & center
     scale: {
-      mode: Phaser.Scale.RESIZE,
+      mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
-      width: window.innerWidth,
-      height: window.innerHeight,
     },
+    // 启用 DOM 容器，让游戏内文本(对话泡泡/角色名/HUD)用 add.dom 以 HTML/CSS 渲染，
+    // 与角色面板/事件面板一致的矢量字体，FIT 缩放下仍清晰（canvas 内 Text 位图放大即糊）。
+    dom: { createContainer: true },
     scene: [Boot, GameScene],
   });
   game.registry.set("eventManager", eventManager);

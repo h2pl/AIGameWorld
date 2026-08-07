@@ -1,47 +1,28 @@
-/** 对话泡泡 / Dialogue bubble — 显示在角色头顶的临时气泡文本
+/** 对话泡泡 / Dialogue bubble — 显示在角色头顶的临时气泡文本（DOM 渲染，矢量清晰）
  *
  * 设计：
  * - 人名放在内容前面，如 "Merchant: 晚上好"
- * - 泡泡宽度按文本最长行自适应（有最小/最大限制），高度自动延伸
- * - 左右内边距固定，文本过长时按字符强制换行，避免溢出
- * - 单条对话超过最大行数时，按页拆分成多个泡泡陆续显示
+ * - 泡泡宽度按文本自适应（CSS max-width 限制），高度自动延伸
+ * - 单条对话完整显示，不再分页
+ * - 用 HTML/CSS 渲染（scene.add.dom），与角色/事件面板一致的矢量字体，
+ *   FIT 放大 canvas 不影响 DOM 文本清晰度（canvas 内 Text 位图放大即糊）。
  */
 
 import Phaser from "phaser";
 import { speedMs } from "../config/playback";
 import { contentDuration } from "../utils/contentDuration";
 
-const PADDING_X = 12;
-const PADDING_Y = 8;
-const MIN_WIDTH = 100;
-const MAX_WIDTH = 260;
-const CORNER_RADIUS = 10;
-const ARROW_HEIGHT = 8;
-const TEXT_FONT =
-  '16px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", SimHei, Segoe UI, sans-serif';
-const NAR_FONT =
-  'italic 14px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", SimHei, Segoe UI, sans-serif';
-
-const TEXT_COLOR = "#1a1a1a";
-// 旁白风格颜色 / Narration style colors
-const NAR_BG = 0x1a1a2e;
-const NAR_BORDER = 0x16213e;
-const NAR_TEXT = "#c8d6e5";
-// 思考风格颜色 / Thought style colors
-const THOUGHT_BG = 0xfff9c4;
-const THOUGHT_BORDER = 0xfbc02d;
-const THOUGHT_TEXT = "#5d4037";
-
 export type BubbleStyle = "dialogue" | "narration" | "thought";
 
-export class DialogueBubble extends Phaser.GameObjects.Container {
-  private bg!: Phaser.GameObjects.Graphics;
-  private textObj!: Phaser.GameObjects.Text;
+export class DialogueBubble extends Phaser.GameObjects.DOMElement {
   private pages: string[] = [];
   private pageIndex = 0;
   private timer?: number;
+  private fadeTimer?: number;
   private onHide?: () => void;
   private style: BubbleStyle;
+  private textEl!: HTMLElement;
+  private bubbleEl!: HTMLElement;
 
   constructor(
     scene: Phaser.Scene,
@@ -52,11 +33,21 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     onHide?: () => void,
     style: BubbleStyle = "dialogue"
   ) {
-    super(scene, x, y);
-    this.onHide = onHide;
+    const bubbleEl = document.createElement("div");
+    bubbleEl.className = `dialogue-bubble dialogue-bubble--${style}`;
+    const textEl = document.createElement("div");
+    textEl.className = "dialogue-bubble__text";
+    bubbleEl.appendChild(textEl);
+
+    super(scene, x, y, bubbleEl);
     this.style = style;
+    this.onHide = onHide;
+    this.bubbleEl = bubbleEl;
+    this.textEl = textEl;
     scene.add.existing(this);
     this.setDepth(200);
+    // 泡泡底部中点对齐角色头顶 / Bottom-center anchored above the character
+    this.setOrigin(0.5, 1);
 
     let fullText = speakerName?.trim() ? `${speakerName.trim()}: ${text}` : text;
     if (style === "thought") {
@@ -64,110 +55,50 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     } else if (style === "dialogue") {
       fullText = `🗣️ ${fullText}`;
     }
-    this.pages = this._splitPages(scene, fullText);
+    this.pages = [fullText];
 
-    const isNarration = style === "narration";
-    const isThought = style === "thought";
-    this.textObj = scene.add
-      .text(0, -ARROW_HEIGHT - PADDING_Y, "", {
-        font: isNarration ? NAR_FONT : TEXT_FONT,
-        color: isThought ? THOUGHT_TEXT : isNarration ? NAR_TEXT : TEXT_COLOR,
-        wordWrap: { width: MAX_WIDTH - PADDING_X * 2, useAdvancedWrap: true },
-        align: "center",
-        // 文本清晰度由全局 antialias 保证（参考本地 Phaser 官方模板 philoagents-ui：
-        // 不开 pixelArt、不碰 resolution，文本天然清晰）。无需 setResolution/setFilter 补丁。
-        // Font crispness comes from global antialias; no resolution/filter hacks needed.
-      })
-      .setOrigin(0.5, 1);
-
-    this.bg = scene.add.graphics();
-    this.add([this.bg, this.textObj]);
-
+    // 初始隐藏，下一帧淡入（CSS transition 平滑）/
+    // Start hidden, fade in next frame via CSS transition
     this.setAlpha(0);
-    scene.tweens.add({ targets: this, alpha: 1, duration: speedMs(150) });
+    requestAnimationFrame(() => this.setAlpha(1));
 
     this._showSegment(0);
 
-    this.setInteractive({ useHandCursor: true });
-    this.on("pointerdown", () => this._skipOrAdvance());
+    bubbleEl.addEventListener("click", () => this._skipOrAdvance());
   }
 
-  /** 显示第 i 段（渐入）/ Show segment i with fade-in */
+  /** 显示第 i 段（淡入）/ Show segment i with fade-in */
   private _showSegment(i: number): void {
     this.pageIndex = i;
-    this.textObj.setText(this.pages[i]);
-    this._layout();
-    // 渐入文字内容 / Fade in text content
-    this.textObj.setAlpha(0);
-    this.scene.tweens.add({
-      targets: this.textObj,
-      alpha: 1,
-      duration: speedMs(300),
-      onComplete: () => this._scheduleAutoAdvance(),
-    });
+    this.textEl.textContent = this.pages[i];
+    this.setAlpha(0);
+    requestAnimationFrame(() => this.setAlpha(1));
+    this.fadeTimer = window.setTimeout(() => this._scheduleAutoAdvance(), speedMs(300));
   }
 
-  /** 绘制背景并调整交互区域 / Draw background and hit area */
-  private _layout(): void {
-    const bounds = this.textObj.getBounds();
-    // 按实际最长行宽度 + 固定内边距计算泡泡宽度
-    const rawW = bounds.width + PADDING_X * 2;
-    const w = Math.min(Math.max(rawW, MIN_WIDTH), MAX_WIDTH);
-    const h = bounds.height + PADDING_Y * 2;
-
-    const isNarration = this.style === "narration";
-    const isThought = this.style === "thought";
-    this.bg.clear();
-    this.bg.fillStyle(isThought ? THOUGHT_BG : isNarration ? NAR_BG : 0xfff8e7, 0.98);
-    this.bg.lineStyle(2, isThought ? THOUGHT_BORDER : isNarration ? NAR_BORDER : 0x5d4037, 0.9);
-    this.bg.fillRoundedRect(-w / 2, -h - ARROW_HEIGHT, w, h, CORNER_RADIUS);
-    this.bg.strokeRoundedRect(-w / 2, -h - ARROW_HEIGHT, w, h, CORNER_RADIUS);
-    if (isThought) {
-      // 思考泡泡用虚线边框 / Dashed border for thought bubble
-      this.bg.lineStyle(2, THOUGHT_BORDER, 0.6);
-      this.bg.strokeCircle(-w / 2 - 6, -ARROW_HEIGHT - h / 2, 4);
-      this.bg.strokeCircle(-w / 2 - 12, -ARROW_HEIGHT - h / 2 + 8, 3);
-    }
-    this.bg.fillTriangle(0, 0, -6, -ARROW_HEIGHT, 6, -ARROW_HEIGHT);
-    this.bg.lineBetween(-6, -ARROW_HEIGHT, 0, 0);
-    this.bg.lineBetween(6, -ARROW_HEIGHT, 0, 0);
-
-    this.setSize(w, h + ARROW_HEIGHT);
-  }
-
-  /** 渐出后翻到下一段；最后一段则关闭 / Fade out then advance to next segment or close */
+  /** 渐出后翻到下一段；最后一段则关闭 / Fade out then advance or close */
   private _advance(): void {
     if (this.timer) {
       window.clearTimeout(this.timer);
       this.timer = undefined;
     }
-    this.scene.tweens.killTweensOf(this.textObj);
-    // 渐出当前文字 / Fade out current text
-    this.scene.tweens.add({
-      targets: this.textObj,
-      alpha: 0,
-      duration: speedMs(200),
-      onComplete: () => {
-        if (this.pageIndex < this.pages.length - 1) {
-          this._showSegment(this.pageIndex + 1);
-        } else {
-          this.hide();
-        }
-      },
-    });
+    this.setAlpha(0);
+    window.setTimeout(() => {
+      if (this.pageIndex < this.pages.length - 1) {
+        this._showSegment(this.pageIndex + 1);
+      } else {
+        this.hide();
+      }
+    }, speedMs(200));
   }
 
-  /** 点击跳过：如有定时器立即前进，否则正常渐出 / Click to skip current auto-advance or fade-out */
+  /** 点击跳过：如有定时器立即前进，否则正常渐出 / Click to skip */
   private _skipOrAdvance(): void {
     if (this.timer) {
-      // 还有定时器 = 正在等待自动翻页，立即前进 / Timer pending = skip wait, advance now
       window.clearTimeout(this.timer);
       this.timer = undefined;
-      this._advance();
-    } else {
-      // 正在渐入/渐出动画中，直接前进 / Mid-animation, force advance
-      this._advance();
     }
+    this._advance();
   }
 
   /** 按文本长度计算当前页自动翻页/关闭时间 / Auto-advance duration by text length */
@@ -185,24 +116,14 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     this.timer = window.setTimeout(() => this._advance(), showMs);
   }
 
-  /** 单气泡显示完整内容，不再分页 / Show full content in one bubble, no pagination */
-  private _splitPages(_scene: Phaser.Scene, fullText: string): string[] {
-    return [fullText];
-  }
-
   /** 淡出并销毁 / Fade out and destroy */
   hide(): void {
     if (this.timer) {
       window.clearTimeout(this.timer);
       this.timer = undefined;
     }
-    this.disableInteractive();
-    this.scene.tweens.add({
-      targets: this,
-      alpha: 0,
-      duration: speedMs(200),
-      onComplete: () => this.destroy(),
-    });
+    this.setAlpha(0);
+    window.setTimeout(() => this.destroy(), speedMs(200));
   }
 
   /** 获取泡泡样式 / Get bubble style */
@@ -214,6 +135,10 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
     if (this.timer) {
       window.clearTimeout(this.timer);
       this.timer = undefined;
+    }
+    if (this.fadeTimer) {
+      window.clearTimeout(this.fadeTimer);
+      this.fadeTimer = undefined;
     }
     const cb = this.onHide;
     this.onHide = undefined;
