@@ -113,12 +113,14 @@ export class GameScene extends Phaser.Scene {
     const pcPositions: Record<string, { tx: number; ty: number }> = {};
     const pcWalking: Record<string, boolean> = {};
     const pcBubbleStyle: Record<string, string | null> = {};
+    const nameTagAlignments: Record<string, any> = {};
     this.pcManager?.sprites.forEach((sp, id) => {
       pcThinkCounts[id] = sp.getThinkCount();
       if (sp.hasActiveThoughtBubble()) activeThoughtBubbles++;
       pcPositions[id] = sp.getGridPos(this.ts);
       pcWalking[id] = sp.isWalking();
       pcBubbleStyle[id] = sp.getActiveBubbleStyle();
+      nameTagAlignments[id] = sp.getDebugAlignment();
     });
     const actorPositions: Record<string, { tx: number; ty: number }> = {};
     const actorExists: Record<string, boolean> = {};
@@ -142,6 +144,7 @@ export class GameScene extends Phaser.Scene {
       pcPositions,
       pcWalking,
       pcBubbleStyle,
+      nameTagAlignments,
       actorPositions,
       actorExists,
     };

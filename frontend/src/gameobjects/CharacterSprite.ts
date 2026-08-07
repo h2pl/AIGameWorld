@@ -5,18 +5,20 @@ import { DialogueBubble } from "./DialogueBubble";
 import type { CharacterData } from "../types";
 import { playState } from "../utils/playState";
 import { speedMs } from "../config/playback";
+import { worldToScreen, getOverlayHost } from "../utils/domProjection";
 
 export class CharacterSprite {
   readonly id: string;
   readonly data: CharacterData;
   private scene: Phaser.Scene;
   private sprite: Phaser.GameObjects.Sprite; // 主精灵 / Main sprite
-  private nameTag: Phaser.GameObjects.DOMElement; // 名字标签(DOM,矢量清晰) / Name label (DOM)
+  private nameTag: HTMLElement; // 名字标签(纯 DOM,矢量清晰) / Name label (DOM)
   private hpBar: Phaser.GameObjects.Graphics; // 血条 / HP bar
   private ring: Phaser.GameObjects.Graphics | null = null; // PC 金环 / Gold ring
   private bubble: DialogueBubble | null = null; // 当前对话泡泡 / Current dialogue bubble
   private tileSize = 32;
   private thinkCount = 0; // 决策泡泡触发次数 / Decision bubble trigger count for E2E
+  private nameTagWorld = { x: 0, y: 0 }; // 名字标签世界坐标 / Name tag world position
 
   constructor(scene: Phaser.Scene, data: CharacterData, wx: number, wy: number, tileSize: number) {
     this.scene = scene;
@@ -38,13 +40,19 @@ export class CharacterSprite {
       this.ring.strokeCircle(wx, wy, tileSize * 0.35);
     }
 
-    // 名字（DOM 渲染，矢量清晰，与面板一致；FIT 放大 canvas 不影响 DOM 文本）/
-    // Name as DOM so it stays crisp under FIT upscaling (unlike canvas Text).
+    // 名字（纯 DOM 渲染，矢量清晰，与面板一致；FIT 放大 canvas 不影响 DOM 文本）/
+    // Name as pure DOM so it stays crisp under FIT upscaling (unlike canvas Text).
+    // 不走 scene.add.dom（FIT 下内置定位对相机 zoom 处理不可靠，会偏离角色）。
     const nameEl = document.createElement("div");
     nameEl.className = "char-name-tag";
+    nameEl.style.position = "absolute";
+    nameEl.style.transform = "translate(-50%, 0)"; // 文字顶部对齐角色底部锚点，向下显示
     nameEl.textContent = data.name;
-    this.nameTag = scene.add.dom(wx, wy + tileSize * 0.4, nameEl) as Phaser.GameObjects.DOMElement;
-    this.nameTag.setOrigin(0.5, 0).setDepth(30);
+    getOverlayHost(scene).appendChild(nameEl);
+    this.nameTag = nameEl;
+    this.nameTagWorld = { x: wx, y: wy + tileSize * 0.5 };
+    this._syncNameTag();
+    scene.events.on(Phaser.Scenes.Events.UPDATE, this._syncNameTag, this);
 
     // 血条 / HP
     this.hpBar = scene.add.graphics().setDepth(30);
@@ -205,7 +213,8 @@ export class CharacterSprite {
     const x = this.sprite.x,
       y = this.sprite.y,
       ts = this.tileSize;
-    this.nameTag.setPosition(x, y + ts * 0.4);
+    this.nameTagWorld = { x, y: y + ts * 0.5 };
+    this._syncNameTag();
     if (this.ring) {
       this.ring.clear();
       this.ring.lineStyle(2, 0xffd700, 0.8);
@@ -216,8 +225,38 @@ export class CharacterSprite {
       this.drawHpBar(x, y, this.data.combat.hp, this.data.combat.max_hp, ts);
     }
     if (this.bubble) {
-      this.bubble.setPosition(x, y - ts * 0.75);
+      this.bubble.setWorldPosition(x, y - ts * 0.75);
     }
+  }
+
+  /** 把名字标签世界坐标投影到屏幕 / Project name tag world position to screen */
+  private _syncNameTag(): void {
+    const p = worldToScreen(this.scene, this.nameTagWorld.x, this.nameTagWorld.y);
+    this.nameTag.style.left = `${p.x}px`;
+    this.nameTag.style.top = `${p.y}px`;
+  }
+
+  /** 调试：返回名字标签与角色精灵的屏幕对齐偏差（供 E2E）/ Debug alignment offset */
+  getDebugAlignment(): {
+    id: string;
+    charScreen: { x: number; y: number };
+    nameTagScreen: { x: number; y: number };
+    dx: number;
+    dy: number;
+  } {
+    const charScreen = worldToScreen(this.scene, this.sprite.x, this.sprite.y);
+    const r = this.nameTag.getBoundingClientRect();
+    const canvas = this.scene.game.canvas;
+    const cr = canvas.getBoundingClientRect();
+    // nameTag 中心相对 canvas 左上角 / nameTag center relative to canvas
+    const nameTagScreen = { x: r.left + r.width / 2 - cr.left, y: r.top + r.height / 2 - cr.top };
+    return {
+      id: this.id,
+      charScreen,
+      nameTagScreen,
+      dx: +(nameTagScreen.x - charScreen.x).toFixed(1),
+      dy: +(nameTagScreen.y - charScreen.y).toFixed(1),
+    };
   }
 
   /** 更新血条 / Update HP */
@@ -229,8 +268,9 @@ export class CharacterSprite {
 
   /** 销毁所有 / Destroy all */
   destroy(): void {
+    this.scene.events.off(Phaser.Scenes.Events.UPDATE, this._syncNameTag, this);
     this.sprite.destroy();
-    this.nameTag.destroy();
+    this.nameTag.remove();
     this.hpBar.destroy();
     this.ring?.destroy();
     this.bubble?.destroy();
