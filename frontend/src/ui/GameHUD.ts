@@ -2,7 +2,6 @@
 /** 游戏 HUD / Game HUD — 场景名 + 等待提示 */
 import Phaser from "phaser";
 import { DEPTH } from "../constants";
-import { textResolution } from "../gameobjects/DialogueBubble";
 
 export class GameHUD {
   private sceneNameText: Phaser.GameObjects.Text | null = null;
@@ -20,11 +19,11 @@ export class GameHUD {
         fontStyle: "bold",
         backgroundColor: "rgba(0,0,0,0.6)",
         padding: { x: 5, y: 2 },
-        resolution: textResolution(),
       })
       .setScrollFactor(0)
       .setDepth(DEPTH.HUD);
-    this.sceneNameText.texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    // 文本清晰度由全局 antialias 保证（参考本地 Phaser 官方模板，无需 resolution/filter 补丁）/
+    // Font crispness comes from global antialias; no resolution/filter hacks needed.
   }
 
   /** 显示等待文本 / Show waiting text */
@@ -34,12 +33,12 @@ export class GameHUD {
         fontFamily: "Segoe UI, sans-serif",
         fontSize: "18px",
         color: "#ffd700",
-        resolution: textResolution(),
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH.HUD);
-    this.waitingText.texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    // 文本清晰度由全局 antialias 保证（参考本地 Phaser 官方模板，无需 resolution/filter 补丁）/
+    // Font crispness comes from global antialias; no resolution/filter hacks needed.
   }
 
   /** 隐藏等待文本 / Hide waiting text */

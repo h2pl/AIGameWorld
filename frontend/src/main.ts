@@ -57,13 +57,20 @@ async function main(): Promise<void> {
     height: CONFIG.CANVAS.height,
     autoFocus: true,
     backgroundColor: CONFIG.COLOR.background,
-    // 全局 pixelArt(NEAREST) 保持地图像素硬边；文本纹理在各创建处单独设 LINEAR 保证清晰 /
-    // Global NEAREST for pixel-art maps; text textures set LINEAR individually for crisp fonts.
+    // 参考本地权威 Phaser 项目（SkyOffice / phaser-rpg / reldens）全部用 pixelArt:true 保持地图像素硬边，
+    // 而 SkyOffice（唯一与我们场景完全对应：角色头顶名字+对话泡泡）用 Scale.RESIZE 让画布 1:1 跟随窗口，
+    // 文本按真实像素光栅化、天然清晰，无需任何 resolution 补丁。
+    // FIT 会把 960 基准画布放大到窗口，是文本发糊的根因，故改用 RESIZE。
     pixelArt: true,
-    roundPixels: true,
+    roundPixels: false,
     physics: { default: "arcade", arcade: { gravity: { x: 0, y: 0 }, debug: false } },
-    // FIT：画布等比缩放到窗口并居中（letterbox），保留用户习惯的铺满观感
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    // RESIZE：画布尺寸 = 窗口尺寸，1:1 无放大，文本/地图均清晰；GameScene 监听 resize 重算相机
+    scale: {
+      mode: Phaser.Scale.RESIZE,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: window.innerWidth,
+      height: window.innerHeight,
+    },
     scene: [Boot, GameScene],
   });
   game.registry.set("eventManager", eventManager);

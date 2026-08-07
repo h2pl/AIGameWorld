@@ -22,14 +22,6 @@ const TEXT_FONT =
 const NAR_FONT =
   'italic 14px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", SimHei, Segoe UI, sans-serif';
 
-/** 文本光栅化分辨率：覆盖 FIT 缩放 + 设备像素比，保证放大后文字清晰 /
- *  Text rasterization resolution covering FIT scale and DPR so text stays crisp when scaled up. */
-export function textResolution(): number {
-  const dpr = window.devicePixelRatio || 1;
-  // FIT 等比缩放：取窗口与基准画布(960x640)的较小比例
-  const fitScale = Math.min(window.innerWidth / 960, window.innerHeight / 640);
-  return Math.max(2, Math.ceil(dpr * fitScale));
-}
 const TEXT_COLOR = "#1a1a1a";
 // 旁白风格颜色 / Narration style colors
 const NAR_BG = 0x1a1a2e;
@@ -82,12 +74,11 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
         color: isThought ? THOUGHT_TEXT : isNarration ? NAR_TEXT : TEXT_COLOR,
         wordWrap: { width: MAX_WIDTH - PADDING_X * 2, useAdvancedWrap: true },
         align: "center",
-        // 按设备像素比 + FIT 缩放光栅化文本，放大后字体仍清晰
-        resolution: textResolution(),
+        // 文本清晰度由全局 antialias 保证（参考本地 Phaser 官方模板 philoagents-ui：
+        // 不开 pixelArt、不碰 resolution，文本天然清晰）。无需 setResolution/setFilter 补丁。
+        // Font crispness comes from global antialias; no resolution/filter hacks needed.
       })
       .setOrigin(0.5, 1);
-    // 文本纹理单独用线性过滤，即使全局 pixelArt(NEAREST) 也清晰 / Linear filter for text even under global NEAREST
-    this.textObj.texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
 
     this.bg = scene.add.graphics();
     this.add([this.bg, this.textObj]);

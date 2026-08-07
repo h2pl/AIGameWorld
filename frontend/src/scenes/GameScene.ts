@@ -75,6 +75,9 @@ export class GameScene extends Phaser.Scene {
     this._initHandlers();
     this._registerHandlers();
     this.game.events.on("scene-reset", () => this._handleReset());
+    // RESIZE 模式下窗口变化需重算相机 zoom/scroll，保持地图比例与文本清晰
+    // RESIZE: recompute camera on window resize to keep map ratio correct
+    this.scale.on("resize", this._onResize, this);
     // 播放暂停/恢复时同步 tween 状态 / Sync tween state on pause/resume
     this._onPlayPaused = () => this.tweens.pauseAll();
     this._onPlayResumed = () => this.tweens.resumeAll();
@@ -150,6 +153,7 @@ export class GameScene extends Phaser.Scene {
     this.pcManager?.destroy();
     this.actorManager?.destroy();
     this.game.events.off("scene-reset");
+    this.scale.off("resize", this._onResize, this);
     window.removeEventListener("play-paused", this._onPlayPaused);
     window.removeEventListener("play-resumed", this._onPlayResumed);
   }
@@ -391,6 +395,18 @@ export class GameScene extends Phaser.Scene {
       this.scale.height / this._cameraZoom
     );
     cam.setScroll(sx, sy);
+  }
+
+  /** 窗口尺寸变化（RESIZE 模式）时重算相机 zoom 并重新聚焦 /
+   *  Recompute camera zoom and refocus on window resize (RESIZE mode). */
+  private _onResize(): void {
+    if (!this.sceneBuilt || !this._mapW) return;
+    const vw = this.scale.width;
+    const vh = this.scale.height;
+    const rawZoom = Math.min(vw / this._mapW, vh / this._mapH);
+    this._cameraZoom = Math.max(1.0, Math.min(rawZoom, 2.5));
+    this.cameras.main.setZoom(this._cameraZoom);
+    this._focusCamera();
   }
 
   /** 点击选角 / Click-to-select character */
