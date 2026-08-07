@@ -21,6 +21,15 @@ const TEXT_FONT =
   '16px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", SimHei, Segoe UI, sans-serif';
 const NAR_FONT =
   'italic 14px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", SimHei, Segoe UI, sans-serif';
+
+/** 文本光栅化分辨率：覆盖 FIT 缩放 + 设备像素比，保证放大后文字清晰 /
+ *  Text rasterization resolution covering FIT scale and DPR so text stays crisp when scaled up. */
+export function textResolution(): number {
+  const dpr = window.devicePixelRatio || 1;
+  // FIT 等比缩放：取窗口与基准画布(960x640)的较小比例
+  const fitScale = Math.min(window.innerWidth / 960, window.innerHeight / 640);
+  return Math.max(2, Math.ceil(dpr * fitScale));
+}
 const TEXT_COLOR = "#1a1a1a";
 // 旁白风格颜色 / Narration style colors
 const NAR_BG = 0x1a1a2e;
@@ -73,10 +82,12 @@ export class DialogueBubble extends Phaser.GameObjects.Container {
         color: isThought ? THOUGHT_TEXT : isNarration ? NAR_TEXT : TEXT_COLOR,
         wordWrap: { width: MAX_WIDTH - PADDING_X * 2, useAdvancedWrap: true },
         align: "center",
-        // 按设备像素比光栅化文本，高分屏下字体不糊 / rasterize at DPR for crisp text
-        resolution: Math.max(2, window.devicePixelRatio || 1),
+        // 按设备像素比 + FIT 缩放光栅化文本，放大后字体仍清晰
+        resolution: textResolution(),
       })
       .setOrigin(0.5, 1);
+    // 文本纹理单独用线性过滤，即使全局 pixelArt(NEAREST) 也清晰 / Linear filter for text even under global NEAREST
+    this.textObj.texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
 
     this.bg = scene.add.graphics();
     this.add([this.bg, this.textObj]);

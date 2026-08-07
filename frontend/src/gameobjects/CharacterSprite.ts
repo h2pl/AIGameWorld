@@ -1,7 +1,7 @@
 /** 角色精灵 / Character Sprite — 世界坐标 + 名字标签 + 血条 + 点击 */
 
 import Phaser from "phaser";
-import { DialogueBubble } from "./DialogueBubble";
+import { DialogueBubble, textResolution } from "./DialogueBubble";
 import type { CharacterData } from "../types";
 import { playState } from "../utils/playState";
 import { speedMs } from "../config/playback";
@@ -46,10 +46,12 @@ export class CharacterSprite {
         color: "#fff",
         backgroundColor: "rgba(0,0,0,0.6)",
         padding: { x: 2, y: 1 },
-        resolution: Math.max(2, window.devicePixelRatio || 1),
+        resolution: textResolution(),
       })
       .setOrigin(0.5, 0)
       .setDepth(30);
+    // 文本纹理单独线性过滤 / Linear filter for text
+    this.nameTag.texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
 
     // 血条 / HP
     this.hpBar = scene.add.graphics().setDepth(30);

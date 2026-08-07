@@ -169,6 +169,37 @@ class LoggingConfig(BaseModel):
     console: ConsoleLoggingConfig = ConsoleLoggingConfig()
 
 
+class StudioMCPConfig(BaseModel):
+    """Studio 知识库 MCP server 连接配置 / Studio knowledge-base MCP client config.
+
+    主项目 backend 作为 MCP client，以 stdio 方式拉起 Studio 的 ``aw-studio mcp``
+    进程，通过其暴露的 list_topics() / search() 工具检索 Studio 的 Qdrant 知识库。
+    不可用时（进程没装 / 拉起失败）优雅降级，不阻断主链路。
+    """
+
+    enabled: bool = False  # 是否启用 Studio MCP 知识库 / Whether to use Studio MCP
+    command: str = "aw-studio"  # 拉起的命令（stdio）/ Command to spawn
+    args: list[str] = ["mcp"]  # 命令参数 / Args passed to the command
+    # 检索默认返回的条数 / Default top_k for search
+    top_k: int = 5
+    # 工具调用超时（秒）/ Tool call timeout in seconds
+    timeout: int = 30
+    # 子进程工作目录（Studio 项目根）；为空则用 command 自身解析（aw-studio 控制台脚本）
+    # / cwd for the spawned MCP subprocess (Studio project root)
+    cwd: str | None = None
+    # 注入主链路的检索目的（与 KnowledgeRepo.retrieve_for_purpose 对齐）/
+    # which purposes route through Studio MCP
+    purposes: list[str] = [
+        "dm_create",
+        "dm_narrate",
+        "explore",
+        "interact",
+        "talk",
+        "reflection",
+    ]
+    # 默认检索的 topic slug（先 list_topics 再 search；为空则使用 list 第一个）/ default topic
+
+
 class Config(BaseSettings):
     """全局配置根 / Global config root."""
 
@@ -180,6 +211,7 @@ class Config(BaseSettings):
     auto_run: AutoRunConfig = AutoRunConfig()
     logging: LoggingConfig = LoggingConfig()
     observability: ObservabilityConfig = ObservabilityConfig()
+    studio_mcp: StudioMCPConfig = StudioMCPConfig()
 
     # 兼容访问器：大量旧代码通过 cfg.llm_mock / cfg.data_mode 等读取
     # / Compatibility aliases for legacy flat access

@@ -159,6 +159,22 @@ async def lifespan(app: FastAPI):
     from .storage.chroma_client import ChromaClient
 
     llm = LLMClient(cfg)
+
+    # Studio 知识库 MCP client（可选，enabled 时拉起 Studio 的 aw-studio mcp 进程）/
+    # Optional Studio MCP knowledge client
+    from .client.mcp_knowledge_client import init_mcp_client
+
+    if getattr(cfg, "studio_mcp", None) and cfg.studio_mcp.enabled:
+        init_mcp_client(
+            command=cfg.studio_mcp.command,
+            args=list(cfg.studio_mcp.args),
+            top_k=cfg.studio_mcp.top_k,
+            timeout=cfg.studio_mcp.timeout,
+            cwd=cfg.studio_mcp.cwd,
+        )
+        logger.info("[server] Studio MCP client initialized (lazy, connects on first use)")
+    else:
+        logger.info("[server] Studio MCP disabled (config studio_mcp.enabled=false)")
     # 向量存储：根据配置选择嵌入模型 / Vector store: select embedding model from config
     embedding_model = cfg.database.embedding_model
     if embedding_model == "bge-m3":
@@ -246,10 +262,18 @@ async def lifespan(app: FastAPI):
 
     app.state.repos = repos
 
+    # 可选：Studio 知识库 MCP client 单例（enabled 时已在上方初始化）
+    from .client.mcp_knowledge_client import get_mcp_client
+
+    mcp_client = get_mcp_client()
+    if mcp_client is not None:
+        repos["knowledge_mcp"] = mcp_client
+
     app.state.orchestrator = Orchestrator(
         llm=llm,
         repos=repos,
         metrics_collector=metrics_collector,
+        studio_mcp_config=getattr(cfg, "studio_mcp", None),
     )
     logger.info("[lifespan] orchestrator ready")
 

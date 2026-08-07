@@ -30,6 +30,8 @@ export class MapManager {
     for (const ts of tilesets) {
       const t = this.tilemap.addTilesetImage(ts.name, ts.name);
       if (t) {
+        // 单独设 NEAREST 保持像素硬边（全局 antialias 已开启，否则地图形变糊）
+        this.scene.textures.get(ts.name).setFilter(Phaser.Textures.FilterMode.NEAREST);
         allTilesets.push(t);
         log.info(`  tileset OK: %s`, ts.name);
       } else {

@@ -11,6 +11,8 @@ export interface ControlBarCallbacks {
   onPause: () => Promise<void>;
   onResume: () => Promise<void>;
   onReset: () => Promise<void>;
+  /** 跳转到指定 tick / Jump to a specific generated tick */
+  onJump: (tick: number) => Promise<void>;
   /** 退出到世界选择页 / Exit to world selection page */
   onExit: () => void;
   getTickCount: () => number;
@@ -20,6 +22,8 @@ export class ControlBar extends Panel {
   private runState: RunState = "idle";
   private statusEl!: HTMLSpanElement;
   private tInput!: HTMLInputElement;
+  private jumpInput!: HTMLInputElement;
+  private btnJump!: HTMLButtonElement;
   private btnRunN!: HTMLButtonElement;
   private btnStart!: HTMLButtonElement;
   private btnPause!: HTMLButtonElement;
@@ -126,6 +130,19 @@ export class ControlBar extends Panel {
       speedBtns.push(btn);
     }
 
+    // 跳转到指定 tick / Jump to tick
+    bar.appendChild(this._sep());
+    this.jumpInput = document.createElement("input");
+    this.jumpInput.value = "1";
+    this.jumpInput.dataset.testid = "jump-tick-input";
+    this.jumpInput.style.cssText =
+      "width:50px;text-align:center;border-radius:4px;border:1px solid #555;background:#222;color:#fff;";
+    this.jumpInput.placeholder = "tick";
+    bar.appendChild(this.jumpInput);
+    this.btnJump = this._btn("跳转", "#16a085");
+    this.btnJump.dataset.testid = "btn-jump";
+    bar.appendChild(this.btnJump);
+
     this.statusEl = document.createElement("span");
     this.statusEl.dataset.testid = "control-status";
     this.statusEl.style.cssText =
@@ -142,6 +159,10 @@ export class ControlBar extends Panel {
     this.btnPause.onclick = () => this._handlePause();
     this.btnResume.onclick = () => this._handleResume();
     this.btnReset.onclick = () => this._handleReset();
+    this.btnJump.onclick = () => this._handleJump();
+    this.jumpInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") this._handleJump();
+    });
     this.btnExit.onclick = () => this.callbacks?.onExit();
 
     window.addEventListener("tick-waiting", ((ev: CustomEvent) => {
@@ -162,7 +183,7 @@ export class ControlBar extends Panel {
       this.statusEl.textContent = "运行中...";
       await this.callbacks.onRun(n);
       this.runState = "idle";
-      this.statusEl.textContent = `完成: ${this.callbacks.getTickCount()} tick`;
+      this.setTickDisplay(this.callbacks.getTickCount());
     } catch (e) {
       this.runState = "idle";
       const msg = e instanceof Error ? e.message : String(e);
@@ -234,13 +255,36 @@ export class ControlBar extends Panel {
         await this.callbacks.onPause();
       }
       await this.callbacks.onReset();
-      this.statusEl.textContent = "已重置";
+      this.setTickDisplay(0);
     } catch {
       this.statusEl.textContent = "重置失败";
     } finally {
       this.runState = "idle";
       this._updateButtons();
     }
+  }
+
+  /** 跳转到指定 tick / Jump to a specific tick */
+  private async _handleJump(): Promise<void> {
+    if (!this.callbacks) return;
+    const target = parseInt(this.jumpInput.value) || 0;
+    if (target < 1) return;
+    this.statusEl.textContent = `跳转中 Tick ${target}...`;
+    this.statusEl.classList.remove("control-status-error");
+    try {
+      await this.callbacks.onJump(target);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.statusEl.textContent = `跳转失败: ${msg}`;
+      this.statusEl.classList.add("control-status-error");
+      setTimeout(() => this.statusEl.classList.remove("control-status-error"), 4000);
+    }
+  }
+
+  /** 持续显示当前展示 tick（任意情况都刷新状态条）/ Persistently show current display tick */
+  setTickDisplay(tick: number): void {
+    this.statusEl.textContent = `当前 Tick ${tick}`;
+    this.statusEl.classList.remove("control-status-waiting", "control-status-error");
   }
 
   private _updateButtons(): void {

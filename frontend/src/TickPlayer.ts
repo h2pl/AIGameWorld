@@ -189,6 +189,51 @@ export class TickPlayer {
     await API.resetWorld(this._baseUrl, this._worldId);
   }
 
+  /** 获取已生成 tick 的最大值（跳转范围上界）/ Get max generated tick (jump upper bound) */
+  async getMaxTick(): Promise<number> {
+    return API.fetchMaxTick(this._baseUrl, this._worldId);
+  }
+
+  /** 跳转到指定 tick：拉取该 tick 数据并播放（与正常播放同一链路）/ Jump to a tick.
+   *
+   * 后端已生成的 tick 可直接 fetch 数据 replay，无需重新生成。T 会被 clamp 到 [1, data_tick]。
+   * 跳转只渲染目标 tick 的画面（单 tick replay），并把展示位置设为 T。
+   */
+  async jumpTo(tick: number, onTick: (tick: number, events: any[]) => void): Promise<void> {
+    if (this._state === "running" || this._pending) return;
+    const target = Math.max(1, Math.floor(tick));
+    const maxTick = await this.getMaxTick();
+    if (target > maxTick) {
+      log.warn(`jumpTo ${target} 超出范围 (max=${maxTick})`);
+      return;
+    }
+    this._state = "running";
+    this._eventManager.running = true;
+    try {
+      const data = await API.fetchEvents(this._baseUrl, this._worldId, target - 1, 1);
+      const events = (data.events || []).filter((ev: any) => ev.tick === target);
+      if (events.length) {
+        const ed: EventData[] = events.map((ev: any) => ({
+          type: ev.type,
+          tick: ev.tick,
+          payload: ev.payload,
+        }));
+        await this._eventManager.replayTick(target, ed);
+        this._lastTick = target;
+        await API.syncDisplayTick(this._baseUrl, this._worldId, target);
+        onTick(target, ed);
+        log.info(`jumped to tick=${target} events=${ed.length}`);
+      } else {
+        log.warn(`jumpTo ${target} 无数据`);
+      }
+    } catch (e) {
+      log.warn(`jumpTo failed`, e);
+    } finally {
+      this._state = "idle";
+      this._eventManager.running = false;
+    }
+  }
+
   /** 停止播放 / Stop playback */
   stop(): void {
     this._state = "idle";

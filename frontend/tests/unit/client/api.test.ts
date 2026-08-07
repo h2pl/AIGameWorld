@@ -21,7 +21,7 @@ describe("API client", () => {
 
     await API.fetchEvents(BASE, WORLD, 5);
     expect(mock).toHaveBeenCalledWith(
-      `${BASE}/api/world/${WORLD}/events?since_tick=5`,
+      `${BASE}/api/world/${WORLD}/events?since_tick=5&tick_limit=1`,
       expect.objectContaining({ headers: expect.any(Object) })
     );
   });

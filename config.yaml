@@ -126,6 +126,25 @@ logging:
     # 性能
     performance: false               #   node 耗时 + tick 总耗时
 
+# === Studio 知识库 MCP / Studio knowledge-base MCP ===
+# 主项目作为 MCP client，以 stdio 拉起 Studio 的 `aw-studio mcp` 进程，
+# 通过 list_topics()/search() 检索 Studio 的 Qdrant 知识库（独立向量库，不干扰主项目 Chroma）。
+# 设为 enabled: true 时，下列 purpose 的检索会优先走 Studio MCP；拉起失败则优雅降级回主项目 KnowledgeRepo。
+studio_mcp:
+  enabled: false                  # 默认关闭，显式开启才用 / Off by default
+  command: "aw-studio"            # stdio 拉起的命令 / Command to spawn
+  args: ["mcp"]                   # 命令参数 / Args
+  top_k: 5                        # 默认返回条数 / Default top_k
+  timeout: 30                     # 工具调用超时（秒）/ Tool call timeout
+  cwd: "../AIGameWorld-Studio"    # Studio 项目根（子进程工作目录，确保 import src.mcp_server）/ Studio root
+  purposes:                       # 走 Studio MCP 的检索目的 / Purposes routed via MCP
+    - dm_create
+    - dm_narrate
+    - explore
+    - interact
+    - talk
+    - reflection
+
 # === 可观测性 / Observability ===
 observability:
   # LangSmith：开发期调试 + Prompt实验 + 评估回归

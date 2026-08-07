@@ -57,16 +57,13 @@ async function main(): Promise<void> {
     height: CONFIG.CANVAS.height,
     autoFocus: true,
     backgroundColor: CONFIG.COLOR.background,
+    // 全局 pixelArt(NEAREST) 保持地图像素硬边；文本纹理在各创建处单独设 LINEAR 保证清晰 /
+    // Global NEAREST for pixel-art maps; text textures set LINEAR individually for crisp fonts.
     pixelArt: true,
     roundPixels: true,
     physics: { default: "arcade", arcade: { gravity: { x: 0, y: 0 }, debug: false } },
-    // RESIZE：画布跟随窗口真实像素（含 DPR），不再整体拉伸，避免文字/地图被放大糊化
-    scale: {
-      mode: Phaser.Scale.RESIZE,
-      autoCenter: Phaser.Scale.NO_CENTER,
-      width: CONFIG.CANVAS.width,
-      height: CONFIG.CANVAS.height,
-    },
+    // FIT：画布等比缩放到窗口并居中（letterbox），保留用户习惯的铺满观感
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [Boot, GameScene],
   });
   game.registry.set("eventManager", eventManager);
@@ -96,11 +93,19 @@ async function main(): Promise<void> {
 
   // ── 6. TickPlayer ──
   const displayTick = world.display_tick || 0;
-  if (displayTick > 0) bar.setStatus(`已展示到 Tick ${displayTick}`);
+  const dataTick = world.data_tick || 0;
+  if (displayTick > 0) {
+    bar.setTickDisplay(displayTick);
+  } else if (dataTick > 0) {
+    // 已生成 tick 但前端未播放：提示可跳转，不自动播放 / Generated but not displayed yet
+    bar.setStatus(`已生成 ${dataTick} 个 tick，可跳转`);
+  } else {
+    bar.setTickDisplay(0);
+  }
 
-  const onTickCallback = (tick: number, events: any[]) => {
+  const onTickCallback = (tick: number) => {
     worldStore.setDisplayTick(tick);
-    bar.setStatus(`展示 Tick ${tick} (${events.length} events)`);
+    bar.setTickDisplay(tick);
   };
 
   bar.setCallbacks({
@@ -111,10 +116,14 @@ async function main(): Promise<void> {
     onStart: async () => player.startLoop(onTickCallback),
     onPause: async () => player.pauseLoop(),
     onResume: async () => player.resumeLoop(onTickCallback),
+    onJump: async (t) => {
+      await player.jumpTo(t, onTickCallback);
+    },
     onReset: async () => {
       await player.reset();
       worldStore.clear();
       game.events.emit("scene-reset");
+      bar.setTickDisplay(0);
       window.dispatchEvent(new CustomEvent("tick-start", { detail: { tick: 0 } }));
     },
     onExit: () => {

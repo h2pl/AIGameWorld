@@ -28,6 +28,8 @@ dependencies = [
     "python-json-logger>=4.1.0",
     "pandas>=3.0.3",
     "neo4j>=5.21.0",                # 图数据库驱动 / Neo4j Graph Database driver
+    "langchain-mcp-adapters>=0.3",  # MCP 协议接入（连接 Studio 知识库 MCP server）/ MCP client
+    "mcp>=1.9",                     # MCP 基础库（stdio client 依赖）/ MCP base lib
 ]
 
 # === 开发依赖 / Dev Dependencies ===
@@ -45,7 +47,7 @@ dev = [
 
 # === 生产扩展 / Production Extensions ===
 production = [
-    "langchain-mcp-adapters>=0.3",  # MCP 协议接入（远期）/ MCP protocol (future)
+    "langchain-mcp-adapters>=0.3",  # MCP 协议接入（已提升到运行时依赖）/ MCP protocol
 ]
 
 # === 可选依赖组（需 C++ 编译环境）/ Optional dependency groups (needs C++ compiler) ===

@@ -82,6 +82,7 @@ export function makeCharTexture(
     c.fillRect(cx - 7 * s, 12 * s, 3 * s, 3 * s);
     c.fillRect(cx + 4 * s, 12 * s, 3 * s, 3 * s);
   }
+  cv.setFilter(Phaser.Textures.FilterMode.NEAREST);
   cv.refresh();
 }
 
@@ -114,5 +115,6 @@ export function makeObjectTexture(
     c.arc(size / 2, size / 2, 8, 0, Math.PI * 2);
     c.fill();
   }
+  cv.setFilter(Phaser.Textures.FilterMode.NEAREST);
   cv.refresh();
 }

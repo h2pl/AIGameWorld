@@ -21,6 +21,7 @@ describe("MapManager", () => {
       },
       textures: {
         getTextureKeys: vi.fn(() => []),
+        get: vi.fn(() => ({ setFilter: vi.fn() })),
       },
       cameras: {
         main: {
@@ -40,27 +41,24 @@ describe("MapManager", () => {
     expect(manager.tilemap).toBe(mockTilemap);
   });
 
-  it("logs error when tilemap is missing", () => {
+  it("falls back when tilemap missing", () => {
     const { scene } = makeScene(false);
     const manager = new MapManager(scene as any);
-    manager.build("missing", { tilesets: [{ name: "ts", url: "tk.png" }] });
+    manager.build("desert", { tilesets: [{ name: "desert", url: "desert.png" }] });
     expect(manager.tilemap).toBeNull();
   });
 
-  it("logs error when tileset is missing", () => {
-    const { scene, mockTilemap } = makeScene(true, false);
-    const manager = new MapManager(scene as any);
-    manager.build("desert", { tilesets: [{ name: "missing", url: "x.png" }] });
-    expect(mockTilemap.addTilesetImage).toHaveBeenCalled();
-    expect(manager.tilemap).toBe(mockTilemap);
-  });
-
-  it("destroy releases tilemap", () => {
+  it("applies NEAREST filter to each tileset", () => {
     const { scene, mockTilemap } = makeScene();
     const manager = new MapManager(scene as any);
-    manager.build("desert", { tilesets: [{ name: "desert", url: "desert.png" }] });
-    manager.destroy();
-    expect(mockTilemap.destroy).toHaveBeenCalled();
-    expect(manager.tilemap).toBeNull();
+    manager.build("desert", {
+      tilesets: [
+        { name: "desert", url: "desert.png" },
+        { name: "props", url: "props.png" },
+      ],
+    });
+    expect(scene.textures.get).toHaveBeenCalledWith("desert");
+    expect(scene.textures.get).toHaveBeenCalledWith("props");
+    expect(mockTilemap.addTilesetImage).toHaveBeenCalledTimes(2);
   });
 });

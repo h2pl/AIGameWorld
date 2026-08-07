@@ -9,5 +9,13 @@ export default defineConfig({
     globals: true,
     // 测试文件匹配模式 / Test file patterns
     include: ["tests/**/*.test.ts"],
+    // 全局 setup：桩 HTMLCanvasElement.getContext，避免 Phaser 在 node 下崩溃
+    setupFiles: ["tests/setup.ts"],
+  },
+  // 强制 Phaser 解析到打包后的 dist（vitest 默认可能解析到 src 导致 WebGL 模块缺失）
+  resolve: {
+    alias: {
+      phaser: "phaser/dist/phaser.js",
+    },
   },
 });

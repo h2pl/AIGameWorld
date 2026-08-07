@@ -30,8 +30,8 @@ export class PcManager {
     return this.sprites.get(id);
   }
 
-  /** 计算 PC 群中心点（世界坐标）/ Calculate PC group center in world coords */
-  calcCameraCenter(_zoom: number): { cx: number; cy: number } {
+  /** 计算包围盒居中偏移 / Calculate bounding-box center scroll offset */
+  calcCameraScroll(canvasW: number, canvasH: number): { sx: number; sy: number } {
     let minX = 99,
       minY = 99,
       maxX = -99,
@@ -43,10 +43,10 @@ export class PcManager {
       minY = Math.min(minY, ty);
       maxY = Math.max(maxY, ty);
     });
-    if (minX > maxX) return { cx: 0, cy: 0 };
+    if (minX > maxX) return { sx: 0, sy: 0 };
     return {
-      cx: ((minX + maxX) / 2 + 0.5) * this.ts,
-      cy: ((minY + maxY) / 2 + 0.5) * this.ts,
+      sx: ((minX + maxX) / 2 + 0.5) * this.ts - canvasW / 2,
+      sy: ((minY + maxY) / 2 + 0.5) * this.ts - canvasH / 2,
     };
   }
 

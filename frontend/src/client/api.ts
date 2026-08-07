@@ -53,17 +53,28 @@ export async function fetchWorlds(baseUrl: string): Promise<any[]> {
   return (await resp.json()) as any[];
 }
 
-/** GET /api/world/{id}/events?since_tick=... */
+/** GET /api/world/{id}/events?since_tick=...&tick_limit=... */
 export async function fetchEvents(
   baseUrl: string,
   worldId: string,
-  sinceTick: number
+  sinceTick: number,
+  tickLimit: number = 1
 ): Promise<EventsResponse> {
   const resp = await fetchWithTrace(
-    `${baseUrl}/api/world/${worldId}/events?since_tick=${sinceTick}`
+    `${baseUrl}/api/world/${worldId}/events?since_tick=${sinceTick}&tick_limit=${tickLimit}`
   );
   if (!resp.ok) throw new Error(`events ${resp.status}`);
   return (await resp.json()) as EventsResponse;
+}
+
+/** 获取已生成 tick 的最大值（data_tick）/ Get max generated tick for jump range */
+export async function fetchMaxTick(baseUrl: string, worldId: string): Promise<number> {
+  const resp = await fetchWithTrace(
+    `${baseUrl}/api/world/${worldId}/events?since_tick=0&tick_limit=1`
+  );
+  if (!resp.ok) throw new Error(`events ${resp.status}`);
+  const data = (await resp.json()) as EventsResponse;
+  return data.data_tick || 0;
 }
 
 /** POST /api/world/{id}/tick/batch/{n} — 409 自动重试 / Auto-retry on 409 (batch still running) */

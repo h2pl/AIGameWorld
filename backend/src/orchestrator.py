@@ -28,6 +28,7 @@ class Orchestrator:
         reflection_interval: int = 5,
         repos: Any = None,
         metrics_collector=None,
+        studio_mcp_config: Any = None,
     ):
         logger.info("[orchestrator] init")
         if repos is None:
@@ -39,6 +40,7 @@ class Orchestrator:
         self._reflection_interval = reflection_interval
         self._repos = repos
         self._metrics = metrics_collector  # 指标收集器 / Metrics collector
+        self._studio_mcp_cfg = studio_mcp_config  # Studio MCP 配置（含 enabled/purposes）
         self._locks: dict[str, asyncio.Lock] = {}
 
     async def run_tick(self, world_id: str) -> dict:
@@ -123,6 +125,7 @@ class Orchestrator:
             "configurable": {
                 "thread_id": f"{world_id}__tick_{tick}",
                 "repos": self._repos,
+                "studio_mcp": self._studio_mcp_cfg,
             },
             "run_name": f"{world_id}__tick_{tick}",
         }

@@ -33,6 +33,40 @@ _PROMPTS_ROOT = Path(__file__).parent.parent.parent / "prompts"
 _PROMPTS = Environment(loader=FileSystemLoader(_PROMPTS_ROOT))
 
 
+async def _retrieve_knowledge(purpose: str, query: str, config: RunnableConfig) -> str:
+    """检索 World 知识——优先 Studio MCP（若启用且 purpose 命中），否则回退 KnowledgeRepo。
+
+    返回可注入 prompt 的格式化文本。任一路径失败都返回空字符串，不阻断主链路。
+    """
+    # 1) Studio MCP（可选，按 purpose 选择性启用）
+    studio_cfg = config.get("configurable", {}).get("studio_mcp") if config else None
+    if studio_cfg is not None and getattr(studio_cfg, "enabled", False):
+        purposes = getattr(studio_cfg, "purposes", []) or []
+        if purpose in purposes:
+            from ...client.mcp_knowledge_client import get_mcp_client
+
+            mcp_client = get_mcp_client()
+            if mcp_client is not None:
+                try:
+                    text = await mcp_client.retrieve_for_purpose(
+                        purpose, query, top_k=studio_cfg.top_k
+                    )
+                    if text:
+                        logger.info("[dm] purpose=%s 命中 Studio MCP 知识库", purpose)
+                        return text
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("[dm] Studio MCP 检索失败，回退 KnowledgeRepo: %s", e)
+
+    # 2) 回退：主项目自带 KnowledgeRepo（ChromaDB / World Pack）
+    try:
+        knowledge_repo = get_repo(config, "knowledge")
+        if knowledge_repo:
+            return knowledge_repo.retrieve_for_purpose(purpose=purpose, query=query, top_k=3)
+    except Exception:
+        logger.warning("[engine] knowledge retrieval failed (purpose=%s)", purpose)
+    return ""
+
+
 @traced()
 async def dm_create(
     tick: int,
@@ -62,20 +96,12 @@ async def dm_create(
     except Exception:
         logger.warning("[engine] dm_create context build failed, continuing without context")
 
-    # 检索 World Pack 知识 / Retrieve World Pack knowledge
-    world_knowledge = ""
-    try:
-        knowledge_repo = get_repo(config, "knowledge")
-        if knowledge_repo:
-            world_knowledge = knowledge_repo.retrieve_for_purpose(
-                purpose="dm_create",
-                query=plot_brief or prev_narrative or world_id or "",
-                top_k=3,
-            )
-    except Exception:
-        logger.warning(
-            "[engine] dm_create knowledge retrieval failed, continuing without knowledge"
-        )
+    # 检索 World Pack 知识（优先 Studio MCP）/ Retrieve knowledge
+    world_knowledge = await _retrieve_knowledge(
+        purpose="dm_create",
+        query=plot_brief or prev_narrative or world_id or "",
+        config=config,
+    )
 
     logger.info("[engine] dm_create tick=%s world=%s", tick, world_id or "-")
     system_prompt = await _render_dm_system(config, world_id)
@@ -137,20 +163,12 @@ async def dm_narrate(
     except Exception:
         logger.warning("[engine] dm_narrate context build failed, continuing without context")
 
-    # 检索 World Pack 知识 / Retrieve World Pack knowledge
-    world_knowledge = ""
-    try:
-        knowledge_repo = get_repo(config, "knowledge")
-        if knowledge_repo:
-            world_knowledge = knowledge_repo.retrieve_for_purpose(
-                purpose="dm_narrate",
-                query=(plot_brief or (scene.description if scene else None) or world_id or ""),
-                top_k=3,
-            )
-    except Exception:
-        logger.warning(
-            "[engine] dm_narrate knowledge retrieval failed, continuing without knowledge"
-        )
+    # 检索 World Pack 知识（优先 Studio MCP）/ Retrieve knowledge
+    world_knowledge = await _retrieve_knowledge(
+        purpose="dm_narrate",
+        query=(plot_brief or (scene.description if scene else None) or world_id or ""),
+        config=config,
+    )
 
     system_prompt = await _render_dm_system(config, world_id)
     prompt = _PROMPTS.get_template("dm/dm_narrate.jinja").render(
