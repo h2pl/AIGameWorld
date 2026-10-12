@@ -63,7 +63,7 @@ metadata:
 python skills/world-builder/scripts/build_world.py --theme "蒸汽朋克" --name "蒸汽朋克·铜城"
 
 # 或手动构造 JSON 调接口
-curl -X POST http://localhost:8000/api/world/create \
+curl -X POST http://localhost:8001/api/world/create \
   -H "Content-Type: application/json" \
   -d '{"world": {...}, "scenes": [...], "pcs": [...], "actors": [...], "items": [...], "scene_objects": [...]}'
 ```
@@ -71,7 +71,7 @@ curl -X POST http://localhost:8000/api/world/create \
 ## 验证
 
 ```bash
-curl http://localhost:8000/api/world/{world_id}/state
+curl http://localhost:8001/api/world/{world_id}/state
 # 应返回新建世界的 scenes/pcs/actors/items
 ```
 

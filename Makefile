@@ -19,12 +19,12 @@ setup: ## 首次安装所有依赖 / Install all dependencies (first-time only)
 dev: ## 启动前后端（Ctrl+C 停止同时关闭）/ Start backend + frontend
 	find backend -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; true
 	command -v deactivate >/dev/null 2>&1 && deactivate; \
-	cd backend && UV_NEXT_TRAMPOLINE=1 uv run python -m uvicorn src.server:app --port 8000 --reload --reload-dir src --reload-exclude 'data' --reload-exclude '*.db' & \
+	cd backend && UV_NEXT_TRAMPOLINE=1 uv run python -m uvicorn src.server:app --port 8001 --reload --reload-dir src --reload-exclude 'data' --reload-exclude '*.db' & \
 	trap 'kill %1 2>/dev/null' EXIT; \
 	echo "Waiting for backend fully ready (BGE-M3 + Chroma first load ~60s)..."; \
 	ready=0; \
 	for i in $$(seq 1 180); do \
-		if curl -s http://127.0.0.1:8000/health > /dev/null 2>&1; then ready=1; break; fi; \
+		if curl -s http://127.0.0.1:8001/health > /dev/null 2>&1; then ready=1; break; fi; \
 		printf "."; sleep 1; \
 	done; \
 	if [ "$$ready" = "1" ]; then echo "\nBackend ready. Starting frontend..."; \
@@ -34,7 +34,7 @@ dev: ## 启动前后端（Ctrl+C 停止同时关闭）/ Start backend + frontend
 backend-dev: ## 仅启动后端 / Start backend only
 	find backend -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; true
 	command -v deactivate >/dev/null 2>&1 && deactivate; \
-	cd backend && UV_NEXT_TRAMPOLINE=1 uv run python -m uvicorn src.server:app --reload --reload-dir src --reload-exclude 'data' --reload-exclude '*.db' --port 8000
+	cd backend && UV_NEXT_TRAMPOLINE=1 uv run python -m uvicorn src.server:app --reload --reload-dir src --reload-exclude 'data' --reload-exclude '*.db' --port 8001
 
 frontend-dev: ## 仅启动前端 / Start frontend only
 	cd frontend && npm run dev

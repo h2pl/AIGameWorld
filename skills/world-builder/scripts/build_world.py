@@ -23,7 +23,7 @@ from pathlib import Path
 
 import httpx
 
-DEFAULT_BASE = "http://127.0.0.1:8000"
+DEFAULT_BASE = "http://127.0.0.1:8001"
 
 
 def build_demo(theme: str, name: str) -> dict:

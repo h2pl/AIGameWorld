@@ -10,7 +10,7 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-需先启动后端（默认 http://localhost:8000），见 [backend/README.md](../backend/README.md)。
+需先启动后端（默认 http://localhost:8001），见 [backend/README.md](../backend/README.md)。
 
 ## 核心架构 / Architecture
 

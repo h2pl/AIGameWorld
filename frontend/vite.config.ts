@@ -11,7 +11,7 @@ export default defineConfig({
     // 未就绪时 vite 默认直接 ECONNREFUSED→501，这里加容错。
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "http://localhost:8001",
         changeOrigin: true,
         timeout: 60000,
         proxyTimeout: 60000,
